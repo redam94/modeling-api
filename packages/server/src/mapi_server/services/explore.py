@@ -194,6 +194,8 @@ async def submit_model_explore(
 ) -> tuple[m.Run, bool]:
     """``(run, cached)``: an ``explore`` run of a model version with its fit data, its
     evaluation bundle (when the fit kept one) and the bundles it is compared with."""
+    from mapi_server.services.plugins.refs import merge_pins, model_version_pins
+    from mapi_server.services.plugins.view import resolve_pins
     from mapi_server.services.submit import _accept, dataset_inputs, fit_dataset_version
 
     scope = ctx.scope
@@ -232,8 +234,11 @@ async def submit_model_explore(
         evm = await verified_bundle_object(ctx.store, ctx.signer, mv, EVALUATION_MANIFEST)
         inputs[INPUT_EVALUATION] = StoredRef(ev.bucket, ev.key, ev.generation)
         inputs[INPUT_EVALUATION_MANIFEST] = StoredRef(evm.bucket, evm.key, evm.generation)
+    # v0.19: the explorer loads every compared bundle: each one's uploaded code goes along
+    inherited = [model_version_pins(mv.lineage)]
     for k, other_ref in enumerate(body.compare_with):
         other = await resolve_model_ref(session, scope, other_ref, f"/compare_with/{k}")
+        inherited.append(model_version_pins(other.lineage))
         if other.status != "ready":
             raise MapiError(
                 f"{other_ref} is {other.status}; only ready versions compare",
@@ -256,9 +261,8 @@ async def submit_model_explore(
         dataset_version=dv.version,
         catalog_digest=(mv.manifest or {}).get("catalog_digest"),
     )
-    return await _accept(
-        session, ctx, run, untrusted=bool((mv.lineage or {}).get("overlay_hash"))
-    ), False
+    pins = await resolve_pins(ctx, session, inherited=merge_pins(*inherited))
+    return await _accept(session, ctx, run, overlays=pins), False
 
 
 async def load_exploration(session: AsyncSession, scope: Scope, run_id: str) -> m.Run:

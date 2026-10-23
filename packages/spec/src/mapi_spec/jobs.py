@@ -38,6 +38,12 @@ governance :class:`~mapi_spec.governance.Governance-    ``bundle``, ``bundle.man
            Job` (M3.5)                                  ``dataset``, optional ``evaluation``
                                                         (+ ``evaluation.manifest``); output
                                                         ``governance.json``
+plugin_    :class:`PluginInspectJob` (v0.19)            ``plugin.whl`` (the uploaded wheel, read
+inspect                                                 as an archive, never imported); output
+                                                        ``plugin/inspection.json``
+plugin_    :class:`PluginDescribeJob` (v0.19)           none (the wheel is mounted as an
+describe                                                overlay from ``RunSpec.overlays``);
+                                                        output ``plugin/describe.json``
 ========== ============================================ ======================================
 
 ``workflow`` runs are parents (the orchestrator walks the DAG) and never execute.
@@ -67,7 +73,7 @@ from pydantic import (
     model_validator,
 )
 
-from mapi_spec._dto import Id, RequestModel, ResponseModel, dto_examples
+from mapi_spec._dto import Id, RequestModel, ResponseModel, Sha256, dto_examples
 from mapi_spec._types import StrictModel
 from mapi_spec.api import IngestMapping
 from mapi_spec.calibration import PRIOR_TRANSLATION_OUTPUT, PriorTranslationJob
@@ -86,6 +92,12 @@ from mapi_spec.ingest import (
 from mapi_spec.loader import parse_document
 from mapi_spec.optimize import OPTIMIZE_OUTPUT, OptimizeJob
 from mapi_spec.plots import PlotSpec
+from mapi_spec.plugins import (
+    PLUGIN_VERSION_ID_RE,
+    UPLOAD_NAMESPACE_RE,
+    ArchiveLimits,
+    upload_dist_name,
+)
 from mapi_spec.refs import UseRef
 from mapi_spec.run import INPUT_BUNDLE, INPUT_DATASET
 from mapi_spec.spec import ModelSpec, ScoreRequest
@@ -125,6 +137,9 @@ __all__ = [
     "OPTIMIZE_OUTPUT",
     "PLOT_DATA_INPUT_PREFIX",
     "PLOT_EXAMPLES_OUTPUT",
+    "PLUGIN_DESCRIBE_OUTPUT",
+    "PLUGIN_INPUT",
+    "PLUGIN_INSPECTION_OUTPUT",
     "PREVIEW_LABEL",
     "PREVIEW_OUTPUT",
     "PREVIEW_SETTINGS_MAX_BYTES",
@@ -147,6 +162,8 @@ __all__ = [
     "MetricsSidecar",
     "MffOptions",
     "OptimizeJob",
+    "PluginDescribeJob",
+    "PluginInspectJob",
     "PriorTranslationJob",
     "RecipePreview",
     "RecipePreviewRequest",
@@ -258,6 +275,12 @@ TREE_DATASET_OUTPUTS: Final = (DATATREE_OUTPUT, TREE_SCHEMA_OUTPUT, INGEST_SCHEM
 """What an ingest run uploads for a tree-layout version (dataset-layout versions keep
 :data:`DATASET_OUTPUTS`)."""
 INSPECT_OUTPUT: Final = "inspection.json"
+PLUGIN_INPUT: Final = "plugin.whl"
+"""v0.19: the input name of the uploaded wheel of a ``plugin_inspect`` run."""
+PLUGIN_INSPECTION_OUTPUT: Final = "plugin/inspection.json"
+"""v0.19: the :class:`~mapi_spec.plugins.PluginInspection` of a ``plugin_inspect`` run."""
+PLUGIN_DESCRIBE_OUTPUT: Final = "plugin/describe.json"
+"""v0.19: the :class:`~mapi_spec.plugins.PluginDescribe` of a ``plugin_describe`` run."""
 """M4: the :class:`~mapi_spec.ingest.UploadInspection` an ``inspect`` run writes."""
 
 FIT_BUNDLE: Final = "bundle.zarr.zip"
@@ -415,6 +438,38 @@ class DescribeJob(StrictModel):
     )
 
 
+class PluginInspectJob(StrictModel):
+    """A ``plugin_inspect`` run (v0.19): check the uploaded wheel (input ``plugin.whl``) as an
+    archive, never extracting or importing it. Output ``plugin/inspection.json``."""
+
+    kind: Literal["plugin_inspect"] = "plugin_inspect"
+    plugin_version_id: str = Field(..., pattern=PLUGIN_VERSION_ID_RE)
+    namespace: str = Field(..., pattern=UPLOAD_NAMESPACE_RE)
+    dist_name: str = Field(..., max_length=64, description="The PEP 503 form of the namespace")
+    version: str = Field(..., min_length=1, max_length=64)
+    expected_sha256: Sha256 = Field(..., description="The sha256 the control plane stored")
+    limits: ArchiveLimits = Field(default_factory=ArchiveLimits)
+
+    @model_validator(mode="after")
+    def _dist(self) -> PluginInspectJob:
+        if self.dist_name != upload_dist_name(self.namespace):
+            raise ValueError("dist_name must be the PEP 503 form of the namespace")
+        return self
+
+
+class PluginDescribeJob(StrictModel):
+    """A ``plugin_describe`` run (v0.19): mount the overlay, export its catalog entries, run
+    the kits (data kits on toy fixtures when ``data_kits``) and render the recipe examples.
+    Output ``plugin/describe.json``."""
+
+    kind: Literal["plugin_describe"] = "plugin_describe"
+    plugin_version_id: str = Field(..., pattern=PLUGIN_VERSION_ID_RE)
+    namespace: str = Field(..., pattern=UPLOAD_NAMESPACE_RE)
+    overlay_sha256: Sha256
+    data_kits: bool = True
+    data_check_timeout_s: int = Field(120, ge=1, le=3600)
+
+
 class ScoreJob(StrictModel):
     """A score run: the request plus runner-side options."""
 
@@ -541,6 +596,8 @@ Job = (
     | ExploreJob
     | OptimizeJob
     | GovernanceJob
+    | PluginInspectJob
+    | PluginDescribeJob
 )
 
 
@@ -637,6 +694,10 @@ def parse_job(kind: RunKind, spec: dict[str, Any]) -> Job:
             return OptimizeJob.model_validate(spec)
         if kind is RunKind.GOVERNANCE:
             return GovernanceJob.model_validate(spec)
+        if kind is RunKind.PLUGIN_INSPECT:
+            return PluginInspectJob.model_validate(spec)
+        if kind is RunKind.PLUGIN_DESCRIBE:
+            return PluginDescribeJob.model_validate(spec)
     except (ValidationError, ValueError) as exc:
         raise _invalid(kind, exc) from None
     except MapiError:

@@ -146,7 +146,7 @@ EXECUTOR ?= local-process
 .PHONY: security-suite
 security-suite: ## Run the sandbox-escape probe suite (EXECUTOR=docker-gvisor for the gVisor run)
 	PYTHONPATH=$(SECURITY_PYTHONPATH) $(UV) run python -m mapi_security run --executor $(EXECUTOR) \
-		--metrics .local/security-$(EXECUTOR).prom
+		--image mapi/base-bayes:$(VERSION) --metrics .local/security-$(EXECUTOR).prom
 	PYTHONPATH=$(SECURITY_PYTHONPATH) $(UV) run pytest -q security/tests -m sandbox
 
 .PHONY: security-list

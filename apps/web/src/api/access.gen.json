@@ -210,17 +210,33 @@
       "level": "project",
       "min_role": "runner"
     },
+    "plugin:approve": {
+      "level": "tenant",
+      "min_role": "admin"
+    },
     "plugin:create": {
       "level": "project",
-      "min_role": "admin"
+      "min_role": "editor"
     },
     "plugin:delete": {
       "level": "project",
-      "min_role": "admin"
+      "min_role": "editor"
     },
     "plugin:read": {
       "level": "project",
       "min_role": "viewer"
+    },
+    "plugin:update": {
+      "level": "project",
+      "min_role": "editor"
+    },
+    "plugin_settings:read": {
+      "level": "tenant",
+      "min_role": "admin"
+    },
+    "plugin_settings:update": {
+      "level": "tenant",
+      "min_role": "admin"
     },
     "policy:create": {
       "level": "project",

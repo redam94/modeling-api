@@ -20,6 +20,7 @@ from mapi_spec.errors import Problem
 from mapi_spec.resources import ResourceClass
 
 __all__ = [
+    "PLUGIN_KINDS",
     "PLUGIN_LABEL",
     "ExecState",
     "ExecStatus",
@@ -63,6 +64,16 @@ class ExecutorCaps(StrictModel):
     gpus: tuple[str, ...] = ()
     regions: tuple[str, ...] = ()
     checkpoint_storage: bool = False
+    runs_untrusted_code: bool = Field(
+        False,
+        description="v0.19: the backend may run uploaded (tenant) code: docker, docker-gvisor "
+        "and Cloud Run Jobs; local-process only with the dev-only allowance",
+    )
+    untrusted_dev_only: bool = Field(
+        False,
+        description="v0.19: uploaded code runs here only because of the development allowance "
+        "(MAPI_DEV_ALLOW_LOCAL_UNTRUSTED); the run gets a DEV_MODE_ISOLATION event",
+    )
 
     def allows_public_tenants(self) -> bool:
         """Public tenants need isolation >= gVisor with egress and DNS enforced."""
@@ -105,6 +116,12 @@ class RunKind(StrEnum):
     INSPECT = "inspect"
     """M4: list the groups and arrays of an upload from its metadata (resource class S, short
     timeout, no network; :class:`mapi_spec.jobs.InspectJob`, output ``inspection.json``)."""
+    PLUGIN_INSPECT = "plugin_inspect"
+    """v0.19: the static check of an uploaded wheel (reads the archive, imports nothing;
+    :class:`mapi_spec.jobs.PluginInspectJob`, output ``plugin/inspection.json``). Untrusted."""
+    PLUGIN_DESCRIBE = "plugin_describe"
+    """v0.19: mount an uploaded wheel, export its catalog entries and run the kits
+    (:class:`mapi_spec.jobs.PluginDescribeJob`, output ``plugin/describe.json``). Untrusted."""
 
     @property
     def is_parent(self) -> bool:
@@ -115,6 +132,10 @@ class RunKind(StrEnum):
 _PARENT_KINDS = frozenset(
     {RunKind.SWEEP, RunKind.BACKTEST, RunKind.SBC, RunKind.CAMPAIGN, RunKind.WORKFLOW}
 )
+PLUGIN_KINDS: Final[frozenset[RunKind]] = frozenset(
+    {RunKind.PLUGIN_INSPECT, RunKind.PLUGIN_DESCRIBE}
+)
+"""v0.19: the two pipeline run kinds of an uploaded plugin version (always untrusted)."""
 RUN_KIND_MAX_LEN: Final = 16
 """``runs.kind`` is ``VARCHAR(16)``: every run kind value fits (a test checks it)."""
 

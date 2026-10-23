@@ -41,7 +41,8 @@ def test_default_config_matches_the_plan() -> None:
     cfg = default_config("dev")
     names = {b.name: b for b in cfg.buckets}
     assert set(names) == {
-        f"mapi-dev-{p}" for p in ("quarantine", "bootstrap", "runs", "bundles", "data")
+        f"mapi-dev-{p}"
+        for p in ("quarantine", "bootstrap", "runs", "bundles", "data", "plugins")  # + v0.19
     }
     assert names["mapi-dev-bundles"].write_once
     assert names["mapi-dev-quarantine"].lifecycle_age_seconds == 7 * 86400
@@ -171,7 +172,7 @@ def test_cli_serves_until_sigterm(tmp_path: Path) -> None:
             f"{endpoint}/storage/v1/b",
             headers={"Authorization": f"Bearer {creds.token.get_secret_value()}"},
         )
-        assert len(r.json()["items"]) == 5
+        assert len(r.json()["items"]) == 6  # the plan §8.6 buckets + v0.19 plugins
         # a second server on the same root refuses to start
         second = subprocess.run(
             [sys.executable, "-m", "mapi_gcs_shim", "serve", "--root", str(root), "--port", "0"],

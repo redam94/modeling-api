@@ -157,6 +157,13 @@ def test_event_types_are_the_documented_set() -> None:
         "optimize.completed",
         # v0.16
         "dashboard.readout.published",
+        # v0.19
+        "plugin.version.kit_passed",
+        "plugin.version.kit_failed",
+        "plugin.version.awaiting_approval",
+        "plugin.version.approved",
+        "plugin.version.rejected",
+        "plugin.version.yanked",
     }
 
 

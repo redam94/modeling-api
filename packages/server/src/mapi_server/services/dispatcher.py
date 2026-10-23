@@ -13,6 +13,16 @@ Per run, in order — each step durable before the next:
 A crash between 1 and 4 leaves an intent row that the reconciler resolves by nonce
 (``executor.adopt``). A failed submit is checked with ``adopt`` too, so an execution that
 did start is never duplicated.
+
+v0.19 (uploaded code): a run with ``untrusted_code`` is leased only by an executor that may
+run uploaded code (:func:`mapi_spec.tenancy.untrusted_placement_problem`, on top of the tier
+placement), and its overlay pins are checked again at lease
+(:func:`mapi_server.services.plugins.gate.pins_problem`: a version yanked or made private
+since admission fails the run with ``PLUGIN_UNAVAILABLE``). The RunSpec mounts exactly the
+run's pins, signed for the run's tenant. At most ``plugin_pipeline_concurrency_per_tenant``
+plugin check runs of a tenant are dispatched at once; the others stay queued. On an executor
+that runs uploaded code only through the development allowance, every untrusted run gets a
+``DEV_MODE_ISOLATION`` warning event.
 """
 
 from __future__ import annotations
@@ -30,7 +40,17 @@ from datetime import datetime, timedelta
 from mapi_spec._types import Duration
 from mapi_spec.admin import KillSwitches, kill_switch_decision
 from mapi_spec.errors import ErrorCode, MapiError, Problem
-from mapi_spec.executor import PLUGIN_LABEL, Executor, Handle, RunKind, RunSubmit
+from mapi_spec.executor import (
+    PLUGIN_KINDS,
+    PLUGIN_LABEL,
+    Executor,
+    ExecutorCaps,
+    Handle,
+    RunEventType,
+    RunKind,
+    RunSubmit,
+)
+from mapi_spec.plugins import is_uploaded_namespace
 from mapi_spec.quotas import (
     LeaseCandidate,
     PriorityClass,
@@ -45,7 +65,7 @@ from mapi_spec.quotas import (
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import Actor, RunState, RunTrigger, new_hmac_key, new_nonce
 from mapi_spec.storage import NotFound, bootstrap_key
-from mapi_spec.tenancy import TenantStatus, TrustTier
+from mapi_spec.tenancy import TenantStatus, TrustTier, untrusted_placement_problem
 from sqlalchemy import ColumnElement, Select, func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -69,14 +89,22 @@ from mapi_server.services.quotas import (
     quota_usage,
     tenant_policy,
 )
-from mapi_server.services.runs import apply_transition, now
-from mapi_server.services.runspec import build_runspec
+from mapi_server.services.runs import append_event, apply_transition, now
+from mapi_server.services.runspec import build_runspec, resolve_overlays, run_pins
+from mapi_server.settings import Profile
 
-__all__ = ["Dispatcher", "TokenBucket"]
+__all__ = ["DEV_MODE_ISOLATION", "Dispatcher", "TokenBucket"]
 
 _RESERVED_LABEL_PREFIX = "mapi.dev/"
 _WITH_EXECUTION = tuple(s.value for s in RunState if s.has_execution)
 _NAMESPACE = re.compile(r"^[a-z][a-z0-9_]{0,31}$")
+_PLUGIN_KINDS = tuple(k.value for k in PLUGIN_KINDS)
+
+_PERMANENT_CODES = frozenset({ErrorCode.PLUGIN_UNAVAILABLE, ErrorCode.INTEGRITY_FAILURE})
+
+DEV_MODE_ISOLATION = "DEV_MODE_ISOLATION"
+"""Run event code (a warning): uploaded code ran without a sandbox (development only)."""
+_DEV_MODE_MESSAGE = "This run used uploaded code without a sandbox. Development only."
 
 log = logging.getLogger(__name__)
 
@@ -249,12 +277,22 @@ class Dispatcher:
             )
         self._reported = t
 
+    async def end_plugin_checks(self) -> int:
+        """v0.19: end the check of plugin versions whose check run ended without a result
+        (cancelled, timed out, failed in the sandbox). Runs on the report cadence, so a
+        version leaves ``inspecting``/``describing`` within seconds of its run."""
+        from mapi_server.services.plugins.sweeps import PluginSweeps
+
+        return await PluginSweeps(self.ctx).reconcile(now())
+
     async def run_forever(self, stop: asyncio.Event) -> None:
         log.info("dispatcher %s started (executor %s)", self.name, self.executor.name)
         while not stop.is_set():
             if time.monotonic() - self._reported >= self.ctx.settings.executor_report_interval_s:
                 with contextlib.suppress(Exception):
                     await self.report()
+                with contextlib.suppress(Exception):
+                    await self.end_plugin_checks()
             try:
                 n = await self.dispatch_once()
             except asyncio.CancelledError:
@@ -320,15 +358,15 @@ class Dispatcher:
                         residency=tenant.data_residency if tenant else None,
                     )
                 except MapiError as exc:
-                    await apply_transition(session, run, RunTrigger.LEASE, Actor.DISPATCHER)
-                    await apply_transition(
-                        session,
-                        run,
-                        RunTrigger.FAIL_INFRA,
-                        Actor.DISPATCHER,
-                        problem=Problem.from_code(ErrorCode.INFRA_ERROR, exc.detail),
+                    await self._refuse(
+                        session, run, Problem.from_code(ErrorCode.INFRA_ERROR, exc.detail)
                     )
                     continue
+                if run.untrusted_code:
+                    refusal = await self._untrusted_refusal(session, run)
+                    if refusal is not None:
+                        await self._refuse(session, run, refusal)
+                        continue
                 await apply_transition(session, run, RunTrigger.LEASE, Actor.DISPATCHER)
                 run.executor = self.executor.name
                 run.lease_owner = self.name
@@ -350,8 +388,54 @@ class Dispatcher:
                         log_bytes=0,
                     )
                 )
+                if run.untrusted_code and self.executor.caps().untrusted_dev_only:
+                    await append_event(
+                        session,
+                        run,
+                        type=RunEventType.WARNING,
+                        payload={"code": DEV_MODE_ISOLATION, "message": _DEV_MODE_MESSAGE},
+                    )
                 leased.append((run.id, run.attempt))
         return leased
+
+    async def _refuse(self, session: AsyncSession, run: m.Run, problem: Problem) -> None:
+        """Fail a queued run this dispatcher may never start (lease, then ``fail_infra``
+        with ``problem``). A plugin check run also ends its version's check."""
+        await apply_transition(session, run, RunTrigger.LEASE, Actor.DISPATCHER)
+        await apply_transition(
+            session, run, RunTrigger.FAIL_INFRA, Actor.DISPATCHER, problem=problem
+        )
+        if run.kind in _PLUGIN_KINDS:
+            from mapi_server.services.plugins.finalize import plugin_run_ended
+
+            await plugin_run_ended(session, self.ctx, run)
+
+    async def _untrusted_refusal(self, session: AsyncSession, run: m.Run) -> Problem | None:
+        """Why this executor may not start an untrusted run now (D6, D9), else ``None``."""
+        caps: ExecutorCaps = self.executor.caps()
+        why = untrusted_placement_problem(
+            caps, multi_tenant=self.ctx.settings.profile is Profile.MULTI_TENANT
+        )
+        if why is not None:
+            return Problem.from_code(ErrorCode.UNTRUSTED_PLACEMENT_UNAVAILABLE, why)
+        try:
+            pins = run_pins(run)
+        except MapiError as exc:
+            return Problem.from_code(exc.code, exc.detail)
+        if not pins:
+            return None
+        if run.kind == RunKind.PLUGIN_DESCRIBE.value:
+            from mapi_server.services.plugins.pipeline import describe_pin_problem
+
+            reason = await describe_pin_problem(session, run, pins)
+            if reason is not None:
+                return Problem.from_code(ErrorCode.PLUGIN_UNAVAILABLE, reason)
+            return None
+        from mapi_server.services.plugins.gate import pins_problem
+
+        return await pins_problem(
+            session, tenant_id=run.tenant_id, created_by=run.created_by, pins=pins
+        )
 
     def _window(self, switches: KillSwitches, spent: int) -> Select[tuple[str]]:
         """Ids of the queued runs the planner looks at this pass (see :meth:`lease`)."""
@@ -442,6 +526,22 @@ class Dispatcher:
         ).all()
         running_runs = {str(t): int(n) for t, n, _ in load}
         running_tasks = {str(t): int(k) for t, _, k in load}
+        # v0.19 (D8): plugin check runs in flight per tenant (the cap keeps the rest queued)
+        pipeline_busy: dict[str, int] = {}
+        if any(r.kind in _PLUGIN_KINDS for r in rows):
+            pipeline_busy = {
+                str(t): int(n)
+                for t, n in (
+                    await session.execute(
+                        select(m.Run.tenant_id, func.count())
+                        .where(
+                            m.Run.state.in_(DISPATCHED_STATES),
+                            m.Run.kind.in_(_PLUGIN_KINDS),
+                        )
+                        .group_by(m.Run.tenant_id)
+                    )
+                ).all()
+            }
         global_cap = (await global_policy(session)).limits.concurrent_runs
         capacity = s.dispatch_batch
         if global_cap is not None:
@@ -495,6 +595,12 @@ class Dispatcher:
             ):
                 held += 1
                 continue
+            if run.kind in _PLUGIN_KINDS:
+                busy = pipeline_busy.get(run.tenant_id, 0)
+                if busy >= s.plugin_pipeline_concurrency_per_tenant:
+                    held += 1
+                    continue
+                pipeline_busy[run.tenant_id] = busy + 1
             candidates.append(
                 LeaseCandidate(
                     run_id=run.id,
@@ -616,8 +722,15 @@ class Dispatcher:
         try:
             if run.model_version_id is not None:
                 await self._verify_bundles(run)
+            overlays = []
+            if run.overlays:
+                # signed for this run's tenant only, and only the run's own pins (D17)
+                async with ctx.db.session() as session:
+                    overlays = await resolve_overlays(
+                        session, run, plugins_bucket=ctx.buckets.plugins
+                    )
             runspec = await build_runspec(
-                ctx.store, run=run, attempt=att, runs_bucket=ctx.buckets.runs
+                ctx.store, run=run, attempt=att, runs_bucket=ctx.buckets.runs, overlays=overlays
             )
             await ctx.store.put(
                 ctx.buckets.bootstrap,
@@ -657,10 +770,12 @@ class Dispatcher:
 
     async def _labels(self, run: m.Run) -> dict[str, str]:
         """The run's labels for the executor, plus :data:`PLUGIN_LABEL` (platform-set only)."""
+        from mapi_server.services.plugins.pipeline import PIPELINE_LABELS
+
         labels = {
             k: str(v)[:63]
             for k, v in list(run.labels.items())[:63]
-            if not k.startswith(_RESERVED_LABEL_PREFIX)
+            if not k.startswith(_RESERVED_LABEL_PREFIX) and k not in PIPELINE_LABELS
         }
         plugin = await self._plugin(run)
         if plugin:
@@ -691,6 +806,8 @@ class Dispatcher:
         if not isinstance(ref, str) or "." not in ref:
             return None
         namespace = ref.split(".", 1)[0]
+        if is_uploaded_namespace(namespace):
+            return None  # uploaded code runs on the default base image (v0.19, §9 Q9)
         return namespace if _NAMESPACE.match(namespace) else None
 
     async def _verify_bundles(self, run: m.Run) -> None:
@@ -742,12 +859,18 @@ class Dispatcher:
                 detail = f"the model bundle failed verification: {error.detail}"
                 code = ErrorCode.INTEGRITY_FAILURE
                 log.error("run %s/%s: %s", run_id, attempt_no, detail)
+            elif isinstance(error, MapiError) and error.code in _PERMANENT_CODES:
+                # an overlay pin no longer resolves (v0.19): it never will again
+                detail = error.detail
+                code = error.code
             elif isinstance(error, MapiError):
                 detail = f"{detail}: {error.detail}"
             elif error is not None:
                 detail = f"{detail}: {type(error).__name__}"
             # an input object is gone, or the bundle does not verify: no retry
-            permanent = isinstance(error, NotFound | BundleIntegrityError)
+            permanent = isinstance(error, NotFound | BundleIntegrityError) or (
+                isinstance(error, MapiError) and error.code in _PERMANENT_CODES
+            )
             if _rate_limited(error):
                 # the backend refused to create anything (429): requeue without using up
                 # an infrastructure retry; the dispatcher's back-off paces the next submit
@@ -767,5 +890,9 @@ class Dispatcher:
                     Actor.DISPATCHER,
                     problem=Problem.from_code(code, detail[:2000]),
                 )
+                if run.kind in _PLUGIN_KINDS:
+                    from mapi_server.services.plugins.finalize import plugin_run_ended
+
+                    await plugin_run_ended(session, ctx, run)
         with contextlib.suppress(Exception):
             await ctx.store.delete(ctx.buckets.bootstrap, bootstrap_key(nonce))

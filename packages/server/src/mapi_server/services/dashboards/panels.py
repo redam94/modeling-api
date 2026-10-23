@@ -24,6 +24,9 @@ Rules (plan D5-D9, D16):
 * the legacy fields stay filled for v0.16-era readers: ``tiles`` (``key="panel"``),
   ``series`` (the subject output) and ``accuracy`` (error metrics).
 
+v0.19 (D16): a recipe in an uploaded namespace is never drawn as a picture: clients and
+share links see the readout, and nothing made with uploaded code leaves the workspace.
+
 Leads are plain sentences filled from numbers only, at most 400 characters, and never use
 media words outside the ``mmm_planner`` preset.
 """
@@ -107,6 +110,7 @@ from mapi_spec.dashboards import (
 )
 from mapi_spec.output_shape import band_of, table_dims, table_stats, time_dim_of
 from mapi_spec.scorecard import Scorecard
+from mapi_spec.sharing import uses_uploaded_ids
 from mapi_spec.views import CounterfactualView, FieldsView, ForecastView
 from mapi_spec.xrjson import XrJsonDataset
 from pydantic import ValidationError
@@ -1201,7 +1205,12 @@ def _of_recipe(p: RecipePanel, spec: DashboardSpecV2) -> _Chart:
                   None, 20)  # fmt: skip
 
 
+UPLOADED_PICTURE: Final = "Pictures made with uploaded code are not shown here."
+
+
 def _picture(p: RecipePanel, mat: Material) -> PictureBlock | UnavailableBlock:
+    if uses_uploaded_ids([p.recipe]):
+        return _unavailable(p.id, p.title, UPLOADED_PICTURE)
     asset = mat.assets.get(p.plot_id or "")
     if asset is None:
         return _unavailable(p.id, p.title, "The picture is not available.")

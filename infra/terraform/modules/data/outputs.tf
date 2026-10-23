@@ -1,5 +1,5 @@
 output "bucket_names" {
-  description = "Bucket name per purpose (quarantine, bootstrap, runs, bundles, data)."
+  description = "Bucket name per purpose (quarantine, bootstrap, runs, bundles, data, plugins)."
   value       = { for k, b in google_storage_bucket.this : k => b.name }
 }
 

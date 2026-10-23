@@ -215,6 +215,12 @@ def build_executor(settings: Settings) -> Executor:
             settings.key_path,
             settings.workdir,
         )
+        if settings.dev_allow_local_untrusted:
+            log.warning(
+                "MAPI_DEV_ALLOW_LOCAL_UNTRUSTED is set: the local-process executor runs "
+                "UPLOADED code with no sandbox. Development only; every such run gets a "
+                "DEV_MODE_ISOLATION event"
+            )
         return LocalProcessExecutor(
             command=settings.runner_command,
             bootstrap_url_template=template,
@@ -222,6 +228,7 @@ def build_executor(settings: Settings) -> Executor:
             exec_token=settings.resolved_exec_token(),
             profile=settings.profile,
             cancel_grace_s=settings.cancel_grace_s,
+            allow_untrusted=settings.dev_allow_local_untrusted,
         )
     if settings.docker_network == "none" and template.startswith(("http://", "https://")):
         raise ExecutorRefused(

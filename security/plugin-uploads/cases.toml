@@ -1,0 +1,1019 @@
+# The malicious upload corpus (v0.19, WP12). Every case names one hostile upload, the threat it
+# exercises (T19.x, V0.19-PLAN §6 grouping), the stage that must refuse or neutralize it and the
+# stable result: an InspectCheck (stage "inspect"), a check_describe rule (stage "describe"), an
+# ErrorCode (stages "upload", "review"), "neutralized" (stage "render": stored and shown as plain
+# text, never as markup or a formula) or a run outcome (stage "runtime").
+#
+# `build_corpus.py` builds each case into a temporary directory. Nothing here is ever installed,
+# extracted or imported outside a sandbox run; `tests/security/conftest.py` enforces that.
+#
+# Placeholders in `path`: {ns} = the namespace, {dist_info} = "<ns>-<version>.dist-info",
+# {data} = "<ns>-<version>.data".
+#
+# Fields: name, group, threat, stage, expect, artifact ("wheel" | "describe" | "ticket" |
+# "scenario"), summary; optional: path (the problem path), says (a phrase of the message),
+# live (true: part of the live check's "upload through the UI and CLI" set).
+
+[corpus]
+namespace = "t_crpsxx_evil"
+probe_namespace = "t_crpsxx_probe"
+version = "0.1.0"
+plugin_version_id = "plv_01jbz3q2x8m9v7k5h4g3f2e1d1"
+builtin_titles = ["Bayesian MMM", "Weekly totals", "Cap extreme values", "Fit vs actual"]
+
+# The synthetic base image the CI gate resolves requirements and shadowing against (the real
+# image is used by the sandbox run). Kept small and fixed so the expected results are stable.
+[base_image]
+requires_python = "3.12.15"
+image_digest = "sha256:abababababababababababababababababababababababababababababababab"
+top_level = ["mapi_sdk", "mapi_spec", "mapi_plots", "mapi_workflows", "numpy", "pandas",
+             "xarray", "altair", "typing_extensions"]
+
+[base_image.dists]
+mapi-sdk = "0.16.0"
+mapi-spec = "0.16.0"
+mapi-plots = "0.16.0"
+mapi-workflows = "0.16.0"
+mapi-plugin-mmm = "0.16.0"
+numpy = "2.1.3"
+pandas = "2.2.3"
+xarray = "2024.11.0"
+altair = "5.4.1"
+typing-extensions = "4.12.2"
+
+[base_image.requires]
+mapi-plots = ["pydantic>=2", "altair>=5; extra == 'recipes'", "plotly>=5; extra == 'recipes'"]
+
+# ============================================================================ archive (T19.4/5)
+
+[[case]]
+name = "sha_mismatch"
+group = "archive"
+threat = "T19.14"
+stage = "inspect"
+expect = "sha_mismatch"
+artifact = "wheel"
+summary = "The bytes in the sandbox are not the bytes the control plane hashed at upload."
+
+[[case]]
+name = "bomb_ratio"
+group = "archive"
+threat = "T19.4"
+stage = "inspect"
+expect = "ratio"
+artifact = "wheel"
+path = "{ns}/zeros.py"
+summary = "A member that inflates more than 100 times (a classic zip bomb)."
+
+[[case]]
+name = "bomb_overlap"
+group = "archive"
+threat = "T19.4"
+stage = "inspect"
+expect = "zip_structure"
+artifact = "wheel"
+says = "overlap"
+live = true
+summary = "Two directory entries share one local header and its data (Fifield overlap bomb)."
+
+[[case]]
+name = "bomb_zip64_lie"
+group = "archive"
+threat = "T19.4"
+stage = "inspect"
+expect = "zip_structure"
+artifact = "wheel"
+summary = "A ZIP64 extra field claims a 1 TiB member."
+
+[[case]]
+name = "bomb_member_count"
+group = "archive"
+threat = "T19.4"
+stage = "inspect"
+expect = "member_count"
+artifact = "wheel"
+summary = "More than 2000 members."
+
+[[case]]
+name = "bomb_member_size"
+group = "archive"
+threat = "T19.4"
+stage = "inspect"
+expect = "member_size"
+artifact = "wheel"
+path = "{ns}/huge.py"
+summary = "One member larger than 20 MiB uncompressed."
+
+[[case]]
+name = "bomb_archive_size"
+group = "archive"
+threat = "T19.4"
+stage = "inspect"
+expect = "archive_size"
+artifact = "wheel"
+summary = "A wheel larger than 20 MiB on disk."
+
+[[case]]
+name = "not_a_zip"
+group = "archive"
+threat = "T19.5"
+stage = "inspect"
+expect = "zip_structure"
+artifact = "wheel"
+summary = "A file named .whl that is not a zip archive."
+
+[[case]]
+name = "prefix_polyglot"
+group = "archive"
+threat = "T19.5"
+stage = "inspect"
+expect = "zip_structure"
+artifact = "wheel"
+summary = "A shell script before the first entry (a script/zip polyglot)."
+
+[[case]]
+name = "header_mismatch"
+group = "archive"
+threat = "T19.5"
+stage = "inspect"
+expect = "zip_structure"
+artifact = "wheel"
+path = "{ns}/good.py"
+summary = "The local header names a different file than the central directory."
+
+[[case]]
+name = "encrypted_member"
+group = "archive"
+threat = "T19.5"
+stage = "inspect"
+expect = "encrypted"
+artifact = "wheel"
+summary = "A member with the encryption flag set."
+
+[[case]]
+name = "bzip2_member"
+group = "archive"
+threat = "T19.5"
+stage = "inspect"
+expect = "compression_method"
+artifact = "wheel"
+path = "{ns}/model.py"
+summary = "A member compressed with bzip2 (only stored and deflate are allowed)."
+
+[[case]]
+name = "path_dotdot"
+group = "archive"
+threat = "T19.5"
+stage = "inspect"
+expect = "path_unsafe"
+artifact = "wheel"
+path = "../evil.py"
+summary = "A member that climbs out of the extraction directory."
+
+[[case]]
+name = "path_absolute"
+group = "archive"
+threat = "T19.5"
+stage = "inspect"
+expect = "path_unsafe"
+artifact = "wheel"
+path = "/etc/evil.py"
+summary = "A member with an absolute path."
+
+[[case]]
+name = "path_backslash"
+group = "archive"
+threat = "T19.5"
+stage = "inspect"
+expect = "path_unsafe"
+artifact = "wheel"
+summary = "A member path with a backslash (a Windows path separator)."
+
+[[case]]
+name = "path_nul"
+group = "archive"
+threat = "T19.5"
+stage = "inspect"
+expect = "path_unsafe"
+artifact = "wheel"
+summary = "A member name with a NUL byte."
+
+[[case]]
+name = "path_too_deep"
+group = "archive"
+threat = "T19.5"
+stage = "inspect"
+expect = "path_unsafe"
+artifact = "wheel"
+summary = "A member nested 21 directories deep."
+
+[[case]]
+name = "symlink_member"
+group = "archive"
+threat = "T19.5"
+stage = "inspect"
+expect = "link_member"
+artifact = "wheel"
+path = "{ns}/passwd.py"
+summary = "A member that is a symbolic link to /etc/passwd."
+
+[[case]]
+name = "fifo_member"
+group = "archive"
+threat = "T19.5"
+stage = "inspect"
+expect = "special_member"
+artifact = "wheel"
+path = "{ns}/pipe"
+summary = "A member that is a named pipe."
+
+[[case]]
+name = "duplicate_name"
+group = "archive"
+threat = "T19.5"
+stage = "inspect"
+expect = "duplicate_name"
+artifact = "wheel"
+path = "{ns}/model.py"
+summary = "Two members with the same name (which one is extracted depends on the tool)."
+
+[[case]]
+name = "case_collision"
+group = "archive"
+threat = "T19.5"
+stage = "inspect"
+expect = "case_collision"
+artifact = "wheel"
+summary = "Two members whose names differ only in case."
+
+[[case]]
+name = "nested_wheel"
+group = "archive"
+threat = "T19.5"
+stage = "inspect"
+expect = "nested_archive"
+artifact = "wheel"
+path = "{ns}/vendor/inner.whl"
+summary = "A wheel inside the wheel."
+
+[[case]]
+name = "nested_zip_magic"
+group = "archive"
+threat = "T19.5"
+stage = "inspect"
+expect = "nested_archive"
+artifact = "wheel"
+path = "{ns}/weights.bin"
+summary = "A zip archive hidden behind a .bin name (found by its magic bytes)."
+
+[[case]]
+name = "sdist_upload"
+group = "archive"
+threat = "T19.4"
+stage = "upload"
+expect = "SCHEMA_INVALID"
+artifact = "ticket"
+summary = "An sdist instead of a wheel (the API takes wheels only)."
+
+[[case]]
+name = "oversize_ticket"
+group = "archive"
+threat = "T19.4"
+stage = "upload"
+expect = "PAYLOAD_TOO_LARGE"
+artifact = "ticket"
+summary = "A ticket for a file larger than 20 MiB."
+
+# ======================================================================= content (T19.2/3/6)
+
+[[case]]
+name = "pth_top"
+group = "content"
+threat = "T19.2"
+stage = "inspect"
+expect = "pth_file"
+artifact = "wheel"
+path = "evil.pth"
+live = true
+summary = "A .pth file at the wheel root (runs code when site-packages is processed)."
+
+[[case]]
+name = "pth_nested"
+group = "content"
+threat = "T19.2"
+stage = "inspect"
+expect = "pth_file"
+artifact = "wheel"
+path = "{ns}/evil.pth"
+summary = "A .pth file inside the package."
+
+[[case]]
+name = "pth_data_purelib"
+group = "content"
+threat = "T19.2"
+stage = "inspect"
+expect = "pth_file"
+artifact = "wheel"
+path = "{data}/purelib/evil.pth"
+summary = "A .pth file in the wheel's .data/purelib directory."
+
+[[case]]
+name = "sitecustomize_top"
+group = "content"
+threat = "T19.2"
+stage = "inspect"
+expect = "site_hook"
+artifact = "wheel"
+path = "sitecustomize.py"
+summary = "A sitecustomize module (imported by every interpreter start-up)."
+
+[[case]]
+name = "usercustomize_nested"
+group = "content"
+threat = "T19.2"
+stage = "inspect"
+expect = "site_hook"
+artifact = "wheel"
+path = "{ns}/usercustomize.py"
+summary = "A usercustomize module inside the package."
+
+[[case]]
+name = "main_top"
+group = "content"
+threat = "T19.2"
+stage = "inspect"
+expect = "site_hook"
+artifact = "wheel"
+path = "__main__.py"
+summary = "A top-level __main__.py (runs when the directory itself is executed)."
+
+[[case]]
+name = "egg_link"
+group = "content"
+threat = "T19.2"
+stage = "inspect"
+expect = "site_hook"
+artifact = "wheel"
+path = "{ns}/dev.egg-link"
+summary = "An .egg-link that points the interpreter at another directory."
+
+[[case]]
+name = "shadow_json"
+group = "content"
+threat = "T19.3"
+stage = "inspect"
+expect = "top_level_name"
+artifact = "wheel"
+path = "json.py"
+says = "standard module"
+live = true
+summary = "A top-level json.py that would hide the standard library module."
+
+[[case]]
+name = "shadow_numpy"
+group = "content"
+threat = "T19.3"
+stage = "inspect"
+expect = "top_level_name"
+artifact = "wheel"
+path = "numpy"
+says = "base image"
+summary = "A top-level numpy package that would hide the base image's numpy."
+
+[[case]]
+name = "shadow_typing_extensions"
+group = "content"
+threat = "T19.3"
+stage = "inspect"
+expect = "top_level_name"
+artifact = "wheel"
+path = "typing_extensions.py"
+says = "base image"
+summary = "A top-level typing_extensions.py (imported by pydantic everywhere)."
+
+[[case]]
+name = "shadow_mapi_runner"
+group = "content"
+threat = "T19.3"
+stage = "inspect"
+expect = "top_level_name"
+artifact = "wheel"
+path = "mapi_runner"
+says = "reserved"
+summary = "A top-level mapi_runner package (the platform's own namespace)."
+
+[[case]]
+name = "extra_top_level"
+group = "content"
+threat = "T19.3"
+stage = "inspect"
+expect = "top_level_name"
+artifact = "wheel"
+path = "helpers"
+says = "extra top-level"
+summary = "A second top-level package next to the namespace package."
+
+[[case]]
+name = "namespace_package"
+group = "content"
+threat = "T19.3"
+stage = "inspect"
+expect = "namespace_package"
+artifact = "wheel"
+path = "{ns}"
+summary = "The namespace package has no __init__.py (an implicit namespace package can merge)."
+
+[[case]]
+name = "native_so"
+group = "content"
+threat = "T19.6"
+stage = "inspect"
+expect = "native_code"
+artifact = "wheel"
+path = "{ns}/_speed.cpython-312-x86_64-linux-gnu.so"
+summary = "A shared library by extension."
+
+[[case]]
+name = "native_pyd"
+group = "content"
+threat = "T19.6"
+stage = "inspect"
+expect = "native_code"
+artifact = "wheel"
+path = "{ns}/_speed.pyd"
+summary = "A Windows extension module by extension."
+
+[[case]]
+name = "native_elf_magic"
+group = "content"
+threat = "T19.6"
+stage = "inspect"
+expect = "native_code"
+artifact = "wheel"
+path = "{ns}/model_data.txt"
+summary = "An ELF binary behind a .txt name."
+
+[[case]]
+name = "native_macho_magic"
+group = "content"
+threat = "T19.6"
+stage = "inspect"
+expect = "native_code"
+artifact = "wheel"
+path = "{ns}/lookup.dat"
+summary = "A Mach-O binary behind a .dat name."
+
+[[case]]
+name = "native_pe_magic"
+group = "content"
+threat = "T19.6"
+stage = "inspect"
+expect = "native_code"
+artifact = "wheel"
+path = "{ns}/table.csv"
+summary = "A PE executable behind a .csv name."
+
+[[case]]
+name = "bytecode_pyc"
+group = "content"
+threat = "T19.6"
+stage = "inspect"
+expect = "bytecode"
+artifact = "wheel"
+path = "{ns}/model.pyc"
+summary = "Compiled bytecode instead of source (the reviewer cannot read it)."
+
+[[case]]
+name = "bytecode_pycache"
+group = "content"
+threat = "T19.6"
+stage = "inspect"
+expect = "bytecode"
+artifact = "wheel"
+path = "{ns}/__pycache__/model.cpython-312.pyc"
+summary = "A __pycache__ entry that would be imported in place of the source."
+
+[[case]]
+name = "bytecode_magic"
+group = "content"
+threat = "T19.6"
+stage = "inspect"
+expect = "bytecode"
+artifact = "wheel"
+path = "{ns}/state.dat"
+summary = "Bytecode behind a .dat name (found by the pyc magic number)."
+
+[[case]]
+name = "data_scripts"
+group = "content"
+threat = "T19.6"
+stage = "inspect"
+expect = "data_dir"
+artifact = "wheel"
+path = "{data}"
+summary = "A script in .data/scripts (installed onto PATH by an installer)."
+
+[[case]]
+name = "data_platlib"
+group = "content"
+threat = "T19.6"
+stage = "inspect"
+expect = "data_dir"
+artifact = "wheel"
+path = "{data}"
+summary = "Files in .data/platlib (installed next to compiled packages)."
+
+[[case]]
+name = "name_bidi"
+group = "content"
+threat = "T19.6"
+stage = "inspect"
+expect = "text_unsafe"
+artifact = "wheel"
+summary = "A file name with a right-to-left override (model<RLO>yp.py reads as modelpy.py)."
+
+# ===================================================================== metadata (T19.7/8/9)
+
+[[case]]
+name = "wheel_tag_native"
+group = "metadata"
+threat = "T19.7"
+stage = "inspect"
+expect = "wheel_tag"
+artifact = "wheel"
+summary = "A CPython platform tag (native wheels are out of scope)."
+
+[[case]]
+name = "purelib_false"
+group = "metadata"
+threat = "T19.7"
+stage = "inspect"
+expect = "wheel_tag"
+artifact = "wheel"
+summary = "Root-Is-Purelib: false."
+
+[[case]]
+name = "two_dist_infos"
+group = "metadata"
+threat = "T19.7"
+stage = "inspect"
+expect = "dist_info"
+artifact = "wheel"
+summary = "A second .dist-info directory (a second distribution in one wheel)."
+
+[[case]]
+name = "egg_info"
+group = "metadata"
+threat = "T19.7"
+stage = "inspect"
+expect = "dist_info"
+artifact = "wheel"
+path = "{ns}/x.egg-info/PKG-INFO"
+summary = "An .egg-info directory inside the package."
+
+[[case]]
+name = "missing_metadata"
+group = "metadata"
+threat = "T19.7"
+stage = "inspect"
+expect = "dist_info"
+artifact = "wheel"
+path = "{dist_info}/METADATA"
+summary = "No METADATA file."
+
+[[case]]
+name = "record_tampered"
+group = "metadata"
+threat = "T19.7"
+stage = "inspect"
+expect = "dist_info"
+artifact = "wheel"
+path = "{ns}/model.py"
+summary = "A file changed after RECORD was written."
+
+[[case]]
+name = "dist_name_other"
+group = "metadata"
+threat = "T19.7"
+stage = "inspect"
+expect = "dist_name"
+artifact = "wheel"
+summary = "The distribution name is not the claimed namespace."
+
+[[case]]
+name = "dist_name_mapi_plugin_mmm"
+group = "metadata"
+threat = "T19.7"
+stage = "inspect"
+expect = "dist_name"
+artifact = "wheel"
+says = "base image"
+live = true
+summary = "The distribution claims to be the built-in mapi-plugin-mmm."
+
+[[case]]
+name = "dist_name_numpy"
+group = "metadata"
+threat = "T19.7"
+stage = "inspect"
+expect = "dist_name"
+artifact = "wheel"
+says = "base image"
+summary = "The distribution claims to be numpy."
+
+[[case]]
+name = "version_mismatch"
+group = "metadata"
+threat = "T19.7"
+stage = "inspect"
+expect = "metadata_invalid"
+artifact = "wheel"
+summary = "METADATA names another version than the file name and the upload."
+
+[[case]]
+name = "metadata_not_utf8"
+group = "metadata"
+threat = "T19.7"
+stage = "inspect"
+expect = "metadata_invalid"
+artifact = "wheel"
+summary = "METADATA is not UTF-8."
+
+[[case]]
+name = "ep_os_system"
+group = "metadata"
+threat = "T19.8"
+stage = "inspect"
+expect = "entry_point_target"
+artifact = "wheel"
+live = true
+summary = "An entry point that loads os:system."
+
+[[case]]
+name = "ep_mapi_runner"
+group = "metadata"
+threat = "T19.8"
+stage = "inspect"
+expect = "entry_point_target"
+artifact = "wheel"
+summary = "An entry point into the platform's runner."
+
+[[case]]
+name = "ep_foreign_package"
+group = "metadata"
+threat = "T19.8"
+stage = "inspect"
+expect = "entry_point_target"
+artifact = "wheel"
+summary = "An entry point into a package of the base image."
+
+[[case]]
+name = "ep_governance_checks"
+group = "metadata"
+threat = "T19.8"
+stage = "inspect"
+expect = "entry_point_group"
+artifact = "wheel"
+summary = "An uploaded governance check (refused in v0.19)."
+
+[[case]]
+name = "ep_console_scripts"
+group = "metadata"
+threat = "T19.8"
+stage = "inspect"
+expect = "entry_point_group"
+artifact = "wheel"
+summary = "A console script (runs as a command)."
+
+[[case]]
+name = "ep_pytest_plugin"
+group = "metadata"
+threat = "T19.8"
+stage = "inspect"
+expect = "entry_point_group"
+artifact = "wheel"
+summary = "A pytest11 plugin (loaded by any pytest run in the image)."
+
+[[case]]
+name = "ep_none"
+group = "metadata"
+threat = "T19.8"
+stage = "inspect"
+expect = "entry_point_group"
+artifact = "wheel"
+summary = "No entry points: the upload exports nothing."
+
+[[case]]
+name = "req_not_installed"
+group = "metadata"
+threat = "T19.9"
+stage = "inspect"
+expect = "requirement_unlocked"
+artifact = "wheel"
+says = "not installed"
+summary = "A requirement the base image does not have (no installs at run time)."
+
+[[case]]
+name = "req_out_of_range"
+group = "metadata"
+threat = "T19.9"
+stage = "inspect"
+expect = "requirement_unlocked"
+artifact = "wheel"
+says = "2.1.3"
+summary = "A requirement whose range excludes the installed version."
+
+[[case]]
+name = "req_extra_missing"
+group = "metadata"
+threat = "T19.9"
+stage = "inspect"
+expect = "requirement_unlocked"
+artifact = "wheel"
+says = "plotly"
+summary = "An extra that pulls in a package the base image does not have."
+
+[[case]]
+name = "req_url"
+group = "metadata"
+threat = "T19.9"
+stage = "inspect"
+expect = "requirement_url"
+artifact = "wheel"
+says = "URL"
+summary = "A requirement fetched from a URL."
+
+[[case]]
+name = "requires_python_future"
+group = "metadata"
+threat = "T19.9"
+stage = "inspect"
+expect = "requires_python"
+artifact = "wheel"
+summary = "Requires-Python that the base image does not satisfy."
+
+# ========================================================================= text (T19.19/20)
+
+[[case]]
+name = "title_script_tag"
+group = "text"
+threat = "T19.19"
+stage = "render"
+expect = "neutralized"
+artifact = "describe"
+summary = "A title with a <script> tag: stored as text, never in a platform message, never HTML."
+
+[[case]]
+name = "title_bidi_override"
+group = "text"
+threat = "T19.19"
+stage = "describe"
+expect = "text_unsafe"
+artifact = "describe"
+path = "/exports/steps/0/about/title"
+live = true
+summary = "A title with a right-to-left override."
+
+[[case]]
+name = "title_homoglyph_builtin"
+group = "text"
+threat = "T19.20"
+stage = "describe"
+expect = "title_confusable"
+artifact = "describe"
+path = "/exports/steps/0/about/title"
+summary = "A title that looks like a built-in title (Cyrillic look-alike letters)."
+
+[[case]]
+name = "about_zero_width"
+group = "text"
+threat = "T19.19"
+stage = "describe"
+expect = "text_unsafe"
+artifact = "describe"
+path = "/exports/plots/0/about/summary_plain"
+summary = "About text with zero-width characters."
+
+[[case]]
+name = "ref_userinfo_url"
+group = "text"
+threat = "T19.20"
+stage = "describe"
+expect = "reference_url"
+artifact = "describe"
+path = "/exports/steps/0/about"
+summary = "A reference link with user@ before the host (https://docs.example@evil.example)."
+
+[[case]]
+name = "ref_idn_homograph"
+group = "text"
+threat = "T19.20"
+stage = "describe"
+expect = "reference_url"
+artifact = "describe"
+path = "/exports/steps/0/about"
+summary = "A reference link whose host uses Cyrillic look-alike letters."
+
+[[case]]
+name = "csv_formula_title"
+group = "text"
+threat = "T19.19"
+stage = "render"
+expect = "neutralized"
+artifact = "describe"
+summary = "A title that a spreadsheet would run as a formula."
+
+[[case]]
+name = "mail_html_title"
+group = "text"
+threat = "T19.19"
+stage = "render"
+expect = "neutralized"
+artifact = "describe"
+summary = "A title with HTML: mail about the upload never carries uploaded text."
+
+[[case]]
+name = "sbom_name_html"
+group = "text"
+threat = "T19.19"
+stage = "render"
+expect = "neutralized"
+artifact = "wheel"
+summary = "A file name with HTML: the SBOM keeps it as plain data, never markup."
+
+# ============================================================================ review (T19.15+)
+# Scenarios against the review API (D13-D15); no artifact. "expect" is the ErrorCode.
+
+[[case]]
+name = "approve_with_token"
+group = "review"
+threat = "T19.15"
+stage = "review"
+expect = "FORBIDDEN"
+artifact = "scenario"
+summary = "An API token tries to approve (approval needs a web session)."
+
+[[case]]
+name = "self_approval"
+group = "review"
+threat = "T19.15"
+stage = "review"
+expect = "SELF_APPROVAL_FORBIDDEN"
+artifact = "scenario"
+summary = "The uploader approves their own version."
+
+[[case]]
+name = "editor_approves"
+group = "review"
+threat = "T19.15"
+stage = "review"
+expect = "FORBIDDEN"
+artifact = "scenario"
+summary = "An editor (not a tenant admin) approves."
+
+[[case]]
+name = "stale_session_approve"
+group = "review"
+threat = "T19.15"
+stage = "review"
+expect = "REAUTH_REQUIRED"
+artifact = "scenario"
+summary = "A tenant admin signed in more than 15 minutes ago approves."
+
+[[case]]
+name = "sock_puppet_admin"
+group = "review"
+threat = "T19.15"
+stage = "review"
+expect = "FORBIDDEN"
+artifact = "scenario"
+summary = "An admin whose membership the uploader created less than 7 days ago approves."
+
+[[case]]
+name = "stale_digest_approve"
+group = "review"
+threat = "T19.21"
+stage = "review"
+expect = "PLUGIN_STATE_CONFLICT"
+artifact = "scenario"
+summary = "The approval names other digests than the version has now."
+
+[[case]]
+name = "racing_approvals"
+group = "review"
+threat = "T19.21"
+stage = "review"
+expect = "PLUGIN_STATE_CONFLICT"
+artifact = "scenario"
+summary = "Two admins approve at the same time: one wins, the other is refused."
+
+[[case]]
+name = "approve_wrong_state"
+group = "review"
+threat = "T19.21"
+stage = "review"
+expect = "PLUGIN_STATE_CONFLICT"
+artifact = "scenario"
+summary = "Approve a version that failed its kits or was never put up for approval."
+
+[[case]]
+name = "token_yank"
+group = "review"
+threat = "T19.22"
+stage = "review"
+expect = "FORBIDDEN"
+artifact = "scenario"
+summary = "A plugins:publish token tries to yank (yank needs a web session)."
+
+[[case]]
+name = "client_role_plugin_routes"
+group = "review"
+threat = "T19.23"
+stage = "review"
+expect = "FORBIDDEN"
+artifact = "scenario"
+summary = "A client-role user calls the plugin routes."
+
+[[case]]
+name = "public_tier_upload"
+group = "review"
+threat = "T19.23"
+stage = "review"
+expect = "FORBIDDEN"
+artifact = "scenario"
+summary = "A public-tier tenant claims a namespace (refused even with public uploads enabled)."
+
+# ========================================================== runtime (T19.10/11/14/26; docker)
+# Source wheels that pass inspect, so they reach the sandbox; the docker-marked tests run them.
+
+[[case]]
+name = "fork_bomb_import"
+group = "runtime"
+threat = "T19.11"
+stage = "runtime"
+expect = "bounded"
+artifact = "wheel"
+summary = "Forks without limit when the module is imported (bounded by the pids limit)."
+
+[[case]]
+name = "mem_bomb_import"
+group = "runtime"
+threat = "T19.11"
+stage = "runtime"
+expect = "bounded"
+artifact = "wheel"
+summary = "Allocates without limit when imported (bounded by the class memory limit)."
+
+[[case]]
+name = "disk_bomb_import"
+group = "runtime"
+threat = "T19.11"
+stage = "runtime"
+expect = "bounded"
+artifact = "wheel"
+summary = "Fills the scratch disk when imported (bounded by RLIMIT_FSIZE / the tmpfs size)."
+
+[[case]]
+name = "sleep_forever_describe"
+group = "runtime"
+threat = "T19.10"
+stage = "runtime"
+expect = "kit_failed"
+artifact = "wheel"
+summary = "Never returns from import: the describe run times out and the version is kit_failed."
+
+[[case]]
+name = "log_flood_import"
+group = "runtime"
+threat = "T19.10"
+stage = "runtime"
+expect = "bounded"
+artifact = "wheel"
+summary = "Writes megabytes to stdout and stderr when imported (log caps apply)."
+
+[[case]]
+name = "ctypes_dlopen_scratch"
+group = "runtime"
+threat = "T19.6"
+stage = "runtime"
+expect = "blocked_or_recorded"
+artifact = "wheel"
+summary = "Writes an ELF file into scratch and dlopens it (noexec /tmp blocks it, else recorded)."
+
+[[case]]
+name = "overlay_swap_after_approve"
+group = "runtime"
+threat = "T19.14"
+stage = "runtime"
+expect = "INTEGRITY_FAILURE"
+artifact = "wheel"
+summary = "The stored wheel is replaced after approval: the supervisor's sha256 check refuses it."
+
+[[case]]
+name = "two_overlays_mount_minimal"
+group = "runtime"
+threat = "T19.26"
+stage = "runtime"
+expect = "mounted_only_pins"
+artifact = "wheel"
+summary = "Two uploads exist; a run that uses one mounts only that one."

@@ -175,6 +175,23 @@ def test_bundles_cannot_be_deleted_by_the_platform() -> None:
     assert "is_locked        = var.lock_bundle_retention" in buckets
 
 
+def test_plugins_bucket_is_purgeable_and_never_mounted_by_role() -> None:
+    """v0.19 (D5): inspected uploads live in their own bucket. The orchestrator copies them
+    in and purges them (no retention lock, no soft delete); executions reach them only through
+    a signed GET minted by url_signer for their own run, never with a role; the API and the
+    upload signer have nothing there."""
+    buckets = (TF_ROOT / "modules" / "data" / "buckets.tf").read_text()
+    plugins = re.search(r"\n    plugins = \{(.*?)\}", buckets, re.S)
+    assert plugins, "the plugins bucket is declared"
+    body = plugins.group(1)
+    assert re.search(r"retention_days\s*=\s*null", body), "no retention lock on plugins"
+    assert re.search(r"soft_delete_seconds\s*=\s*0", body), "a purge must really delete"
+    assert re.search(r"cors_methods\s*=\s*\[\]", body), "no browser reads plugins"
+    iam = strip_comments((TF_ROOT / "modules" / "data" / "iam.tf").read_text())
+    grants = set(re.findall(r'\["plugins", "(\w+)", "([\w${}-]+)"\]', iam))
+    assert grants == {("objectUser", "orchestrator"), ("reader", "url_signer")}, grants
+
+
 # --------------------------------------------------------------------------------- exec / egress
 
 

@@ -54,6 +54,7 @@ from mapi_server.api import (
     onboarding,
     optimize,
     plots,
+    plugins,
     prior_translations,
     run_views,
     runs,
@@ -157,6 +158,22 @@ V018_PATCH_BODY_LIMITS: tuple[tuple[tuple[str, ...], int], ...] = (
 )
 """JSON body caps of the v0.18 ``PATCH`` routes: cut off in the ASGI layer, before FastAPI
 reads and parses the body (and before authentication)."""
+
+V019_BODY_LIMITS: tuple[tuple[tuple[str, ...], int, tuple[str, ...]], ...] = (
+    # every plugin route and the tenant's plugin settings: small control bodies (the wheel
+    # itself goes to the storage service under a POST policy, never through the API)
+    (
+        (
+            r"/v1/plugins",
+            r"/v1/plugins/.*",
+            _TENANT + r"/plugin-settings",
+            _TENANT + r"/plugin-uploaders/.*",
+        ),
+        plugins.V019_BODY_MAX_BYTES,
+        ("POST", "PUT", "PATCH"),
+    ),
+)
+"""JSON body caps of the v0.19 routes (plan I-5: 8 KiB), with the methods they cover."""
 
 
 def _with_event_payloads(doc: dict[str, Any]) -> dict[str, Any]:
@@ -454,6 +471,9 @@ def create_app(
         app.add_middleware(JsonBodyLimit, paths=paths, max_bytes=max_bytes)
     for paths, max_bytes in V018_PATCH_BODY_LIMITS:
         app.add_middleware(JsonBodyLimit, paths=paths, max_bytes=max_bytes, methods=("PATCH",))
+    # v0.19: uploaded code (claims, tickets, `:complete`, review, yank, settings, uploaders)
+    for paths, max_bytes, methods in V019_BODY_LIMITS:
+        app.add_middleware(JsonBodyLimit, paths=paths, max_bytes=max_bytes, methods=methods)
     # Public embed views: no credentials, readable cross-origin by the plot sandbox only
     # (outside the app's CORS policy, which is the web origin's, with credentials).
     app.add_middleware(plots.EmbedCorsMiddleware, allowed_origin=settings.plots_origin)
@@ -511,6 +531,9 @@ def create_app(
         library.router,
         onboarding.router,
         samples.router,
+        # v0.19 uploaded code and the tenant's plugin settings
+        plugins.router,
+        plugins.tenant_router,
         internal.router,
         *trust.ROUTERS,
     ):

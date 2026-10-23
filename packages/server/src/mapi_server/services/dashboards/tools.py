@@ -13,6 +13,11 @@ panel (``panel_deltas``); ``list_panels``, ``get_panel``, ``get_accuracy``, ``li
 caller's own); the media tools (``get_channel``, ``evaluate_whatif``) answer
 ``DASHBOARD_INPUT_DISABLED`` on a dashboard without the media planner. These are what the
 v0.18 adapters (chat and MCP) map onto, 1:1.
+
+v0.19 (plan D16): for a client user or a share link every tool first checks that nothing
+the dashboard shows was made with uploaded code (``403 UPLOADED_CODE_NOT_SHAREABLE``), so a
+caller that reaches :func:`run_tool` without the HTTP routes' checks (the v0.20 chat and MCP
+adapters) is refused the same way.
 """
 
 from __future__ import annotations
@@ -82,6 +87,7 @@ from mapi_server.services.dashboards.access import (
     readout_header,
     refit_statuses,
 )
+from mapi_server.services.sharing import require_shareable
 
 __all__ = ["call_tool", "run_tool"]
 
@@ -121,6 +127,11 @@ async def run_tool(
     args: object,
 ) -> ResponseModel:
     """:func:`call_tool` in the caller's session, with already-validated arguments."""
+    if dctx.principal_kind != "member":
+        row = await session.get(m.Dashboard, dctx.dashboard_id)
+        if row is None:
+            raise NotFoundError("dashboard", dctx.dashboard_id)
+        await require_shareable(session, dashboard=row)
     if name == "get_dashboard" and isinstance(args, NoArgs):
         return await _dashboard(session, dctx)
     if name == "get_latest_readout" and isinstance(args, NoArgs):

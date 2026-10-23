@@ -50,7 +50,7 @@ run "full_environment" {
   }
 
   assert {
-    condition     = output.buckets == { quarantine = "mapi-test-quarantine", bootstrap = "mapi-test-bootstrap", runs = "mapi-test-runs", bundles = "mapi-test-bundles", data = "mapi-test-data" }
+    condition     = output.buckets == { quarantine = "mapi-test-quarantine", bootstrap = "mapi-test-bootstrap", runs = "mapi-test-runs", bundles = "mapi-test-bundles", data = "mapi-test-data", plugins = "mapi-test-plugins" }
     error_message = "Bucket names must be exactly mapi-{env}-{purpose} (mapi_spec.storage.bucket_name)."
   }
 

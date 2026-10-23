@@ -15,6 +15,10 @@ workflow entry points of the image add (v0.18, D6, D7, D12):
 All three are empty for an image of built-ins only, so its catalog JSON and digest are the
 ones :meth:`~mapi_sdk.registry.Registry.catalog` gives. This module imports plugin code (it
 loads entry points): only the worker and the image build use it, never the supervisor.
+
+v0.19: ``full_catalog(registry, only_distribution=...)`` keeps what one origin exports (a
+PEP 503 distribution name, or ``upload:<pvid>`` for a mounted upload): the ``plugin_describe``
+run exports only its upload's entries.
 """
 
 from __future__ import annotations
@@ -29,6 +33,7 @@ from mapi_spec.catalog import (
     DIAGNOSTICS_PER_DISTRIBUTION_MAX,
     Catalog,
     CatalogDiagnostic,
+    ModelCatalogEntry,
 )
 from mapi_workflows.runtime.governance import load_check_runners
 from mapi_workflows.runtime.nodes import (
@@ -40,23 +45,63 @@ from mapi_workflows.runtime.nodes import (
 __all__ = ["cap_diagnostics", "extension_versions", "full_catalog"]
 
 
-def full_catalog(registry: Registry) -> Catalog:
+def _norm(origin: str) -> str:
+    if origin.startswith("upload:"):
+        return origin
+    return origin.strip().lower().replace("_", "-").replace(".", "-")
+
+
+def full_catalog(registry: Registry, *, only_distribution: str | None = None) -> Catalog:
     """The image's catalog: ``registry.catalog()`` with the plugin workflow nodes and
-    templates and every load diagnostic (capped; see :func:`cap_diagnostics`)."""
+    templates and every load diagnostic (capped; see :func:`cap_diagnostics`).
+
+    ``only_distribution`` (v0.19) keeps only what the entry points of one origin export and
+    the diagnostics they caused: a distribution name (compared in its PEP 503 form), or
+    ``upload:<plugin version id>`` for a mounted upload (an upload never matches a plain
+    distribution name, even when its distribution is called like an installed one). Built-in
+    nodes and templates are never part of it; the node contracts the templates are validated
+    against still include the built-in and every other valid plugin contract."""
+    if only_distribution is None:
+        return _catalog(registry, keep=None)
+    return _catalog(registry, keep=_norm(only_distribution))
+
+
+def _catalog(registry: Registry, *, keep: str | None) -> Catalog:
     base = registry.catalog()
-    exports, node_diags = load_node_exports()
+    exports, node_diags = load_node_exports(overlays=registry.overlays)
     nodes = [exports[k].contract for k in sorted(exports)]
-    templates, template_diags = load_plugin_templates(all_node_contracts(nodes))
+    templates, template_diags = load_plugin_templates(
+        all_node_contracts(nodes), overlays=registry.overlays, only=keep
+    )
     check_diags: list[CatalogDiagnostic] = []
-    load_check_runners(diagnostics=check_diags)
+    load_check_runners(diagnostics=check_diags, overlays=registry.overlays, only=keep)
+    if keep is None:
+        return Catalog(
+            steps=base.steps,
+            models=base.models,
+            plots=base.plots,
+            workflow_nodes=nodes,
+            workflow_templates=sorted(templates, key=lambda t: t.id),
+            diagnostics=cap_diagnostics(
+                [*registry.diagnostics, *node_diags, *template_diags, *check_diags]
+            ),
+        )
+    own_nodes, own_node_diags = load_node_exports(overlays=registry.overlays, only=keep)
+
+    def mine(kind: Any, id_: str, version: str) -> bool:
+        return registry.origin_of(kind, id_, version) == keep
+
+    models: list[ModelCatalogEntry] = [
+        m for m in base.models if mine("model", m.manifest.id, m.manifest.version)
+    ]
     return Catalog(
-        steps=base.steps,
-        models=base.models,
-        plots=base.plots,
-        workflow_nodes=nodes,
+        steps=[s for s in base.steps if mine("step", s.id, s.version)],
+        models=models,
+        plots=[p for p in base.plots if mine("plot", p.id, p.version)],
+        workflow_nodes=[own_nodes[k].contract for k in sorted(own_nodes)],
         workflow_templates=sorted(templates, key=lambda t: t.id),
         diagnostics=cap_diagnostics(
-            [*registry.diagnostics, *node_diags, *template_diags, *check_diags]
+            [*registry.diagnostics_of(keep), *own_node_diags, *template_diags, *check_diags]
         ),
     )
 

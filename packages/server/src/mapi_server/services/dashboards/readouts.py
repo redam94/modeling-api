@@ -19,6 +19,11 @@ run of its ``model.score`` / ``model.forecast`` node, no new run) and from an en
 promotion (:func:`on_endpoint_promoted`: a new revision when the dashboard follows the
 endpoint, else a ``new_version_available`` flag for the analyst).
 
+v0.19 (plan D16): a readout made with uploaded code never becomes ready. A workflow whose
+node runs ran uploaded code (an uploaded node, or a node run that mounted an overlay) never
+refreshes a dashboard, and :func:`_build` refuses a readout whose own runs are
+``untrusted_code`` (defence in depth: the share and client gates refuse any that exists).
+
 Visibility (D11): ``published`` rows are the history; ``private`` rows (saved scenarios)
 and ``pending_review`` rows (actuals waiting for an editor) are visible to their actor and
 to the analysts; ``hidden`` and ``failed`` rows only to the analysts. A readout that fails
@@ -74,6 +79,7 @@ from mapi_spec.dashboards import (
 )
 from mapi_spec.errors import ERROR_INFO, ErrorCode, MapiError, Problem, Severity
 from mapi_spec.run import RunState
+from mapi_spec.sharing import uses_uploaded_ids
 from mapi_spec.tenancy import ResourceKind
 from mapi_spec.views import ResponseGridView
 from mapi_spec.webhooks import WebhookEventType
@@ -555,6 +561,18 @@ async def on_workflow_succeeded(session: AsyncSession, wr: m.WorkflowRunRow) -> 
             child = run
     if child is None:
         log.info("workflow run %s has no succeeded score node: no dashboard refresh", wr.run_id)
+        return 0
+    from mapi_server.services.sharing import runs_used_uploaded_code
+
+    node_runs = [n.child_run_id or n.cached_from for n in nodes]
+    if any(uses_uploaded_ids([n.use]) for n in nodes) or await runs_used_uploaded_code(
+        session, [child.id, *node_runs]
+    ):
+        log.warning("workflow run %s ran uploaded code: no dashboard refresh (D16)", wr.run_id)
+        for dash, _rev in linked:
+            locked = await _lock_dashboard(session, dash.id)
+            locked.problem = WORKFLOW_VERSION_REFUSED
+            locked.updated_at = now()
         return 0
     made = 0
     for dash, rev in linked:
@@ -1482,7 +1500,7 @@ async def _build(ctx: ServerContext, session: AsyncSession, row: m.DashboardRead
         return _Material(problem=Problem.from_code(ErrorCode.NOT_FOUND, "the revision is gone"))
     any_spec = parse_dashboard_spec(rev.spec)
     mv = await session.get(m.ModelVersion, row.model_version_id)
-    from mapi_server.services.sharing import ran_uploaded_code
+    from mapi_server.services.sharing import ran_uploaded_code, runs_used_uploaded_code
 
     if ran_uploaded_code(mv):  # defence in depth: every path that appends one refuses it
         return _Material(
@@ -1490,6 +1508,14 @@ async def _build(ctx: ServerContext, session: AsyncSession, row: m.DashboardRead
                 ErrorCode.CAPABILITY_UNSUPPORTED,
                 "the model version ran uploaded plugin code; dashboards show only versions "
                 "fitted with platform plugins",
+            )
+        )
+    if await runs_used_uploaded_code(session, row.run_ids):
+        return _Material(
+            problem=Problem.from_code(
+                ErrorCode.UPLOADED_CODE_NOT_SHAREABLE,
+                "the run of this result used uploaded code; dashboards show only results "
+                "made with platform code",
             )
         )
     if isinstance(any_spec, DashboardSpecV2):

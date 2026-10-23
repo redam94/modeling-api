@@ -882,6 +882,8 @@ async def _submit_run(
     checks: Sequence[PolicyCheck],
 ) -> m.Run:
     """Queue the sandboxed ``governance`` run of a validation."""
+    from mapi_server.services.plugins.refs import document_ids, model_version_pins
+    from mapi_server.services.plugins.view import resolve_pins
     from mapi_server.services.specs import resolve_dataset
     from mapi_server.services.submit import _accept, dataset_inputs, fit_dataset_version
 
@@ -941,7 +943,16 @@ async def _submit_run(
         dataset_version=dv.version,
         catalog_digest=(mv.manifest or {}).get("catalog_digest"),
     )
-    return await _accept(session, ctx, run, untrusted=bool((mv.lineage or {}).get("overlay_hash")))
+    # v0.19: the version's uploaded code again (its lineage pins), checked for the caller
+    pins = await resolve_pins(
+        ctx,
+        session,
+        ids=document_ids(payload),
+        inherited=model_version_pins(mv.lineage),
+        tenant_id=mv.tenant_id,
+        user_id=ctx.request.user_id if ctx.request is not None else None,
+    )
+    return await _accept(session, ctx, run, overlays=pins)
 
 
 async def request_validation(

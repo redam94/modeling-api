@@ -1,12 +1,16 @@
 # Bucket-level IAM only: no principal gets a storage role on the data project itself.
 #
-#                 quarantine          bootstrap           runs                bundles             data
-#   orchestrator  objectUser          objectUser          objectUser          creator + viewer    creator + viewer
-#   api           reader              -                   objectViewer        objectViewer        objectViewer
-#   url_signer    reader + writer     -                   reader + writer     reader              reader
+#                 quarantine          bootstrap           runs                bundles             data                plugins
+#   orchestrator  objectUser          objectUser          objectUser          creator + viewer    creator + viewer    objectUser
+#   api           reader              -                   objectViewer        objectViewer        objectViewer        -
+#   url_signer    reader + writer     -                   reader + writer     reader              reader              reader
 #                                                         + delete under .../checkpoints/ only
-#   url_uploader  writer              -                   writer              -                   -
-#   exec SAs      -                   get + delete        -                   -                   -
+#   url_uploader  writer              -                   writer              -                   -                   -
+#   exec SAs      -                   get + delete        -                   -                   -                   -
+#
+# plugins (v0.19): the orchestrator copies an inspected wheel from quarantine (write-once),
+# re-hashes it and deletes it at purge; executions mount it only through a signed GET minted
+# for their own run (url_signer reader), never with a role of their own.
 #
 # Segmented sampling rewrites the same checkpoint names every segment through a POST policy
 # signed as url_signer, and GCS needs storage.objects.delete to overwrite an object. So
@@ -88,6 +92,7 @@ locals {
       ["bundles", "objectViewer", "orchestrator"],
       ["data", "objectCreator", "orchestrator"],
       ["data", "objectViewer", "orchestrator"],
+      ["plugins", "objectUser", "orchestrator"],
 
       # stat of an upload by name only: the API never writes or deletes objects
       ["quarantine", "reader", "api"],
@@ -101,6 +106,7 @@ locals {
       ["runs", "writer", "url_signer"],
       ["bundles", "reader", "url_signer"],
       ["data", "reader", "url_signer"],
+      ["plugins", "reader", "url_signer"],
 
       # create-only upload policies: GCS POST forms carry no generation precondition, so only
       # a signer without storage.objects.delete makes them create-only

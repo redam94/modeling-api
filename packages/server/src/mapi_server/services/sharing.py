@@ -14,6 +14,15 @@ served. Arrow datasets are never decoded here:
 Only plots of platform recipes saved from a model version are embeddable
 (:func:`mapi_spec.sharing.embeddable`); user-authored specs are saved with ``author``
 provenance whatever they claim, so they can never pass as recipes.
+
+v0.19 (plan D16): nothing made with uploaded code leaves the workspace. :func:`uses_uploaded_code`
+is the one test (a lineage that records overlays, an untrusted run, or an id in an uploaded
+namespace: models, steps, recipes, workflow nodes and templates alike, not only models) and
+:func:`require_shareable` the one refusal (``403 UPLOADED_CODE_NOT_SHAREABLE``), used at
+share-link create, every share-session read, client reads, embed create and view, and the
+share and dashboard renders of :func:`submit_render`. The decision is made from what the
+control plane recorded (``runs.overlays``, ``lineage.overlays``, catalog ids), never from
+what a plot document claims.
 """
 
 from __future__ import annotations
@@ -25,7 +34,7 @@ import json
 import logging
 import time
 from collections import OrderedDict
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Final
@@ -38,6 +47,7 @@ from mapi_spec.executor import RunKind
 from mapi_spec.jobs import INPUT_PLOTS, RenderJob, plot_data_input, render_output
 from mapi_spec.loader import spec_hash
 from mapi_spec.plots import MAX_INLINE_ARROW_B64, DataRef, InlineArrow, PlotSpec
+from mapi_spec.plugins import lineage_has_uploaded_code
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import Actor, RunState, RunTrigger
 from mapi_spec.sharing import (
@@ -52,11 +62,12 @@ from mapi_spec.sharing import (
     check_render_pixels,
     embeddable,
     generate_embed_token,
+    uses_uploaded_ids,
 )
 from mapi_spec.storage import NotFound, PreconditionFailed, check_segment
 from mapi_spec.tenancy import Action, ResourceKind, TenantStatus
 from pydantic import ValidationError
-from sqlalchemy import select, update
+from sqlalchemy import any_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.context import ServerContext
@@ -82,11 +93,16 @@ __all__ = [
     "embed_token_hash",
     "embed_view",
     "load_saved_plot",
+    "ran_uploaded_code",
     "render_input_key",
+    "require_shareable",
     "resolve_render_request",
     "revoke_embed",
+    "runs_used_uploaded_code",
     "saved_plot_dto",
     "submit_render",
+    "uploaded_code_versions",
+    "uses_uploaded_code",
 ]
 
 log = logging.getLogger(__name__)
@@ -128,10 +144,12 @@ def _dump(plot: PlotSpec) -> dict[str, Any]:
 
 
 def ran_uploaded_code(mv: m.ModelVersion | None) -> bool:
-    """Was ``mv`` fitted with uploaded plugin code (an overlay)? Its worker wrote the plot
-    documents, provenance included, so none of them can count as a platform recipe (plan
-    §10.3 item 4): the server decides from the version's lineage, never from the plot."""
-    return mv is not None and bool((mv.lineage or {}).get("overlay_hash"))
+    """Was ``mv`` fitted with uploaded plugin code (an overlay of any kind: a model, a step,
+    a recipe in its outputs, a workflow node)? Its worker wrote the plot documents,
+    provenance included, so none of them can count as a platform recipe (plan §10.3 item 4):
+    the server decides from the version's lineage (``overlays``, written by the finalizer
+    from ``runs.overlays``, or the legacy ``overlay_hash``), never from the plot."""
+    return mv is not None and lineage_has_uploaded_code(mv.lineage)
 
 
 async def uploaded_code_versions(session: AsyncSession, ids: Iterable[str | None]) -> set[str]:
@@ -142,7 +160,152 @@ async def uploaded_code_versions(session: AsyncSession, ids: Iterable[str | None
     rows = await session.execute(
         select(m.ModelVersion.id, m.ModelVersion.lineage).where(m.ModelVersion.id.in_(wanted))
     )
-    return {mv_id for mv_id, lineage in rows if (lineage or {}).get("overlay_hash")}
+    return {mv_id for mv_id, lineage in rows if lineage_has_uploaded_code(lineage)}
+
+
+# ------------------------------------------------------------------- uploaded code (D16)
+
+
+def uses_uploaded_code(
+    *,
+    lineage: Mapping[str, Any] | None = None,
+    run: m.Run | None = None,
+    ids: Iterable[str] = (),
+) -> bool:
+    """True when any of these was made with, or names, uploaded code (plan D16): a lineage
+    that records overlays (or the legacy ``overlay_hash``), a run marked ``untrusted_code`` or
+    holding overlay pins, or a catalog id or ref in an uploaded namespace (any of the five id
+    forms; :func:`mapi_spec.sharing.uses_uploaded_ids`). Pure: no database access."""
+    if lineage_has_uploaded_code(lineage):
+        return True
+    if run is not None and (run.untrusted_code or bool(run.overlays)):
+        return True
+    return uses_uploaded_ids(ids)
+
+
+def _pinned(lineage: Mapping[str, Any] | None) -> bool:
+    """A lineage that records v0.19 overlay pins (``overlays`` set; whatever its form, so a
+    malformed value fails closed).
+
+    The gates of :func:`require_shareable` decide on these v0.19 facts. A version whose
+    lineage holds only the legacy ``overlay_hash`` (never written in practice) keeps the
+    refusals it had before v0.19, under their codes: publishing and every dashboard input
+    ``CAPABILITY_UNSUPPORTED``, embedding ``EMBED_NOT_ALLOWED``, an embed view ``404``."""
+    return bool((lineage or {}).get("overlays"))
+
+
+def not_shareable(what: str) -> MapiError:
+    """``403 UPLOADED_CODE_NOT_SHAREABLE`` for ``what`` (plain words, no uploaded text)."""
+    return MapiError(
+        f"{what} uses uploaded code. Results made with uploaded code stay in the workspace: "
+        "they cannot be shared by link, shown to clients or embedded.",
+        code=ErrorCode.UPLOADED_CODE_NOT_SHAREABLE,
+    )
+
+
+async def runs_used_uploaded_code(session: AsyncSession, run_ids: Iterable[str | None]) -> bool:
+    """Did any of these runs run uploaded code (``untrusted_code``; overlays imply it)?"""
+    wanted = sorted({i for i in run_ids if i})
+    if not wanted:
+        return False
+    found = await session.execute(
+        select(m.Run.id).where(m.Run.id.in_(wanted), m.Run.untrusted_code.is_(True)).limit(1)
+    )
+    return found.first() is not None
+
+
+def _spec_recipes(spec: Any) -> list[str]:
+    """The recipe ids a stored dashboard spec names (every ``recipe`` value, read from the
+    JSON as stored, so either layout and any panel kind)."""
+    out: list[str] = []
+    stack: list[Any] = [spec]
+    while stack and len(out) < 1024:
+        item = stack.pop()
+        if isinstance(item, Mapping):
+            for key, value in item.items():
+                if key == "recipe" and isinstance(value, str):
+                    out.append(value)
+                elif isinstance(value, Mapping | list):
+                    stack.append(value)
+        elif isinstance(item, list):
+            stack.extend(item)
+    return out
+
+
+async def dashboard_uses_uploaded_code(session: AsyncSession, row: m.Dashboard) -> bool:
+    """Does what a client or a share link would see of ``row`` come from uploaded code?
+
+    Its published revision: the pinned model version's lineage and the recipes its spec names;
+    and every readout an analyst has not hidden: its model version's lineage, its runs
+    (``untrusted_code``) and, for a workflow refresh, the workflow's node runs. A refresh
+    that adds such a readout later makes the next shared or client read fail (D16)."""
+    rev = (
+        await session.get(m.DashboardRevision, row.published_revision_id)
+        if row.published_revision_id is not None
+        else None
+    )
+    if rev is not None:
+        mv = await session.get(m.ModelVersion, rev.model_version_id)
+        if (mv is not None and _pinned(mv.lineage)) or uses_uploaded_ids(_spec_recipes(rev.spec)):
+            return True
+    live = (m.DashboardReadout.dashboard_id == row.id) & (m.DashboardReadout.visibility != "hidden")
+    versions = (
+        await session.execute(
+            select(m.ModelVersion.lineage).where(
+                m.ModelVersion.id.in_(
+                    select(m.DashboardReadout.model_version_id).where(live).distinct()
+                )
+            )
+        )
+    ).scalars()
+    if any(_pinned(lineage) for lineage in versions):
+        return True
+    direct = (
+        select(m.DashboardReadout.seq)
+        .join(m.Run, m.Run.id == any_(m.DashboardReadout.run_ids))
+        .where(live, m.Run.untrusted_code.is_(True))
+        .limit(1)
+    )
+    if (await session.execute(direct)).first() is not None:
+        return True
+    nodes = (
+        select(m.DashboardReadout.seq)
+        .join(m.Run, m.Run.parent_run_id == m.DashboardReadout.workflow_run_id)
+        .where(live, m.Run.untrusted_code.is_(True))
+        .limit(1)
+    )
+    return (await session.execute(nodes)).first() is not None
+
+
+async def require_shareable(
+    session: AsyncSession,
+    *,
+    dashboard: m.Dashboard | None = None,
+    model_version: m.ModelVersion | None = None,
+    plot: ResolvedPlot | m.SavedPlot | None = None,
+) -> None:
+    """Refuse (``403 UPLOADED_CODE_NOT_SHAREABLE``) to let anything made with uploaded code
+    leave the workspace: a dashboard (:func:`dashboard_uses_uploaded_code`), a model
+    version (its lineage's overlay pins) or a plot (its recipe or plugin id, and its model
+    version). See :func:`_pinned` for the legacy ``overlay_hash``."""
+    if model_version is not None and _pinned(model_version.lineage):
+        raise not_shareable("This model version")
+    if plot is not None:
+        if isinstance(plot, ResolvedPlot):
+            mv = plot.model_version
+            ids = [plot.recipe or "", plot.plot.provenance.recipe or "",
+                   plot.plot.provenance.plugin or ""]  # fmt: skip
+        else:
+            mv = (
+                await session.get(m.ModelVersion, plot.model_version_id)
+                if plot.model_version_id is not None
+                else None
+            )
+            ids = [plot.recipe or ""]
+        if (mv is not None and _pinned(mv.lineage)) or uses_uploaded_ids(ids):
+            raise not_shareable("This plot")
+    if dashboard is not None and await dashboard_uses_uploaded_code(session, dashboard):
+        raise not_shareable("This dashboard")
 
 
 @dataclass(frozen=True, slots=True)
@@ -404,13 +567,21 @@ async def submit_render(
     scale: float,
     width: int | None = None,
     height: int | None = None,
+    shared: bool = False,
 ) -> m.Run:
     """Queue a ``render`` run of one sanitized plot (admission: kill switches and quotas).
 
     The run gets no ``model_version_id``: its inputs are not the bundle's own ``plots.json``
     but a document the API wrote, plus the bundle's data objects, each pinned here after the
     signed manifest verified.
+
+    A render converts a plot document that already exists: no recipe code runs, so the run
+    needs no overlay pins (plan §0 P6). ``shared``: the picture leaves the workspace (an
+    embed's fallback, a dashboard picture that clients and share links see), so a plot made
+    with uploaded code is refused here, before anything is stored or admitted (D16).
     """
+    if shared:
+        await require_shareable(session, plot=resolved)
     if resolved.plot.kind == "plotly" and not ctx.settings.render_plotly_enabled:
         raise MapiError(
             "static rendering of Plotly plots is not available on this platform (it needs "
@@ -553,6 +724,7 @@ async def create_embed(
     quota refuses it) the embed still works, with no image link."""
     row = await load_saved_plot(session, ctx, plot_id)
     resolved = await resolve_saved(session, ctx, row)
+    await require_shareable(session, plot=resolved)
     _check_embeddable(resolved)
     for name, ds in resolved.plot.datasets.items():
         if isinstance(ds, DataRef):
@@ -588,7 +760,9 @@ async def create_embed(
     if auth is not None and auth.allows(Action.RUN, ResourceKind.PLOT):
         try:
             async with session.begin_nested():
-                run = await submit_render(session, ctx, resolved, fmt="png", scale=_FALLBACK_SCALE)
+                run = await submit_render(
+                    session, ctx, resolved, fmt="png", scale=_FALLBACK_SCALE, shared=True
+                )
             embed.render_run_id = run.id
         except MapiError as exc:
             log.info("embed %s has no PNG fallback: %s (%s)", embed.id, exc.detail, exc.code)
@@ -751,9 +925,12 @@ async def embed_view(ctx: ServerContext, token: str, client_ip: str | None) -> E
         if row is None or row.revoked_at is not None or row.expires_at <= at:
             raise _expired()
         saved = await session.get(m.SavedPlot, row.plot_id)
-        if saved is None or ran_uploaded_code(
-            await session.get(m.ModelVersion, saved.model_version_id or "")
-        ):  # checked before the cache: plugin-written plots are never served
+        if saved is None:
+            raise NotFoundError("embed", "link")
+        # checked before the cache: plots made with uploaded code are never served (D16),
+        # and plugin-written plots of a legacy overlay version stay unknown links
+        await require_shareable(session, plot=saved)
+        if ran_uploaded_code(await session.get(m.ModelVersion, saved.model_version_id or "")):
             raise NotFoundError("embed", "link")
         key = (row.id, saved.updated_at.isoformat())
         view = _cache_get(key, settings.embed_cache_s)

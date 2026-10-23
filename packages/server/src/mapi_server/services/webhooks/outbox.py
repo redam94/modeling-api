@@ -177,17 +177,25 @@ async def _endpoint_of(session: AsyncSession, run_id: str) -> m.EndpointRun | No
     return await session.get(m.EndpointRun, run_id)
 
 
+_NO_RUN_EVENTS: Final = frozenset(
+    {RunKind.DESCRIBE.value, RunKind.PLUGIN_INSPECT.value, RunKind.PLUGIN_DESCRIBE.value}
+)
+"""Run kinds without ``run.*`` events (platform catalog runs and plugin checks)."""
+
+
 async def run_finished(session: AsyncSession, run: m.Run, state: RunState) -> None:
     """The events of a run that just became terminal (called by
     :func:`mapi_server.services.runs.apply_transition` in the same transaction).
 
-    * ``run.succeeded`` / ``run.failed`` for every user run (not platform ``describe`` runs);
+    * ``run.succeeded`` / ``run.failed`` for every user run (not platform ``describe`` runs,
+      and not the ``plugin_inspect``/``plugin_describe`` checks of an upload, v0.19: their
+      outcome is the version's ``plugin.version.*`` event);
     * ``model.version.ready`` when a fit registered a ready model version;
     * ``score.completed`` when a score run succeeded (with its endpoint, if it came through
       one);
     * ``optimize.completed`` when an optimize run succeeded (with the optimization's URL).
     """
-    if run.kind == RunKind.DESCRIBE.value or state not in (RunState.SUCCEEDED, RunState.FAILED):
+    if run.kind in _NO_RUN_EVENTS or state not in (RunState.SUCCEEDED, RunState.FAILED):
         return
     tenant, project = run.tenant_id, run.project_id
     hooks = list(

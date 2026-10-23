@@ -21,6 +21,7 @@ from mapi_spec.errors import Issue, json_pointer
 from mapi_spec.executor import RunKind
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.api.common import (
     DEFAULT_LIMIT,
@@ -33,9 +34,12 @@ from mapi_server.api.common import (
     encode_cursor,
 )
 from mapi_server.api.runs import render_run
+from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.errors import Conflict, NotFoundError
+from mapi_server.services.catalog import CatalogService
 from mapi_server.services.guided import enforce_guided_lock
+from mapi_server.services.plugins.view import view_catalogs, view_owner
 from mapi_server.services.runs import now
 from mapi_server.services.specs import (
     Validation,
@@ -52,6 +56,14 @@ __all__ = ["DiffEntry", "SpecDiff", "diff_documents", "router"]
 router = APIRouter(prefix="/v1/specs", tags=["specs"])
 
 SpecId = Annotated[str, Path(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.\-]{0,127}$")]
+
+
+async def _catalogs(ctx: ServerContext, session: AsyncSession) -> CatalogService:
+    """The caller's tenant catalog view (v0.19): specs may name the uploads they can use."""
+    tenant, user = view_owner(ctx)
+    if tenant is None:
+        return ctx.catalogs
+    return await view_catalogs(ctx, session, tenant_id=tenant, user_id=user)
 
 
 def _validate_response(v: Validation) -> ValidateResponse:
@@ -72,7 +84,7 @@ async def validate_spec(ctx: Ctx, session: Session, body: ValidateRequest) -> Va
     v = await validate_document(
         session,
         ctx.scope,
-        ctx.catalogs,
+        await _catalogs(ctx, session),
         text=body.yaml,
         document=dict(body.document) if body.document is not None else None,
         dataset_override=body.dataset,
@@ -126,7 +138,7 @@ async def create_spec(ctx: Ctx, session: Session, body: SpecCreate) -> SpecDoc:
 
     In a Guided-locked project, members below admin may store Guided specs only (``403``
     with the offending pointers otherwise; see ``Project.guided_locked``)."""
-    v = await validate_document(session, ctx.scope, ctx.catalogs, text=body.yaml)
+    v = await validate_document(session, ctx.scope, await _catalogs(ctx, session), text=body.yaml)
     refuse_retired_kind(v)
     _name_and_kind(v)  # a missing name or kind is refused before the lock check
     await enforce_guided_lock(session, ctx.scope, ctx.request, v.document)
@@ -193,7 +205,7 @@ async def create_spec_revision(
             f"{spec.latest_revision}",
             pointer="/body/parent_revision",
         )
-    v = await validate_document(session, ctx.scope, ctx.catalogs, text=body.yaml)
+    v = await validate_document(session, ctx.scope, await _catalogs(ctx, session), text=body.yaml)
     refuse_retired_kind(v)
     name, kind = _name_and_kind(v)
     parent = await _rev(session, spec, spec.latest_revision)

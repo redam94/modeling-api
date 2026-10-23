@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shlex
 import sys
 from enum import StrEnum
@@ -91,6 +92,10 @@ DEFAULT_ESTIMATE_WALL_S: dict[str, float] = {
     RunKind.EXPLORE.value: 60.0,
     RunKind.GOVERNANCE.value: 900.0,
     RunKind.INSPECT.value: 15.0,
+    # v0.19: measured by the WP0 probe (inspect ~0.2 s of work, describe of a five-kind
+    # package ~10 s plus run overhead); batch priority, so the estimate only drives quotas
+    RunKind.PLUGIN_INSPECT.value: 15.0,
+    RunKind.PLUGIN_DESCRIBE.value: 60.0,
 }
 """Wall-time estimate per run kind (seconds, capped at the run's timeout): what a run is
 charged against vCPU-second quotas until its attempts are metered into the cost ledger."""
@@ -965,6 +970,71 @@ class Settings(BaseSettings):
         description="Cut line B: let identity-verified public tenants run uploaded code "
         "(off through M4: public tenants run built-ins and declarative specs only)",
     )
+    # ------------------------------------------------------------- uploaded code (v0.19)
+    plugins_enabled: bool = Field(
+        True,
+        description="Accept uploaded plugins (wheels) on tiers that allow uploaded code; off: "
+        "the plugin routes refuse uploads and the catalog shows no uploaded entries",
+    )
+    dev_allow_local_untrusted: bool = Field(
+        False,
+        description="DEVELOPMENT ONLY: let the local-process executor run uploaded code "
+        "without a sandbox. Refused in the multi-tenant profile, with the cloudrun-jobs "
+        "executor, with the gcs object store and on Cloud Run (K_SERVICE/CLOUD_RUN_JOB)",
+    )
+    plugin_upload_max_bytes: int = Field(
+        20_971_520, ge=1, le=20_971_520, description="Largest uploaded wheel (bytes)"
+    )
+    plugin_uncompressed_max_bytes: int = Field(
+        104_857_600, ge=1, description="Largest total uncompressed size of a wheel's members"
+    )
+    plugin_member_max_bytes: int = Field(
+        20_971_520, ge=1, description="Largest uncompressed size of one wheel member"
+    )
+    plugin_max_members: int = Field(2000, ge=1, le=2000, description="Most members of a wheel")
+    plugin_max_ratio: int = Field(
+        100, ge=1, description="Highest compression ratio of a wheel member (zip bombs)"
+    )
+    plugin_uploads_per_user_per_day: int = Field(
+        20, ge=1, description="Upload tickets one user may take per day (429 beyond)"
+    )
+    plugin_pipeline_concurrency_per_tenant: int = Field(
+        2,
+        ge=1,
+        le=100,
+        description="Plugin check runs (inspect, describe) of one tenant dispatched at the "
+        "same time; the others stay queued",
+    )
+    plugin_inspect_timeout_s: int = Field(
+        60, ge=10, le=3600, description="Wall-clock limit of a plugin_inspect run"
+    )
+    plugin_describe_timeout_s: int = Field(
+        600, ge=30, le=7200, description="Wall-clock limit of a plugin_describe run"
+    )
+    plugin_data_check_timeout_s: int = Field(
+        120, ge=1, le=3600, description="Limit of one data kit check inside a describe run"
+    )
+    plugin_ticket_ttl_s: int = Field(
+        900, ge=60, le=86400, description="Lifetime of a plugin upload ticket (POST policy)"
+    )
+    plugin_retention_days: int = Field(
+        30,
+        ge=0,
+        description="How long the objects of refused, failed, rejected and withdrawn versions "
+        "are kept before the purge sweep deletes them (the rows stay)",
+    )
+    plugin_approve_max_auth_age_s: int = Field(
+        900,
+        ge=60,
+        le=86400,
+        description="An approval or rejection needs a sign-in at most this old",
+    )
+    plugin_approver_min_membership_age_days: int = Field(
+        7,
+        ge=0,
+        description="An approver whose membership the uploader created more recently than "
+        "this may not approve the uploader's versions",
+    )
     tenant_deletion_grace_s: float = Field(
         7 * 86400.0,
         ge=0,
@@ -1139,6 +1209,31 @@ class Settings(BaseSettings):
         return self
 
     @model_validator(mode="after")
+    def _dev_untrusted(self) -> Settings:
+        # D7 (T19.24): the development allowance runs uploaded code with no sandbox, so it
+        # must never be honoured where other people's code or data could be reached
+        if not self.dev_allow_local_untrusted:
+            return self
+        reasons: list[str] = []
+        if self.profile is Profile.MULTI_TENANT:
+            reasons.append("the profile is multi-tenant")
+        if self.executor is ExecutorName.CLOUDRUN_JOBS:
+            reasons.append("the executor is cloudrun-jobs")
+        if self.object_store is ObjectStoreKind.GCS:
+            reasons.append("the object store is gcs")
+        cloud = [k for k in ("K_SERVICE", "CLOUD_RUN_JOB") if os.environ.get(k)]
+        if cloud:
+            reasons.append(f"the server runs on Cloud Run ({', '.join(cloud)} is set)")
+        if reasons:
+            raise ValueError(
+                "MAPI_DEV_ALLOW_LOCAL_UNTRUSTED is for local development only and runs "
+                "uploaded code without a sandbox. It is refused because "
+                + "; ".join(reasons)
+                + ". Remove MAPI_DEV_ALLOW_LOCAL_UNTRUSTED."
+            )
+        return self
+
+    @model_validator(mode="after")
     def _preview_default(self) -> Settings:
         # live recipe previews wait on a render run: a Cloud Run Jobs start is too slow for
         # a live control, so they are off there unless the operator turns them on
@@ -1193,6 +1288,12 @@ class Settings(BaseSettings):
     def multi_tenant(self) -> bool:
         """Every profile except ``single-tenant`` (sign-in and tenant isolation are live)."""
         return self.profile is not Profile.SINGLE_TENANT
+
+    @property
+    def dev_untrusted_code(self) -> bool:
+        """Does this server run uploaded code without a sandbox (the development allowance
+        with the local-process executor)? ``GET /v1/meta`` and the web banner show it."""
+        return self.dev_allow_local_untrusted and self.executor is ExecutorName.LOCAL_PROCESS
 
     @property
     def requires_auth(self) -> bool:

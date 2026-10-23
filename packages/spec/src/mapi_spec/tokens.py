@@ -345,12 +345,16 @@ TOKEN_NEVER: Final[frozenset[tuple[str, str]]] = frozenset(
         ("model", "approve"),
         ("dashboard_grant", "create"),
         ("dashboard_share", "create"),
+        ("plugin", "approve"),
+        ("plugin", "delete"),
+        ("plugin_settings", "update"),
     }
 )
 """``(resource, action)`` pairs no token may do, whatever its scopes (even ``admin``):
 minting tokens, overriding an endpoint's promotion gate, approving a model validation
-(M3.5: a reviewer's decision) and granting a dashboard or minting a share link (v0.16: both
-hand access to people outside the token's audit trail)."""
+(M3.5: a reviewer's decision), granting a dashboard or minting a share link (v0.16: both
+hand access to people outside the token's audit trail), and approving or yanking uploaded
+code or changing who may upload it (v0.19: a person signed in to the web app decides)."""
 
 _READABLE = (
     "catalog", "dataset", "spec", "run", "model", "endpoint", "plot", "usage", "project",
@@ -371,8 +375,9 @@ _SCOPE_GRANTS: dict[ScopeName, frozenset[tuple[str, str]]] = {
     ScopeName.DATASETS_WRITE: frozenset(
         {("dataset", "read"), ("dataset", "create"), ("dataset", "update")}
     ),
+    # v0.19: push a wheel, read its state and ask for approval; never approve or yank
     ScopeName.PLUGINS_PUBLISH: frozenset(
-        {("plugin", "read"), ("plugin", "create"), ("plugin", "delete")}
+        {("plugin", "read"), ("plugin", "create"), ("plugin", "update")}
     ),
     ScopeName.ENDPOINTS_PROMOTE: frozenset(
         {

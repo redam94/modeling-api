@@ -139,6 +139,15 @@ class ErrorCode(StrEnum):
     EXTENSION_UNAVAILABLE = "EXTENSION_UNAVAILABLE"
     SAMPLES_DISABLED = "SAMPLES_DISABLED"
     PREVIEW_DISABLED = "PREVIEW_DISABLED"
+    # --- v0.19: uploaded code ------------------------------------------------------------
+    PLUGIN_REFUSED = "PLUGIN_REFUSED"
+    PLUGIN_NAMESPACE_TAKEN = "PLUGIN_NAMESPACE_TAKEN"
+    PLUGIN_VERSION_EXISTS = "PLUGIN_VERSION_EXISTS"
+    PLUGIN_STATE_CONFLICT = "PLUGIN_STATE_CONFLICT"
+    PLUGIN_UNAVAILABLE = "PLUGIN_UNAVAILABLE"
+    UPLOADED_CODE_NOT_SHAREABLE = "UPLOADED_CODE_NOT_SHAREABLE"
+    UNTRUSTED_PLACEMENT_UNAVAILABLE = "UNTRUSTED_PLACEMENT_UNAVAILABLE"
+    REAUTH_REQUIRED = "REAUTH_REQUIRED"
 
 
 Category = Literal["spec", "coords", "capability", "quota", "api", "run", "internal"]
@@ -311,6 +320,27 @@ ERROR_INFO: dict[ErrorCode, ErrorInfo] = {
     ),
     ErrorCode.SAMPLES_DISABLED: ErrorInfo(404, "Sample projects are turned off", "api"),
     ErrorCode.PREVIEW_DISABLED: ErrorInfo(409, "Live chart previews are turned off", "api"),
+    # v0.19: uploaded code (category "api": plugin code can never raise these itself)
+    ErrorCode.PLUGIN_REFUSED: ErrorInfo(422, "The uploaded package was refused", "api"),
+    ErrorCode.PLUGIN_NAMESPACE_TAKEN: ErrorInfo(
+        409, "The plugin name is already used in this workspace", "api"
+    ),
+    ErrorCode.PLUGIN_VERSION_EXISTS: ErrorInfo(
+        409, "This version of the plugin was already uploaded", "api"
+    ),
+    ErrorCode.PLUGIN_STATE_CONFLICT: ErrorInfo(
+        409, "The plugin version is not in a state that allows this", "api"
+    ),
+    ErrorCode.PLUGIN_UNAVAILABLE: ErrorInfo(
+        409, "An uploaded plugin that the item needs is not available to you", "api"
+    ),
+    ErrorCode.UPLOADED_CODE_NOT_SHAREABLE: ErrorInfo(
+        403, "Results made with uploaded code cannot be shared outside the workspace", "api"
+    ),
+    ErrorCode.UNTRUSTED_PLACEMENT_UNAVAILABLE: ErrorInfo(
+        409, "No executor in this deployment can run uploaded code", "api"
+    ),
+    ErrorCode.REAUTH_REQUIRED: ErrorInfo(401, "Sign in again to do this", "api"),
 }
 
 

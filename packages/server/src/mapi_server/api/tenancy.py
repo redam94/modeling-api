@@ -173,6 +173,8 @@ async def get_me(ctx: Ctx, auth: Auth, system: SystemSession) -> Me:
         operator=auth.operator,
         tenants=tenants,
         token=token,
+        plugins_enabled=ctx.settings.plugins_enabled,
+        dev_untrusted_code=ctx.settings.dev_untrusted_code,
     )
 
 

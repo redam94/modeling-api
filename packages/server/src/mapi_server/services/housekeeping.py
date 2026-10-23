@@ -20,6 +20,10 @@ The orchestrator runs :meth:`Housekeeper.run_forever` every ``housekeeping_inter
   and ``user`` log lines of runs that finished longer ago than the retention are deleted, at
   most :data:`TRACKING_PRUNE_BATCH` rows per table and pass. Metric summaries, params, tags,
   names and notes stay, so finished runs can still be searched and compared.
+* **uploaded plugins** (v0.19, :class:`~mapi_server.services.plugins.sweeps.PluginSweeps`):
+  expired upload tickets, checks whose run ended without a result, rekit describes for a new
+  base image digest and the purge of refused, failed, rejected and withdrawn versions past
+  their retention (objects deleted, rows kept).
 
 It runs on the platform role and touches nothing a request could still be using: an
 expired PUT can no longer be started, ``create_dataset_version`` refuses an upload whose
@@ -86,6 +90,7 @@ class Housekeeper:
         at = now or utcnow()
         uploads = await self.expire_uploads(now=at)
         tracking = await self.prune_tracking(now=at)
+        plugins = await self.plugin_sweeps(now=at)
         async with self.ctx.db.session() as s:
             logins = await sweep_expired_logins(s, at=at)
             # fixed one-minute windows: anything older than the previous one is dead weight
@@ -93,7 +98,13 @@ class Housekeeper:
             stale = await s.execute(
                 delete(m.RateCounter).where(m.RateCounter.window_start < at - timedelta(minutes=2))
             )
-        return uploads + logins + tracking + int(getattr(stale, "rowcount", 0) or 0)
+        return uploads + logins + tracking + plugins + int(getattr(stale, "rowcount", 0) or 0)
+
+    async def plugin_sweeps(self, *, now: datetime) -> int:
+        """The uploaded-plugin sweeps (each one logs and skips its own failure)."""
+        from mapi_server.services.plugins.sweeps import PluginSweeps
+
+        return await PluginSweeps(self.ctx).sweep(now)
 
     async def prune_tracking(self, *, now: datetime) -> int:
         """Delete metric points (not the one point of a metric without a step) and user log

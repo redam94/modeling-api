@@ -72,7 +72,10 @@ EXPECTED: dict[str, dict[str, str]] = {
     "webhook": {"read": "A/P", "create": "A/P", "update": "A/P", "delete": "A/P"},
     "tenant_deletion": {"read": "A/T", "create": "A/T", "cancel": "A/T", "manage": "op"},
     "tenant_export": {"read": "A/T", "create": "A/T"},
-    "plugin": {"read": "V/P", "create": "A/P", "delete": "A/P"},
+    # v0.19: uploads (create also needs D1/D2 in the handler; approve is a tenant admin)
+    "plugin": {"read": "V/P", "create": "E/P", "update": "E/P", "delete": "E/P",
+               "approve": "A/T"},
+    "plugin_settings": {"read": "A/T", "update": "A/T"},
     "usage": {"read": "V/P"},
     "billing": {"read": "A/T"},
     "audit": {"read": "A/T"},

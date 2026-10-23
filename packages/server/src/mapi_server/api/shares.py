@@ -18,6 +18,11 @@ v0.17: scenario rows, batch scoring (never of images, plan §10.3), this link's 
 predictions downloads and the published revision's pictures. Their bodies are capped
 before parsing: :data:`PREDICTION_BODY_PATHS` (32 KiB) and the batch files with the
 uploads (:data:`ACTUALS_BODY_PATHS`).
+
+v0.19 (plan D16): every route here answers ``403 UPLOADED_CODE_NOT_SHAREABLE`` once the
+shared dashboard shows anything made with uploaded code (checked by
+:func:`~mapi_server.services.dashboards.shares.resolve_shared` on every request, and by the
+tool surface), so a refresh that adds such a readout stops the link at its next read.
 """
 
 from __future__ import annotations
