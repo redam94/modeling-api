@@ -12,8 +12,6 @@
         <meta name="author" content="Matthew Reda">
       
       
-        <link rel="canonical" href="https://redam94.github.io/modeling-api/project/docs-theme/">
-      
       
         <link rel="prev" href="../writing-style/">
       
@@ -1463,6 +1461,17 @@
     <span class="md-ellipsis">
       
         Chips and badges
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#roadmap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Roadmap
       
     </span>
   </a>
@@ -8351,6 +8360,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#roadmap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Roadmap
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -8470,7 +8490,7 @@ comes from, which blocks you can use, and which tests fail when a rule is broken
 <td><code>overrides/main.html</code>, <code>overrides/home.html</code> and <code>overrides/partials/</code></td>
 </tr>
 <tr>
-<td>The script (search dialog, section labels, scroll reveal)</td>
+<td>The script (search dialog, section labels, release roadmap, scroll reveal)</td>
 <td><code>docs/javascripts/mono.js</code></td>
 </tr>
 <tr>
@@ -8538,6 +8558,10 @@ examples are for a page in a folder of <code>docs/</code>, thus the paths start 
 <tr>
 <td><code>mono-chip</code></td>
 <td>A small label</td>
+</tr>
+<tr>
+<td><code>mono-roadmap</code></td>
+<td>Releases in lanes. The reader opens one release at a time</td>
 </tr>
 <tr>
 <td><code>data-reveal</code></td>
@@ -8693,6 +8717,53 @@ italic text is a short label at the right.</p>
 </span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>&lt;span class="mapi-badge"&gt;v0.21&lt;/span&gt;
 </span></code></pre></div>
 <p>A <code>mapi-badge</code> in a heading shows on the page but not in the title of a search result.</p>
+<h3 id="roadmap">Roadmap<a class="headerlink" href="#roadmap" title="Permanent link">&para;</a></h3>
+<p>The <a href="../../roadmap/">roadmap</a> uses this block. Each lane is a <code>section</code>, and each release
+is an <code>article</code> with an <code>id</code>. In the head of a release, the bold text is the version, the
+plain text is the name and the italic text is the milestone.</p>
+<div class="language-markdown highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>&lt;div class="mono-roadmap" markdown&gt;
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>&lt;section class="mono-roadmap__phase" markdown&gt;
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>The hosted platform
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>{ .mono-roadmap__phase-name }
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>&lt;article id="v0.3" data-area="Platform, Web app" markdown&gt;
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>
+</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="gs">**v0.3**</span> Cloud and multi-tenant <span class="ge">*M2*</span>
+</span><span id="__span-8-10"><a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>{ .mono-roadmap__head }
+</span><span id="__span-8-11"><a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>
+</span><span id="__span-8-12"><a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>One or two sentences. Then a short list, and the links.
+</span><span id="__span-8-13"><a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>
+</span><span id="__span-8-14"><a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>&lt;/article&gt;
+</span><span id="__span-8-15"><a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>
+</span><span id="__span-8-16"><a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>&lt;/section&gt;
+</span><span id="__span-8-17"><a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>&lt;/div&gt;
+</span></code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>The address of the release. A link to <code>#v0.3</code> opens the release</td>
+</tr>
+<tr>
+<td><code>data-area</code></td>
+<td>The filters that show the release, with commas between the names</td>
+</tr>
+<tr>
+<td><code>data-status="planned"</code></td>
+<td>A planned release: a hollow node, a dashed line and the label <code>planned</code></td>
+</tr>
+</tbody>
+</table>
+<p>The script makes the lanes, the filters and the buttons from this content. Without the script,
+and on paper, each release shows in full below the name of its lane. Thus, write each release
+as text that is complete without the buttons.</p>
 <h2 id="navigation-and-search">Navigation and search<a class="headerlink" href="#navigation-and-search" title="Permanent link">&para;</a></h2>
 <table>
 <thead>

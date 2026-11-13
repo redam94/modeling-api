@@ -857,3 +857,392 @@ a.mono-tile:hover::before,
   text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
   text-underline-offset: 3px;
 }
+
+/* ---------------------------------------------------------------------------- roadmap */
+/* A release roadmap: lanes of releases, with one release open below its lane.
+
+     <div class="mono-roadmap" markdown>
+     <section class="mono-roadmap__phase" markdown>
+
+     The hosted platform
+     { .mono-roadmap__phase-name }
+
+     <article id="v0.3" data-area="Platform, Web app" markdown>
+
+     **v0.3** Cloud and multi-tenant *M2*
+     { .mono-roadmap__head }
+
+     One or two sentences, a list, and links.
+
+     </article>
+     </section>
+     </div>
+
+   In the head: bold = the version, plain text = the name, italic = the milestone (optional).
+   data-area names the filters of the release, with commas between them. data-status="planned"
+   makes a release a planned one. mono.js makes the lanes, the filters and the buttons from
+   this content and adds .is-live. Without the script, and in print, each release shows in
+   full below the name of its lane. */
+
+.md-typeset .mono-roadmap {
+  margin: 28px 0 40px;
+}
+.md-typeset .mono-roadmap__phase {
+  margin: 0;
+  padding: 10px 0;
+}
+.md-typeset .mono-roadmap__phase-name {
+  margin: 0 0 8px;
+  color: var(--mono-muted);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 20px;
+}
+
+/* one release: a grey surface */
+.md-typeset .mono-roadmap__phase > article {
+  margin: 10px 0 6px;
+  padding: clamp(20px, 3vw, 30px) clamp(20px, 3.2vw, 34px);
+  border-radius: var(--mono-radius-l);
+  background: var(--mono-bg-alt);
+  scroll-margin-top: calc(var(--mono-nav-h) + 9rem);
+}
+.md-typeset .mono-roadmap__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 14px;
+  margin: 0 0 12px;
+  max-width: none;
+  color: var(--mono-ink);
+  font-size: clamp(19px, 2vw, 22px);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+}
+.md-typeset .mono-roadmap__head strong {
+  color: var(--mono-ink);
+  font-size: clamp(36px, 5vw, 52px);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.md-typeset .mono-roadmap__head em {
+  padding: 3px 10px;
+  border-radius: var(--mono-radius-pill);
+  background: color-mix(in srgb, var(--mono-ink) 8%, transparent);
+  color: var(--mono-ink-2);
+  font-size: 12.5px;
+  font-style: normal;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.4;
+  transform: translateY(-0.2em);
+}
+.md-typeset .mono-roadmap__head .mapi-badge {
+  margin-left: auto;
+  transform: translateY(-0.3em);
+}
+.md-typeset .mono-roadmap__phase > article > p:not(.mono-roadmap__head) {
+  margin: 0 0 14px;
+  max-width: 62ch;
+  font-size: 16px;
+  line-height: 1.5;
+}
+.md-typeset .mono-roadmap__phase > article > ul {
+  margin: 0 0 16px;
+  padding: 0;
+  columns: 2 240px;
+  column-gap: 32px;
+  list-style: none;
+  font-size: 15px;
+  line-height: 1.4;
+}
+.md-typeset .mono-roadmap__phase > article > ul > li {
+  position: relative;
+  margin: 0 0 7px;
+  padding-left: 18px;
+  break-inside: avoid;
+}
+.md-typeset .mono-roadmap__phase > article > ul > li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 0.55em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--mono-faint);
+}
+.md-typeset .mono-roadmap__phase > article > p:not(.mono-roadmap__head) > a {
+  margin-right: 18px;
+  font-size: 15px;
+}
+.md-typeset .mono-roadmap__phase > article > :last-child {
+  margin-bottom: 0;
+}
+
+/* the parts that mono.js makes */
+.mono-roadmap__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 18px;
+}
+.mono-roadmap__filter,
+.mono-roadmap__step {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  margin: 0;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--mono-radius-pill);
+  background: color-mix(in srgb, var(--mono-ink) 8%, transparent);
+  color: var(--mono-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.006em;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.mono-roadmap__filter:hover,
+.mono-roadmap__step:hover {
+  background: color-mix(in srgb, var(--mono-ink) 14%, transparent);
+}
+.mono-roadmap__filter small {
+  margin-left: 7px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.62;
+}
+.mono-roadmap__filter[aria-pressed="true"] {
+  background: var(--mono-ink);
+  color: var(--mono-bg);
+}
+.mono-roadmap__filter:focus-visible,
+.mono-roadmap__step:focus-visible {
+  border-radius: var(--mono-radius-pill);
+}
+
+.mono-roadmap__track {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 2px 0;
+  min-width: 0;
+  /* the line of the last stop in a row ends at the edge of the lane */
+  overflow-x: clip;
+}
+/* A stop: the node and the line to the next stop are at the top, the version and the name
+   are below. --mono-roadmap-surface is the fill behind the node, so the line has a gap. */
+.mono-roadmap__stop {
+  --mono-roadmap-surface: var(--mono-bg);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  width: 100%;
+  margin: 0;
+  padding: 30px 10px 10px 12px;
+  border: 0;
+  border-radius: var(--mono-radius-m);
+  background: none;
+  color: var(--mono-ink);
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s, opacity 0.2s;
+}
+.mono-roadmap__stop::before {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: -14px;
+  top: 16px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--mono-line);
+}
+.mono-roadmap__stop:last-child::before {
+  right: 14px;
+}
+.mono-roadmap__stop::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 11px;
+  box-sizing: border-box;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--mono-green);
+  box-shadow: 0 0 0 4px var(--mono-roadmap-surface);
+  transition: box-shadow 0.2s;
+}
+.mono-roadmap__stop.is-planned::before {
+  background: repeating-linear-gradient(90deg, var(--mono-line) 0 6px, transparent 6px 11px);
+}
+.mono-roadmap__stop.is-planned::after {
+  border: 2px solid var(--mono-blue);
+  background: var(--mono-roadmap-surface);
+}
+.mono-roadmap__ver {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+.mono-roadmap__ver small {
+  margin-left: 7px;
+  color: var(--mono-muted);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.mono-roadmap__label {
+  display: block;
+  margin-top: 3px;
+  color: var(--mono-muted);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: -0.004em;
+  line-height: 1.3;
+}
+.mono-roadmap__stop:hover {
+  --mono-roadmap-surface: var(--mono-bg-alt);
+  background: var(--mono-bg-alt);
+}
+/* the open release: the stop takes the surface of the release below the lane */
+.mono-roadmap__stop[aria-current="true"] {
+  --mono-roadmap-surface: var(--mono-bg-alt);
+  background: var(--mono-bg-alt);
+}
+.mono-roadmap__stop[aria-current="true"]::after {
+  box-shadow: 0 0 0 3px var(--mono-roadmap-surface), 0 0 0 5px var(--mono-ink);
+}
+.mono-roadmap__stop[aria-current="true"] .mono-roadmap__label {
+  color: var(--mono-ink-2);
+}
+.mono-roadmap__stop:focus-visible {
+  outline-offset: -2px;
+  border-radius: var(--mono-radius-m);
+}
+.mono-roadmap__stop.is-dim:not([aria-current="true"]) {
+  opacity: 0.34;
+}
+
+.mono-roadmap__nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 22px;
+}
+.mono-roadmap__step {
+  gap: 9px;
+  max-width: 100%;
+  background: color-mix(in srgb, var(--mono-ink) 7%, transparent);
+  text-align: left;
+}
+.mono-roadmap__step--next {
+  margin-left: auto;
+}
+.mono-roadmap__step::before,
+.mono-roadmap__step::after {
+  width: 0.42em;
+  height: 0.42em;
+  flex: none;
+  border-top: 1.5px solid currentColor;
+  border-right: 1.5px solid currentColor;
+}
+.mono-roadmap__step--prev::before {
+  content: "";
+  transform: rotate(-135deg);
+}
+.mono-roadmap__step--next::after {
+  content: "";
+  transform: rotate(45deg);
+}
+/* the line that tells a screen reader which release is open */
+.mono-roadmap__status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media screen {
+  .mono-roadmap.is-live .mono-roadmap__phase {
+    display: grid;
+    grid-template-columns: 120px minmax(0, 1fr);
+    column-gap: 14px;
+    padding: 3px 0;
+  }
+  .mono-roadmap.is-live .mono-roadmap__phase-name {
+    margin: 0;
+    padding-top: 7px;
+  }
+  .mono-roadmap.is-live .mono-roadmap__phase > article {
+    grid-column: 1 / -1;
+    margin: 8px 0 14px;
+  }
+  .mono-roadmap.is-live .mono-roadmap__phase > article:not(.is-on) {
+    display: none;
+  }
+  .mono-roadmap.is-live .mono-roadmap__phase > article.is-fresh {
+    animation: mono-roadmap-in 0.35s var(--mono-ease);
+  }
+}
+@keyframes mono-roadmap-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@media screen and (max-width: 44.984375em) {
+  .mono-roadmap.is-live .mono-roadmap__phase {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 8px 0;
+  }
+  .mono-roadmap.is-live .mono-roadmap__phase-name {
+    padding: 0 12px;
+  }
+  .mono-roadmap__track {
+    grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
+  }
+  .md-typeset .mono-roadmap__head .mapi-badge {
+    margin-left: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mono-roadmap.is-live .mono-roadmap__phase > article.is-fresh {
+    animation: none;
+  }
+  .mono-roadmap__stop,
+  .mono-roadmap__stop::after {
+    transition: none;
+  }
+}
+@media print {
+  .mono-roadmap__filters,
+  .mono-roadmap__track,
+  .mono-roadmap__nav {
+    display: none;
+  }
+  .md-typeset .mono-roadmap__phase > article {
+    padding: 12px 0;
+    background: none;
+    break-inside: avoid;
+  }
+}

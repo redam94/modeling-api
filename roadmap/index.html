@@ -12,8 +12,6 @@
         <meta name="author" content="Matthew Reda">
       
       
-        <link rel="canonical" href="https://redam94.github.io/modeling-api/roadmap/">
-      
       
         <link rel="prev" href="../whats-new-0.5/">
       
@@ -8007,6 +8005,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#what-v016-to-v021-contain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What v0.16 to v0.21 contain
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-v010-to-v015-contain" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -8076,7 +8085,7 @@
   <a href="#planned-expert-plugins-and-mcp" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Planned: expert plugins and MCP
+        Expert plugins and MCP
       
     </span>
   </a>
@@ -8122,153 +8131,332 @@
 <p>Some rules make the hosted platform safe. These rules are in the code from the first
 release: no pickle, contracts in JSON only, static validation, sanitized plots, and
 sandboxed runs with verified outputs.</p>
-<pre class="mermaid"><code>timeline
-    title Releases
-    v0.1 · M0 · contract layer : SDK, specs and schemas : 28 steps, PyMC and sklearn base classes : 11 built-in models, plots, sanitizer : conformance corpus
-    v0.2 · M1 · local platform : HTTP API, queue, sandboxed runner : GCS shim, signed bundles : Expert web app, CLI, Python client : make dev and Docker Compose
-    v0.3 · M2 · cloud and multi-tenant : tenants, OIDC sign-in, tokens, row-level security : quotas, fair share, cost ledger, kill switches : Cloud Run Jobs executor, Terraform : observability, security suite, chaos
-    v0.4 · M3 · Guided mode and integrations : templates, question flow, business priors : scorecard, what-if, forecasts : endpoints, snippets, webhooks, embeds : sign-up, deletion, GDPR export
-    v0.5 · M3.5 · workflows and governance : workflows of tests, transforms and models : governance policies and null tests : Data and Model Explorers : mmm-framework and statsmodels : About cards, Help me choose
-    v0.5.1 · forecasts with actuals : forecasts from the last actual : no refit
-    v0.6 · spec builder : completions from the catalog : Insert panel : Visual view
-    v0.7 · scientific models : four sci models : outputs on a grid : Fields in the Model Explorer
-    v0.8 · M4 · tree datasets : NetCDF-4 and HDF5 groups : versions from several files : data.nodes and tree-input models
-    v0.9 · M5 · science gallery : 15 sci models in all : 14 plot recipes : Bayesian workflow nodes and six recipes : tutorials for the case studies
-    v0.10 · chart wiring : score plots by output shape : classifier plots and metrics : Data Explorer for scientific data
-    v0.11 · run tracking : metrics, params, tags and notes : live chains : run search
-    v0.12 · MMM pack : nested and multivariate MMMs : time-varying effects, counts and shares : ten plot recipes
-    v0.13 · causal and BSTS : causal impact, synthetic control, DiD : ts.bsts : geo-lift to MMM
-    v0.14 · run comparison : compare page, experiments, saved views : run media : image data and classification
-    v0.15 · deep learning : mapi-jax networks : image collections : GPU resource class
-    planned · v1.0 : MLflow export : system metrics : retention and hardening
-    planned · expert plugins and MCP : plugin upload for allow-listed experts : curated MCP server : SBC as parent runs</code></pre>
-<table>
-<thead>
-<tr>
-<th>Release</th>
-<th>Milestone</th>
-<th>Theme</th>
-<th>Status</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>v0.1</strong></td>
-<td>M0</td>
-<td>The contract layer: specs, the xarray runtime, steps, models, plots and the conformance corpus. All of it runs in your own Python process.</td>
-<td><span class="mapi-badge">available</span></td>
-</tr>
-<tr>
-<td><strong>v0.2</strong></td>
-<td>M1</td>
-<td><a href="platform-api/">The local platform</a>: the same work as API calls and sandboxed runs, with the Expert web app. It runs on a laptop or on one Docker host.</td>
-<td><span class="mapi-badge">available</span></td>
-</tr>
-<tr>
-<td><strong>v0.3</strong></td>
-<td>M2</td>
-<td><a href="cloud/">Cloud and multi-tenant core</a>: tenants, sign-in, tokens, quotas and cost. Each run gets one new sandbox on Cloud Run. This release is a private beta.</td>
-<td><span class="mapi-badge">available</span></td>
-</tr>
-<tr>
-<td><strong>v0.4</strong></td>
-<td>M3</td>
-<td><a href="guided-ui/">Guided mode and integrations</a>: analysts go from a spreadsheet to a report and a scenario. Other apps get endpoints, webhooks and embeds. This release is the first public launch.</td>
-<td><span class="mapi-badge">available</span></td>
-</tr>
-<tr>
-<td><strong>v0.5</strong></td>
-<td>M3.5</td>
-<td><a href="workflows-governance/">Workflows, governance, explorers, mmm-framework and statsmodels</a>: automated, versioned analyses. Models must pass null tests and get the approval of a second person. Also budget plans, About cards and Help me choose.</td>
-<td><span class="mapi-badge">available</span></td>
-</tr>
-<tr>
-<td><strong>v0.5.1</strong></td>
-<td></td>
-<td><a href="../concepts/forecasting-with-actuals/">Forecasts with actuals</a>: a forecast starts from the actuals that came after the fit. The model does not fit again.</td>
-<td><span class="mapi-badge">available</span></td>
-</tr>
-<tr>
-<td><strong>v0.6</strong></td>
-<td></td>
-<td>The spec builder in the web app: completions and hover text from the catalog of the tenant, an <strong>Insert</strong> panel and a <strong>Visual</strong> view.</td>
-<td><span class="mapi-badge">available</span></td>
-</tr>
-<tr>
-<td><strong>v0.7</strong></td>
-<td></td>
-<td><a href="../reference/models/#scientific-models-mapi-plugin-science">Scientific models</a>: four <code>sci.*</code> plugins with data on a map, an image or a grid. Outputs on a grid show in the <strong>Fields</strong> section of the Model Explorer.</td>
-<td><span class="mapi-badge">available</span></td>
-</tr>
-<tr>
-<td><strong>v0.8</strong></td>
-<td>M4</td>
-<td><a href="../guides/tree-data/">Tree datasets</a>: NetCDF-4 and HDF5 files with groups, raw HDF5 files, and versions made from several files. A spec selects the nodes that it reads.</td>
-<td><span class="mapi-badge">available</span></td>
-</tr>
-<tr>
-<td><strong>v0.9</strong></td>
-<td>M5</td>
-<td><a href="../tutorials/pymc-challenges/">Science gallery</a>: 15 <code>sci.*</code> models in all, 14 plot recipes, workflow nodes for Bayesian checks and plots, six workflow recipes and a tutorial for each case study.</td>
-<td><span class="mapi-badge">available</span></td>
-</tr>
-<tr>
-<td><strong>v0.10</strong></td>
-<td></td>
-<td>Chart wiring: score plots that follow the shape of each output, standard plots and metrics for classifiers, state models and ADVI fits, and the <a href="../guides/data-explorer/#scientific-data">Data Explorer for scientific data</a>.</td>
-<td><span class="mapi-badge">available</span></td>
-</tr>
-<tr>
-<td><strong>v0.11</strong></td>
-<td></td>
-<td><a href="../guides/tracking/">Run tracking</a>: metrics, params, tags, notes and structured log lines for each run, live chains and run search.</td>
-<td><span class="mapi-badge">available</span></td>
-</tr>
-<tr>
-<td><strong>v0.12</strong></td>
-<td></td>
-<td><a href="../models/mmm-framework/">The MMM pack</a>: <code>mmm.nested</code>, <code>mmm.multivariate</code>, effects that change over time, counts and shares, and ten plot recipes.</td>
-<td><span class="mapi-badge">available</span></td>
-</tr>
-<tr>
-<td><strong>v0.13</strong></td>
-<td></td>
-<td><a href="../models/causal/">Causal models and BSTS</a>: <code>causal.impact</code>, <code>causal.synthetic_control</code>, <code>causal.did</code> and <code>ts.bsts</code>. A geo-lift test calibrates the MMM.</td>
-<td><span class="mapi-badge">available</span></td>
-</tr>
-<tr>
-<td><strong>v0.14</strong></td>
-<td></td>
-<td><a href="../guides/run-comparison/">Run comparison</a>, experiments and saved views, run media, <a href="../guides/image-data/">image data</a> and a classification pack.</td>
-<td><span class="mapi-badge">available</span></td>
-</tr>
-<tr>
-<td><strong>v0.15</strong></td>
-<td></td>
-<td><a href="../guides/deep-learning/">Deep learning</a> on JAX, image collections of up to 1 000 000 images, and the resource class <code>GPU</code>.</td>
-<td><span class="mapi-badge">available</span></td>
-</tr>
-<tr>
-<td><strong>v1.0</strong></td>
-<td></td>
-<td>Planned: an MLflow export of runs and experiments, system metrics for each run, retention for the tracking data, and hardening.</td>
-<td><span class="mapi-badge mapi-badge--soon">planned</span></td>
-</tr>
-<tr>
-<td>Not set</td>
-<td></td>
-<td><a href="expert-plugins/">Expert plugins and MCP</a>: plugin upload for allow-listed experts, a curated MCP server for AI agents, and SBC as parent runs.</td>
-<td><span class="mapi-badge mapi-badge--soon">planned</span></td>
-</tr>
-</tbody>
-</table>
+<p>Select a release to see what it contains. The filters show the releases for one part of the
+product.</p>
+<div class="mono-roadmap">
+<section class="mono-roadmap__phase">
+<p class="mono-roadmap__phase-name">The runtime</p>
+<article data-area="Platform" id="v0.1">
+<p class="mono-roadmap__head"><strong>v0.1</strong> The contract layer <em>M0</em></p>
+<p>Specs, the xarray runtime, steps, models, plots and the conformance corpus. All of it runs in
+your own Python process.</p>
+<ul>
+<li>The SDK, the specs and the schemas</li>
+<li>28 steps, and base classes for PyMC and sklearn</li>
+<li>11 built-in models, plots and the sanitizer</li>
+<li>The conformance corpus</li>
+</ul>
+</article>
+</section>
+<section class="mono-roadmap__phase">
+<p class="mono-roadmap__phase-name">The job platform</p>
+<article data-area="Platform, Web app" id="v0.2">
+<p class="mono-roadmap__head"><strong>v0.2</strong> The local platform <em>M1</em></p>
+<p>The same work as API calls and sandboxed runs, with the Expert web app. It runs on a laptop
+or on one Docker host.</p>
+<ul>
+<li>The HTTP API, the queue and the sandboxed runner</li>
+<li>The GCS shim and signed bundles</li>
+<li>The Expert web app, the CLI and the Python client</li>
+<li><code>make dev</code> and Docker Compose</li>
+</ul>
+<p><a href="platform-api/">Read about the local platform</a></p>
+</article>
+</section>
+<section class="mono-roadmap__phase">
+<p class="mono-roadmap__phase-name">The hosted platform</p>
+<article data-area="Platform" id="v0.3">
+<p class="mono-roadmap__head"><strong>v0.3</strong> Cloud and multi-tenant <em>M2</em></p>
+<p>Tenants, sign-in, tokens, quotas and cost. Each run gets one new sandbox on Cloud Run. This
+release is a private beta.</p>
+<ul>
+<li>Tenants, OIDC sign-in, tokens and row-level security</li>
+<li>Quotas, fair share, the cost ledger and kill switches</li>
+<li>The Cloud Run Jobs executor and Terraform</li>
+<li>Observability, the security suite and chaos tests</li>
+</ul>
+<p><a href="cloud/">Read about the cloud core</a></p>
+</article>
+<article data-area="Web app, Platform" id="v0.4">
+<p class="mono-roadmap__head"><strong>v0.4</strong> Guided mode and integrations <em>M3</em></p>
+<p>Analysts go from a spreadsheet to a report and a scenario. Other apps get endpoints, webhooks
+and embeds. This release is the first public launch.</p>
+<ul>
+<li>Templates, the question flow and business priors</li>
+<li>The scorecard, what-ifs and forecasts</li>
+<li>Endpoints, snippets, webhooks and embeds</li>
+<li>Sign-up, tenant deletion and the GDPR export</li>
+</ul>
+<p><a href="guided-ui/">Read about Guided mode</a></p>
+</article>
+<article data-area="Platform, Models" id="v0.5">
+<p class="mono-roadmap__head"><strong>v0.5</strong> Workflows and governance <em>M3.5</em></p>
+<p>Automated, versioned analyses. Models must pass null tests and get the approval of a second
+person. Also budget plans, About cards and Help me choose.</p>
+<ul>
+<li>Workflows of tests, transforms and models</li>
+<li>Governance policies and null tests</li>
+<li>The Data Explorer and the Model Explorer</li>
+<li>mmm-framework and twelve statsmodels models</li>
+</ul>
+<p><a href="workflows-governance/">Read about workflows and governance</a></p>
+</article>
+<article data-area="Models" id="v0.5.1">
+<p class="mono-roadmap__head"><strong>v0.5.1</strong> Forecasts with actuals</p>
+<p>A forecast starts from the actuals that came after the fit. The model does not fit again.</p>
+<ul>
+<li>Forecasts from the last actual</li>
+<li>No refit</li>
+</ul>
+<p><a href="../concepts/forecasting-with-actuals/">Read about forecasts with actuals</a></p>
+</article>
+<article data-area="Web app" id="v0.6">
+<p class="mono-roadmap__head"><strong>v0.6</strong> The spec builder</p>
+<p>The spec builder in the web app helps you write a spec. This release changed only the web
+app.</p>
+<ul>
+<li>Completions and hover text from the catalog of the tenant</li>
+<li>The <strong>Insert</strong> panel</li>
+<li>The <strong>Visual</strong> view</li>
+</ul>
+</article>
+</section>
+<section class="mono-roadmap__phase">
+<p class="mono-roadmap__phase-name">Science and data</p>
+<article data-area="Models" id="v0.7">
+<p class="mono-roadmap__head"><strong>v0.7</strong> Scientific models</p>
+<p>Four <code>sci.*</code> plugins with data on a map, an image or a grid.</p>
+<ul>
+<li>Four <code>sci.*</code> models</li>
+<li>Outputs on a grid</li>
+<li>The <strong>Fields</strong> section of the Model Explorer</li>
+</ul>
+<p><a href="../reference/models/#scientific-models-mapi-plugin-science">See the scientific models</a></p>
+</article>
+<article data-area="Data" id="v0.8">
+<p class="mono-roadmap__head"><strong>v0.8</strong> Tree datasets <em>M4</em></p>
+<p>NetCDF-4 and HDF5 files with groups, raw HDF5 files, and versions made from several files. A
+spec selects the nodes that it reads.</p>
+<ul>
+<li>NetCDF-4 and HDF5 groups</li>
+<li>Versions from several files</li>
+<li><code>data.nodes</code> and models that take a tree</li>
+</ul>
+<p><a href="../guides/tree-data/">Read about tree datasets</a></p>
+</article>
+<article data-area="Models" id="v0.9">
+<p class="mono-roadmap__head"><strong>v0.9</strong> The science gallery <em>M5</em></p>
+<p>15 <code>sci.*</code> models in all, with a tutorial for each case study.</p>
+<ul>
+<li>15 <code>sci.*</code> models in all</li>
+<li>14 plot recipes</li>
+<li>Workflow nodes for Bayesian checks, and six workflow recipes</li>
+<li>Tutorials for the case studies</li>
+</ul>
+<p><a href="../tutorials/pymc-challenges/">Open the science tutorials</a></p>
+</article>
+<article data-area="Data, Web app" id="v0.10">
+<p class="mono-roadmap__head"><strong>v0.10</strong> Chart wiring</p>
+<p>Score plots follow the shape of each output. Classifiers, state models and ADVI fits get
+standard plots and metrics.</p>
+<ul>
+<li>Score plots by the shape of the output</li>
+<li>Plots and metrics for classifiers</li>
+<li>The Data Explorer for scientific data</li>
+</ul>
+<p><a href="../guides/data-explorer/#scientific-data">Read about the Data Explorer for scientific data</a></p>
+</article>
+</section>
+<section class="mono-roadmap__phase">
+<p class="mono-roadmap__phase-name">Tracking and model packs</p>
+<article data-area="Platform" id="v0.11">
+<p class="mono-roadmap__head"><strong>v0.11</strong> Run tracking</p>
+<p>Each run keeps its metrics, params, tags, notes and structured log lines.</p>
+<ul>
+<li>Metrics, params, tags and notes</li>
+<li>Live chains</li>
+<li>Run search</li>
+</ul>
+<p><a href="../guides/tracking/">Read about run tracking</a></p>
+</article>
+<article data-area="Models" id="v0.12">
+<p class="mono-roadmap__head"><strong>v0.12</strong> The MMM pack</p>
+<p>More marketing-mix models, with ten plot recipes.</p>
+<ul>
+<li><code>mmm.nested</code> and <code>mmm.multivariate</code></li>
+<li>Effects that change over time, counts and shares</li>
+<li>Ten plot recipes</li>
+</ul>
+<p><a href="../models/mmm-framework/">Read about the marketing-mix models</a></p>
+</article>
+<article data-area="Models" id="v0.13">
+<p class="mono-roadmap__head"><strong>v0.13</strong> Causal models and BSTS</p>
+<p>Models that measure the effect of a change. A geo-lift test calibrates the MMM.</p>
+<ul>
+<li><code>causal.impact</code>, <code>causal.synthetic_control</code> and <code>causal.did</code></li>
+<li><code>ts.bsts</code></li>
+<li>From a geo-lift test to the MMM</li>
+</ul>
+<p><a href="../models/causal/">Read about the causal models</a></p>
+</article>
+<article data-area="Platform, Data" id="v0.14">
+<p class="mono-roadmap__head"><strong>v0.14</strong> Run comparison and images</p>
+<p>Compare runs side by side, and use images as data.</p>
+<ul>
+<li>The compare page, experiments and saved views</li>
+<li>Images, figures and tables in a run</li>
+<li>Image data and a classification pack</li>
+</ul>
+<p><a href="../guides/run-comparison/">Read about run comparison</a>
+<a href="../guides/image-data/">Read about image data</a></p>
+</article>
+<article data-area="Models, Data" id="v0.15">
+<p class="mono-roadmap__head"><strong>v0.15</strong> Deep learning</p>
+<p>Networks on JAX, with image collections of up to 1 000 000 images.</p>
+<ul>
+<li><code>mapi-jax</code> networks</li>
+<li>Image collections</li>
+<li>The resource class <code>GPU</code></li>
+</ul>
+<p><a href="../guides/deep-learning/">Read about deep learning</a></p>
+</article>
+</section>
+<section class="mono-roadmap__phase">
+<p class="mono-roadmap__phase-name">Dashboards and your own code</p>
+<article data-area="Web app" id="v0.16">
+<p class="mono-roadmap__head"><strong>v0.16</strong> Client dashboards</p>
+<p>Show your model results to persons outside the team. The model changes only when an analyst
+approves.</p>
+<ul>
+<li>Client dashboards and the <code>client</code> role</li>
+<li>Share links with a passcode and an expiry</li>
+<li>What-ifs and uploads of new numbers, with no refit</li>
+<li>Refit requests</li>
+</ul>
+<p><a href="../whats-new-0.16/">Read what's new in 0.16</a></p>
+</article>
+<article data-area="Web app" id="v0.17">
+<p class="mono-roadmap__head"><strong>v0.17</strong> Dashboards for each model type</p>
+<p>Client dashboards work for all model types, not only for marketing-mix models.</p>
+<ul>
+<li>A layout for each model family</li>
+<li>Panels that analysts add, remove and move</li>
+<li>Try a case, and score a file of new cases</li>
+<li>Accuracy against the actual results</li>
+</ul>
+<p><a href="../whats-new-0.17/">Read what's new in 0.17</a></p>
+</article>
+<article data-area="Extensions, Web app" id="v0.18">
+<p class="mono-roadmap__head"><strong>v0.18</strong> Make it yours</p>
+<p>Add your own models, prep steps, charts and workflows, with no code or as Python plugins.</p>
+<ul>
+<li>Model recipes, prep presets and chart templates, with no code</li>
+<li>A plugin kit for each kind of plugin</li>
+<li>Tours, a checklist, a sample project and playgrounds</li>
+</ul>
+<p><a href="../whats-new-0.18/">Read what's new in 0.18</a></p>
+</article>
+<article data-area="Extensions, Platform" id="v0.19">
+<p class="mono-roadmap__head"><strong>v0.19</strong> Code upload</p>
+<p>Upload your own Python to a shared deployment. The platform checks it in the sandbox.</p>
+<ul>
+<li>Models, prep steps, plot recipes, workflow nodes and templates</li>
+<li>Checks that run none of the code first</li>
+<li>Private to you first, then approved by a second admin</li>
+</ul>
+<p><a href="../whats-new-0.19/">Read what's new in 0.19</a></p>
+</article>
+<article data-area="Web app, Extensions" id="v0.20">
+<p class="mono-roadmap__head"><strong>v0.20</strong> Dashboard chat and MCP</p>
+<p>Readers ask an AI assistant about the numbers on a dashboard. Chat tools and agents read a
+dashboard over MCP.</p>
+<ul>
+<li>A chat on each dashboard, off until you turn it on</li>
+<li>An MCP server with read-only tools</li>
+<li>Access with a read token or a share link</li>
+</ul>
+<p><a href="../whats-new-0.20/">Read what's new in 0.20</a></p>
+</article>
+<article data-area="Web app" id="v0.21">
+<p class="mono-roadmap__head"><strong>v0.21</strong> One look and one search</p>
+<p>The web app and the docs have one look. A search in the app finds pages, your work and the
+docs.</p>
+<ul>
+<li>Monochrome controls and colour for data, in light and dark</li>
+<li>One search in the app</li>
+<li>Six tabs, a new home page and a tuned search in the docs</li>
+</ul>
+<p><a href="../whats-new-0.21/">Read what's new in 0.21</a></p>
+</article>
+</section>
+<section class="mono-roadmap__phase">
+<p class="mono-roadmap__phase-name">Planned</p>
+<article data-area="Platform" data-status="planned" id="v1.0">
+<p class="mono-roadmap__head"><strong>v1.0</strong> Complete run tracking</p>
+<p>This release is planned. These items are not available.</p>
+<ul>
+<li>An MLflow export of runs and experiments</li>
+<li>System metrics for each run</li>
+<li>Retention for the tracking data</li>
+<li>Hardening</li>
+</ul>
+<p><a href="#planned-v10">See the plan for v1.0</a></p>
+</article>
+<article data-area="Extensions" data-status="planned" id="public-code-upload">
+<p class="mono-roadmap__head"><strong>Later</strong> Public code upload</p>
+<p>Uploaded plugins for all tenants. This release has no number yet. The security suite must
+first be green for two weeks.</p>
+<ul>
+<li>A separate execution project and signed base images</li>
+<li>Verification before code runs</li>
+<li>Sybil controls and a takedown process</li>
+<li>A kill-switch drill and an external penetration test</li>
+</ul>
+<p><a href="#after-v06">See the planned sequence</a></p>
+</article>
+<article data-area="Platform, Models" data-status="planned" id="scale-and-depth">
+<p class="mono-roadmap__head"><strong>Later</strong> Scale and depth</p>
+<p>Each item comes when real usage needs it.</p>
+<ul>
+<li>Warm scorers for exact answers in less than one second</li>
+<li>Executors with more than one GPU, and for large data</li>
+<li>Other clouds</li>
+<li>Recursive forecasting and chained models</li>
+<li>A plugin marketplace with a consent model</li>
+</ul>
+<p><a href="#after-v06">See the planned sequence</a></p>
+</article>
+</section>
+</div>
 <div class="admonition note">
 <p class="admonition-title">Milestone names</p>
 <p>The plan before v0.5 gave the names M4 and M5 to plugin upload and to public code upload.
 The releases used these names for tree datasets (M4) and the science gallery (M5). Plugin
-upload, the MCP server and public code upload are not done. They have no release number
-yet.</p>
+upload came in v0.19, and the MCP server for dashboards came in v0.20. Public code upload
+is not done. It has no release number yet.</p>
 </div>
+<h2 id="what-v016-to-v021-contain">What v0.16 to v0.21 contain<a class="headerlink" href="#what-v016-to-v021-contain" title="Permanent link">&para;</a></h2>
+<p>Each release has its own page.</p>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>v0.16, client dashboards.</strong> Dashboards for persons outside the team, the <code>client</code>
+      role, share links with a passcode and an expiry, what-ifs and uploads of new numbers
+      with no refit, and refit requests (<a href="../whats-new-0.16/">What's new in 0.16</a>).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>v0.17, dashboards for each model type.</strong> A layout for each model family, panels that
+      analysts add and move, try a case, accuracy against the actual results, and scores for
+      a file of new cases (<a href="../whats-new-0.17/">What's new in 0.17</a>).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>v0.18, make it yours.</strong> Your own models, prep steps, charts and workflows, with no
+      code or as Python plugins on a stack that you operate. Also tours, a checklist, a sample
+      project and playgrounds (<a href="../whats-new-0.18/">What's new in 0.18</a>).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>v0.19, code upload.</strong> Tenant admins and verified users upload a Python plugin to a
+      shared deployment. The platform checks it in the sandbox, and a second admin approves
+      it for the team (<a href="../whats-new-0.19/">What's new in 0.19</a>).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>v0.20, dashboard chat and MCP.</strong> Readers ask an assistant about the numbers on a
+      dashboard. Chat tools and agents read a dashboard over MCP, with read-only tools
+      (<a href="../whats-new-0.20/">What's new in 0.20</a>).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>v0.21, one look and one search.</strong> The web app and the docs have one look, and the
+      web app has one search for pages, your work and the docs
+      (<a href="../whats-new-0.21/">What's new in 0.21</a>).</li>
+</ul>
 <h2 id="what-v010-to-v015-contain">What v0.10 to v0.15 contain<a class="headerlink" href="#what-v010-to-v015-contain" title="Permanent link">&para;</a></h2>
 <p><a href="../whats-new-0.15/">What's new in 0.10 to 0.15</a> tells about each release.</p>
 <ul class="task-list">
@@ -8443,17 +8631,24 @@ a real Google Cloud project is not done yet, the same as for v0.3:</p>
 <li>cold-start measurements</li>
 <li>public workspaces on an executor that enforces egress and DNS.</li>
 </ul>
-<h2 id="planned-expert-plugins-and-mcp">Planned: expert plugins and MCP<a class="headerlink" href="#planned-expert-plugins-and-mcp" title="Permanent link">&para;</a></h2>
-<p><strong>Plugin upload for allow-listed experts.</strong> Experts upload their own model plugins. The
-platform builds them into hash-pinned overlays, with native wheels from a curated mirror. The
-contract kit checks each plugin on upload. Also fast dev overlays and a vetted tier of ported
-sibling models.</p>
-<p>An <strong>MCP server</strong> gives AI assistants and agents a small, curated set of tools that are safe
-from injection. The tools list and describe models, score an endpoint, read a run and get a
-plot.</p>
+<h2 id="planned-expert-plugins-and-mcp">Expert plugins and MCP<a class="headerlink" href="#planned-expert-plugins-and-mcp" title="Permanent link">&para;</a></h2>
+<p><strong>Plugin upload</strong> came in v0.19. Tenant admins and verified users upload their own Python
+plugins to a shared deployment. The platform checks each plugin in the sandbox, and a second
+person approves it for the tenant (<a href="../extend/upload/">Upload your own code</a>).</p>
+<p>The <strong>dashboard chat</strong> and an <strong>MCP server</strong> came in v0.20. The MCP server gives chat tools
+and agents the read-only tools of a dashboard
+(<a href="../guides/connect-a-chat-tool-with-mcp/">Connect a chat tool with MCP</a>).</p>
+<p>These parts of the plan have no release yet:</p>
+<ul>
+<li>Plugins with native code, with wheels from a curated mirror. An uploaded plugin is pure
+  Python only.</li>
+<li>Fast dev overlays, and a vetted tier of ported sibling models.</li>
+<li>More MCP tools: list and describe models, score an endpoint, read a run and get a plot.</li>
+<li><strong><code>SBC</code></strong> as one parent run.</li>
+</ul>
 <p>Budget optimisations already run as <strong>in-sandbox <code>optimize</code> jobs</strong>, and backtests run as
 workflow nodes (v0.5). Sweeps are workflows with a <code>search.grid</code> node (v0.14 retired the
-<code>Sweep</code> document). <strong><code>SBC</code></strong> runs as one parent. <a href="expert-plugins/">More</a>.</p>
+<code>Sweep</code> document). <a href="expert-plugins/">More</a>.</p>
 <h2 id="after-v06">After expert plugins<a class="headerlink" href="#after-v06" title="Permanent link">&para;</a></h2>
 <p>This is the planned sequence:</p>
 <ol>
@@ -8592,8 +8787,6 @@ workflow nodes (v0.5). Sweeps are workflows with a <code>search.grid</code> node
       <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.indexes", "navigation.top", "navigation.footer", "navigation.path", "search.highlight", "content.code.copy", "content.code.annotate", "content.tabs.link", "toc.follow"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-  
-    <script src="../assets/vendor/mermaid/mermaid.min.js"></script>
   
   
       <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>

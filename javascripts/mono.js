@@ -5,8 +5,8 @@
    to it, and each part works when the other parts are missing.
 
    Parts: header hairline on scroll, the key hint in the search pill, the search dialog
-   (Cmd/Ctrl+K, the "Try" list, section labels, one-line teasers, focus), badge tones and
-   the scroll reveal. */
+   (Cmd/Ctrl+K, the "Try" list, section labels, one-line teasers, focus), badge tones,
+   the release roadmap and the scroll reveal. */
 (function () {
   "use strict";
 
@@ -301,6 +301,209 @@
     });
   }
 
+  // ---------------------------------------------------------------------------- roadmap
+  /* A release roadmap (.mono-roadmap, see mono-blocks.css). The page holds each release as an
+     <article> in the <section> of its lane. This part makes one button for each release, the
+     filters and the links to the release before and after, and shows one release at a time
+     below its lane. The address keeps the open release (#v0.12), so a link can open one. */
+  function setupRoadmap() {
+    Array.prototype.forEach.call(doc.querySelectorAll(".mono-roadmap:not(.is-live)"), buildRoadmap);
+  }
+
+  function buildRoadmap(map) {
+    var releases = [];
+    var areas = [];
+    var counts = {};
+    var current = -1;
+    var still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    Array.prototype.forEach.call(map.querySelectorAll(".mono-roadmap__phase"), function (phase) {
+      var track = el("div", "mono-roadmap__track");
+      var title = phase.querySelector(".mono-roadmap__phase-name");
+      track.setAttribute("role", "group");
+      if (title) track.setAttribute("aria-label", title.textContent.trim());
+      var first = null;
+      Array.prototype.forEach.call(phase.children, function (article) {
+        if (article.tagName !== "ARTICLE" || !article.id) return;
+        var head = article.querySelector(".mono-roadmap__head");
+        if (!head) return;
+        first = first || article;
+
+        var strong = head.querySelector("strong");
+        var em = head.querySelector("em");
+        var version = strong ? strong.textContent.trim() : article.id;
+        var name = "";
+        Array.prototype.forEach.call(head.childNodes, function (node) {
+          if (node.nodeType === 3) name += node.textContent;
+        });
+        name = name.replace(/\s+/g, " ").trim();
+        var planned = article.getAttribute("data-status") === "planned";
+        var tags = (article.getAttribute("data-area") || "").split(",").map(function (tag) {
+          return tag.trim();
+        }).filter(Boolean);
+        tags.forEach(function (tag) {
+          if (!Object.prototype.hasOwnProperty.call(counts, tag)) {
+            counts[tag] = 0;
+            areas.push(tag);
+          }
+          counts[tag] += 1;
+        });
+
+        var stop = el("button", "mono-roadmap__stop" + (planned ? " is-planned" : ""));
+        stop.type = "button";
+        stop.setAttribute("aria-controls", article.id);
+        var ver = el("span", "mono-roadmap__ver", version);
+        if (em) ver.appendChild(el("small", "", em.textContent.trim()));
+        stop.appendChild(ver);
+        stop.appendChild(el("span", "mono-roadmap__label", name));
+        track.appendChild(stop);
+
+        var state = planned ? "planned" : "available";
+        head.appendChild(el("span", "mapi-badge " + (planned ? "mapi-badge--soon" : "mapi-badge--ok"), state));
+        article.setAttribute("aria-label", version + " " + name);
+        releases.push({ article: article, stop: stop, title: version + " " + name, state: state, planned: planned, tags: tags });
+      });
+      if (first) phase.insertBefore(track, first);
+    });
+    if (!releases.length) return;
+
+    var status = el("p", "mono-roadmap__status");
+    status.setAttribute("role", "status");
+    map.appendChild(status);
+
+    function indexOfId(id) {
+      for (var i = 0; i < releases.length; i += 1) {
+        if (releases[i].article.id === id) return i;
+      }
+      return -1;
+    }
+
+    function fromAddress() {
+      var id = location.hash.slice(1);
+      try {
+        id = decodeURIComponent(id);
+      } catch (err) {
+        /* keep the raw text */
+      }
+      return id ? indexOfId(id) : -1;
+    }
+
+    /* Show one release. "before" and "after" are the two nodes that must stay at the same
+       place on the screen (the button that the person used), because the release above them
+       can close and move the page. Without them the call comes from the address. */
+    function select(index, before, after) {
+      if (index < 0 || index >= releases.length) return;
+      var top = before ? before.getBoundingClientRect().top : 0;
+      releases.forEach(function (release, i) {
+        var on = i === index;
+        release.article.classList.toggle("is-on", on);
+        release.article.classList.toggle("is-fresh", on && !!before && i !== current);
+        if (on) release.stop.setAttribute("aria-current", "true");
+        else release.stop.removeAttribute("aria-current");
+      });
+      current = index;
+      if (!before) return;
+      var moved = (after || before).getBoundingClientRect().top - top;
+      if (moved) window.scrollBy({ top: moved, behavior: "instant" });
+      var release = releases[index];
+      status.textContent = release.title + ", " + release.state;
+      try {
+        history.replaceState(null, "", "#" + encodeURIComponent(release.article.id));
+      } catch (err) {
+        /* a page from a file: the address stays */
+      }
+    }
+
+    function show(node) {
+      if (node.scrollIntoView) node.scrollIntoView({ block: "nearest", behavior: still ? "auto" : "smooth" });
+    }
+
+    releases.forEach(function (release, index) {
+      release.stop.addEventListener("click", function () {
+        select(index, release.stop);
+        show(release.article);
+      });
+      // The arrow keys go from stop to stop; Enter or Space opens the stop.
+      release.stop.addEventListener("keydown", function (event) {
+        var to = -1;
+        if (event.key === "ArrowRight" || event.key === "ArrowDown") to = index + 1;
+        else if (event.key === "ArrowLeft" || event.key === "ArrowUp") to = index - 1;
+        else if (event.key === "Home") to = 0;
+        else if (event.key === "End") to = releases.length - 1;
+        if (to < 0 || to >= releases.length || event.altKey || event.ctrlKey || event.metaKey) return;
+        event.preventDefault();
+        releases[to].stop.focus();
+      });
+
+      var nav = el("div", "mono-roadmap__nav");
+      [-1, 1].forEach(function (step) {
+        var other = releases[index + step];
+        if (!other) return;
+        var kind = step < 0 ? "prev" : "next";
+        var button = el("button", "mono-roadmap__step mono-roadmap__step--" + kind, other.title);
+        button.type = "button";
+        button.setAttribute("aria-label", (step < 0 ? "The release before: " : "The release after: ") + other.title);
+        button.addEventListener("click", function () {
+          select(index + step, release.article, other.article);
+          var next = other.article.querySelector(".mono-roadmap__step--" + kind) || other.article.querySelector(".mono-roadmap__step");
+          if (next) next.focus({ preventScroll: true });
+          show(other.stop);
+        });
+        nav.appendChild(button);
+      });
+      release.article.appendChild(nav);
+    });
+
+    // The filters: one for each name in data-area, in the sequence of the page.
+    if (areas.length > 1) {
+      var filters = el("div", "mono-roadmap__filters");
+      filters.setAttribute("role", "group");
+      filters.setAttribute("aria-label", "Show the releases for one part");
+      var buttons = [];
+      var addFilter = function (label, count, tag) {
+        var button = el("button", "mono-roadmap__filter", label);
+        button.type = "button";
+        button.appendChild(el("small", "", String(count)));
+        button.setAttribute("aria-pressed", tag ? "false" : "true");
+        button.addEventListener("click", function () {
+          buttons.forEach(function (item) {
+            item.setAttribute("aria-pressed", item === button ? "true" : "false");
+          });
+          releases.forEach(function (release) {
+            release.stop.classList.toggle("is-dim", !!tag && release.tags.indexOf(tag) < 0);
+          });
+        });
+        buttons.push(button);
+        filters.appendChild(button);
+      };
+      addFilter("All", releases.length, "");
+      areas.forEach(function (tag) {
+        addFilter(tag, counts[tag], tag);
+      });
+      map.insertBefore(filters, map.firstChild);
+    }
+
+    map.classList.add("is-live");
+
+    // Start at the release in the address, or at the newest release that is available.
+    var start = fromAddress();
+    var linked = start >= 0;
+    if (!linked) {
+      for (var i = releases.length - 1; i >= 0 && start < 0; i -= 1) {
+        if (!releases[i].planned) start = i;
+      }
+    }
+    select(Math.max(start, 0));
+    if (linked && releases[start].stop.scrollIntoView) releases[start].stop.scrollIntoView({ block: "center" });
+
+    window.addEventListener("hashchange", function () {
+      var index = fromAddress();
+      if (index < 0 || !doc.contains(map)) return;
+      select(index);
+      if (releases[index].stop.scrollIntoView) releases[index].stop.scrollIntoView({ block: "center" });
+    });
+  }
+
   // ---------------------------------------------------------------------------- reveal
   function setupReveal() {
     var nodes = Array.prototype.slice.call(doc.querySelectorAll("[data-reveal]:not(.is-in)"));
@@ -341,6 +544,7 @@
     setupHeader();
     setupSearch();
     var page = function () {
+      setupRoadmap();
       setupBadges();
       setupReveal();
     };
