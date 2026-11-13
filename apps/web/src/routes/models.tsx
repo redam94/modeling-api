@@ -7,6 +7,7 @@ import { useModel, useModels, useModelVersion, useModelVersions } from "@/api/qu
 import type { Model, ModelVersion } from "@/api/types";
 import { CopyButton, EmptyState, ErrorNotice, KeyValues, LoadingRows, Mono, PageHeader, QueryView } from "@/components/common";
 import { DataTable } from "@/components/data-table";
+import { ListNoMatches, ListToolbar, matchesQuery } from "@/components/list-toolbar";
 import { EmptyArt } from "@/components/brand/empty-art";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/overlays";
@@ -14,6 +15,7 @@ import { Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/ui
 import { ValidationStatusBadge } from "@/features/explore/governance-panel";
 import { DiagnosticsTable, PreprocessViewer, ProvenancePanel, ScorecardView, TreeBrowser } from "@/features/models/inspect";
 import { PlotGallery } from "@/features/plots/plot-gallery";
+import { useRecordRecent } from "@/features/search/use-record-recent";
 import { formatNumber, relativeTime, shortId } from "@/lib/format";
 
 const modelColumns: ColumnDef<Model, unknown>[] = [
@@ -31,9 +33,13 @@ const modelColumns: ColumnDef<Model, unknown>[] = [
   { accessorKey: "updated_at", header: "Updated", cell: ({ row }) => relativeTime(row.original.updated_at) },
 ];
 
+const listRoute = getRouteApi("/models");
+
 export function ModelsPage() {
   const models = useModels();
   const navigate = useNavigate();
+  const q = listRoute.useSearch().q ?? "";
+  const setQuery = (next: string) => void navigate({ to: "/models", search: { q: next || undefined }, replace: true });
   return (
     <>
       <PageHeader
@@ -42,16 +48,24 @@ export function ModelsPage() {
         description="Each successful fit makes a verified, signed model version. Open one to read its scorecard, plots and diagnostics."
       />
       <QueryView query={models}>
-        {(page) =>
-          page.items.length ? (
-            <DataTable
-              label="Models"
-              data={page.items}
-              columns={modelColumns}
-              getRowId={(m) => m.id}
-              filterPlaceholder="Filter models"
-              onRowClick={(m) => void navigate({ to: "/models/$modelId", params: { modelId: m.id } })}
-            />
+        {(page) => {
+          const more = Boolean(page.next_cursor);
+          const rows = q ? page.items.filter((m) => matchesQuery(q, [m.name], [m.ref])) : page.items;
+          return page.items.length ? (
+            <div className="grid gap-3">
+              <ListToolbar things="models" value={q} onChange={setQuery} count={{ shown: rows.length, total: page.items.length, more }} />
+              {rows.length ? (
+                <DataTable
+                  label="Models"
+                  data={rows}
+                  columns={modelColumns}
+                  getRowId={(m) => m.id}
+                  onRowClick={(m) => void navigate({ to: "/models/$modelId", params: { modelId: m.id } })}
+                />
+              ) : (
+                <ListNoMatches things="models" query={q} firstPage={more ? page.items.length : undefined} onClear={() => setQuery("")} />
+              )}
+            </div>
           ) : (
             <div className="grid gap-4">
               <EmptyState
@@ -78,8 +92,8 @@ export function ModelsPage() {
                 ]}
               />
             </div>
-          )
-        }
+          );
+        }}
       </QueryView>
     </>
   );
@@ -124,6 +138,11 @@ const modelRoute = getRouteApi("/models/$modelId");
 export function ModelPage() {
   const { modelId } = modelRoute.useParams();
   const model = useModel(modelId);
+  useRecordRecent(
+    model.data
+      ? { group: "models", title: model.data.name, secondary: model.data.latest_version ? `Version ${model.data.latest_version} · ${model.data.id}` : model.data.id, href: `/models/${model.data.id}` }
+      : null,
+  );
   const versions = useModelVersions(modelId);
   const navigate = useNavigate();
   if (model.isError) return <ErrorNotice error={model.error} title="The app could not load this model" />;
@@ -159,6 +178,7 @@ export function ModelVersionPage() {
   const v = Number(version);
   const mv = useModelVersion(modelId, Number.isInteger(v) && v > 0 ? v : undefined);
   const modelName = useModel(modelId).data?.name;
+  useRecordRecent(mv.data && modelName ? { group: "models", title: `${modelName} v${mv.data.version}`, secondary: `Model version · ${modelId}`, href: `/models/${modelId}/versions/${mv.data.version}` } : null);
   if (!Number.isInteger(v) || v < 1) return <ErrorNotice error={new Error("The version must be a positive integer.")} />;
   if (mv.isPending) return <LoadingRows rows={6} />;
   if (mv.isError) return <ErrorNotice error={mv.error} title="The app could not load this model version" />;

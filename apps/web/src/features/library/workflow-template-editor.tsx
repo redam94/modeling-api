@@ -12,11 +12,12 @@ import { ErrorNotice, IssueList, Spinner } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { useGrants } from "@/features/auth/workspace";
 import { cn } from "@/lib/utils";
+import { useDebounced } from "@/hooks/use-debounced";
 
 import { useSaveDoc, useStartFromTemplate } from "./actions";
 import { docKey, isStaleRevision, useLibraryItem, useLibraryValidation } from "./api";
 import { tidyDoc } from "./doc";
-import { BuilderSection, MetadataFields, PILL, PILL_SM, useDebounced } from "./ui";
+import { BuilderSection, MetadataFields, PILL, PILL_SM } from "./ui";
 import { LazyYamlTab as YamlTab } from "./yaml-tab-lazy";
 import { isWorkflowTemplateDoc, type JsonObject, type LibraryDoc, type WorkflowTemplateDoc } from "./types";
 

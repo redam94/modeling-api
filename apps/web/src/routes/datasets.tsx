@@ -8,6 +8,7 @@ import { useCreateDataset, useDataset, useDatasets, useDatasetVersion, useDatase
 import type { Dataset, DatasetVersion } from "@/api/types";
 import { CopyButton, EmptyState, ErrorNotice, IssueList, KeyValues, LoadingRows, Mono, PageHeader, QueryView } from "@/components/common";
 import { DataTable } from "@/components/data-table";
+import { ListNoMatches, ListToolbar, matchesQuery } from "@/components/list-toolbar";
 import { EmptyArt } from "@/components/brand/empty-art";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/overlays";
@@ -18,6 +19,7 @@ import { UploadWizard } from "@/features/datasets/upload-wizard";
 import { isTree } from "@/features/datasets/tree";
 import { TreeBrowser } from "@/features/datasets/tree-view";
 import { CollectionSummary, CoordBrowser, MissingnessPanel, PreviewPanel, SchemaTable } from "@/features/datasets/version-views";
+import { useRecordRecent } from "@/features/search/use-record-recent";
 import { formatBytes, relativeTime, shortId } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { toast } from "@/stores/toast";
@@ -90,9 +92,13 @@ function CreateDatasetDialog({ open, onOpenChange }: { open: boolean; onOpenChan
   );
 }
 
+const listRoute = getRouteApi("/datasets");
+
 export function DatasetsPage() {
   const datasets = useDatasets();
   const navigate = useNavigate();
+  const q = listRoute.useSearch().q ?? "";
+  const setQuery = (next: string) => void navigate({ to: "/datasets", search: { q: next || undefined }, replace: true });
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -107,16 +113,24 @@ export function DatasetsPage() {
         }
       />
       <QueryView query={datasets}>
-        {(page) =>
-          page.items.length ? (
-            <DataTable
-              label="Datasets"
-              data={page.items}
-              columns={columns}
-              getRowId={(d) => d.id}
-              filterPlaceholder="Filter datasets"
-              onRowClick={(d) => void navigate({ to: "/datasets/$datasetId", params: { datasetId: d.id } })}
-            />
+        {(page) => {
+          const more = Boolean(page.next_cursor);
+          const rows = q ? page.items.filter((d) => matchesQuery(q, [d.name], [d.ref, d.description])) : page.items;
+          return page.items.length ? (
+            <div className="grid gap-3">
+              <ListToolbar things="datasets" value={q} onChange={setQuery} count={{ shown: rows.length, total: page.items.length, more }} />
+              {rows.length ? (
+                <DataTable
+                  label="Datasets"
+                  data={rows}
+                  columns={columns}
+                  getRowId={(d) => d.id}
+                  onRowClick={(d) => void navigate({ to: "/datasets/$datasetId", params: { datasetId: d.id } })}
+                />
+              ) : (
+                <ListNoMatches things="datasets" query={q} firstPage={more ? page.items.length : undefined} onClear={() => setQuery("")} />
+              )}
+            </div>
           ) : (
             <div className="grid gap-4">
               <EmptyState
@@ -139,8 +153,8 @@ export function DatasetsPage() {
                 ))}
               </ul>
             </div>
-          )
-        }
+          );
+        }}
       </QueryView>
       <CreateDatasetDialog open={open} onOpenChange={setOpen} />
     </>
@@ -257,6 +271,7 @@ export function DatasetDetailPage() {
   const search = detailRoute.useSearch();
   const navigate = useNavigate({ from: "/datasets/$datasetId" });
   const dataset = useDataset(datasetId);
+  useRecordRecent(dataset.data ? { group: "datasets", title: dataset.data.name, secondary: dataset.data.description || dataset.data.id, href: `/datasets/${dataset.data.id}` } : null);
   const versions = useDatasetVersions(datasetId);
   const sorted = [...(versions.data?.items ?? [])].sort((a, b) => b.version - a.version);
   const selected = search.version ?? sorted[0]?.version;

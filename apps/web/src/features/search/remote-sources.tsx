@@ -18,7 +18,7 @@ import { useEffect, useMemo } from "react";
 import { api, unwrap } from "@/api/client";
 import { fetchExperiments } from "@/api/experiments";
 import { qk, useDatasets, useModels, useProjectScope, useRuns, useSpecs } from "@/api/queries";
-import type { Candidate, RemoteGroupId, SourceState } from "./kinds";
+import { sentenceCase as sentence, type Candidate, type RemoteGroupId, type SourceState } from "./kinds";
 
 /** The fields the search reads of each list item (the lists' own types are wider). */
 interface Page<T> {
@@ -94,11 +94,6 @@ function useReport<T>(id: RemoteGroupId, report: Report, q: QueryLike<T>, toItem
   useEffect(() => () => report(id, null), [id, report]);
   return null;
 }
-
-const sentence = (text: string) => {
-  const s = text.replace(/_/g, " ");
-  return s.charAt(0).toUpperCase() + s.slice(1);
-};
 
 // ------------------------------------------------------------------ lists the palette filters
 

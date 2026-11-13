@@ -12,6 +12,7 @@ import { useProjectScope } from "@/api/queries";
 import type { Issue } from "@/api/types";
 import { EmptyArt } from "@/components/brand/empty-art";
 import { EmptyState, ErrorNotice, PageHeader, QueryView, Spinner } from "@/components/common";
+import { ListNoMatches, ListToolbar, matchesQuery } from "@/components/list-toolbar";
 import { InlineMessage, TagWord, type TagTone } from "@/components/ods";
 import { Button } from "@/components/ui/button";
 import { FilterPills } from "@/components/ui/filter-pills";
@@ -35,6 +36,7 @@ import { memberChatTransport } from "@/features/dashboards/chat/transport-member
 import { ConnectChatToolButton } from "@/features/dashboards/connect/connect-button";
 import { STATUS_WORD } from "@/features/dashboards/readout/readout-model";
 import { dashboardProblemText, type Dashboard, type DashboardStatus, type DashboardSummary } from "@/features/dashboards/types";
+import { useRecordRecent } from "@/features/search/use-record-recent";
 import { absoluteTime, relativeTime } from "@/lib/format";
 import { DASHBOARD_TABS, type DashboardTab } from "@/router";
 import { toast } from "@/stores/toast";
@@ -57,7 +59,8 @@ function StatusTag({ status }: { status: DashboardStatus }) {
 // ------------------------------------------------------------------------------ the list
 
 export function DashboardsPage() {
-  const { status, new: openNew, model } = listRoute.useSearch();
+  const { status, new: openNew, model, q: query } = listRoute.useSearch();
+  const q = query ?? "";
   const navigate = useNavigate({ from: "/dashboards" });
   const ws = useWorkspace();
   const canCreate = can(ws.grants, "create", "dashboard");
@@ -72,63 +75,75 @@ export function DashboardsPage() {
     setCreatingState(open);
     if (!open && (openNew || model)) void navigate({ search: (s) => ({ ...s, new: undefined, model: undefined }), replace: true });
   };
+  const setQuery = (next: string) => void navigate({ search: (s) => ({ ...s, q: next || undefined }), replace: true });
+  const items = useMemo(() => dashboards.data?.items ?? [], [dashboards.data]);
+  const rows = useMemo(() => (q ? items.filter((d) => matchesQuery(q, [d.title, d.name], [d.client_name])) : items), [items, q]);
+  const more = Boolean(dashboards.data?.next_cursor);
+  const pills = (
+    <FilterPills<"active" | DashboardStatus>
+      label="Dashboard status"
+      value={status ?? "active"}
+      onValueChange={(v) => void navigate({ search: (s) => ({ ...s, status: v === "active" ? undefined : v }), replace: true })}
+      options={[
+        { value: "active", label: "Active" },
+        { value: "draft", label: "Drafts" },
+        { value: "published", label: "Published" },
+        { value: "archived", label: "Archived" },
+      ]}
+    />
+  );
   return (
     <>
       <PageHeader
         title="Dashboards"
         description="Readouts for your clients in plain words, for any model: the latest results, trends, cases to try and new numbers. Clients sign in to see only the dashboards that you give them, or open a share link."
         actions={
-          <>
-            <FilterPills<"active" | DashboardStatus>
-              label="Dashboard status"
-              value={status ?? "active"}
-              onValueChange={(v) => void navigate({ search: { status: v === "active" ? undefined : v }, replace: true })}
-              options={[
-                { value: "active", label: "Active" },
-                { value: "draft", label: "Drafts" },
-                { value: "published", label: "Published" },
-                { value: "archived", label: "Archived" },
-              ]}
-            />
-            <Button onClick={() => setCreating(true)} disabled={!canCreate} title={canCreate ? undefined : "Only editors and admins create dashboards."}>
-              <Plus /> New dashboard
-            </Button>
-          </>
+          <Button onClick={() => setCreating(true)} disabled={!canCreate} title={canCreate ? undefined : "Only editors and admins create dashboards."}>
+            <Plus /> New dashboard
+          </Button>
         }
       />
-      <QueryView query={dashboards} errorTitle="The app could not load the dashboards">
-        {(page) =>
-          page.items.length ? (
-            <Card>
-              <CardContent className="min-w-0 overflow-x-auto pt-4">
-                <Table aria-label="Dashboards">
-                  <THead>
-                    <TR>
-                      <TH>Dashboard</TH>
-                      <TH>Status</TH>
-                      <TH>Latest readout</TH>
-                      <TH>Changed</TH>
-                    </TR>
-                  </THead>
-                  <TBody>
-                    {page.items.map((d) => (
-                      <DashboardRow key={d.id} d={d} />
-                    ))}
-                  </TBody>
-                </Table>
-              </CardContent>
-            </Card>
-          ) : (
-            <EmptyState
-              illustration={<EmptyArt kind="dashboards" />}
-              title={status === "archived" ? "No archived dashboards" : "This project has no dashboards"}
-              action={canCreate && status !== "archived" ? <Button onClick={() => setCreating(true)}>New dashboard</Button> : null}
-            >
-              {canCreate ? "Make a dashboard from an endpoint or a fitted model. Then publish it and give your client access." : "An editor or an admin makes dashboards."}
-            </EmptyState>
-          )
-        }
-      </QueryView>
+      <div className="grid gap-3">
+        {/* Outside the query view: the status pills stay in reach when a list is empty or loads. */}
+        <ListToolbar things="dashboards" value={q} onChange={setQuery} count={dashboards.data ? { shown: rows.length, total: items.length, more } : undefined}>
+          {pills}
+        </ListToolbar>
+        <QueryView query={dashboards} errorTitle="The app could not load the dashboards">
+          {(page) =>
+            rows.length ? (
+              <Card>
+                <CardContent className="min-w-0 overflow-x-auto pt-4">
+                  <Table aria-label="Dashboards">
+                    <THead>
+                      <TR>
+                        <TH>Dashboard</TH>
+                        <TH>Status</TH>
+                        <TH>Latest readout</TH>
+                        <TH>Changed</TH>
+                      </TR>
+                    </THead>
+                    <TBody>
+                      {rows.map((d) => (
+                        <DashboardRow key={d.id} d={d} />
+                      ))}
+                    </TBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            ) : page.items.length ? (
+              <ListNoMatches things="dashboards" query={q} filtered={Boolean(status)} firstPage={more ? page.items.length : undefined} onClear={() => setQuery("")} />
+            ) : (
+              <EmptyState
+                illustration={<EmptyArt kind="dashboards" />}
+                title={status === "archived" ? "No archived dashboards" : "This project has no dashboards"}
+                action={canCreate && status !== "archived" ? <Button onClick={() => setCreating(true)}>New dashboard</Button> : null}
+              >
+                {canCreate ? "Make a dashboard from an endpoint or a fitted model. Then publish it and give your client access." : "An editor or an admin makes dashboards."}
+              </EmptyState>
+            )
+          }
+        </QueryView>
+      </div>
       {creating ? (
         <NewDashboardDialog
           initialModel={openNew && model ? model : undefined}
@@ -183,6 +198,10 @@ function DashboardRow({ d }: { d: DashboardSummary }) {
 export function DashboardPage() {
   const { dashboardId } = detailRoute.useParams();
   const dashboard = useDashboard(dashboardId);
+  const d = dashboard.data;
+  useRecordRecent(
+    d ? { group: "dashboards", title: d.draft_spec.title || d.name, secondary: [STATUS_TAG[d.status].label, d.draft_spec.client_name].filter(Boolean).join(" · "), href: `/dashboards/${d.id}` } : null,
+  );
   return (
     <QueryView query={dashboard} errorTitle="The app could not load the dashboard">
       {(d) => <Builder key={d.id} dashboard={d} />}

@@ -103,12 +103,17 @@ function EmptyKind({ tab, onNew }: { tab: LibraryTab; onNew: () => void }) {
   );
 }
 
-function Overview({ tab }: { tab: LibraryTab }) {
+function Overview({ tab: urlTab, query }: { tab: LibraryTab | undefined; query: string }) {
   const go = useLibraryNav();
   const navigate = useNavigate();
   const ws = useWorkspace();
-  const counts = useLibraryItems();
+  // With a search, the numbers on the tabs count what the search found.
+  const counts = useLibraryItems(query ? { q: query } : {});
   const count = (t: LibraryTab) => (counts.data ?? []).filter((i) => i.kind === TAB_KIND[t]).length;
+  // A search without a tab (the global search's "See all in Make your own") opens the first
+  // tab that has a match.
+  const tab = urlTab ?? (query ? LIBRARY_TABS.find((t) => count(t) > 0) : undefined) ?? "models";
+  const setQuery = (next: string) => go({ tab, q: next || undefined }, true);
   const leads: Record<LibraryTab, Lead> = {
     models: {
       title: "Describe a model in plain words",
@@ -132,7 +137,7 @@ function Overview({ tab }: { tab: LibraryTab }) {
           description="Save the models, prep steps, charts and workflows your team uses again and again. No code needed: everything you make here shows up in Build, the Catalog and on your runs."
         />
       </div>
-      <Tabs value={tab} onValueChange={(t) => go({ tab: t as LibraryTab }, true)}>
+      <Tabs value={tab} onValueChange={(t) => go({ tab: t as LibraryTab, q: query || undefined }, true)}>
         <TabsList className="h-auto flex-wrap gap-2" aria-label="Kinds">
           {LIBRARY_TABS.map((t) => (
             <TabsTrigger
@@ -151,7 +156,14 @@ function Overview({ tab }: { tab: LibraryTab }) {
             <LeadBlock lead={leads[t]} art={<EmptyArt kind={LEAD_ART[t]} onBlock className="size-full" />} />
             <section aria-label={`Your ${TAB_LABEL[t].toLowerCase()}`} className="grid gap-4">
               <h2 className="text-2xl font-semibold">From your team</h2>
-              <LibraryList kind={TAB_KIND[t]} me={ws.user.id} onOpen={(item) => go({ tab: TAB_OF_KIND[item.kind], item: item.id })} empty={<EmptyKind tab={t} onNew={leads[t].onCta} />} />
+              <LibraryList
+                kind={TAB_KIND[t]}
+                me={ws.user.id}
+                query={query}
+                onQuery={setQuery}
+                onOpen={(item) => go({ tab: TAB_OF_KIND[item.kind], item: item.id })}
+                empty={<EmptyKind tab={t} onNew={leads[t].onCta} />}
+              />
             </section>
           </TabsContent>
         ))}
@@ -266,5 +278,5 @@ export function LibraryPage() {
     );
   }
 
-  return <Overview tab={search.tab ?? "models"} />;
+  return <Overview tab={search.tab} query={search.q ?? ""} />;
 }

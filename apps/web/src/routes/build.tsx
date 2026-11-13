@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import type { ColumnDef } from "@tanstack/react-table";
 import { CheckCircle2, FileCode2, Plus, XCircle } from "lucide-react";
 
@@ -6,6 +6,7 @@ import { useSpecs } from "@/api/queries";
 import type { SpecDoc } from "@/api/types";
 import { EmptyState, Mono, PageHeader, QueryView } from "@/components/common";
 import { DataTable } from "@/components/data-table";
+import { ListNoMatches, ListToolbar, matchesQuery } from "@/components/list-toolbar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/primitives";
 import { relativeTime } from "@/lib/format";
@@ -39,9 +40,13 @@ const columns: ColumnDef<SpecDoc, unknown>[] = [
   { accessorKey: "updated_at", header: "Updated", cell: ({ row }) => relativeTime(row.original.updated_at) },
 ];
 
+const listRoute = getRouteApi("/build");
+
 export function BuildPage() {
   const specs = useSpecs();
   const navigate = useNavigate();
+  const q = listRoute.useSearch().q ?? "";
+  const setQuery = (next: string) => void navigate({ to: "/build", search: { q: next || undefined }, replace: true });
   return (
     <>
       <PageHeader
@@ -56,16 +61,24 @@ export function BuildPage() {
         }
       />
       <QueryView query={specs}>
-        {(page) =>
-          page.items.length ? (
-            <DataTable
-              label="Specs"
-              data={page.items}
-              columns={columns}
-              getRowId={(s) => s.id}
-              filterPlaceholder="Filter specs"
-              onRowClick={(s) => void navigate({ to: "/build/$specId", params: { specId: s.id } })}
-            />
+        {(page) => {
+          const more = Boolean(page.next_cursor);
+          const rows = q ? page.items.filter((s) => matchesQuery(q, [s.name], [s.ref, s.kind])) : page.items;
+          return page.items.length ? (
+            <div className="grid gap-3">
+              <ListToolbar things="specs" value={q} onChange={setQuery} count={{ shown: rows.length, total: page.items.length, more }} />
+              {rows.length ? (
+                <DataTable
+                  label="Specs"
+                  data={rows}
+                  columns={columns}
+                  getRowId={(s) => s.id}
+                  onRowClick={(s) => void navigate({ to: "/build/$specId", params: { specId: s.id } })}
+                />
+              ) : (
+                <ListNoMatches things="specs" query={q} firstPage={more ? page.items.length : undefined} onClear={() => setQuery("")} />
+              )}
+            </div>
           ) : (
             <EmptyState
               icon={<FileCode2 />}
@@ -80,8 +93,8 @@ export function BuildPage() {
             >
               A spec names a dataset, a preprocessing pipeline and a model plugin. The app does a check of the spec while you type.
             </EmptyState>
-          )
-        }
+          );
+        }}
       </QueryView>
     </>
   );

@@ -43,6 +43,8 @@ import { RunActions } from "@/features/runs/run-actions";
 import { hasUnsavedNotes, RunNotes } from "@/features/runs/run-notes";
 import type { NotesEdit } from "@/features/runs/run-patch";
 import { RunPlotsCard } from "@/features/runs/run-plots";
+import { sentenceCase } from "@/features/search/kinds";
+import { useRecordRecent } from "@/features/search/use-record-recent";
 import { useRunEvents } from "@/hooks/use-run-events";
 import { absoluteTime, elapsedSeconds, formatBytes, formatDuration, formatNumber, relativeTime, shortId } from "@/lib/format";
 import { runCostView } from "@/lib/cost";
@@ -201,6 +203,8 @@ export function RunDetailPage() {
   const { tab } = route.useSearch();
   const navigate = useNavigate({ from: "/runs/$runId" });
   const run = useRun(runId);
+  // v0.21: the visit shows under Recent in the search, with what the search shows for a run.
+  useRecordRecent(run.data ? { group: "runs", title: runName(run.data) || run.data.id, secondary: `${sentenceCase(run.data.kind)} · ${run.data.state} · ${run.data.id}`, href: `/runs/${run.data.id}` } : null);
   const stream = useRunEvents(run.data);
   // The Notes edit lives here, above the tabs: switching tabs unmounts the tab content.
   const [notesEdit, setNotesEdit] = useState<NotesEdit | null>(null);

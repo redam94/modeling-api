@@ -2,7 +2,8 @@
  * v0.21 global search against the MSW-mocked API (`vite --mode mock`, production build with the
  * CSP and Trusted Types enforced): the keyboard opens the overlay, a dataset name gives grouped
  * results with the match marked, the arrows and Enter open the dataset, and the next time the
- * overlay shows it under Recent. A client user has no search.
+ * overlay shows it under Recent. "See all" lands on the list page with its search box filled and
+ * the list filtered; a visit to a detail page is a recent item too. A client user has no search.
  *
  * Screenshots of the overlay go to MAPI_SHOTS_DIR when it is set.
  */
@@ -87,6 +88,52 @@ test("the search finds a dataset by name, opens it and shows it under Recent", a
   await expect(recent.getByRole("option", { name: /Clear recent items/ })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
+});
+
+test("\"See all\" lands on the list page with the search box filled and the list filtered", async ({ page }) => {
+  await as(page, "ana");
+  const box = await openSearch(page);
+  const dialog = page.getByRole("dialog", { name: "Search" });
+  await box.pressSequentially("media");
+  await dialog.getByRole("group", { name: "Datasets" }).getByRole("option", { name: /See all in Datasets/ }).click();
+  await expect(page).toHaveURL(/\/datasets\?q=media$/);
+  await expect(dialog).toHaveCount(0);
+  const search = page.getByRole("searchbox", { name: "Search datasets" });
+  await expect(search).toHaveValue("media");
+  const table = page.getByRole("table", { name: "Datasets" });
+  await expect(table.getByText("eu_media_daily", { exact: true })).toBeVisible();
+  await expect(table.getByText("lens_cubes", { exact: true })).toHaveCount(0);
+  await expect(page.getByTestId("list-count")).toHaveText(/^1 of \d+ datasets$/);
+
+  // A text that finds nothing: one sentence and a button that brings the list back.
+  await search.fill("media zzqq");
+  await expect(page.getByRole("heading", { name: "No datasets match" })).toBeVisible();
+  await expect(page).toHaveURL(/\/datasets\?q=media(\+|%20)zzqq$/);
+  await shot(page, "list-no-matches");
+  await page.getByRole("button", { name: "Clear the search", exact: true }).click();
+  await expect(page).toHaveURL(/\/datasets$/);
+  await expect(search).toHaveValue("");
+  await expect(table.getByText("lens_cubes", { exact: true })).toBeVisible();
+
+  // The same from another group, on a page that also has filter pills.
+  await page.keyboard.press("ControlOrMeta+k");
+  await box.pressSequentially("media");
+  await dialog.getByRole("group", { name: "Dashboards" }).getByRole("option", { name: /See all in Dashboards/ }).click();
+  await expect(page).toHaveURL(/\/dashboards\?q=media$/);
+  await expect(page.getByRole("searchbox", { name: "Search dashboards" })).toHaveValue("media");
+  const dashboards = page.getByRole("table", { name: "Dashboards" });
+  await expect(dashboards.getByText("Weekly media readout", { exact: true })).toBeVisible();
+  await expect(dashboards.getByText("Monthly sales forecast", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("radiogroup", { name: "Dashboard status" })).toBeVisible();
+});
+
+test("a visit to a page shows under Recent, without a search for it first", async ({ page }) => {
+  await as(page, "ana");
+  await page.goto(`/datasets/${DATASET}`);
+  await expect(page.getByRole("heading", { level: 1, name: "eu_media_daily" })).toBeVisible();
+  await page.keyboard.press("ControlOrMeta+k");
+  const recent = page.getByRole("dialog", { name: "Search" }).getByRole("group", { name: "Recent" });
+  await expect(recent.getByRole("option").first()).toContainText("eu_media_daily");
 });
 
 test("a client user has no search", async ({ page }) => {

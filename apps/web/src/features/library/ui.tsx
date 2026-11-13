@@ -1,7 +1,7 @@
 /**
  * Small building blocks of "Make your own": chips and pills, numbered builder sections,
- * field problems from `:validate` pointers, the metadata fields every item has, the scope
- * choice, and a debounce hook. Token classes only.
+ * field problems from `:validate` pointers, the metadata fields every item has, and the scope
+ * choice. Token classes only.
  */
 import { Link } from "@tanstack/react-router";
 import { useEffect, useId, useRef, useState, type ComponentProps, type ReactNode } from "react";
@@ -15,20 +15,7 @@ import { slugify } from "./doc";
 import type { LibrarySearch } from "./search";
 import { issuesAt, type LibraryMetadata, type LibraryScope } from "./types";
 
-// ------------------------------------------------------------------------------ hooks
-
-/** `value` after it has stopped changing for `ms` (compared by its JSON, so new objects with the same content do not restart the wait). */
-export function useDebounced<T>(value: T, ms: number): T {
-  const [out, setOut] = useState(value);
-  const key = JSON.stringify(value);
-  const latest = useRef(value);
-  latest.current = value;
-  useEffect(() => {
-    const t = setTimeout(() => setOut(latest.current), ms);
-    return () => clearTimeout(t);
-  }, [key, ms]);
-  return out;
-}
+// ------------------------------------------------------------------------------ focus
 
 /** Move focus to the field a JSON pointer names (the closest one that exists). */
 export function focusPointer(root: HTMLElement | null, pointer: string | null | undefined): boolean {
@@ -83,8 +70,8 @@ export function ToggleChip({ pressed, onClick, children, title, disabled, classN
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "focus-ring inline-flex min-h-9 items-center gap-1.5 rounded-full border-[1.5px] px-3.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-        pressed ? "border-foreground bg-foreground text-background" : "border-border-strong bg-card text-foreground hover:border-primary",
+        "focus-ring inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+        pressed ? "border-foreground bg-foreground text-background" : "border-border-strong bg-card text-foreground hover:border-foreground",
         className,
       )}
     >

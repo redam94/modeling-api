@@ -23,6 +23,7 @@ import { useGrants } from "@/features/auth/workspace";
 import { PlotFrame } from "@/features/plots/plot-frame";
 import { plainIssue } from "@/lib/plain-issue";
 import { cn } from "@/lib/utils";
+import { useDebounced } from "@/hooks/use-debounced";
 
 import { decodeInline, useChartExample } from "./chart-data";
 import { useSaveDoc, type Saved } from "./actions";
@@ -30,7 +31,7 @@ import { useChartTypes } from "./catalog";
 import { docKey, isStaleRevision, useChartPreview, useLibraryItem, useLibraryValidation } from "./api";
 import { chartStarters, columnsOf, EMPTY_CHART, MARKS, simpleSpec, type DatasetColumns, type SimpleChart } from "./chart-starters";
 import { tidyDoc } from "./doc";
-import { BuilderSection, Chip, focusPointer, IssueLines, issueText, MetadataFields, PILL, PILL_SM, ScopeChoice, ToggleChip, useDebounced } from "./ui";
+import { BuilderSection, Chip, focusPointer, IssueLines, issueText, MetadataFields, PILL, PILL_SM, ScopeChoice, ToggleChip } from "./ui";
 import { LazyYamlTab as YamlTab } from "./yaml-tab-lazy";
 import { chartPreviewable, isChartTemplateDoc, PLOT_SPEC_MAX_BYTES, jsonBytes, splitUseRef, type ChartTemplateDoc, type JsonObject, type LibraryDoc, type LibraryScope } from "./types";
 
@@ -240,7 +241,7 @@ export function ChartBuilder({ itemId, initial, onCreated }: ChartBuilderProps) 
                             setSimple(s.chart);
                             setJsonError(null);
                           }}
-                          className={cn("focus-ring grid gap-1 rounded-xl border-[1.5px] p-3 text-left transition-colors", on ? "border-primary bg-accent" : "border-transparent bg-background hover:border-border-strong")}
+                          className={cn("focus-ring grid gap-1 rounded-xl border p-3 text-left transition-colors", on ? "border-primary bg-accent" : "border-transparent bg-background hover:border-border-strong")}
                         >
                           <span className="display flex items-center gap-2 text-base font-semibold">
                             <Wand2 aria-hidden className="size-4 text-attention" />

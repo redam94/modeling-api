@@ -21,6 +21,7 @@ import { DeleteEndpointDialog, EndpointsSection, GateBadge, GateReasons, Promote
 import { IntegrationsOverview, type HubTab } from "@/features/integrations/overview";
 import { SharingSection } from "@/features/integrations/sharing";
 import { AutoDisabledNotice, DeleteWebhookDialog, DeliveryLog, WebhookSettings, WebhookStatusBadge, WebhooksSection } from "@/features/integrations/webhooks";
+import { useRecordRecent } from "@/features/search/use-record-recent";
 import { absoluteTime, relativeTime } from "@/lib/format";
 import { INTEGRATION_TABS, type EndpointTab } from "@/router";
 
@@ -33,7 +34,8 @@ const TAB_LABEL: Record<HubTab, string> = { overview: "Overview", endpoints: "En
 export function IntegrationsPage() {
   const search = hubRoute.useSearch();
   const navigate = useNavigate({ from: "/integrations" });
-  const tab = search.tab ?? "overview";
+  // A search (the global search's "See all in Integrations") is for the endpoints.
+  const tab = search.tab ?? (search.q ? "endpoints" : "overview");
   const goTo = (t: HubTab) => void navigate({ search: { tab: t === "overview" ? undefined : t } });
   const sharePick = search.model ? { model: search.model, version: search.version, plot: search.plot } : undefined;
   return (
@@ -51,7 +53,7 @@ export function IntegrationsPage() {
           <IntegrationsOverview goTo={goTo} />
         </TabsContent>
         <TabsContent value="endpoints">
-          <EndpointsSection />
+          <EndpointsSection query={search.q ?? ""} onQuery={(q) => void navigate({ search: (s) => ({ ...s, tab: "endpoints" as const, q: q || undefined }), replace: true })} />
         </TabsContent>
         <TabsContent value="webhooks">
           <WebhooksSection />
@@ -230,6 +232,9 @@ function EndpointView({ endpoint }: { endpoint: Endpoint }) {
 export function EndpointPage() {
   const { alias } = endpointRoute.useParams();
   const endpoint = useEndpoint(alias);
+  useRecordRecent(
+    endpoint.data ? { group: "endpoints", title: endpoint.data.alias, secondary: endpoint.data.model_ref, href: `/integrations/endpoints/${encodeURIComponent(endpoint.data.alias)}` } : null,
+  );
   return (
     <>
       <QueryView query={endpoint} errorTitle="The app could not load the endpoint">

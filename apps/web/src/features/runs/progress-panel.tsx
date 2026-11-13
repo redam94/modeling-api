@@ -37,7 +37,8 @@ export function formatStepSize(v: number): string {
 
 /**
  * One lane per chain: draws done vs total, tuning shown hatched, divergences counted, and the
- * sampler's step size when the engine reports it (v0.11).
+ * sampler's step size when the engine reports it (v0.11). On a phone the numbers go under the
+ * bar, so the bar keeps its width.
  */
 export function ChainLanes({ chains }: { chains: ChainProgress[] }) {
   if (!chains.length) return null;
@@ -49,7 +50,7 @@ export function ChainLanes({ chains }: { chains: ChainProgress[] }) {
         const divergences = c.divergences ?? 0;
         const stepSize = c.step_size;
         return (
-          <div key={c.chain} role="listitem" className="grid grid-cols-[4.5rem_1fr_auto] items-center gap-3 text-xs">
+          <div key={c.chain} role="listitem" className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1 text-xs sm:grid-cols-[4.5rem_minmax(0,1fr)_auto]">
             <span className="font-medium text-muted-foreground">Chain {c.chain}</span>
             <div
               className="relative h-2.5 overflow-hidden rounded-full bg-muted"
@@ -64,7 +65,7 @@ export function ChainLanes({ chains }: { chains: ChainProgress[] }) {
                 style={{ width: `${frac * 100}%` }}
               />
             </div>
-            <span className="flex flex-wrap items-center justify-end gap-x-2 tabular text-muted-foreground">
+            <span className="col-start-2 flex flex-wrap items-center gap-x-2 tabular text-muted-foreground sm:col-start-auto sm:justify-end">
               {c.tuning ? <span className="text-xs">tuning</span> : null}
               {c.draws_done.toLocaleString("en")}/{c.draws_total.toLocaleString("en")}
               <span

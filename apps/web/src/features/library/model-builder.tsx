@@ -29,6 +29,7 @@ import { SchemaForm, type JsonObject as FormObject } from "@/features/forms/json
 import { safeSchema } from "@/features/forms/schema-sanitize";
 import { plainIssue } from "@/lib/plain-issue";
 import { cn } from "@/lib/utils";
+import { useDebounced } from "@/hooks/use-debounced";
 
 import { useModelRecipeUse, useSaveDoc, type Saved } from "./actions";
 import { useModelCatalog } from "./catalog";
@@ -36,7 +37,7 @@ import { docKey, isStaleRevision, useLibraryItem, useLibraryValidation } from ".
 import { DatasetPicker, isGroupLike, isNumeric, useDatasetColumns, type ColumnInfo } from "./data-source";
 import { FAMILY_OPTIONS, isDeclarativeDoc, moveItem, newTerm, SIGN_OPTIONS, summarizeModelRecipe, tidyDoc, TRANSFORM_OPTIONS } from "./doc";
 import { PriorPicker } from "./prior-picker";
-import { BuilderSection, Chip, focusPointer, IssueLines, issueText, MetadataFields, PILL, PILL_SM, ScopeChoice, ToggleChip, useDebounced } from "./ui";
+import { BuilderSection, Chip, focusPointer, IssueLines, issueText, MetadataFields, PILL, PILL_SM, ScopeChoice, ToggleChip } from "./ui";
 import { LazyYamlTab as YamlTab } from "./yaml-tab-lazy";
 import {
   hasErrors,
@@ -240,7 +241,7 @@ function DeclarativeSections({ model, onModel, issues, columns, datasetPicked }:
                     aria-pressed={on}
                     onClick={() => onModel({ ...model, outcome: { ...model.outcome, family: f.value, ...(f.value === "ordinal" ? { n_categories: model.outcome.n_categories ?? 5 } : { n_categories: null }) } })}
                     className={cn(
-                      "focus-ring grid gap-1 rounded-xl border-[1.5px] p-3 text-left transition-colors",
+                      "focus-ring grid gap-1 rounded-xl border p-3 text-left transition-colors",
                       on ? "border-primary bg-accent" : "border-transparent bg-background hover:border-border-strong",
                     )}
                   >

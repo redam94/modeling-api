@@ -25,13 +25,14 @@ import { safeSchema } from "@/features/forms/schema-sanitize";
 import { useQuery } from "@tanstack/react-query";
 import { plainIssue } from "@/lib/plain-issue";
 import { cn } from "@/lib/utils";
+import { useDebounced } from "@/hooks/use-debounced";
 
 import { useSaveDoc, type Saved } from "./actions";
 import { useStepCatalog } from "./catalog";
 import { docKey, isStaleRevision, useLibraryItem, useLibraryValidation } from "./api";
 import { DatasetPicker, useDatasetColumns, type ColumnInfo } from "./data-source";
 import { API_VERSION, fillPrepSlots, identifier, moveItem, slotOfValue, slotsUsed, slotValue, specYaml, tidyDoc } from "./doc";
-import { BuilderSection, Chip, focusPointer, IssueLines, issueText, MetadataFields, PILL, ScopeChoice, ToggleChip, useDebounced } from "./ui";
+import { BuilderSection, Chip, focusPointer, IssueLines, issueText, MetadataFields, PILL, ScopeChoice, ToggleChip } from "./ui";
 import { LazyYamlTab as YamlTab } from "./yaml-tab-lazy";
 import { isPrepPresetDoc, MAX_SLOTS, slotName, splitUseRef, type Json, type JsonObject, type LibraryDoc, type LibraryScope, type PrepPresetDoc, type Slot, type StepCallDoc } from "./types";
 

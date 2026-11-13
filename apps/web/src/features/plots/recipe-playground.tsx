@@ -234,7 +234,7 @@ function previewStatus(opts: {
 const STATUS_CLASS: Record<StatusTone, string> = {
   idle: "bg-muted text-muted-foreground",
   busy: "bg-accent text-accent-foreground",
-  ok: "bg-highlight-soft text-highlight-ink",
+  ok: "bg-success/12 text-success",
   warn: "bg-attention-soft text-attention",
   error: "bg-destructive/12 text-destructive",
 };
@@ -357,7 +357,7 @@ export function RecipePlayground({ plot, className }: { plot: PlotCatalogEntry; 
           <fieldset className="grid gap-3">
             <legend className="mb-2 flex flex-wrap items-center gap-2 text-sm font-semibold">
               Look
-              <span className="rounded-full bg-highlight-soft px-2 py-0.5 text-xs font-semibold text-highlight-ink">changes at once</span>
+              <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">changes at once</span>
             </legend>
             <SchemaForm schema={quickSchema as SchemaNode} value={settings} skip={Object.keys(obj(moreSchema?.properties) ?? {})} onChange={setSettings} empty="" />
           </fieldset>
@@ -426,7 +426,7 @@ export function RecipePlaygroundDialog({ plot, open, onOpenChange }: { plot: Plo
       <DialogContent wide className="top-[6vh] max-h-[88vh] max-w-5xl">
         <div className="grid gap-1 pr-8">
           <p className="eyebrow">Try it</p>
-          <DialogTitle className="text-2xl font-bold">{title}</DialogTitle>
+          <DialogTitle className="text-2xl font-semibold">{title}</DialogTitle>
           <DialogDescription>
             Play with the settings and watch the example chart change. When it looks right, copy the YAML into your spec or workflow.
           </DialogDescription>

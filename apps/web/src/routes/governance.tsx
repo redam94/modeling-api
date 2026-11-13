@@ -76,7 +76,7 @@ function PolicyTable({ policies, editable }: { policies: GovernancePolicy[]; edi
         ),
       },
       { accessorKey: "version", header: "Version", cell: ({ row }) => <Mono>v{row.original.version}</Mono> },
-      { id: "edit", header: "", cell: ({ row }) => (editable(row.original) ? <span className="text-xs text-primary">Edit</span> : <span className="text-xs text-muted-foreground">View</span>) },
+      { id: "edit", header: "", cell: ({ row }) => (editable(row.original) ? <span className="link text-xs">Edit</span> : <span className="text-xs text-muted-foreground">View</span>) },
     ],
     [editable],
   );

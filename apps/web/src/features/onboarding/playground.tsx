@@ -694,7 +694,7 @@ export function MiniPlayground({ className, anchor = "catalog.playground" }: { c
             aria-pressed={ch === channel}
             onClick={() => setChannel(ch)}
             className={cn(
-              "focus-ring inline-flex h-8 items-center gap-1.5 rounded-full border-[1.5px] border-border-strong px-3 text-xs font-semibold transition-colors hover:bg-muted",
+              "focus-ring inline-flex h-8 items-center gap-1.5 rounded-full border border-border-strong px-3 text-xs font-semibold transition-colors hover:bg-muted",
               ch === channel && "border-foreground bg-foreground text-background hover:bg-foreground",
             )}
           >

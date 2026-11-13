@@ -32,9 +32,6 @@ import { scopeKey, useScope } from "@/stores/scope";
 
 import { buildWorkspace, localMe, WorkspaceContext, type Workspace } from "./workspace";
 
-/** The mark moved to `components/brand/logo`; the mock sign-in page still imports it from here. */
-export { Logo };
-
 // The client portal: only clients load it (and the full app's routes never load for them).
 const ClientApp = lazy(() => import("@/features/dashboards/portal/client-app").then((m) => ({ default: m.ClientApp })));
 

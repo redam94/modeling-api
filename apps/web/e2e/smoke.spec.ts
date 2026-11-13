@@ -412,4 +412,16 @@ test.describe("phone layout (375 px)", () => {
       expect(box!.x + box!.width, label).toBeLessThanOrEqual(375);
     }
   });
+
+  test("the chain lanes of a run stay readable: the numbers go under the bar", async ({ page }) => {
+    await page.goto(`/runs/${RUNNING}`);
+    const lanes = page.getByRole("list", { name: "Chains" });
+    const bar = lanes.getByRole("progressbar", { name: "Chain 0" });
+    await expect(bar).toBeVisible();
+    const box = (await bar.boundingBox())!;
+    // v0.21: with the numbers beside it, the bar was a few pixels wide on a phone.
+    expect(box.width).toBeGreaterThanOrEqual(160);
+    const numbers = (await lanes.getByRole("listitem").first().getByText(/\d\/\d/).boundingBox())!;
+    expect(numbers.y).toBeGreaterThanOrEqual(box.y + box.height);
+  });
 });

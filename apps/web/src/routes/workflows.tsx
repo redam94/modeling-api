@@ -13,6 +13,7 @@ import { ApiError } from "@/api/client";
 import { EmptyArt } from "@/components/brand/empty-art";
 import { EmptyState, ErrorNotice, LoadingRows, Mono, PageHeader, QueryView } from "@/components/common";
 import { DataTable } from "@/components/data-table";
+import { ListNoMatches, ListToolbar, matchesQuery } from "@/components/list-toolbar";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/overlays";
 import { Badge, Field, Input } from "@/components/ui/primitives";
@@ -28,6 +29,7 @@ import { WorkflowRunMonitor } from "@/features/workflows/run-monitor";
 import { RUN_STATUS_META, TONE_BADGE, TRIGGER_LABEL } from "@/features/workflows/status";
 import { RecipePicker, RecipeRunner, TemplateGallery, TemplateWizard } from "@/features/workflows/templates";
 import type { Workflow, WorkflowDoc, WorkflowRun } from "@/features/workflows/types";
+import { useRecordRecent } from "@/features/search/use-record-recent";
 import { runCostView } from "@/lib/cost";
 import { elapsedSeconds, formatDuration, relativeTime, shortId } from "@/lib/format";
 import { toast } from "@/stores/toast";
@@ -64,7 +66,10 @@ export function WorkflowsPage() {
   const persona = useEffectivePersona();
   const ws = useWorkspace();
   const guided = persona === "guided";
-  const tab = search.tab ?? (guided ? "templates" : "workflows");
+  const q = search.q ?? "";
+  // A search (the global search's "See all in Workflows") is for the list, in each mode.
+  const tab = search.tab ?? (guided && !q ? "templates" : "workflows");
+  const setQuery = (next: string) => void navigate({ search: (s) => ({ ...s, q: next || undefined }), replace: true });
   const workflows = useWorkflows();
   const mayCreate = can(ws.grants, "create", "workflow");
   return (
@@ -86,7 +91,7 @@ export function WorkflowsPage() {
           ) : null
         }
       />
-      <Tabs value={tab} onValueChange={(v) => void navigate({ search: { tab: v as "workflows" | "templates" } })}>
+      <Tabs value={tab} onValueChange={(v) => void navigate({ search: (s) => ({ ...s, tab: v as "workflows" | "templates" }) })}>
         <TabsList>
           <TabsTrigger value="templates">{guided ? "Recipes" : "Templates"}</TabsTrigger>
           <TabsTrigger value="workflows">{guided ? "Your workflows" : "Workflows"}</TabsTrigger>
@@ -96,23 +101,32 @@ export function WorkflowsPage() {
         </TabsContent>
         <TabsContent value="workflows">
           <QueryView query={workflows}>
-            {(page) =>
-              page.items.length ? (
-                <DataTable label="Workflows" data={page.items} columns={workflowColumns} getRowId={(w) => w.id} onRowClick={(w) => void navigate({ to: "/workflows/$workflowId", params: { workflowId: w.id } })} />
+            {(page) => {
+              const more = Boolean(page.next_cursor);
+              const rows = q ? page.items.filter((w) => matchesQuery(q, [w.name], [w.description, w.template])) : page.items;
+              return page.items.length ? (
+                <div className="grid gap-3">
+                  <ListToolbar things="workflows" value={q} onChange={setQuery} count={{ shown: rows.length, total: page.items.length, more }} />
+                  {rows.length ? (
+                    <DataTable label="Workflows" data={rows} columns={workflowColumns} getRowId={(w) => w.id} onRowClick={(w) => void navigate({ to: "/workflows/$workflowId", params: { workflowId: w.id } })} />
+                  ) : (
+                    <ListNoMatches things="workflows" query={q} firstPage={more ? page.items.length : undefined} onClear={() => setQuery("")} />
+                  )}
+                </div>
               ) : (
                 <EmptyState
                   illustration={<EmptyArt kind="workflows" />}
                   title="No workflows yet"
                   action={
-                    <Button variant="outline" onClick={() => void navigate({ search: { tab: "templates" } })}>
+                    <Button variant="outline" onClick={() => void navigate({ search: (s) => ({ ...s, tab: "templates" as const }) })}>
                       Browse the templates
                     </Button>
                   }
                 >
                   Start from a template. The readiness-to-ARIMAX recipe is a good first template.
                 </EmptyState>
-              )
-            }
+              );
+            }}
           </QueryView>
         </TabsContent>
       </Tabs>
@@ -229,6 +243,7 @@ export function WorkflowPage() {
   const ws = useWorkspace();
   const persona = useEffectivePersona();
   const wf = useWorkflow(workflowId);
+  useRecordRecent(wf.data ? { group: "workflows", title: wf.data.name, secondary: wf.data.description || wf.data.id, href: `/workflows/${wf.data.id}` } : null);
   const latest = wf.data?.latest_revision;
   const revNo = search.rev ?? latest;
   const rev = useWorkflowRevision(workflowId, revNo);

@@ -97,7 +97,7 @@ function PlotCard({ plot, pack, onOpen, onTry }: { plot: PlotCatalogEntry; pack:
   const title = plot.about?.title ?? plot.title;
   const summary = plot.about?.summary_plain ?? plot.summary ?? "";
   return (
-    <article className="flex h-full flex-col overflow-hidden rounded-2xl border bg-card transition-colors hover:border-primary">
+    <article className="flex h-full flex-col overflow-hidden rounded-2xl border bg-card transition-colors hover:border-foreground">
       <button
         type="button"
         onClick={onOpen}
@@ -113,7 +113,7 @@ function PlotCard({ plot, pack, onOpen, onTry }: { plot: PlotCatalogEntry; pack:
           <span className="flex flex-wrap items-start justify-between gap-2">
             <span className="min-w-0">
               <span className="block text-xs font-semibold text-muted-foreground">{pack}</span>
-              <span className="block font-display text-xl leading-tight font-bold tracking-[-0.02em]">{title}</span>
+              <span className="block font-display text-xl leading-tight font-semibold tracking-[-0.02em]">{title}</span>
             </span>
             {plot.about ? <DifficultyChip difficulty={plot.about.difficulty} /> : null}
           </span>
@@ -213,7 +213,7 @@ export function PlotCatalogGrid({ plots }: { plots: readonly PlotCatalogEntry[] 
               type="button"
               aria-pressed={pack === k}
               onClick={() => setPack(k)}
-              className="focus-ring inline-flex min-h-10 items-center gap-1.5 rounded-full border-[1.5px] border-border-strong bg-card px-4 text-sm font-semibold transition-colors hover:border-primary aria-pressed:border-foreground aria-pressed:bg-foreground aria-pressed:text-background"
+              className="focus-ring inline-flex min-h-10 items-center gap-1.5 rounded-full border border-border-strong bg-card px-4 text-sm font-semibold transition-colors hover:border-foreground aria-pressed:border-foreground aria-pressed:bg-foreground aria-pressed:text-background"
             >
               {k === "all" ? "All plots" : packLabel(k, latest)}
               <span className="font-medium tabular opacity-65">{k === "all" ? latest.length : latest.filter((p) => plotPack(p.id) === k).length}</span>

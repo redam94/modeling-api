@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { AppShell } from "@/components/shell/app-shell";
 import { isNodePath } from "@/features/datasets/tree";
 import { validateRunsSearch, type RunsSearch } from "@/features/runs/run-search";
+import { queryParam } from "@/lib/list-query";
 import { HomePage } from "@/routes/home";
 
 /*
@@ -69,6 +70,12 @@ function catalogId(v: unknown): string | undefined {
   return typeof v === "string" && v.length <= 128 && /^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*$/.test(v) ? v : undefined;
 }
 
+/** The search of a list page that has only the text of its search box (v0.21: `?q=`). */
+interface ListSearch {
+  q?: string | undefined;
+}
+const listSearch = (s: Record<string, unknown>): ListSearch => ({ q: queryParam(s.q) });
+
 /** No route matches: a block that is dark in both themes, with the not-found art behind the words. */
 function NotFound() {
   return (
@@ -93,7 +100,7 @@ const rootRoute = createRootRouteWithContext<RouterContext>()({
 
 const homeRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", component: HomePage });
 
-const datasetsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/datasets", component: lazyRouteComponent(page.datasets, "DatasetsPage") });
+const datasetsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/datasets", component: lazyRouteComponent(page.datasets, "DatasetsPage"), validateSearch: listSearch });
 
 const datasetRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -105,7 +112,7 @@ const datasetRoute = createRoute({
   }),
 });
 
-const buildRoute = createRoute({ getParentRoute: () => rootRoute, path: "/build", component: lazyRouteComponent(page.build, "BuildPage") });
+const buildRoute = createRoute({ getParentRoute: () => rootRoute, path: "/build", component: lazyRouteComponent(page.build, "BuildPage"), validateSearch: listSearch });
 
 const newSpecRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -172,7 +179,10 @@ const experimentsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/experiments",
   component: lazyRouteComponent(page.experiments, "ExperimentsPage"),
-  validateSearch: (s: Record<string, unknown>): { archived?: boolean | undefined } => ({ archived: s.archived === true || s.archived === "true" ? true : undefined }),
+  validateSearch: (s: Record<string, unknown>): { archived?: boolean | undefined; q?: string | undefined } => ({
+    archived: s.archived === true || s.archived === "true" ? true : undefined,
+    q: queryParam(s.q),
+  }),
 });
 
 const experimentRoute = createRoute({
@@ -183,7 +193,7 @@ const experimentRoute = createRoute({
   validateSearch: (s: Record<string, unknown>): RunsSearch => ({ ...validateRunsSearch(s), experiment: undefined }),
 });
 
-const modelsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/models", component: lazyRouteComponent(page.models, "ModelsPage") });
+const modelsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/models", component: lazyRouteComponent(page.models, "ModelsPage"), validateSearch: listSearch });
 
 const modelRoute = createRoute({ getParentRoute: () => rootRoute, path: "/models/$modelId", component: lazyRouteComponent(page.models, "ModelPage") });
 
@@ -215,9 +225,11 @@ const catalogRoute = createRoute({
   path: "/catalog",
   component: lazyRouteComponent(page.catalog, "CatalogPage"),
   // M3.5: without a tab the page browses About cards; `about=kind:id` opens one card.
-  validateSearch: (s: Record<string, unknown>): { tab?: (typeof CATALOG_TABS)[number] | undefined; about?: string | undefined } => ({
+  // v0.21: `q` is the text of the search box of the browse view.
+  validateSearch: (s: Record<string, unknown>): { tab?: (typeof CATALOG_TABS)[number] | undefined; about?: string | undefined; q?: string | undefined } => ({
     tab: oneOf(s.tab, CATALOG_TABS),
     about: typeof s.about === "string" && /^[a-z_]{1,32}:[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*$/.test(s.about) ? s.about : undefined,
+    q: queryParam(s.q),
   }),
 });
 
@@ -316,8 +328,10 @@ const integrationsRoute = createRoute({
   component: lazyRouteComponent(page.integrations, "IntegrationsPage"),
   validateSearch: (
     s: Record<string, unknown>,
-  ): { tab?: IntegrationTab | undefined; model?: string | undefined; version?: number | undefined; plot?: string | undefined } => ({
+  ): { tab?: IntegrationTab | undefined; model?: string | undefined; version?: number | undefined; plot?: string | undefined; q?: string | undefined } => ({
     tab: oneOf(s.tab, INTEGRATION_TABS),
+    // v0.21: the text of the search box of the Endpoints tab.
+    q: queryParam(s.q),
     // A model plot to save and share (from the plot gallery's "Share").
     model: idParam(s.model),
     version: positiveInt(s.version),
@@ -386,7 +400,10 @@ const workflowsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/workflows",
   component: lazyRouteComponent(page.workflows, "WorkflowsPage"),
-  validateSearch: (s: Record<string, unknown>): { tab?: "workflows" | "templates" | undefined } => ({ tab: oneOf(s.tab, ["workflows", "templates"] as const) }),
+  validateSearch: (s: Record<string, unknown>): { tab?: "workflows" | "templates" | undefined; q?: string | undefined } => ({
+    tab: oneOf(s.tab, ["workflows", "templates"] as const),
+    q: queryParam(s.q),
+  }),
 });
 
 const newWorkflowRoute = createRoute({
@@ -474,6 +491,8 @@ export interface DashboardsSearch {
   new?: true | undefined;
   /** …with this model picked as the source. */
   model?: string | undefined;
+  /** v0.21: the text of the search box. */
+  q?: string | undefined;
 }
 
 const dashboardsRoute = createRoute({
@@ -484,6 +503,7 @@ const dashboardsRoute = createRoute({
     status: oneOf(s.status, ["draft", "published", "archived"] as const),
     new: s.new === true || s.new === "true" || s.new === 1 || s.new === "1" ? true : undefined,
     model: idParam(s.model),
+    q: queryParam(s.q),
   }),
 });
 
@@ -503,6 +523,8 @@ export interface LibraryRouteSearch {
   new?: (typeof LIBRARY_NEW_IDS)[number] | undefined;
   source?: string | undefined;
   base?: string | undefined;
+  /** v0.21: the text of the search box of the lists. */
+  q?: string | undefined;
 }
 
 function dottedCatalogId(v: unknown): string | undefined {
@@ -520,6 +542,7 @@ const libraryRoute = createRoute({
     new: oneOf(s.new, LIBRARY_NEW_IDS),
     source: dottedCatalogId(s.source),
     base: dottedCatalogId(s.base),
+    q: queryParam(s.q),
   }),
 });
 

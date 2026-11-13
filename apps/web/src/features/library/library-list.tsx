@@ -3,13 +3,13 @@
  * (untrusted text, rendered as text), who made it and when, its scope, and the actions (open,
  * start from it for workflow templates, archive, share with the whole tenant for tenant admins).
  */
-import { Archive, ArchiveRestore, ArrowRight, Pencil, Play, Search, Share2 } from "lucide-react";
-import { useId, useState } from "react";
+import { Archive, ArchiveRestore, ArrowRight, Pencil, Play, Share2 } from "lucide-react";
+import { useState } from "react";
 
 import { can } from "@/api/access";
 import { ErrorNotice, LoadingRows, Spinner } from "@/components/common";
+import { ListNoMatches, ListToolbar } from "@/components/list-toolbar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/primitives";
 import { CatalogGlyph, glyphKind } from "@/components/illustrations";
 import { useGrants } from "@/features/auth/workspace";
 import { relativeTime } from "@/lib/format";
@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 
 import { useStartFromTemplate } from "./actions";
 import { useArchiveLibraryItem, useLibraryItems, usePromoteLibraryItem } from "./api";
-import { Chip, PILL_SM, QUIET, ToggleChip, useDebounced } from "./ui";
+import { Chip, PILL_SM, QUIET, ToggleChip } from "./ui";
 import type { LibraryItem, LibraryKind } from "./types";
 
 function byline(item: LibraryItem, me: string): string {
@@ -78,28 +78,36 @@ function ItemCard({ item, onOpen, me }: { item: LibraryItem; onOpen: (item: Libr
   );
 }
 
-export function LibraryList({ kind, onOpen, empty, me }: { kind: LibraryKind; onOpen: (item: LibraryItem) => void; empty: React.ReactNode; me: string }) {
-  const id = useId();
-  const [q, setQ] = useState("");
+/** The things of one kind, as the search box names them. */
+const THINGS: Record<LibraryKind, string> = { model_recipe: "model recipes", prep_preset: "prep presets", chart_template: "chart templates", workflow_template: "workflow templates" };
+
+export function LibraryList({
+  kind,
+  onOpen,
+  empty,
+  me,
+  query,
+  onQuery,
+}: {
+  kind: LibraryKind;
+  onOpen: (item: LibraryItem) => void;
+  empty: React.ReactNode;
+  me: string;
+  /** The text of the search box (the page keeps it in the URL as `?q=`); the server filters by it. */
+  query: string;
+  onQuery: (query: string) => void;
+}) {
   const [archived, setArchived] = useState(false);
-  const query = useDebounced(q, 250);
   const items = useLibraryItems({ kind, q: query || undefined, include_archived: archived || undefined });
   const list = items.data ?? [];
-  const filtering = Boolean(query) || archived;
+  const things = THINGS[kind];
   return (
     <div className="grid gap-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <label htmlFor={`${id}-q`} className="sr-only">
-          Search
-        </label>
-        <div className="relative w-full max-w-xs">
-          <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input id={`${id}-q`} type="search" className="rounded-full pl-9" placeholder="Search by name or title" value={q} onChange={(e) => setQ(e.target.value)} />
-        </div>
+      <ListToolbar things={things} placeholder="Search by name or title" value={query} onChange={onQuery} count={items.data && !items.isPlaceholderData ? { shown: list.length } : undefined}>
         <ToggleChip pressed={archived} onClick={() => setArchived(!archived)}>
           Show archived
         </ToggleChip>
-      </div>
+      </ListToolbar>
       {items.isPending ? (
         <LoadingRows rows={3} />
       ) : items.isError ? (
@@ -110,8 +118,10 @@ export function LibraryList({ kind, onOpen, empty, me }: { kind: LibraryKind; on
             <ItemCard key={item.id} item={item} onOpen={onOpen} me={me} />
           ))}
         </ul>
-      ) : filtering ? (
-        <p className="rounded-2xl border border-dashed border-border-strong p-6 text-muted-foreground">Nothing matches. Try another word{archived ? "" : ", or show archived items"}.</p>
+      ) : query ? (
+        <ListNoMatches things={things} query={query} onClear={() => onQuery("")} />
+      ) : archived ? (
+        <p className="rounded-2xl border border-dashed border-border-strong p-6 text-muted-foreground">There are no {things}, and there are none in the archive.</p>
       ) : (
         empty
       )}

@@ -94,8 +94,10 @@ test("the catalog shows every plot as a card with an example", async ({ page }) 
   const cards = page.getByRole("list", { name: "Plot recipes" }).getByRole("listitem");
   // v0.10: core.roc_pr, core.confusion, core.loss_curve, core.loo_pit; v0.12: the MMM pack (8 mmm.*,
   // core.energy, core.prior_posterior); v0.13: causal.impact, causal.pre_fit, causal.donor_weights,
-  // causal.event_study; v0.15: ml.training_curves, ml.confusion_epochs, ml.misclassified
-  await expect(cards).toHaveCount(57);
+  // causal.event_study; v0.15: ml.training_curves, ml.confusion_epochs, ml.misclassified (57 in the
+  // fixture catalog); v0.19: plus the plot recipe of the approved uploaded version of the mock tenant
+  // (`withUploadedEntries`, src/mocks/plugins.ts).
+  await expect(cards).toHaveCount(58);
   // the first card's thumbnail renders in the sandbox (Vega-Lite)
   const first = page.getByTestId("plot-card").first();
   await expect(first.locator('iframe[data-testid="plot-frame"]').contentFrame().locator("svg.marks")).toBeVisible({ timeout: 20_000 });
@@ -309,11 +311,18 @@ test("Help me choose fits a 375 px phone: the suggestion tabs scroll inside thei
     const tabs = page.getByRole("radiogroup", { name: "What to suggest" });
     const box = await tabs.boundingBox();
     expect(box!.x + box!.width, url).toBeLessThanOrEqual(client);
-    // every tab label stays on one line (no three-line "Where to start")
+    // every tab label stays on one line (no three-line "Where to start"): the pill keeps its
+    // one height (36 px since the v0.18 filter pills) and its text is one line box
     for (const name of ["Where to start", "Workflow nodes"]) {
       const tab = tabs.getByRole("radio", { name });
       const h = (await tab.boundingBox())!.height;
-      expect(h, `${name} in ${url}`).toBeLessThanOrEqual(32);
+      expect(h, `${name} in ${url}`).toBeLessThanOrEqual(36);
+      const lines = await tab.evaluate((el) => {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        return new Set([...range.getClientRects()].map((r) => Math.round(r.top))).size;
+      });
+      expect(lines, `${name} in ${url}`).toBe(1);
     }
   }
   // the last tab is reachable by scrolling the strip

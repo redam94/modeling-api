@@ -115,7 +115,7 @@ export function activeCatalogTab(urlTab: string | undefined, pickedYours: boolea
 
 export function CatalogPage() {
   const catalog = useCatalog();
-  const { tab, about } = route.useSearch();
+  const { tab, about, q } = route.useSearch();
   const navigate = useNavigate({ from: "/catalog" });
   const [selected, setSelected] = useState<Selected | null>(null);
   const [pickedYours, setPickedYours] = useState(false);
@@ -163,7 +163,14 @@ export function CatalogPage() {
               <YoursTab />
             </TabsContent>
             <TabsContent value="browse" className="grid gap-12 pt-4">
-              <CatalogBrowser selected={about ?? null} onSelect={(key) => void navigate({ search: { about: key ?? undefined }, replace: true })} teamCount={team.count} onShowTeam={() => go("yours")} />
+              <CatalogBrowser
+                selected={about ?? null}
+                onSelect={(key) => void navigate({ search: (s) => ({ ...s, about: key ?? undefined }), replace: true })}
+                query={q ?? ""}
+                onQuery={(next) => void navigate({ search: (s) => ({ ...s, q: next || undefined }), replace: true })}
+                teamCount={team.count}
+                onShowTeam={() => go("yours")}
+              />
               <AddYourOwn kind="any" />
             </TabsContent>
             <TabsContent value="models" className="pt-4">

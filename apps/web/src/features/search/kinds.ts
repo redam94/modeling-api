@@ -47,6 +47,12 @@ export const KINDS: Readonly<Record<KindId, KindDef>> = {
   plugins: { id: "plugins", heading: "Uploaded code", kind: "Uploaded code", nav: "/catalog", resource: "plugin" },
 };
 
+/** A machine word as the muted line of a row shows it: "dry_run" → "Dry run". */
+export function sentenceCase(text: string): string {
+  const s = text.replace(/_/g, " ");
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 export function isKindId(v: unknown): v is KindId {
   return typeof v === "string" && Object.hasOwn(KINDS, v);
 }

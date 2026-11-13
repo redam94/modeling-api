@@ -16,6 +16,7 @@ import { useModels, useModelVersion, useModelVersions } from "@/api/queries";
 import type { Endpoint, EndpointPromote, EndpointRevision, EvaluationPolicy, GateOutcome, PromotionGateDecision, Scorecard } from "@/api/types";
 import { EmptyState, ErrorNotice, Mono, QueryView, Spinner } from "@/components/common";
 import { DataTable } from "@/components/data-table";
+import { ListNoMatches, ListToolbar, matchesQuery } from "@/components/list-toolbar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/overlays";
 import { Badge, Field, Input, NativeSelect, Textarea } from "@/components/ui/primitives";
@@ -98,7 +99,7 @@ export function ScorecardSummary({ scorecard }: { scorecard: Scorecard | null | 
 
 // ----------------------------------------------------------------------- list
 
-export function EndpointsSection() {
+export function EndpointsSection({ query = "", onQuery }: { /** The text of the search box (the page keeps it in the URL). */ query?: string; onQuery?: (query: string) => void }) {
   const ws = useWorkspace();
   const endpoints = useEndpoints();
   const navigate = useNavigate();
@@ -146,16 +147,24 @@ export function EndpointsSection() {
         </Button>
       </div>
       <QueryView query={endpoints}>
-        {(page) =>
-          page.items.length ? (
-            <DataTable
-              label="Endpoints"
-              data={page.items}
-              columns={columns}
-              getRowId={(e) => e.id}
-              onRowClick={(e) => void navigate({ to: "/integrations/endpoints/$alias", params: { alias: e.alias } })}
-              filterPlaceholder="Filter endpoints"
-            />
+        {(page) => {
+          const more = Boolean(page.next_cursor);
+          const rows = query ? page.items.filter((e) => matchesQuery(query, [e.alias], [e.ref, e.model_ref])) : page.items;
+          return page.items.length ? (
+            <div className="grid gap-3">
+              {onQuery ? <ListToolbar things="endpoints" value={query} onChange={onQuery} count={{ shown: rows.length, total: page.items.length, more }} /> : null}
+              {rows.length ? (
+                <DataTable
+                  label="Endpoints"
+                  data={rows}
+                  columns={columns}
+                  getRowId={(e) => e.id}
+                  onRowClick={(e) => void navigate({ to: "/integrations/endpoints/$alias", params: { alias: e.alias } })}
+                />
+              ) : (
+                <ListNoMatches things="endpoints" query={query} firstPage={more ? page.items.length : undefined} onClear={() => onQuery?.("")} />
+              )}
+            </div>
           ) : (
             <EmptyState
               icon={<Plug />}
@@ -170,8 +179,8 @@ export function EndpointsSection() {
             >
               Promote a fitted model version to an endpoint. Then you can score it from a spreadsheet, a BI tool, a notebook or your own service.
             </EmptyState>
-          )
-        }
+          );
+        }}
       </QueryView>
       {promoting ? (
         <PromoteDialog
