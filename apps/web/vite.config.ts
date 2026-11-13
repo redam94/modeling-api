@@ -27,6 +27,12 @@ const HEAVY = [pkg("monaco-editor|monaco-yaml"), pkg("apache-arrow"), pkg("@xyfl
  * in that closure: the expert app's router, tables, editors, Arrow and the workflow canvas, and
  * the signed-in session middleware (share links send no cookie, CSRF or project header).
  */
+/**
+ * v0.21: the generated art of signed-in pages (the empty-state glyphs, Start here, not found).
+ * A share link and the client portal show the mark only (`components/brand/logo.tsx`).
+ */
+const SIGNED_IN_ART = [/\/src\/components\/brand\/empty-art\.tsx$/, /\/src\/assets\/brand\/(?:empty-|start-here|not-found)/];
+
 const SHARE_FORBIDDEN = [
   pkg("@tanstack\\/react-router"),
   pkg("@tanstack\\/react-table"),
@@ -36,6 +42,7 @@ const SHARE_FORBIDDEN = [
   pkg("monaco-editor|monaco-yaml"),
   pkg("apache-arrow"),
   pkg("@xyflow"),
+  ...SIGNED_IN_ART,
   ...SIGNED_IN_ONLY,
 ];
 
@@ -62,7 +69,7 @@ const ENTRY_BUDGET = {
     {
       match: /(?:^|\/)client-app-[^/]*\.js$/,
       maxBytes: 260 * 1024,
-      forbidden: [pkg("@tanstack\\/react-table"), /\/src\/components\/shell\//, pkg("monaco-editor|monaco-yaml"), pkg("apache-arrow"), pkg("@xyflow"), ...SIGNED_IN_ONLY, ...CHAT_PANEL_ONLY],
+      forbidden: [pkg("@tanstack\\/react-table"), /\/src\/components\/shell\//, pkg("monaco-editor|monaco-yaml"), pkg("apache-arrow"), pkg("@xyflow"), ...SIGNED_IN_ART, ...SIGNED_IN_ONLY, ...CHAT_PANEL_ONLY],
     },
     // v0.20 (plan D21): "Ask about your dashboard", one lazy chunk for the readout route, the
     // portal and share links, so it has the share link's forbidden list (no session client, no
@@ -99,6 +106,10 @@ const ENTRY_BUDGET = {
       forbidden: [pkg("monaco-editor|monaco-yaml"), pkg("@xyflow")],
       requiredWhen: /\/src\/features\/plots\/recipe-playground\.tsx$/,
     },
+    // v0.21: the global search loads its remote result groups and the docs index only when
+    // the overlay opens (5 KiB and 67 KiB at v0.21). Neither may slip into the entry.
+    { match: /(?:^|\/)remote-sources-[^/]*\.js$/, maxBytes: 16 * 1024, forbidden: HEAVY, requiredWhen: /\/src\/features\/search\/remote-sources\.tsx$/ },
+    { match: /(?:^|\/)docs-index\.gen-[^/]*\.js$/, maxBytes: 120 * 1024, forbidden: HEAVY, requiredWhen: /\/src\/features\/search\/docs-index\.gen\.json$/ },
     // Make your own: Monaco stays its own lazy chunk (the YAML tab loads it with import()).
     { match: /(?:^|\/)library-[^/]*\.js$/, maxBytes: 160 * 1024, forbidden: HEAVY, requiredWhen: /\/src\/routes\/library\.tsx$/ },
     // v0.19 (D20, I-8): uploaded code (upload, plugin, version and review pages). Recipe examples

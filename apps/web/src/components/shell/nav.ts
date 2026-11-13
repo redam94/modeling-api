@@ -158,3 +158,11 @@ export function inGuidedMore(pathname: string): boolean {
 
 /** A Guided-locked project (members below admin): the Guided screens and the Integrations hub. */
 export const LOCKED_NAV: NavItem[] = [GUIDED_NAV, CHOOSE_NAV, RECIPES_NAV, INTEGRATIONS_NAV];
+
+/** Which navigation the sidebar shows: Expert, Guided, or a Guided-locked project below admin. */
+export type NavMode = "expert" | "guided" | "locked";
+
+/** The nav list of `mode` (v0.21): the sidebar's entries, which the global search also offers. */
+export function navForMode(mode: NavMode): NavItem[] {
+  return mode === "locked" ? LOCKED_NAV : mode === "guided" ? GUIDED_MODE_NAV : EXPERT_NAV;
+}

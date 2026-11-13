@@ -893,7 +893,12 @@ export function createLibraryHandlers(state: LibraryMockState): HttpHandler[] {
         .filter((r) => !q || r.item.name.toLowerCase().includes(q) || r.item.title.toLowerCase().includes(q))
         .map((r) => r.item)
         .sort((a, b) => (a.updated_at < b.updated_at ? 1 : a.updated_at > b.updated_at ? -1 : 0));
-      return HttpResponse.json({ items, next_cursor: null });
+      // v0.21: `limit` (1 to 200, default 50) and `cursor`, as the server pages the list (the
+      // global search asks for five).
+      const limit = Math.max(1, Math.min(200, Number(url.searchParams.get("limit") ?? 50) || 50));
+      const offset = Math.max(0, Number((url.searchParams.get("cursor") ?? "").replace(/^o:/, "")) || 0);
+      const end = offset + limit;
+      return HttpResponse.json({ items: items.slice(offset, end), next_cursor: end < items.length ? `o:${end}` : null });
     }),
     http.post(LIST, async ({ request }) => {
       const ctx = needScope(request);

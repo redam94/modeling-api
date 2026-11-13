@@ -209,6 +209,7 @@ web-check: ## Lint, typecheck, test (Vitest + Playwright smoke) and build apps/*
 	$(UV) run python apps/web/scripts/gen_workflow_fixtures.py --check
 	$(UV) run python apps/web/scripts/gen_editor_fixtures.py --check
 	$(UV) run python apps/web/scripts/gen_tree_fixtures.py --check
+	$(UV) run python scripts/gen_docs_search_index.py --check
 	$(PNPM) -r lint
 	$(PNPM) -r typecheck
 	$(PNPM) -r test
