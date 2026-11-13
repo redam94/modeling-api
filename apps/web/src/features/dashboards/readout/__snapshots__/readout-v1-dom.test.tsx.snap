@@ -3600,7 +3600,7 @@ exports[`layout 1 readout DOM > MMM: scenarios 1`] = `
                     Save scenario
                   </button>
                   <button
-                    class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active disabled:bg-brand-300 dark:disabled:opacity-50 h-10 px-5"
+                    class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active disabled:bg-grey-400 dark:disabled:opacity-50 h-10 px-5"
                     data-slot="button"
                     disabled=""
                     type="button"
@@ -5759,7 +5759,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
                   </div>
                   <div>
                     <button
-                      class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active disabled:bg-brand-300 dark:disabled:opacity-50 h-10 px-5"
+                      class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active disabled:bg-grey-400 dark:disabled:opacity-50 h-10 px-5"
                       data-slot="button"
                       disabled=""
                       type="button"
@@ -8674,7 +8674,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                 >
                   <div>
                     <button
-                      class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active disabled:bg-brand-300 dark:disabled:opacity-50 h-10 px-5"
+                      class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active disabled:bg-grey-400 dark:disabled:opacity-50 h-10 px-5"
                       data-slot="button"
                       disabled=""
                       type="button"

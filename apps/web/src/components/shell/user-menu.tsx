@@ -59,7 +59,7 @@ export function UserMenu() {
           type="button"
           aria-label={`Account: ${user.name}`}
           data-tour="shell.help-menu"
-          className="focus-ring relative grid size-8 shrink-0 place-items-center rounded-full bg-accent text-2xs font-semibold text-accent-foreground hover:bg-brand-200 dark:hover:bg-secondary"
+          className="focus-ring relative grid size-8 shrink-0 place-items-center rounded-full bg-accent text-2xs font-semibold text-accent-foreground hover:bg-grey-300 dark:hover:bg-secondary"
         >
           {initials(user.name)}
           {ws.operator ? (

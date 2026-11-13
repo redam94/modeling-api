@@ -11,7 +11,7 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active disabled:bg-brand-300 dark:disabled:opacity-50",
+          "bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active disabled:bg-grey-400 dark:disabled:opacity-50",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50",
         // Secondary and outline are one style: a white button with a brand ring.
         secondary:

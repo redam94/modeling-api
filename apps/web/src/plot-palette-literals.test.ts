@@ -2,7 +2,7 @@
  * Plots the app builds itself (governance evidence, the science explorer) render in the plot
  * sandbox, which swaps only the recipe palette's colours for their dark variants
  * (`apps/plot-sandbox/src/recipe-palette.ts`). A literal colour outside that palette keeps its
- * light value on the dark card (#b41880 was 2.6:1 there), so these specs use palette colours
+ * light value on the dark card (a literal magenta was 2.6:1 there), so these specs use palette colours
  * only, apart from a neutral grey fill that reads on both cards.
  */
 import { readFileSync } from "node:fs";
@@ -14,7 +14,7 @@ import { describe, expect, it } from "vitest";
 import { DARK_VARIANTS } from "../../plot-sandbox/src/recipe-palette";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const NEUTRALS = new Set(["#c3c0d5"]); // grey-400: the "No value" fill of a map
+const NEUTRALS = new Set(["#d2d2d7"]); // grey-300: the "No value" fill of a map
 
 describe.each([
   "features/governance/evidence.tsx",

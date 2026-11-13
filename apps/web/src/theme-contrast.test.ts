@@ -6,9 +6,9 @@
  *   against what they sit on;
  * - every foreground / background pair the primitives use (primary buttons, accent, tooltips,
  *   destructive fills, hint text) needs 4.5:1;
- * - the Studio roles: text on the ink block, the lime highlighter and the coral tints needs 4.5:1,
- *   the highlighter as a mark on the block and the coral fill on a card need 3:1.
- * The lime `--highlight` is a fill only (about 1.2:1 on a card): a lint below refuses it as text.
+ * - the role tokens: text on the ink block, the orange highlight and the red tints needs 4.5:1,
+ *   the highlight as a mark on the block and the red fill on a card need 3:1.
+ * The orange `--highlight` is a fill only (about 2.1:1 on a card): a lint below refuses it as text.
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
@@ -120,7 +120,7 @@ describe.each([
   it.each([
     // The call to action on a block, the "up" delta pill, the active tour dot.
     ["highlight-foreground", "highlight"],
-    // Lime words: the current step, "new" chips.
+    // Highlight words: the current step, "new" chips.
     ["highlight-ink", "highlight-soft"],
     ["highlight-ink", "card"],
     ["highlight-ink", "background"],
@@ -130,7 +130,7 @@ describe.each([
     ["block-foreground", "block-raised"],
     ["block-muted", "block"],
     ["block-muted", "block-raised"],
-    // Coral words: down deltas, "needs a look" chips.
+    // Attention words: down deltas, "needs a look" chips.
     ["attention", "attention-soft"],
     ["attention", "card"],
     ["attention", "background"],
@@ -184,7 +184,7 @@ describe("the keyboard highlight of menus and the command palette", () => {
   });
 });
 
-describe("the lime highlighter is never a text colour", () => {
+describe("the highlight fill is never a text colour", () => {
   const root = dirname(fileURLToPath(import.meta.url));
   const self = fileURLToPath(import.meta.url);
   const files = (dir: string): string[] =>
@@ -192,8 +192,8 @@ describe("the lime highlighter is never a text colour", () => {
       const path = join(dir, name);
       return statSync(path).isDirectory() ? files(path) : /\.(tsx?|css)$/.test(name) ? [path] : [];
     });
-  // `text-highlight` alone (any variant, any opacity) and `text-highlight-soft` are lime text;
-  // `text-highlight-foreground` (ink on a lime fill) and `text-highlight-ink` are the text roles.
+  // `text-highlight` alone (any variant, any opacity) and `text-highlight-soft` are highlight text;
+  // `text-highlight-foreground` (ink on the fill) and `text-highlight-ink` are the text roles.
   // Icons on a block take `stroke-highlight` (lucide strokes in currentColor otherwise).
   const misuse = [
     /(?<![\w-])text-highlight(?!-(?:foreground|ink)(?![\w-]))(?!\w)/,
@@ -210,7 +210,7 @@ describe("the lime highlighter is never a text colour", () => {
         if (misuse.some((re) => re.test(line))) offenders.push(`${relative(root, path)}:${i + 1}: ${line.trim()}`);
       });
     }
-    expect(offenders, "use text-highlight-ink for lime words, text-highlight-foreground on a lime fill").toEqual([]);
+    expect(offenders, "use text-highlight-ink for highlight words, text-highlight-foreground on the highlight fill").toEqual([]);
   });
 
   it("the lint catches the misuse and lets the text roles through", () => {
@@ -218,7 +218,7 @@ describe("the lime highlighter is never a text colour", () => {
     for (const bad of ['"text-highlight"', "hover:text-highlight", "text-highlight/80", "text-highlight-soft", "color: var(--highlight);"]) {
       expect(hits(bad), bad).toBe(true);
     }
-    for (const good of ["text-highlight-foreground", "text-highlight-ink", "bg-highlight", "stroke-highlight", "--highlight-ink: #4c6600;"]) {
+    for (const good of ["text-highlight-foreground", "text-highlight-ink", "bg-highlight", "stroke-highlight", "--highlight-ink: #9f4500;"]) {
       expect(hits(good), good).toBe(false);
     }
   });

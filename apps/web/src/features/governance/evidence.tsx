@@ -62,12 +62,12 @@ export function nullDistributionPlot(inline: unknown): BuiltPlot | null {
       {
         data: { name: "real" },
         mark: { type: "rule", strokeWidth: 2.5 },
-        encoding: { x: { field: "score", type: "quantitative" }, color: { value: "#c0182f" }, tooltip: [{ field: "score", title: "Your model", format: ".3g" }] },
+        encoding: { x: { field: "score", type: "quantitative" }, color: { value: "#c00f2c" }, tooltip: [{ field: "score", title: "Your model", format: ".3g" }] },
       },
       {
         data: { name: "real" },
         mark: { type: "text", align: "left", dx: 4, dy: -6, fontWeight: "bold" },
-        encoding: { x: { field: "score", type: "quantitative" }, y: { value: 8 }, text: { value: "Your model" }, color: { value: "#c0182f" } },
+        encoding: { x: { field: "score", type: "quantitative" }, y: { value: 8 }, text: { value: "Your model" }, color: { value: "#c00f2c" } },
       },
     ],
   };

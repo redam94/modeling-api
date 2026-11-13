@@ -41,9 +41,9 @@ export const I = {
   /** The accent dot. */
   coral: "fill-illus-4",
   /** Pale shapes (the spend wedge, title bars). */
-  pale: "fill-brand-200",
+  pale: "fill-grey-300",
   /** Ink shapes. */
-  ink: "fill-brand-800",
+  ink: "fill-grey-900",
   /** White shapes on a block. */
   white: "fill-block-foreground",
   /** The one raised bar on a block. */

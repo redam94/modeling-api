@@ -78,27 +78,27 @@ describe("recipe colours in dark mode", () => {
   const recipe: JsonObject = {
     data: { name: "fan" },
     layer: [
-      { mark: { type: "area", color: "#dcd8ff", opacity: 0.3 } },
-      { mark: { type: "circle", color: "#18152f" } },
-      { mark: { type: "rule", color: "#C0182F" } },
-      { mark: "bar", encoding: { color: { field: "k", scale: { range: ["#6e6a8a", "#b56a00"] } } } },
+      { mark: { type: "area", color: "#bfdcec", opacity: 0.3 } },
+      { mark: { type: "circle", color: "#1d1d1f" } },
+      { mark: { type: "rule", color: "#C00F2C" } },
+      { mark: "bar", encoding: { color: { field: "k", scale: { range: ["#6e6e73", "#8f5600"] } } } },
     ],
   };
-  const sets = { fan: [{ k: "#18152f", label: "#dcd8ff" }] };
+  const sets = { fan: [{ k: "#1d1d1f", label: "#bfdcec" }] };
 
   it("swaps every palette colour for its dark variant, case-insensitively", () => {
     const out = prepareVegaLite(recipe, sets, "dark");
     const layers = out.layer as JsonObject[];
-    expect((layers[0]!.mark as JsonObject).color).toBe("#5a4af5");
-    expect((layers[1]!.mark as JsonObject).color).toBe("#f2f1fa");
-    expect((layers[2]!.mark as JsonObject).color).toBe("#ff8a9a");
-    expect(JSON.stringify(layers[3])).toContain('["#aeabc8","#ffb84d"]');
+    expect((layers[0]!.mark as JsonObject).color).toBe("#0072b2");
+    expect((layers[1]!.mark as JsonObject).color).toBe("#f5f5f7");
+    expect((layers[2]!.mark as JsonObject).color).toBe("#ff6b6b");
+    expect(JSON.stringify(layers[3])).toContain('["#8e8e93","#ffc929"]');
     expect(out.datasets).toEqual(sets); // data is never rewritten
   });
 
   it("keeps the light palette in light mode and leaves other colours alone", () => {
     const out = prepareVegaLite(recipe, sets, "light");
-    expect(((out.layer as JsonObject[])[1]!.mark as JsonObject).color).toBe("#18152f");
+    expect(((out.layer as JsonObject[])[1]!.mark as JsonObject).color).toBe("#1d1d1f");
     const custom = prepareVegaLite({ mark: { type: "bar", color: "#123456" } }, {}, "dark");
     expect((custom.mark as JsonObject).color).toBe("#123456");
   });
@@ -115,7 +115,7 @@ describe("recipe colours in dark mode", () => {
         { mark: "text", encoding: { x: { field: "value", type: "quantitative" }, text: { field: "channel" } } },
       ],
     };
-    for (const [theme, card] of [["dark", "#1a1642"], ["light", "#ffffff"]] as const) {
+    for (const [theme, card] of [["dark", "#161617"], ["light", "#ffffff"]] as const) {
       const vg = compile(prepareVegaLite(spec, datasets, theme) as never).spec as { marks: { name: string; encode: { update: Record<string, { value?: string }> } }[] };
       const colour = (layer: number, channel: "stroke" | "fill") => vg.marks.find((m) => m.name === `layer_${layer}_marks`)?.encode.update[channel]?.value ?? "";
       for (const [layer, channel] of [[1, "stroke"], [2, "fill"], [3, "fill"]] as const) expect(colour(layer, channel)).toMatch(/^#[0-9a-f]{6}$/i);
@@ -130,7 +130,7 @@ describe("recipe colours in dark mode", () => {
   it("gives every dark variant at least 3:1 contrast on the dark card", () => {
     for (const [light, dark] of Object.entries(DARK_VARIANTS)) {
       if (NON_TEXT_FILLS.has(light)) continue;
-      expect(contrast(dark, "#1a1642"), `${light} -> ${dark}`).toBeGreaterThanOrEqual(3);
+      expect(contrast(dark, "#161617"), `${light} -> ${dark}`).toBeGreaterThanOrEqual(3);
     }
   });
 });
@@ -144,26 +144,26 @@ describe("preparePlotly", () => {
   });
 
   it("swaps recipe colours in traces and frames in dark mode, never data values", () => {
-    const sets = { cells: [{ x: 1, c: "#dcd8ff" }] };
+    const sets = { cells: [{ x: 1, c: "#bfdcec" }] };
     const spec: JsonObject = {
       data: [
-        { type: "scatter", x: { $ref: "cells.x" }, text: ["#dcd8ff"], line: { color: "#DCD8FF" }, fillcolor: "#18152f" },
+        { type: "scatter", x: { $ref: "cells.x" }, text: ["#bfdcec"], line: { color: "#BFDCEC" }, fillcolor: "#1d1d1f" },
         { type: "heatmap", z: { $ref: "cells.x" }, colorscale: [[0, "#440154"], [1, "#fde725"]] },
       ],
-      layout: { annotations: [{ text: "a", font: { color: "#625f79" } }] },
-      frames: [{ name: "1", data: [{ type: "scatter", marker: { color: "#18152f" } }] }],
+      layout: { annotations: [{ text: "a", font: { color: "#68686d" } }] },
+      frames: [{ name: "1", data: [{ type: "scatter", marker: { color: "#1d1d1f" } }] }],
     };
     const dark = preparePlotly(spec, sets, "dark");
     const t0 = dark.data[0] as JsonObject;
-    expect((t0.line as JsonObject).color).toBe("#5a4af5");
-    expect(t0.fillcolor).toBe("#f2f1fa");
-    expect(t0.text).toEqual(["#dcd8ff"]);
+    expect((t0.line as JsonObject).color).toBe("#0072b2");
+    expect(t0.fillcolor).toBe("#f5f5f7");
+    expect(t0.text).toEqual(["#bfdcec"]);
     expect(t0.x).toEqual([1]);
     expect((dark.data[1] as JsonObject).colorscale).toEqual([[0, "#440154"], [1, "#fde725"]]);
-    expect(JSON.stringify(dark.layout.annotations)).toContain("#b6b3d2");
-    expect(JSON.stringify(dark.frames)).toContain("#f2f1fa");
+    expect(JSON.stringify(dark.layout.annotations)).toContain("#a1a1a6");
+    expect(JSON.stringify(dark.frames)).toContain("#f5f5f7");
     const light = preparePlotly(spec, sets, "light");
-    expect(((light.data[0] as JsonObject).line as JsonObject).color).toBe("#DCD8FF");
+    expect(((light.data[0] as JsonObject).line as JsonObject).color).toBe("#BFDCEC");
   });
 });
 
@@ -176,8 +176,8 @@ describe("deepMerge", () => {
 describe("polar plots", () => {
   const rose: JsonObject = {
     data: [
-      { type: "barpolar", theta: { $ref: "bars.theta" }, r: { $ref: "bars.r" }, width: 90, marker: { color: "#18152f" } },
-      { type: "scatterpolar", mode: "lines", theta: { $ref: "bars.theta" }, r: { $ref: "bars.r" }, line: { color: "#dcd8ff" } },
+      { type: "barpolar", theta: { $ref: "bars.theta" }, r: { $ref: "bars.r" }, width: 90, marker: { color: "#1d1d1f" } },
+      { type: "scatterpolar", mode: "lines", theta: { $ref: "bars.theta" }, r: { $ref: "bars.r" }, line: { color: "#bfdcec" } },
       { type: "scatterpolar", subplot: "polar2", theta: [0, 90], r: [1, 2] },
     ],
     layout: {
@@ -201,14 +201,14 @@ describe("polar plots", () => {
     const [bar, line] = out.data as JsonObject[];
     expect(bar?.theta).toEqual([45, 135]);
     expect(bar?.r).toEqual([3, 5]);
-    expect((bar?.marker as JsonObject).color).toBe(DARK_VARIANTS["#18152f"]);
-    expect((line?.line as JsonObject).color).toBe(DARK_VARIANTS["#dcd8ff"]);
+    expect((bar?.marker as JsonObject).color).toBe(DARK_VARIANTS["#1d1d1f"]);
+    expect((line?.line as JsonObject).color).toBe(DARK_VARIANTS["#bfdcec"]);
     const polar = out.layout.polar as Record<string, Record<string, unknown>>;
     expect(polar.bgcolor).toBe("rgba(0,0,0,0)");
     // the spec's own settings win over the theme
     expect(polar.angularaxis).toMatchObject({ direction: "clockwise", rotation: 90, ticktext: ["0 h", "6 h"] });
-    expect(polar.angularaxis?.gridcolor).toBe("#2e2866");
-    expect(polar.radialaxis?.color).toBe("#b6b3d2");
+    expect(polar.angularaxis?.gridcolor).toBe("#2a2a2c");
+    expect(polar.radialaxis?.color).toBe("#a1a1a6");
     expect((out.layout.polar2 as Record<string, unknown>).bgcolor).toBe("rgba(0,0,0,0)");
     expect((out.frames[0] as JsonObject).data).toEqual([{ type: "barpolar", r: [3, 5] }]);
   });

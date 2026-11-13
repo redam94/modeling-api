@@ -21,44 +21,45 @@ interface Loaded {
 
 let loading: Promise<Loaded> | null = null;
 
-// Colours follow the app.css tokens (brand ramp for types/keywords, status inks, hint grey).
+// Surfaces and line numbers follow the app.css tokens (card, page, hint, border). Syntax colours are
+// the five of the docs site: keyword, string, number, comment, and function or type.
 function defineThemes(monaco: MonacoApi): void {
   monaco.editor.defineTheme("mapi-light", {
     base: "vs",
     inherit: true,
     rules: [
-      { token: "type", foreground: "3a2bd6" },
-      { token: "string", foreground: "0b6b3a" },
-      { token: "number", foreground: "9a4200" },
-      { token: "keyword", foreground: "2a1ea8" },
-      { token: "comment", foreground: "625f79", fontStyle: "italic" },
+      { token: "type", foreground: "0f68a0" },
+      { token: "string", foreground: "c41a16" },
+      { token: "number", foreground: "1c00cf" },
+      { token: "keyword", foreground: "9b2393" },
+      { token: "comment", foreground: "6e6e73", fontStyle: "italic" },
     ],
     colors: {
       "editor.background": "#ffffff",
-      "editor.lineHighlightBackground": "#f6f5fb",
-      "editorLineNumber.foreground": "#84819b",
-      "editorLineNumber.activeForeground": "#48455f",
-      "editor.selectionBackground": "#dcd8ff",
-      "editorIndentGuide.background1": "#eeedf6",
+      "editor.lineHighlightBackground": "#f5f5f7",
+      "editorLineNumber.foreground": "#86868b",
+      "editorLineNumber.activeForeground": "#424245",
+      "editor.selectionBackground": "#bfdcec",
+      "editorIndentGuide.background1": "#e8e8ed",
     },
   });
   monaco.editor.defineTheme("mapi-dark", {
     base: "vs-dark",
     inherit: true,
     rules: [
-      { token: "type", foreground: "aaa3ff" },
-      { token: "string", foreground: "5fdc8f" },
-      { token: "number", foreground: "ffb36b" },
-      { token: "keyword", foreground: "dcd8ff" },
-      { token: "comment", foreground: "9d9abf", fontStyle: "italic" },
+      { token: "type", foreground: "6bdfff" },
+      { token: "string", foreground: "ff8170" },
+      { token: "number", foreground: "d9c97c" },
+      { token: "keyword", foreground: "ff7ab2" },
+      { token: "comment", foreground: "86868b", fontStyle: "italic" },
     ],
     colors: {
-      "editor.background": "#1a1642",
-      "editor.lineHighlightBackground": "#1f1a4c",
-      "editorLineNumber.foreground": "#8a86b3",
-      "editorLineNumber.activeForeground": "#b6b3d2",
-      "editor.selectionBackground": "#2f2878",
-      "editorIndentGuide.background1": "#2e2866",
+      "editor.background": "#161617",
+      "editor.lineHighlightBackground": "#1d1d1f",
+      "editorLineNumber.foreground": "#86868b",
+      "editorLineNumber.activeForeground": "#d2d2d7",
+      "editor.selectionBackground": "#31586f",
+      "editorIndentGuide.background1": "#2a2a2c",
     },
   });
 }

@@ -813,7 +813,7 @@ def test_feature_importance_needs_a_known_group() -> None:
 # ------------------------------------------------------------------------------ colours
 
 _COLOUR = re.compile(r"^(#[0-9a-fA-F]{3,8}|white|black|red|blue|green|gray|grey|orange)$")
-_LIGHT_CARD, _DARK_CARD = "#ffffff", "#1a1642"  # --card in the light and dark theme
+_LIGHT_CARD, _DARK_CARD = "#ffffff", "#161617"  # --card in the light and dark theme
 
 
 _SCALE_COLOUR = re.compile(r"^rgba?\([0-9., ]+\)$")

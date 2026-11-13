@@ -11,7 +11,7 @@ export function EmptyModelsArt({ label, className }: ArtProps) {
       <rect className={I.lav} x="152" y="178" width="26" height="60" rx="5" />
       <rect className={I.dashed} strokeWidth={2} strokeDasharray="6 5" x="188" y="172" width="26" height="66" rx="5" />
       <path className={I.curve} strokeWidth={8} strokeLinecap="round" d="M70 230 C 130 226, 160 140, 232 128 S 300 118, 312 117" />
-      <circle className="fill-illus-3 stroke-brand-800" strokeWidth={3} cx="232" cy="128" r="14" />
+      <circle className="fill-illus-3 stroke-grey-900" strokeWidth={3} cx="232" cy="128" r="14" />
       <SpendWedge />
     </Art>
   );

@@ -1,300 +1,351 @@
 @import "tailwindcss";
 
-@custom-variant dark (&:where(.dark, .dark *));
+/* `.band-dark` carries the dark token set, so `dark:` classes hold inside it too. */
+@custom-variant dark (&:where(.dark, .dark *, .band-dark, .band-dark *));
 
 /*
- * Design tokens: the Studio look. Light is paper (a violet-grey page, white cards) with one
- * confident ink block per page, one lime highlighter for the single call to action, and coral for
- * what needs a look. Dark is an ink canvas with raised indigo blocks. Analyst working surfaces
- * (tables, forms, plots) stay calm: the block and the highlighter mark hierarchy, not decoration.
- * Zone and chart colours always come with a tag word, never colour alone.
+ * Design tokens: the Mono look. Chrome is monochrome: ink on a grey page, white cards, hairlines,
+ * and an ink primary action. Colour is reserved for meaning and for data: blue, orange, green and
+ * red always mean the same thing, and one warm highlight marks the single thing to look at. Depth
+ * comes from the surface swap (page, card, raised), not from shadows. Dark is black with raised
+ * near-black surfaces. Zone and chart colours always come with a tag word, never colour alone.
  *
  * Both blocks hold 6-digit hex only (theme-contrast.test.ts and theme-tokens.test.ts parse them).
  * Semantic tokens repeat their ramp value instead of var(): theme-tokens.test.ts keeps them equal.
  * Status text inks are dark enough to pass AA on their 12-14 % badge tints. Every token name of
- * the v0.16 look is kept (the readout, share and client markup reach the new look through them);
- * the highlight, block, attention and illus roles are additive.
+ * the earlier looks is kept (the readout, share and client markup reach the new look through them).
  */
 :root {
   --radius: 0.75rem;
+  /* The one easing curve: quick out of the gate, a long calm landing. */
+  --ease: cubic-bezier(0.28, 0.11, 0.32, 1);
 
-  /* Raw ramps: ink indigo, violet grey, the lime highlighter and the coral attention ink. */
-  --brand-100: #efedff;
-  --brand-200: #dcd8ff;
-  --brand-300: #aaa3ff;
-  --brand-400: #5a4af5;
-  --brand-500: #3a2bd6;
-  --brand-600: #2a1ea8;
-  --brand-700: #1d1678;
-  --brand-800: #15104f;
-  --brand-900: #0d0a33;
+  /* Raw ramps: the neutral greys from white to black, and the four data hues. In a hue, 100-300
+     are tints, 300/400 the dark-theme hue, 500 the light-theme hue, 600 the light-theme text ink
+     and 800-950 the dark-theme fills. */
   --grey-000: #ffffff;
-  --grey-100: #f6f5fb;
-  --grey-200: #eeedf6;
-  --grey-300: #e0deec;
-  --grey-400: #c3c0d5;
-  --grey-500: #a19eb7;
-  --grey-600: #84819b;
-  --grey-700: #625f79;
-  --grey-800: #48455f;
-  --grey-900: #2d2a45;
-  --grey-1000: #18152f;
-  --lime-100: #f4fdd9;
-  --lime-200: #e6faa3;
-  --lime-300: #d4f55e;
-  --lime-400: #b8e022;
-  --lime-600: #4c6600;
-  --lime-700: #384b00;
-  --coral-100: #ffebe5;
-  --coral-300: #ff9d84;
-  --coral-500: #f0553b;
-  --coral-700: #b02e18;
+  --grey-050: #fbfbfd;
+  --grey-100: #f5f5f7;
+  --grey-200: #e8e8ed;
+  --grey-300: #d2d2d7;
+  --grey-400: #a1a1a6;
+  --grey-500: #86868b;
+  --grey-550: #7c7c81;
+  --grey-600: #6e6e73;
+  --grey-650: #68686d;
+  --grey-700: #424245;
+  --grey-800: #2a2a2c;
+  --grey-900: #1d1d1f;
+  --grey-950: #161617;
+  --grey-1000: #000000;
+  --blue-100: #e6f1f7;
+  --blue-200: #bfdcec;
+  --blue-300: #8cc0dc;
+  --blue-400: #56b4e9;
+  --blue-500: #0072b2;
+  --blue-600: #00669f;
+  --blue-800: #31586f;
+  --blue-900: #253c49;
+  --blue-950: #1e2930;
+  --orange-100: #ffebdc;
+  --orange-300: #ff9a52;
+  --orange-500: #d55e00;
+  --orange-600: #9f4500;
+  --orange-950: #37281f;
+  --green-100: #e0f0ec;
+  --green-200: #add8cc;
+  --green-300: #34d399;
+  --green-500: #00865f;
+  --green-600: #00704e;
+  --green-800: #205241;
+  --green-950: #1a2d27;
+  --red-100: #fae7ea;
+  --red-200: #f0bcc4;
+  --red-300: #ff6b6b;
+  --red-500: #c8102e;
+  --red-600: #c00f2c;
+  --red-800: #653334;
+  --red-950: #342122;
 
-  --background: #f6f5fb;
-  --foreground: #18152f;
+  --background: #f5f5f7;
+  --foreground: #1d1d1f;
   --card: #ffffff;
-  --card-foreground: #18152f;
+  --card-foreground: #1d1d1f;
   --popover: #ffffff;
-  --popover-foreground: #18152f;
-  --primary: #3a2bd6;
+  --popover-foreground: #1d1d1f;
+  /* The primary action is the ink: no brand hue in chrome. Hover steps toward the page, active away. */
+  --primary: #1d1d1f;
   --primary-foreground: #ffffff;
-  --primary-hover: #5a4af5;
-  --primary-active: #2a1ea8;
-  --secondary: #eeedf6;
-  --secondary-foreground: #18152f;
-  --muted: #eeedf6;
-  --muted-foreground: #48455f;
-  /* Placeholder-strength text: captions, eyebrows, axis labels (4.5:1 on muted). */
-  --hint: #625f79;
-  --accent: #efedff;
-  --accent-foreground: #2a1ea8;
-  --destructive: #c0182f;
+  --primary-hover: #424245;
+  --primary-active: #000000;
+  /* Quiet fills: the ink at about 8% over the surface, as solid hex. */
+  --secondary: #e8e8ed;
+  --secondary-foreground: #1d1d1f;
+  --muted: #e8e8ed;
+  /* Secondary text and placeholder-strength text (captions, kickers, axis labels): 4.5:1 on muted. */
+  --muted-foreground: #68686d;
+  --hint: #68686d;
+  --accent: #e8e8ed;
+  --accent-foreground: #1d1d1f;
+  --destructive: #c00f2c;
   --destructive-foreground: #ffffff;
-  --border: #e0deec;
-  --border-strong: #c3c0d5;
+  /* Hairlines. */
+  --border: #e8e8ed;
+  --border-strong: #d2d2d7;
   /* Form field borders: 3:1 against muted, card and page (WCAG 1.4.11). */
-  --input: #84819b;
-  --ring: #3a2bd6;
-  /* The rail sits on the page colour, with a right border. */
-  --sidebar: #f6f5fb;
-  --surface-hover: #eeedf6;
-  /* Tooltips and toasts. */
-  --tooltip: #15104f;
+  --input: #7c7c81;
+  --ring: #1d1d1f;
+  /* The rail sits on the page colour. */
+  --sidebar: #f5f5f7;
+  --surface-hover: #e8e8ed;
+  /* Tooltips and toasts: the inverse surface. */
+  --tooltip: #1d1d1f;
   --tooltip-foreground: #ffffff;
   /* Dialog scrim; the alpha is applied in the class (bg-overlay/60). */
-  --overlay: #48455f;
+  --overlay: #424245;
 
   /* Status colours double as text (12px badges on their own tint): 4.5:1 or better. */
-  --success: #0b6b3a;
-  --warning: #9a4200;
-  --info: #2a1ea8;
+  --success: #00704e;
+  --warning: #9f4500;
+  --info: #00669f;
 
-  --series-1: #3a2bd6;
-  --series-2: #e0452b;
-  --series-3: #0a8768;
-  --series-4: #b56a00;
-  --series-5: #c0287f;
-  --series-6: #0a7fb5;
-  --series-7: #5f7f00;
-  --series-8: #6e6a8a;
+  /* Data series: blue, orange, green, red, then purple-pink, teal, gold and a neutral. Each has
+     3:1 on the card and stays apart from its neighbours for colour-blind readers. */
+  --series-1: #0072b2;
+  --series-2: #d55e00;
+  --series-3: #00865f;
+  --series-4: #c8102e;
+  --series-5: #a23aa8;
+  --series-6: #1d93a5;
+  --series-7: #8f5600;
+  --series-8: #6e6e73;
 
   /* Readout charts. */
-  --chart-index: #3a2bd6;
-  --chart-band: #dcd8ff;
-  --chart-band-50: #aaa3ff;
-  --chart-grid: #e0deec;
-  --chart-base: #c3c0d5;
-  --chart-ref: #625f79;
-  --chart-gain: #0a8768;
-  --chart-loss: #f0553b;
-  --chart-net: #2d2a45;
-  --chart-now: #f0553b;
-  --chart-plain: #84819b;
+  --chart-index: #0072b2;
+  --chart-band: #bfdcec;
+  --chart-band-50: #8cc0dc;
+  --chart-grid: #e8e8ed;
+  --chart-base: #d2d2d7;
+  --chart-ref: #68686d;
+  --chart-gain: #00865f;
+  --chart-loss: #c8102e;
+  --chart-net: #424245;
+  --chart-now: #d55e00;
+  --chart-plain: #86868b;
 
   /* Response-curve zones: strong for bars and legends, tint for cells and bands. */
-  --zone-headroom: #dcd8ff;
-  --zone-headroom-tint: #efedff;
-  --zone-optimal: #d4f55e;
-  --zone-optimal-tint: #f4fdd9;
-  --zone-over: #ffc4b5;
-  --zone-over-tint: #ffebe5;
-  --zone-nopay: #c3c0d5;
-  --zone-nopay-tint: #eeedf6;
+  --zone-headroom: #bfdcec;
+  --zone-headroom-tint: #e6f1f7;
+  --zone-optimal: #add8cc;
+  --zone-optimal-tint: #e0f0ec;
+  --zone-over: #f0bcc4;
+  --zone-over-tint: #fae7ea;
+  --zone-nopay: #d2d2d7;
+  --zone-nopay-tint: #e8e8ed;
 
-  /* The lime highlighter: a fill only (1.23:1 as text on a card). Lime words use highlight-ink. */
-  --highlight: #d4f55e;
-  --highlight-foreground: #15104f;
-  --highlight-soft: #f4fdd9;
-  --highlight-ink: #4c6600;
-  /* The one ink block per page; block-raised for tiles and chips inside it. */
-  --block: #15104f;
-  --block-foreground: #ffffff;
-  --block-muted: #c9c5f2;
-  --block-raised: #221b6b;
-  /* Coral: attention is the text ink, attention-fill the stroke and dot colour (never text). */
-  --attention: #b02e18;
-  --attention-soft: #ffebe5;
-  --attention-fill: #f0553b;
-  /* Illustration roles: main bars, second bars, the sun, the response curve. */
-  --illus-1: #5a4af5;
-  --illus-2: #aaa3ff;
-  --illus-3: #d4f55e;
-  --illus-4: #f0553b;
+  /* The highlight: the one warm accent, a fill only (2.1:1 as text on a card). Words use highlight-ink. */
+  --highlight: #ff9a52;
+  --highlight-foreground: #1d1d1f;
+  --highlight-soft: #ffebdc;
+  --highlight-ink: #9f4500;
+  /* The ink block: dark in both themes. block-raised for tiles and chips inside it. */
+  --block: #1d1d1f;
+  --block-foreground: #f5f5f7;
+  --block-muted: #a1a1a6;
+  --block-raised: #2a2a2c;
+  /* Attention is the red text ink, attention-fill the stroke and dot colour (never text). */
+  --attention: #c00f2c;
+  --attention-soft: #fae7ea;
+  --attention-fill: #c8102e;
+  /* Illustration roles: main bars (ink), second bars (orange), the sun (blue), the response curve (grey). */
+  --illus-1: #424245;
+  --illus-2: #ff9a52;
+  --illus-3: #0072b2;
+  --illus-4: #86868b;
 
   color-scheme: light;
 }
 
-/* Dark: an ink canvas with raised indigo blocks. The highlighter keeps its lime. */
+/* Dark: a black page, near-black cards, raised surfaces one step lighter. `.band-dark` takes the
+   same set, so a band is dark in both themes. */
+.band-dark,
 .dark {
-  --brand-100: #efedff;
-  --brand-200: #dcd8ff;
-  --brand-300: #aaa3ff;
-  --brand-400: #5a4af5;
-  --brand-500: #3a2bd6;
-  --brand-600: #2a1ea8;
-  --brand-700: #1d1678;
-  --brand-800: #15104f;
-  --brand-900: #0d0a33;
   --grey-000: #ffffff;
-  --grey-100: #f6f5fb;
-  --grey-200: #eeedf6;
-  --grey-300: #e0deec;
-  --grey-400: #c3c0d5;
-  --grey-500: #a19eb7;
-  --grey-600: #84819b;
-  --grey-700: #625f79;
-  --grey-800: #48455f;
-  --grey-900: #2d2a45;
-  --grey-1000: #18152f;
-  --lime-100: #f4fdd9;
-  --lime-200: #e6faa3;
-  --lime-300: #d4f55e;
-  --lime-400: #b8e022;
-  --lime-600: #4c6600;
-  --lime-700: #384b00;
-  --coral-100: #ffebe5;
-  --coral-300: #ff9d84;
-  --coral-500: #f0553b;
-  --coral-700: #b02e18;
+  --grey-050: #fbfbfd;
+  --grey-100: #f5f5f7;
+  --grey-200: #e8e8ed;
+  --grey-300: #d2d2d7;
+  --grey-400: #a1a1a6;
+  --grey-500: #86868b;
+  --grey-550: #7c7c81;
+  --grey-600: #6e6e73;
+  --grey-650: #68686d;
+  --grey-700: #424245;
+  --grey-800: #2a2a2c;
+  --grey-900: #1d1d1f;
+  --grey-950: #161617;
+  --grey-1000: #000000;
+  --blue-100: #e6f1f7;
+  --blue-200: #bfdcec;
+  --blue-300: #8cc0dc;
+  --blue-400: #56b4e9;
+  --blue-500: #0072b2;
+  --blue-600: #00669f;
+  --blue-800: #31586f;
+  --blue-900: #253c49;
+  --blue-950: #1e2930;
+  --orange-100: #ffebdc;
+  --orange-300: #ff9a52;
+  --orange-500: #d55e00;
+  --orange-600: #9f4500;
+  --orange-950: #37281f;
+  --green-100: #e0f0ec;
+  --green-200: #add8cc;
+  --green-300: #34d399;
+  --green-500: #00865f;
+  --green-600: #00704e;
+  --green-800: #205241;
+  --green-950: #1a2d27;
+  --red-100: #fae7ea;
+  --red-200: #f0bcc4;
+  --red-300: #ff6b6b;
+  --red-500: #c8102e;
+  --red-600: #c00f2c;
+  --red-800: #653334;
+  --red-950: #342122;
 
-  --background: #110e2e;
-  --foreground: #f2f1fa;
-  --card: #1a1642;
-  --card-foreground: #f2f1fa;
-  --popover: #231e55;
-  --popover-foreground: #f2f1fa;
-  --primary: #aaa3ff;
-  --primary-foreground: #15104f;
-  --primary-hover: #c4bfff;
-  --primary-active: #dcd8ff;
-  --secondary: #262058;
-  --secondary-foreground: #f2f1fa;
-  --muted: #1f1a4c;
-  --muted-foreground: #b6b3d2;
-  --hint: #9d9abf;
-  --accent: #2a2370;
-  --accent-foreground: #dcd8ff;
-  --destructive: #ff8a9a;
-  --destructive-foreground: #1d0610;
-  --border: #2e2866;
-  --border-strong: #433c86;
-  --input: #8a86b3;
-  --ring: #aaa3ff;
-  --sidebar: #110e2e;
-  --surface-hover: #262058;
-  --tooltip: #f2f1fa;
-  --tooltip-foreground: #15104f;
+  --background: #000000;
+  --foreground: #f5f5f7;
+  --card: #161617;
+  --card-foreground: #f5f5f7;
+  --popover: #1d1d1f;
+  --popover-foreground: #f5f5f7;
+  --primary: #f5f5f7;
+  --primary-foreground: #1d1d1f;
+  --primary-hover: #d2d2d7;
+  --primary-active: #ffffff;
+  --secondary: #2a2a2c;
+  --secondary-foreground: #f5f5f7;
+  --muted: #2a2a2c;
+  --muted-foreground: #a1a1a6;
+  --hint: #a1a1a6;
+  --accent: #2a2a2c;
+  --accent-foreground: #f5f5f7;
+  --destructive: #ff6b6b;
+  --destructive-foreground: #1d1d1f;
+  --border: #2a2a2c;
+  --border-strong: #424245;
+  --input: #86868b;
+  --ring: #f5f5f7;
+  --sidebar: #000000;
+  --surface-hover: #2a2a2c;
+  --tooltip: #f5f5f7;
+  --tooltip-foreground: #1d1d1f;
   --overlay: #000000;
 
-  --success: #5fdc8f;
-  --warning: #ffb36b;
-  --info: #b9b3ff;
+  --success: #34d399;
+  --warning: #ff9a52;
+  --info: #56b4e9;
 
-  --series-1: #aaa3ff;
-  --series-2: #ff8a70;
-  --series-3: #3fd6aa;
-  --series-4: #ffb84d;
-  --series-5: #ff7ac0;
-  --series-6: #5cc4f5;
-  --series-7: #c8ef4f;
-  --series-8: #aeabc8;
+  --series-1: #56b4e9;
+  --series-2: #ff9a52;
+  --series-3: #34d399;
+  --series-4: #ff6b6b;
+  --series-5: #f58fc8;
+  --series-6: #5fe8f2;
+  --series-7: #ffc929;
+  --series-8: #8e8e93;
 
-  --chart-index: #aaa3ff;
-  --chart-band: #2f2878;
-  --chart-band-50: #4d44a8;
-  --chart-grid: #2e2866;
-  --chart-base: #433c86;
-  --chart-ref: #b6b3d2;
-  --chart-gain: #3fd6aa;
-  --chart-loss: #ff8a70;
-  --chart-net: #f2f1fa;
-  --chart-now: #ff8a70;
-  --chart-plain: #8a86b3;
+  --chart-index: #56b4e9;
+  --chart-band: #253c49;
+  --chart-band-50: #31586f;
+  --chart-grid: #2a2a2c;
+  --chart-base: #424245;
+  --chart-ref: #a1a1a6;
+  --chart-gain: #34d399;
+  --chart-loss: #ff6b6b;
+  --chart-net: #f5f5f7;
+  --chart-now: #ff9a52;
+  --chart-plain: #86868b;
 
-  --zone-headroom: #2f2878;
-  --zone-headroom-tint: #2a2370;
-  --zone-optimal: #4c6600;
-  --zone-optimal-tint: #283016;
-  --zone-over: #6b2a2a;
-  --zone-over-tint: #3a1c2a;
-  --zone-nopay: #433c86;
-  --zone-nopay-tint: #262058;
+  --zone-headroom: #253c49;
+  --zone-headroom-tint: #1e2930;
+  --zone-optimal: #205241;
+  --zone-optimal-tint: #1a2d27;
+  --zone-over: #653334;
+  --zone-over-tint: #342122;
+  --zone-nopay: #424245;
+  --zone-nopay-tint: #2a2a2c;
 
-  --highlight: #d4f55e;
-  --highlight-foreground: #15104f;
-  --highlight-soft: #283016;
-  --highlight-ink: #d4f55e;
-  --block: #2b2478;
-  --block-foreground: #ffffff;
-  --block-muted: #cfcbf5;
-  --block-raised: #3a3192;
-  --attention: #ff9d84;
-  --attention-soft: #3a1c2a;
-  --attention-fill: #ff7a5e;
-  --illus-1: #5a4af5;
-  --illus-2: #aaa3ff;
-  --illus-3: #d4f55e;
-  --illus-4: #ff7a5e;
+  --highlight: #ff9a52;
+  --highlight-foreground: #1d1d1f;
+  --highlight-soft: #37281f;
+  --highlight-ink: #ff9a52;
+  --block: #1d1d1f;
+  --block-foreground: #f5f5f7;
+  --block-muted: #a1a1a6;
+  --block-raised: #2a2a2c;
+  --attention: #ff6b6b;
+  --attention-soft: #342122;
+  --attention-fill: #ff6b6b;
+  --illus-1: #d2d2d7;
+  --illus-2: #ff9a52;
+  --illus-3: #56b4e9;
+  --illus-4: #86868b;
 
   color-scheme: dark;
 }
 
 @theme inline {
-  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
-  /* Page titles, section heads, big numbers and card titles. Never tables, forms, code or plots. */
-  --font-display: "Bricolage Grotesque Variable", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono Variable", ui-monospace, "SFMono-Regular", monospace;
+  /* No web font for display type: the system face first, Inter where the system has none. */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter Variable", "Segoe UI Variable Text", "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  /* Page titles, section heads, big numbers and card titles. */
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter Variable", "Segoe UI Variable Display", "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, "JetBrains Mono Variable", Menlo, Consolas, monospace;
 
-  --color-brand-100: var(--brand-100);
-  --color-brand-200: var(--brand-200);
-  --color-brand-300: var(--brand-300);
-  --color-brand-400: var(--brand-400);
-  --color-brand-500: var(--brand-500);
-  --color-brand-600: var(--brand-600);
-  --color-brand-700: var(--brand-700);
-  --color-brand-800: var(--brand-800);
-  --color-brand-900: var(--brand-900);
   --color-grey-000: var(--grey-000);
+  --color-grey-050: var(--grey-050);
   --color-grey-100: var(--grey-100);
   --color-grey-200: var(--grey-200);
   --color-grey-300: var(--grey-300);
   --color-grey-400: var(--grey-400);
   --color-grey-500: var(--grey-500);
+  --color-grey-550: var(--grey-550);
   --color-grey-600: var(--grey-600);
+  --color-grey-650: var(--grey-650);
   --color-grey-700: var(--grey-700);
   --color-grey-800: var(--grey-800);
   --color-grey-900: var(--grey-900);
+  --color-grey-950: var(--grey-950);
   --color-grey-1000: var(--grey-1000);
-  --color-lime-100: var(--lime-100);
-  --color-lime-200: var(--lime-200);
-  --color-lime-300: var(--lime-300);
-  --color-lime-400: var(--lime-400);
-  --color-lime-600: var(--lime-600);
-  --color-lime-700: var(--lime-700);
-  --color-coral-100: var(--coral-100);
-  --color-coral-300: var(--coral-300);
-  --color-coral-500: var(--coral-500);
-  --color-coral-700: var(--coral-700);
+  --color-blue-100: var(--blue-100);
+  --color-blue-200: var(--blue-200);
+  --color-blue-300: var(--blue-300);
+  --color-blue-400: var(--blue-400);
+  --color-blue-500: var(--blue-500);
+  --color-blue-600: var(--blue-600);
+  --color-blue-800: var(--blue-800);
+  --color-blue-900: var(--blue-900);
+  --color-blue-950: var(--blue-950);
+  --color-orange-100: var(--orange-100);
+  --color-orange-300: var(--orange-300);
+  --color-orange-500: var(--orange-500);
+  --color-orange-600: var(--orange-600);
+  --color-orange-950: var(--orange-950);
+  --color-green-100: var(--green-100);
+  --color-green-200: var(--green-200);
+  --color-green-300: var(--green-300);
+  --color-green-500: var(--green-500);
+  --color-green-600: var(--green-600);
+  --color-green-800: var(--green-800);
+  --color-green-950: var(--green-950);
+  --color-red-100: var(--red-100);
+  --color-red-200: var(--red-200);
+  --color-red-300: var(--red-300);
+  --color-red-500: var(--red-500);
+  --color-red-600: var(--red-600);
+  --color-red-800: var(--red-800);
+  --color-red-950: var(--red-950);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -369,17 +420,19 @@
   --color-illus-3: var(--illus-3);
   --color-illus-4: var(--illus-4);
 
-  /* Radius tiers: sm chips and swatches, lg nav items, rows and tiles, 2xl cards and panels, 3xl
-     the hero, the report headline and empty states. Buttons and chips are pills (rounded-full). */
+  /* Radius tiers: sm inline code and swatches, md menu rows and tooltips, lg nav items and rows,
+     xl code blocks, table wraps and panels, 2xl cards, 3xl tiles, the hero and empty states.
+     Buttons and chips are pills (rounded-full, or the pill utility). */
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: var(--radius);
-  --radius-xl: 16px;
-  --radius-2xl: 20px;
+  --radius-xl: 18px;
+  --radius-2xl: 22px;
   --radius-3xl: 28px;
 
   /* Type scale: xs 12/20, sm 14/22 (the body), base 16/24, lg 18/28, xl 21/28, 2xl 24/32; the
-     display sizes 3xl 36, 4xl 48 and 5xl 72 set tight (1.05 / 1.02 / 0.98). */
+     display sizes 3xl 36, 4xl 48 and 5xl 72 set tight (1.1 / 1.06 / 1.04). The app stays dense:
+     the display sizes are for landing and empty states only. */
   --text-2xs: 0.6875rem;
   --text-2xs--line-height: 1rem;
   --text-xs: 0.75rem;
@@ -395,26 +448,29 @@
   --text-2xl: 1.5rem;
   --text-2xl--line-height: 2rem;
   --text-3xl: 2.25rem;
-  --text-3xl--line-height: 1.05;
+  --text-3xl--line-height: 1.1;
   --text-4xl: 3rem;
-  --text-4xl--line-height: 1.02;
+  --text-4xl--line-height: 1.06;
   --text-5xl: 4.5rem;
-  --text-5xl--line-height: 0.98;
+  --text-5xl--line-height: 1.04;
+
+  /* `ease-mono` in a transition class. */
+  --ease-mono: var(--ease);
 }
 
-/* Ink-tinted shadows (brand-900), for overlays only: cards have none at rest. Kept out of the parsed
-   blocks, which hold hex only. */
+/* Neutral shadows, for overlays only: cards have none at rest. Kept out of the parsed blocks,
+   which hold hex only. */
 @theme {
-  --shadow-xs: 0 1px 2px rgb(13 10 51 / 0.08);
-  --shadow-sm: 0 1px 4px rgb(13 10 51 / 0.1);
-  --shadow-md: 0 4px 12px rgb(13 10 51 / 0.12);
-  --shadow-lg: 0 18px 50px rgb(13 10 51 / 0.2);
+  --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.04);
+  --shadow-sm: 0 1px 4px rgb(0 0 0 / 0.06);
+  --shadow-md: 0 4px 14px rgb(0 0 0 / 0.08);
+  --shadow-lg: 0 24px 64px -16px rgb(0 0 0 / 0.22);
 
-  /* Studio motion. Ambient motion is CSS only (no JS bytes); the reduced motion override below
-     ends every one of these at its final frame. */
-  --animate-pop: mapi-pop 360ms cubic-bezier(0.3, 1.6, 0.5, 1);
-  --animate-coach-in: mapi-coach-in 260ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
-  --animate-beacon: mapi-beacon 1.8s ease-out 3;
+  /* Ambient motion is CSS only (no JS bytes); the reduced motion override below ends every one of
+     these at its final frame. */
+  --animate-pop: mapi-pop 360ms var(--ease);
+  --animate-coach-in: mapi-coach-in 260ms var(--ease);
+  --animate-beacon: mapi-beacon 1.8s var(--ease) 3;
 }
 
 @layer base {
@@ -423,18 +479,19 @@
   }
   html {
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   body {
     @apply bg-background text-foreground font-sans text-sm;
-    /* Inter's single-storey a and open digits, as in the Studio mockup. */
-    font-feature-settings: "cv11", "ss01";
+    letter-spacing: -0.011em;
   }
-  /* The display face for headings. Tables, forms, code and plots keep Inter. */
+  /* Headings: the display face at 600, set tight. Tables, forms, code and plots keep the text face. */
   h1,
   h2,
   h3,
   .display {
     font-family: var(--font-display);
+    font-weight: 600;
     letter-spacing: -0.02em;
   }
   /* The fallback ring for anything without the focus-ring utility (Radix items, plain links). */
@@ -446,10 +503,20 @@
   pre,
   samp {
     @apply font-mono;
+    letter-spacing: 0;
   }
   .tabular,
   .num {
     font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  /* A band that is dark in both themes. The token block above gives it the dark set; this rule
+     paints it. A background utility (bg-block, bg-card) on the same element wins. */
+  .band-dark {
+    background-color: var(--background);
+    color: var(--foreground);
   }
 }
 
@@ -462,8 +529,8 @@
   }
 }
 
-/* The Studio filter pill (direction §9, Catalog filters): 1.5px border-strong on the card;
-   pressed (a toggle-group item that is on, or aria-pressed) = foreground fill. */
+/* The filter pill (Catalog filters): 1.5px border-strong on the card; pressed (a toggle-group
+   item that is on, or aria-pressed) = foreground fill. */
 @utility filter-pill {
   @apply inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border-[1.5px] border-border-strong bg-card px-3.5 text-xs font-semibold whitespace-nowrap text-foreground transition-colors hover:border-primary [&_svg]:size-3.5;
   &[data-state="on"],
@@ -472,17 +539,60 @@
   }
 }
 
-/* The ODS 2xs eyebrow: 10px/20px bold uppercase, in the hint ink. */
-@utility eyebrow {
-  font-size: 0.625rem;
+/* The kicker: the small label above a title or a group. Sentence case, muted, 600. `eyebrow` is
+   the earlier name for the same label. */
+@utility kicker {
+  font-size: 0.8125rem;
   line-height: 1.25rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--hint);
+  font-weight: 600;
+  letter-spacing: -0.011em;
+  color: var(--muted-foreground);
+}
+@utility eyebrow {
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.011em;
+  color: var(--muted-foreground);
 }
 
-/* A checklist tick lands with a small overshoot. */
+/* A frosted bar or panel: the surface at 78% over a blurred backdrop. Set --frost-surface to
+   frost another surface than the card. */
+@utility frost {
+  background-color: color-mix(in srgb, var(--frost-surface, var(--card)) 78%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+}
+
+/* A pill chip: a soft tint of its own text colour. Add a text colour class (text-success,
+   text-info) for a status pill; without one it is the ink. */
+@utility pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 1.5rem;
+  padding-inline: 0.625rem;
+  border-radius: 980px;
+  background-color: color-mix(in srgb, currentColor 10%, transparent);
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Raster art that is drawn on pure black (line-work with orange and blue accents). One file
+   serves both themes: on a dark surface the black drops out, on a light surface the art inverts
+   to dark lines and keeps its hues. */
+@utility art-on-black {
+  filter: invert(1) hue-rotate(180deg) saturate(1.4);
+  mix-blend-mode: multiply;
+  &:where(.dark, .dark *, .band-dark, .band-dark *) {
+    filter: none;
+    mix-blend-mode: screen;
+  }
+}
+
+/* A checklist tick lands. */
 @keyframes mapi-pop {
   from {
     transform: scale(0.2);
@@ -536,20 +646,26 @@
   }
 }
 
-/* The display weight of a page title or a headline claim: heavy and tight. */
+/* A page title or a headline claim: the display face at 600, set tight. The size is the
+   in-app title scale; a text size class on the same element wins. */
 @utility display-title {
   font-family: var(--font-display);
-  font-weight: 750;
-  letter-spacing: -0.035em;
+  font-weight: 600;
+  letter-spacing: -0.024em;
+  text-wrap: balance;
+  :where(&) {
+    font-size: clamp(1.75rem, 3.6vw, 2.75rem);
+    line-height: 1.06;
+  }
 }
 
 /* The hero illustration "assembles" once per page load: bars grow from their base in a short
-   stagger, the response curve draws (give its path pathLength="520"), the sun rises
-   with an overshoot. Empty-state art stays static. */
+   stagger, the response curve draws (give its path pathLength="520"), the sun rises.
+   Empty-state art stays static. */
 @utility assemble-bar {
   transform-box: fill-box;
   transform-origin: bottom;
-  animation: mapi-grow 700ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
+  animation: mapi-grow 700ms var(--ease) both;
   &:nth-of-type(2) {
     animation-delay: 90ms;
   }
@@ -562,16 +678,16 @@
 }
 @utility assemble-draw {
   stroke-dasharray: 520;
-  animation: mapi-draw 1100ms 300ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  animation: mapi-draw 1100ms 300ms var(--ease) both;
 }
 @utility assemble-sun {
   transform-box: fill-box;
   transform-origin: center;
-  animation: mapi-rise 800ms 500ms cubic-bezier(0.3, 1.4, 0.5, 1) both;
+  animation: mapi-rise 800ms 500ms var(--ease) both;
 }
 
-/* The element a tour step points at: a lime ring inside an ink ring, and a beacon that pulses
-   three times. --tour-radius is the target's own corner radius (cards by default). */
+/* The element a tour step points at: a highlight ring inside an ink ring, and a beacon that
+   pulses three times. --tour-radius is the target's own corner radius (cards by default). */
 @utility tour-target {
   position: relative;
   box-shadow:
@@ -581,10 +697,10 @@
     content: "";
     position: absolute;
     inset: -6px;
-    border-radius: calc(var(--tour-radius, 20px) + 6px);
+    border-radius: calc(var(--tour-radius, 22px) + 6px);
     pointer-events: none;
     box-shadow: 0 0 0 0 var(--highlight);
-    animation: mapi-beacon 1.8s ease-out 3;
+    animation: mapi-beacon 1.8s var(--ease) 3;
   }
 }
 
