@@ -87,7 +87,7 @@ transforms. For example, `exp(a - b)` is not `exp(a) - exp(b)`. Thus the model s
 `difference_of` on the scored array. The attr names the reference output. With
 `output.units: original`, the harness changes the level and the reference to the output
 units, then subtracts them. This applies to draws and to point outputs. See
-[Measure the effect of a change](causal-effects.md#differences).
+[How the platform measures the effect of a change](causal-effects.md#differences).
 
 ## Circular outputs
 

@@ -60,6 +60,20 @@ A script makes this file from `uv.lock` and `pnpm-lock.yaml`. After you change a
 run `make notices`. If the file is not current, `make release-check` and the test suite fail.
 Each image contains this file and the licence files above, in `/usr/share/doc/mapi/`.
 
+## The docs site and the art { #the-docs-site-and-the-art }
+
+The documentation site loads no file from another host. It has copies of these files, each
+with its licence text beside it: the fonts Inter and JetBrains Mono (OFL-1.1,
+`docs/assets/fonts/LICENSE.txt`), mermaid (MIT, `docs/assets/vendor/mermaid/LICENSE.txt`) and
+Redoc (MIT, `docs/assets/vendor/redoc/LICENSE.txt`). They are not in
+`THIRD-PARTY-NOTICES.md`, because a script makes that file from the lock files. The line art
+was generated for this project with an image model. The art of the docs is under the licence
+of the documentation (CC BY 4.0), and the art of the web app is under the licence of the
+platform. Each folder of art has a `PROVENANCE.md` file with the model, the prompt, the
+request id and the date of each image: `docs/assets/brand/PROVENANCE.md`,
+`docs/assets/brand/icons/PROVENANCE.md` and `apps/web/src/assets/brand/PROVENANCE.md`.
+[The docs theme](docs-theme.md) tells how to add or refresh these files.
+
 ## Contributions
 
 The project accepts contributions under the Contributor Licence Agreement

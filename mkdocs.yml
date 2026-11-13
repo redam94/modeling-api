@@ -170,6 +170,7 @@ nav:
       - "Why modeling-api?": why.md
       - Use cases: use-cases.md
       - "What's new":
+          - "What's new in 0.21": whats-new-0.21.md
           - "What's new in 0.20": whats-new-0.20.md
           - "What's new in 0.19": whats-new-0.19.md
           - "What's new in 0.18": whats-new-0.18.md
@@ -189,6 +190,7 @@ nav:
           - Licensing: project/licensing.md
           - Contributing: project/contributing.md
           - Writing style: project/writing-style.md
+          - The docs theme: project/docs-theme.md
           - Changelog: project/changelog.md
   - Learn:
       - getting-started/index.md

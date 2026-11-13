@@ -41,7 +41,7 @@ template. It does these steps:
 3. It does a backtest of `ts.sarimax` against a naive forecast.
 4. It keeps `ts.sarimax` only if it wins.
 
-See [Workflows](../concepts/workflows.md).
+See [How workflows work](../concepts/workflows.md).
 
 ## Your data, in the model's names
 

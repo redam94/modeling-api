@@ -251,7 +251,10 @@ def test_the_home_page_is_short() -> None:
     lines = (DOCS / "index.md").read_text("utf-8").splitlines()
     assert len(lines) < 320, "the home page routes; the detail is on the pages it links"
     shots = [ln for ln in lines if "assets/screenshots/" in ln]
-    assert len(shots) <= 3
+    assert len(shots) <= 2
+    # the tour keeps its four steps; the full path is in the tutorial that it links
+    tour = "\n".join(lines).split('<div class="mono-steps" markdown>', 1)[1].split("</div>", 1)[0]
+    assert len(re.findall(r"^\d\.  ### ", tour, re.M)) == 4
 
 
 # ---------------------------------------------------------------------------------- search

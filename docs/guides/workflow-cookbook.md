@@ -8,7 +8,7 @@ This page gives ten complete analyses. Each analysis is one YAML document. You c
 run and schedule it, and give it to a colleague. The tests of the documentation validate each
 document on this page against the node catalog and run it from start to end. Thus the
 documents that you copy operate correctly. For the format, see
-[Workflows](../concepts/workflows.md). For all nodes, see the
+[How workflows work](../concepts/workflows.md). For all nodes, see the
 [node reference](../reference/workflow-nodes.md). For short parts with one pattern each, see
 the [workflows guide](workflows.md#cookbook).
 

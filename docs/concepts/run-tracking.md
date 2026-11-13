@@ -160,7 +160,7 @@ These rules keep the groups correct:
     From v0.14, the server refuses new `Sweep` documents (`422 SCHEMA_INVALID` at `/kind`).
     Stored `Sweep` documents still load. Use a workflow with a `search.grid` node. Each grid
     point logs its scores as metrics, with the number of the point as the step
-    ([Workflows](workflows.md#tracking-in-a-workflow)).
+    ([How workflows work](workflows.md#tracking-in-a-workflow)).
 
 ## Known gaps
 

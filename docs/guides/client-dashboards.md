@@ -228,7 +228,7 @@ member invitation with the role `client`). A client role is always for one proje
 
 **Share links.** Persons without an account open a link. New links are read-only. When you
 make a link, you can let it try cases, upload numbers, score files or try plan scenarios,
-if the dashboard offers them. See [Share dashboards securely](sharing-dashboards-securely.md).
+if the dashboard offers them. See [Share dashboards securely with a share link](sharing-dashboards-securely.md).
 
 ## 6. Review the history
 

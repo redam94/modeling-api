@@ -1,7 +1,9 @@
-# Plugin upload, dashboard chat and MCP <span class="mapi-badge mapi-badge--soon">planned</span>
+# Plugin upload, dashboard chat and MCP <span class="mapi-badge">v0.19</span> <span class="mapi-badge">v0.20</span>
 
-!!! abstract "Status: v0.18 delivered the first tiers; upload is planned for v0.19"
-    v0.18 made the platform yours in tiers ([what's new](../whats-new-0.18.md)):
+!!! abstract "Status: delivered. v0.18 delivered the first tiers, v0.19 the upload, and v0.20 the chat and MCP"
+    This page keeps the plan as it was written. The pages that it links describe what the
+    platform does now. v0.18 made the platform yours in tiers
+    ([what's new](../whats-new-0.18.md)):
 
     1. **No code, for every analyst** (delivered): model recipes, prep presets, chart
        templates and team workflow templates in [Make your own](../extend/index.md). They are
@@ -9,12 +11,13 @@
     2. **Python plugins on a stack you run** (delivered): scaffolds and contract kits for
        models, steps, plot recipes, workflow nodes and workflow templates, and three ways to
        [run them on your stack](../extend/develop/run-on-your-stack.md).
-    3. **Upload to a shared deployment** (v0.19): tenant admins and verified users
-       upload a plugin; it is built and checked in the sandbox; a second person approves it
-       before the whole tenant can use it. The public tier stays blocked.
+    3. **Upload to a shared deployment** (delivered in v0.19,
+       [what's new](../whats-new-0.19.md)): tenant admins and verified users upload a plugin.
+       The platform checks it in the sandbox, and a second person approves it before the
+       whole tenant can use it. The public tier stays blocked.
        [Upload your own code](../extend/upload.md).
 
-    The dashboard chat and the MCP server, planned for v0.18 before, are in v0.20.
+    The dashboard chat and the MCP server, planned for v0.18 before, are delivered in v0.20.
 
 ## Delivered in v0.20: dashboard chat and MCP { #planned-for-v020 }
 
@@ -40,12 +43,13 @@ See [Ask about your dashboard](../guides/ask-about-your-dashboard.md),
 [Connect a chat tool with MCP](../guides/connect-a-chat-tool-with-mcp.md) and
 [Client dashboards: the tool surface](../concepts/client-dashboards.md#tools).
 
-## Plugin upload (v0.19)
+## Delivered in v0.19: plugin upload { #plugin-upload-v019 }
 
-Since v0.18, a developer runs their own plugin only on a deployment that they control
-([three ways](../extend/develop/run-on-your-stack.md)). This work makes upload a product
+From v0.18, a developer could run their own plugin only on a deployment that they control
+([three ways](../extend/develop/run-on-your-stack.md)). v0.19 made upload a product
 feature of a shared deployment, for tenant admins and verified users, with a second person who
-approves:
+approves. [Upload your own code](../extend/upload.md) describes the released flow. The plan
+was:
 
 ```mermaid
 flowchart LR
@@ -72,7 +76,11 @@ flowchart LR
 
 ## An MCP server for agents
 
-The MCP server gives a curated set of tools to AI assistants and agents. For example, the
+Status: v0.20 delivered an MCP server with the read-only dashboard tools
+([Connect a chat tool with MCP](../guides/connect-a-chat-tool-with-mcp.md)). The wider set
+of tools below is not delivered.
+
+The planned MCP server gives a curated set of tools to AI assistants and agents. For example, the
 tools list and describe models, score an endpoint, read a run and get a plot. The server
 returns each string from a user or a plugin as clearly delimited untrusted text. Thus a model
 name cannot put hidden instructions into an agent. Tokens and scopes work the same as for

@@ -23,9 +23,10 @@ page describes. The `mapi/web` image uses nginx for this.
 | Experiments | `/experiments` and the page of an experiment (v0.14): make, rename, archive and delete experiments, and see their runs. The **Notes** tab of a run moves the run to an experiment |
 | Inspect | See the scorecard, the diagnostics for each variable, the DataTree browser (`ui/tree_index.json`), the viewer for the preprocessing state (`ui/preprocess.json`), the lineage, the signature, the bundle objects and the plot gallery |
 | Score | Set the mode (only the modes that the model can do), the horizon, `inputs_stage`, the input and scenario datasets, the side tables of the spec, the interventions and the output selector. Supplied side tables use the version from the fit by default. Pinned side tables use the same version again. The app sends `Prefer: wait=30`, then follows the run over SSE. It shows the plots of the run (`GET /v1/runs/{id}/plots`, sanitized) in the sandbox. It shows a view for each output by its shape (`ScoreSummaryTable.dims` and `time_dim`): a map with a frame slider for a grid output (from `ui/fields.json`, which then replaces the `sci.field_map` and `sci.vector_field` plots), a line with a band for a time series, intervals for a categorical output and tiles for a scalar. It shows Arrow outputs as a table (summaries pivoted by statistic) and a quick chart. The quick chart has a **Cell** picker for a table with more dims than the axis and the colour, for example a grid (v0.10). *Results by output* also shows a map of areas and a classification view from the plots of the run (v0.10). The table keeps the dim columns that the `mapi.dims` metadata names as keys, also when they are numeric (v0.9). The **No new data** option shows only for Forecast, or when a scenario dataset gives the values (v0.9). For the other modes, a note tells why the option is not there |
-| Guided | Use the task flow for analysts (`/guided`, `/guided/new/<template>`, `/guided/<spec>/<step>`). It has templates and questions. The browser makes a profile of the upload for the questions. Set business priors and lift tests, with a preview in a sandbox. Fit the model, with progress in plain language. See the report and the sanity scorecard. Use what-if sliders. The browser interpolates the response grid of each draw (`src/features/guided/whatif.ts`, tested against `packages/spec/tests/snapshots/whatif_golden.json`). Use "Run exact", forecasts, scenario presets, promotion and embed links. See [Your first analysis in Guided mode](../guides/guided-tutorial.md) |
+| Guided | Use the task flow for analysts (`/guided`, `/guided/new/<template>`, `/guided/<spec>/<step>`). It has templates and questions. The browser makes a profile of the upload for the questions. Set business priors and lift tests, with a preview in a sandbox. Fit the model, with progress in plain language. See the report and the sanity scorecard. Use what-if sliders. The browser interpolates the response grid of each draw (`src/features/guided/whatif.ts`, tested against `packages/spec/tests/snapshots/whatif_golden.json`). Use "Run exact", forecasts, scenario presets, promotion and embed links. See [Your first MMM in Guided mode](../guides/guided-tutorial.md) |
 | Workflows | See the gallery of templates, edit a workflow and run it. The run view shows the outputs of each node: tables, reports, governance evidence and links to files. It draws the `plot` outputs of nodes and the `plot` sections of reports in the sandbox (v0.9) |
 | Dashboards | `/dashboards` and `/dashboards/<id>` (v0.16): make a client dashboard and edit its draft on the tabs **Setup**, **Inputs**, **Access**, **History** and **Preview**. Publish it, give it to client users, make and revoke share links, publish or hide uploads, and approve or reject refit requests. See [Build a client dashboard](../guides/client-dashboards.md) |
+| Search | Open the search with **Search** in the top bar, `Cmd/Ctrl+K` or `/` (v0.21). It finds pages, actions, items by name, ids and pages of the docs (`src/features/search/`, `src/components/shell/command-palette.tsx`). It follows the navigation mode and the role. See [Search](../guides/web-ui.md#search) |
 | Catalog, Settings | See the steps, models and plots of the image. The plot catalog has a filter for each pack: All models, Marketing mix, Machine learning, Science and Networks. Set the theme and the persona (the app keeps it for each user). See the health of the connection |
 
 ## The client portal and the share page <span class="mapi-badge">v0.16</span>
@@ -34,7 +35,7 @@ Two surfaces show client dashboards without the full app:
 
 | Surface | Path | Who | What loads |
 |---|---|---|---|
-| Client portal | `/c`, `/c/<dashboard id>?tab=` | A signed-in user whose role in the current project is `client` | A small app with its own router: the list of granted dashboards and the readout page. No navigation, no command palette, no shortcuts. Any other path goes to `/c` |
+| Client portal | `/c`, `/c/<dashboard id>?tab=` | A signed-in user whose role in the current project is `client` | A small app with its own router: the list of granted dashboards and the readout page. No navigation, no search, no shortcuts. Any other path goes to `/c` |
 | Share page | `/s#mpd_…` | Anyone with a share link | A separate chunk with its own query client and a plain `fetch` client. It sends no cookie, no CSRF header and no `X-Mapi-Project`. It sets `<meta name="referrer" content="no-referrer">` |
 
 The workspace gate loads the portal in place of the main router when the role is `client`.
@@ -45,7 +46,7 @@ access in all cases.
 The share page reads the token from the fragment, removes it with `history.replaceState`,
 and exchanges it for a session in a POST. It keeps the session in memory only (never in
 `localStorage` or a cookie) and gets a new one at 80% of its life. See
-[Share dashboards securely](../guides/sharing-dashboards-securely.md).
+[Share dashboards securely with a share link](../guides/sharing-dashboards-securely.md).
 
 The readout charts are dependency-free SVG (`components/readout-charts.tsx`). They do not
 use the plot sandbox. The build has a size budget for each chunk (`bundle-budget.ts`,
@@ -56,22 +57,37 @@ XYFlow. A build that breaks a budget fails.
 
 ## Theme { #theme }
 
-From v0.16, the app, the client pages and the plot sandbox use the MEI / ODS look:
+From v0.21, the app, the client pages and the plot sandbox use the Mono look. One rule makes
+it: the controls are monochrome, and colour is for data. It replaces the looks of v0.16 and
+v0.18. The documentation site uses the same look
+([The docs theme](../project/docs-theme.md)).
 
 - **Tokens.** `apps/web/src/app.css` keeps the semantic names of shadcn (`--primary`,
-  `--card`, …) in `:root` (light) and `.dark`, with ramps (`--brand-100` to `--brand-800`,
-  `--grey-000` to `--grey-1000`), chart tokens (`--chart-band`, `--chart-gain`, …) and the
-  zone tokens of the readouts (`--zone-headroom`, `--zone-optimal`, `--zone-over`,
+  `--card`, …) in `:root` (light) and `.dark`. `--primary` is the ink colour. The file also
+  has ramps (`--grey-000` to `--grey-1000`, and `blue`, `orange`, `green` and `red`), series
+  colours (`--series-1` to `--series-8`), chart tokens (`--chart-band`, `--chart-gain`, …)
+  and the zone tokens of the readouts (`--zone-headroom`, `--zone-optimal`, `--zone-over`,
   `--zone-nopay`). New components use only token classes, never colour literals.
+- **Colour for meaning.** Orange is new or needs attention, blue is information, green is
+  good and red is danger. The series colours start with blue, orange, green and red. Their
+  sequence was tested with a simulation of red-green colour blindness.
 - **Dark theme.** The dark theme comes from the same tokens. Select it in **Settings** or the
-  theme menu, or follow the system.
-- **Type.** Inter (self-hosted, no Google Fonts) replaces Hanken Grotesk. The body text is
-  14/22 px (`text-sm`). Numbers in tiles and tables use tabular figures.
-- **Focus ring.** The light focus ring is `#2954FF` (5.5:1 on white). This is the one
-  intentional difference from ODS, whose `#85A3FF` does not pass WCAG 1.4.11. Status text
-  colours are darker than the ODS fills, so they pass AA on their tints.
+  **Theme** menu, or follow the system. The class `band-dark` gives the dark tokens to one
+  block in the two themes.
+- **Type.** The text uses the system font. Inter and JetBrains Mono (self-hosted, no Google
+  Fonts) are the fonts for a system that has none. The body text is 14/22 px (`text-sm`).
+  Numbers in tiles and tables use tabular figures.
+- **Focus ring.** The focus ring is the ink colour (`--ring` is `#1d1d1f` in the light theme
+  and `#f5f5f7` in the dark theme). In the light theme, status text colours are darker than
+  the data hues, so they pass AA on their tints.
+- **Art.** The sign-in, Start here, not-found and empty-list images are generated files in
+  `apps/web/src/assets/brand/`, with their source in `PROVENANCE.md`. The components in
+  `components/brand/` draw them. One file serves the two themes (the utility
+  `art-on-black`). The share page and the client portal must not load the empty-list art.
 - **Plots.** The plot sandbox and the server-side plot palette (`mapi_plots.palette`) use the
-  same series colours. The sandbox renders in the system font, not in Inter.
+  same series colours. The sandbox renders in the system font. A plot that a model version
+  stored before v0.21 keeps its fixed recipe colours
+  ([What's new in 0.21](../whats-new-0.21.md#chart-colours)).
 
 Tests (`theme-contrast.test.ts`, `theme-tokens.test.ts`, `theme-series-parity.test.ts`) make
 sure that the tokens pass the contrast rules in the two themes and agree with the palettes.

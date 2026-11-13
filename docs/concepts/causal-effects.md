@@ -95,7 +95,7 @@ can make the lift test in three ways:
 - The Guided report of the `geo_lift` template has a card that makes the YAML entry. Copy the
   entry into `calibration.lift_tests` of the MMM spec.
 - The workflow node `model.lift_test` makes a `LiftTest` from the `impact` group of any
-  causal model version ([Workflows](workflows.md#bayesian-models-in-a-workflow)).
+  causal model version ([How workflows work](workflows.md#bayesian-models-in-a-workflow)).
 - The workflow template `geo_lift_mmm` fits the test, makes the lift test, fits
   `mmm.bayesian` with it and draws the plot `mmm.lift_tests`.
 

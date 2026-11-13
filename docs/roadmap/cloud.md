@@ -8,7 +8,7 @@
     multi-tenant functions also run on a laptop (`make dev`). We tested the cloud parts
     against fakes. A [short checklist](../operations/gcp-deployment.md#before-you-start-the-verify-m0-checklist)
     of cloud behaviours waits for a real project. For instructions, read [Administration](../guides/administration.md),
-    [Authentication](../guides/authentication.md) and [Deploy to Google Cloud](../operations/gcp-deployment.md).
+    [Sign in](../guides/authentication.md) and [Deploy to Google Cloud](../operations/gcp-deployment.md).
 
 ## One sandbox per run
 

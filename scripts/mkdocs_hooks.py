@@ -93,6 +93,8 @@ _LAST_PAGES = frozenset(
         "operations/m2-verification.md",
         "operations/m3-verification.md",
         "operations/m35-verification.md",
+        # for contributors: a reader who types "theme" wants the theme of the web app
+        "project/docs-theme.md",
     }
 )
 

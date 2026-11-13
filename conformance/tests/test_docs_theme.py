@@ -8,6 +8,7 @@ Fast, no network and no build:
 * the fonts are self-hosted with their licence, and every ``@font-face`` file exists;
 * the vendored mermaid bundle matches the hash pinned in ``scripts/vendor_mermaid.py``;
 * the overrides keep the hooks that Material's own JavaScript needs;
+* the header row has three columns, so the tabs are in the centre of the page;
 * every custom class that a page uses still has a rule;
 * the theme only points at brand art that is in the agreed manifest;
 * the popular search links point at pages that exist.
@@ -281,6 +282,32 @@ def test_overrides_keep_the_hooks_material_needs() -> None:
         'for="__search"',
     ):
         assert hook in search, f"search.html lost {hook}"
+
+
+def test_the_header_tabs_are_centred_on_the_page() -> None:
+    """The row has three columns: the brand, the tabs and the tools. The two side columns
+    have the same width, so the tabs are in the centre of the page and not in the centre of
+    the space that the brand and the tools leave."""
+    chrome = (STYLES / "mono-chrome.css").read_text("utf-8")
+    desktop = re.search(
+        r"@media screen and \(min-width: 76\.25em\) \{\s*"
+        r"\.md-header__inner\.mono-header__inner \{([^}]*)\}",
+        chrome,
+    )
+    assert desktop, "the header row has no desktop layout"
+    rule = desktop.group(1)
+    assert "display: grid" in rule
+    assert "grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr)" in rule
+    # the tools go to the end of their column, and the tabs no longer centre with margins
+    tools = re.search(r"\.mono-header__tools \{([^}]*)\}", chrome)
+    assert tools is not None and "justify-self: end" in tools.group(1)
+    tabs = re.search(r"\n\.mono-tabs \{([^}]*)\}", chrome)
+    assert tabs is not None and "margin: 0 auto" not in tabs.group(1)
+    # below the breakpoint the tabs are in the drawer, as before
+    assert re.search(
+        r"@media screen and \(max-width: 76\.234375em\) \{\s*\.mono-tabs \{\s*display: none;",
+        chrome,
+    )
 
 
 def test_overrides_and_scripts_are_csp_friendly() -> None:

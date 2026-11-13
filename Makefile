@@ -371,7 +371,9 @@ docs-test: ## Run every documentation snippet and check every include
 	$(UV) run pytest -q conformance/tests/test_docs_snippets.py conformance/tests/test_docs_platform.py conformance/tests/test_docs_tutorials.py \
 		conformance/tests/test_docs_v05.py packages/server/tests/test_docs_client_v05.py \
 		conformance/tests/test_docs_extend.py conformance/tests/test_docs_upload.py \
-		conformance/tests/test_docs_chat_mcp.py
+		conformance/tests/test_docs_chat_mcp.py conformance/tests/test_docs_theme.py \
+		conformance/tests/test_docs_nav.py conformance/tests/test_docs_search_index.py \
+		conformance/tests/test_docs_v021.py
 
 .PHONY: docs-screenshots
 docs-screenshots: ## Recapture docs/assets/screenshots from a running, seeded stack (see the script)

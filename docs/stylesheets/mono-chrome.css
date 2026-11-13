@@ -28,6 +28,20 @@
   padding: 0 var(--mono-gutter);
   gap: 20px;
 }
+/* Desktop: three columns (brand, tabs, tools). The two side columns have the same width, so
+   the tabs are in the centre of the page. In a flex row they were in the centre of the space
+   that the brand and the tools leave, which is 18px to the left. */
+@media screen and (min-width: 76.25em) {
+  .md-header__inner.mono-header__inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+  }
+  .md-header__button.md-logo.mono-brand,
+  .md-header__button.md-logo.mono-brand:not([hidden]) {
+    justify-self: start;
+  }
+}
 
 /* brand: the mark and the wordmark */
 .md-header__button.md-logo.mono-brand,
@@ -63,11 +77,10 @@
   fill: var(--mono-orange);
 }
 
-/* tabs: centred pill links in the header row */
+/* tabs: centred pill links in the header row (the middle column of the desktop grid) */
 .mono-tabs {
   flex: 0 1 auto;
   min-width: 0;
-  margin: 0 auto;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -114,6 +127,7 @@
   align-items: center;
   gap: 6px;
   flex: none;
+  justify-self: end;
 }
 
 .mono-search-btn {

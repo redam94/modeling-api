@@ -176,7 +176,7 @@ Some notes on these models:
 - `resources.gpu: true` lets a spec select the `GPU` class. Validation refuses the `GPU`
   class for a model without it, because the GPU Job runs only these models
   ([Quotas and cost](quotas-and-cost.md#resource-classes)).
-- The causal models write the `impact` group ([Measure the effect of a change](causal-effects.md)).
+- The causal models write the `impact` group ([How the platform measures the effect of a change](causal-effects.md)).
 
 ## Steps have manifests too
 

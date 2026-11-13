@@ -772,7 +772,7 @@ v0.5 (milestone M3.5) adds the contracts for these items:
 
 The endpoint table agrees with `mapi_spec.api.M35_ENDPOINTS`. `mapi_spec.api.ENDPOINTS` is the
 full v0.5 surface (`V04_ENDPOINTS` + `M35_ENDPOINTS`). `ROUTE_ACCESS` gives the scope and the
-permission of each operation. [Workflows](../concepts/workflows.md),
+permission of each operation. [How workflows work](../concepts/workflows.md),
 [Governance](../concepts/governance.md) and
 [About cards and choosing](../concepts/about-and-choosing.md) explain the ideas.
 
@@ -1269,7 +1269,7 @@ endpoint, gives it to client users (the project role `client`) and makes share l
 persons without an account. Each dashboard keeps an append-only history of readouts.
 [Client dashboards](../concepts/client-dashboards.md) tells how the parts work. The guides
 are [Build a client dashboard](../guides/client-dashboards.md) and
-[Share dashboards securely](../guides/sharing-dashboards-securely.md).
+[Share dashboards securely with a share link](../guides/sharing-dashboards-securely.md).
 
 The contracts are in `mapi_spec.dashboards` (DTOs) and `mapi_spec.dashboard_tools` (the
 read-only tool surface). `mapi_spec.api.V016_ENDPOINTS` lists the routes below.

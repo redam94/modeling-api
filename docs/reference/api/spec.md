@@ -275,7 +275,7 @@ See [About cards and choosing](../../concepts/about-and-choosing.md).
 
 ## Workflows <span class="mapi-badge">v0.5</span>
 
-See [Workflows](../../concepts/workflows.md).
+See [How workflows work](../../concepts/workflows.md).
 
 ::: mapi_spec.workflow
     options:

@@ -18,7 +18,7 @@
 
 | Shipped | Where to read about it |
 |---|---|
-| Versioned `WorkflowSpec` DAGs with typed ports, parameters, alternatives, branch gating and sub-workflows, validated with JSON pointers before anything runs | [Workflows](../concepts/workflows.md) |
+| Versioned `WorkflowSpec` DAGs with typed ports, parameters, alternatives, branch gating and sub-workflows, validated with JSON pointers before anything runs | [How workflows work](../concepts/workflows.md) |
 | 51 nodes: 17 statistical tests, 6 transforms, 7 train/test plans, 5 searches, fits, backtests, forecasts, evaluations, comparisons with Diebold-Mariano, selection, governance, reports | [Workflow node reference](../reference/workflow-nodes.md) |
 | A safe condition language for branches and computed parameters (`mapi_spec.expr`, never `eval`) | [Conditions](../concepts/workflows.md#conditions-a-safe-expression-language) |
 | Server orchestration: per-node status, server-sent events, retries, caching of unchanged nodes, child runs, cost | [Where nodes run](../guides/workflows.md#where-nodes-run) |

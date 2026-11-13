@@ -179,6 +179,10 @@ Four roles use the platform. **Each role has a short path.**
 
 ## Your first MMM, in four steps. { .mono-headline .mono-headline--s data-reveal }
 
+<div class="mono-tour" markdown>
+
+<div markdown>
+
 <div class="mono-steps" markdown>
 
 1.  ### Choose a template and upload your file
@@ -199,12 +203,13 @@ Four roles use the platform. **Each role has a short path.**
 
 </div>
 
-<div class="mapi-shots" markdown>
+<div class="mono-actions" markdown>
+[Do the full tutorial](guides/guided-tutorial.md){ .mono-more }
+</div>
 
-<figure markdown>
-![The Guided templates](assets/screenshots/guided-templates.png){ .mapi-shot loading=lazy }
-<figcaption>Step 1: start from the question, not from the model.</figcaption>
-</figure>
+</div>
+
+<div class="mapi-shots" markdown>
 
 <figure markdown>
 ![The report with the return and the share of each channel](assets/screenshots/guided-report.png){ .mapi-shot loading=lazy }
@@ -218,8 +223,6 @@ Four roles use the platform. **Each role has a short path.**
 
 </div>
 
-<div class="mono-actions" markdown>
-[Do the full tutorial](guides/guided-tutorial.md){ .mono-more }
 </div>
 
 </div>
@@ -261,13 +264,13 @@ Preprocessing steps, in the [steps catalog](reference/generated/steps-catalog.md
 
 <p class="mono-kicker">What's new</p>
 
-## Ask about your dashboard. { .mono-headline .mono-headline--s }
+## One look, one search. { .mono-headline .mono-headline--s }
 
-Version 0.20 adds a chat on each dashboard. **Chat tools and agents read a dashboard over MCP.**
+Version 0.21 gives the app and the docs one calm look. **Search finds your pages, your work and the docs.**
 { .mono-lead }
 
 <div class="mono-actions" markdown>
-[Read what is new in 0.20](whats-new-0.20.md){ .md-button .md-button--primary }
+[Read what is new in 0.21](whats-new-0.21.md){ .md-button .md-button--primary }
 [See the roadmap](roadmap/index.md){ .mono-more }
 </div>
 

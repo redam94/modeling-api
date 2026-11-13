@@ -699,7 +699,9 @@ a.mono-tile:hover::before,
      + mono-tiles--4        four tiles in a row (three on a narrow desktop; with
                             mono-tiles--compact, two on a phone)
      + mono-tiles--compact  small tiles for a list of tasks: a 44px icon, a short title and
-                            one link or one line */
+                            one link or one line
+     mono-tour              two columns: a .mono-steps block at the left and a .mapi-shots
+                            block with at most two screenshots at the right */
 
 .md-typeset .mono-tiles--routes > ul > li .mono-more::before {
   content: none;
@@ -788,6 +790,35 @@ a.mono-tile:hover::before,
 }
 .md-typeset .mono-band .mapi-shots + .mono-actions {
   margin-top: 28px;
+}
+/* + mono-tour: the product tour of the home page. The steps and the link to the tutorial are
+   at the left, and at most two screenshots are at the right, so the band is one screen high
+   and not two. On a narrow screen the two parts stack. */
+.md-typeset .mono-tour {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: clamp(20px, 3vw, 32px);
+  align-items: start;
+  margin-top: clamp(28px, 4vw, 44px);
+}
+.md-typeset .mono-tour .mono-steps > ol,
+.md-typeset .mono-band .mono-tour > .mapi-shots {
+  margin: 0;
+}
+.md-typeset .mono-tour > .mapi-shots {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+.md-typeset .mono-band .mono-tour > .mapi-shots img.mapi-shot {
+  aspect-ratio: 16 / 9;
+}
+.md-typeset .mono-tour .mono-actions {
+  margin-top: 24px;
+}
+@media screen and (max-width: 59.984375em) {
+  .md-typeset .mono-tour {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 /* a link in the label of a figure keeps the colour of the label and shows an underline */
 .md-typeset .mono-figures p:not(.mono-figure-num) a {

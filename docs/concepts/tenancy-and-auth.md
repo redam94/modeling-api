@@ -23,7 +23,7 @@ The contracts are in `mapi_spec.tenancy` and `mapi_spec.tokens`. The endpoints a
     `MAPI_PROFILE=single-tenant` keeps the old behaviour without credentials. The
     [Administration guide](../guides/administration.md) gives the practical side of this page:
     who does what, with screenshots and a tested walkthrough.
-    [Authentication](../guides/authentication.md) tells how to sign in.
+    [Sign in](../guides/authentication.md) tells how to sign in.
 
 ## Tenants and projects
 
