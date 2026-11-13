@@ -5,6 +5,7 @@ Fast, no network and no build (text, YAML and the hook functions only):
 * the nav has six tabs in a fixed order, and each page is in it exactly one time;
 * the Guides and Reference tabs open on a landing page that links to each page of its tab;
 * the home page uses the full-bleed template, and each link and icon on it resolves;
+* the pages that are built from tiles go from one heading level to the next, with no jump;
 * the "Try" list of the search dialog points at pages in the nav;
 * ``scripts/mkdocs_hooks.py`` sets the search boost of a page from its path, keeps two pages
   out of the index, and keeps version badges out of the titles that the search shows;
@@ -14,6 +15,7 @@ Fast, no network and no build (text, YAML and the hook functions only):
 from __future__ import annotations
 
 import importlib.util
+import itertools
 import posixpath
 import re
 from pathlib import Path
@@ -208,6 +210,29 @@ def test_a_landing_page_links_to_each_page_of_its_tab(tab: str) -> None:
     assert meta.get("description"), f"{landing} needs a description"
     text = (DOCS / landing).read_text("utf-8")
     assert "mono-tiles" in text or "mono-links" in text, "use the building blocks"
+
+
+#: Pages that are built from tiles and link rows. The title of a tile is a heading.
+TILE_PAGES = ("index.md", "guides/index.md", "reference/index.md", "whats-new-0.21.md")
+
+
+@pytest.mark.parametrize("page", TILE_PAGES)
+def test_a_page_of_tiles_has_no_jump_in_its_heading_levels(page: str) -> None:
+    """A reader with a screen reader moves by heading level. A tile title that is an ``<h3>``
+    directly below the ``<h1>`` of the page is a level that has no parent."""
+    text = (DOCS / page).read_text("utf-8")
+    if text.startswith("---\n"):
+        text = text.split("---\n", 2)[2]
+    text = re.sub(r"^ *```.*?^ *```", "", text, flags=re.M | re.S)
+    # a heading in a tile is indented (it is in a list item)
+    headings = [
+        (len(m.group(1)), m.group(2)) for m in re.finditer(r"^ *(#{1,6}) +(.+)$", text, re.M)
+    ]
+    assert headings and headings[0][0] == 1, f"{page} starts with its <h1>"
+    assert [level for level, _ in headings].count(1) == 1, f"{page} has one <h1>"
+    for (above, _), (level, title) in itertools.pairwise(headings):
+        assert level <= above + 1, f"{page}: {title!r} is h{level} below an h{above}"
+    assert "mono-tiles" in text, f"{page} has no tiles: remove it from TILE_PAGES"
 
 
 # ------------------------------------------------------------------------------- home page

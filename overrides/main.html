@@ -5,8 +5,11 @@
   - fonts: no Google Fonts link (the fonts are self-hosted, see docs/stylesheets/mono.css);
   - header: the search dialog moves out of the header, because a frosted header would trap a
     fixed-position child;
-  - hero: an ordinary page gets a head band with the breadcrumbs and the page's own <h1>
-    (cut from the rendered content, not written again), and the section's art in dark scheme;
+  - skip link: "Skip to content" goes to the article, not to the first heading. The first
+    heading is the page title, which is before the two sidebars in the document;
+  - head band: an ordinary page gets a band with the breadcrumbs and the page's own <h1>
+    (cut from the rendered content, not written again), and the section's art in dark scheme.
+    The band is inside <main>, above the columns, so the main landmark holds the title;
   - tabs: empty, because partials/header.html draws the tabs in the header row;
   - scripts: the vendored mermaid bundle (3.5 MB) loads only on a page that has a diagram.
 
@@ -66,7 +69,12 @@
   <meta name="color-scheme" content="light dark">
 {% endblock %}
 
+{#- Material prints its own skip link before this block, to the first heading of the page.
+    That heading is the title in the head band, and the two sidebars come after it in the
+    document, so the link did not skip them. The stylesheet hides Material's link
+    (mono.css) and this one takes its place. The target is the <article> of the page. -#}
 {% block header %}
+  <a href="#mono-content" class="md-skip mono-skip">{{ lang.t("action.skip") }}</a>
   {% include "partials/header.html" %}
   {% if "material/search" in config.plugins %}
     {% set search = config.plugins["material/search"] | attr("config") %}
@@ -85,8 +93,14 @@
   {{ super() }}
 {% endblock %}
 
-{% block hero %}
+{#- The head band. Material opens <main> and its grid (.md-main__inner) outside every block,
+    and "site_nav" is the first block inside the grid. This block closes that grid while it
+    is empty (the stylesheet hides it, mono-chrome.css), prints the band, and opens the grid
+    again for the sidebars and the content. Thus the band is full-bleed and it is inside
+    <main>. home.html and 404.html replace this block: they have no band. -#}
+{% block site_nav %}
   {% if mono_split %}
+    </div>
     <div class="mono-pagehead" data-mono-section="{{ mono_section }}">
       <div class="mono-pagehead__inner md-grid">
         {% if "navigation.path" in mono_features %}
@@ -97,7 +111,9 @@
         </div>
       </div>
     </div>
+    <div class="md-main__inner md-grid">
   {% endif %}
+  {{ super() }}
 {% endblock %}
 
 {% block container %}
@@ -105,7 +121,7 @@
     {% if not mono_split and "navigation.path" in mono_features %}
       {% include "partials/path.html" %}
     {% endif %}
-    <article class="md-content__inner md-typeset">
+    <article class="md-content__inner md-typeset" id="mono-content" tabindex="-1">
       {% block content %}
         {% include "partials/content.html" %}
       {% endblock %}

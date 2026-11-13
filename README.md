@@ -55,7 +55,7 @@ v0.21 (not released yet) gives the web app and the documentation one look, with
 monochrome controls and colour for data, in light and dark. The web app has a search that
 finds pages, your items by name and pages of the documentation.
 
-The built-in catalog has 50 models: marketing mix (mmm-framework), statsmodels and Bayesian time
+The built-in catalog has 51 models: marketing mix (mmm-framework), statsmodels and Bayesian time
 series, causal models, tabular and classification models (scikit-learn, xgboost, LightGBM,
 CatBoost, hierarchical GLMs), customer choice, science models and neural networks. The
 documentation (`make docs-serve`) starts at `docs/index.md`. See

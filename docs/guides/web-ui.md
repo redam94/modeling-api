@@ -25,23 +25,27 @@ This page shows each page in the sequence of the navigation. The screenshots com
 | Project switcher | Shows the tenant and the project for all the actions on the page, and your role there. You can switch to a different project, make a project (tenant admins) or open its members. See [Sign in](authentication.md#browser-sign-in). |
 | Sidebar | Home, Guided, Datasets, Build, Runs, Experiments (v0.14), Models, Score, Workflows, Governance, Integrations, Dashboards (v0.16), Catalog and Help me choose. In Guided mode, Guided, **Help me choose** and **Recipes** (the workflow gallery as ready-made recipes) come first, and Home does not show. A project that is locked to Guided mode shows those three items and Integrations. Under **Project**: Usage, Members and Tokens. Under **Platform**: Admin (operators only). Settings is at the bottom. **Collapse** (++cmd+b++) makes the sidebar narrow, with only icons. |
 | **Search** (++cmd+k++, ++ctrl+k++ on Windows and Linux, or ++slash++) | The search of the app <span class="mapi-badge">v0.21</span>. Find a page, an action, one of your items by name or a page of the docs, or paste an id to open it. See [Search](#search). |
-| List toolbar | On a list page, a search field and the filters of the page <span class="mapi-badge">v0.21</span>. The text of the search is in the address (`?q=`), so you can copy the address and the Back button keeps your search. A line counts the results while you search. **Clear the search** shows the full list again. The search looks in the items that the page loaded. |
+| List toolbar | On a list page, a search field and the filters of the page <span class="mapi-badge">v0.21</span>. The text of the search is in the address (`?q=`), so you can copy the address and the Back button keeps your search. A line counts the results while you search. **Clear the search** shows the full list again. The search looks in the items that the page loaded. The filters of Catalog (`?kind=`, `?difficulty=`) and **Show archived** on Make your own (`?archived=true`) are in the address too. |
 | Breadcrumbs | On a detail page, the path above the title, for example Models, then the model, then the version <span class="mapi-badge">v0.21</span>. Select a part to go up. |
 | **API connected** | Polls `GET /readyz`. It is green when PostgreSQL, the object store and the catalog are ready. Otherwise, it is amber (*API degraded*) or red (*API unreachable*). It links to **Settings**, which shows each check. |
 | **Guided / Expert** | The persona switch. This browser remembers it for each user. Until you make a selection, a self-service (`public` tier) workspace starts in Guided mode. All other workspaces (and platform operators) start in Expert mode. In Guided mode, `/` opens the Guided start page. If a project is locked to Guided mode, members below admin do not see the switch. |
 | **Theme** | The menu with the sun or moon icon: **System**, **Light** or **Dark**. From v0.21, the controls of the app are monochrome and colour is for data, in the two themes (see [Theme](../reference/web-app.md#theme)). |
 | Account menu | The button with your initials. It shows your name and when your session ends. Below **Help** <span class="mapi-badge">v0.21</span> you find **Read the docs** (when your operator set `VITE_DOCS_URL`), **Keyboard shortcuts** and the tours. Below that: **API tokens**, **Admin console** (operators only), **Settings** and **Sign out**. |
-| ++question++ | The keyboard shortcuts. Single keys work when no text field has focus: ++g++ then ++h++ Home, ++g++ Guided, ++d++ Datasets, ++b++ Build, ++r++ Runs, ++e++ Experiments, ++m++ Models, ++s++ Score, ++w++ Workflows, ++v++ Governance, ++i++ Integrations, ++c++ Catalog, ++o++ Help me choose, ++comma++ Settings. From v0.21, a shortcut goes only to a page that your sidebar shows. |
+| ++question++ | The keyboard shortcuts. Single keys work when no text field has focus: ++g++ then ++h++ Home, ++g++ Guided, ++d++ Datasets, ++b++ Build, ++r++ Runs, ++e++ Experiments, ++m++ Models, ++s++ Score, ++w++ Workflows, ++v++ Governance, ++i++ Integrations, ++c++ Catalog, ++o++ Help me choose, ++comma++ Settings. From v0.21, a shortcut goes only to a page that your sidebar shows, and the list shows only the shortcuts of your navigation mode. |
+
+![The list toolbar on the Catalog page: the search field with the word forecast, the filters, and the line that counts 39 of 245 catalog items](../assets/screenshots/whats-new-021-list-toolbar.png){ .mapi-shot loading=lazy }
 
 ### Search <span class="mapi-badge">v0.21</span> { #search }
 
 Select **Search** in the top bar, or press ++cmd+k++ (++ctrl+k++ on Windows and Linux) or
 ++slash++. The field says **Find a page, a name or an id**.
 
+![The search with the word media: a dataset, a dashboard and catalog cards in their groups](../assets/screenshots/whats-new-021-search.png){ .mapi-shot loading=lazy }
+
 | You do this | The search shows |
 |---|---|
-| Open it with an empty field | **Recent**: the last 8 items that you opened from the search in this project. **Clear recent items** removes them. Then the pages of your sidebar and the actions |
-| Type a word | The pages and actions that match. Then your datasets, models, specs, runs, experiments, dashboards, workflows and endpoints by name, the About cards of the catalog, your Make your own items and the pages of the docs |
+| Open it with an empty field | **Recent**: the last 8 items that you opened in this project, from the search or as a page. The list stays in your browser until you sign out. **Clear recent items** removes the items of the project. Then the pages of your sidebar and the actions |
+| Type a word | The pages that match. Then your datasets, models, specs, runs, experiments, dashboards, workflows and endpoints by name, the About cards of the catalog and your Make your own items. An item shows only when its name has each word of your text. Then the actions that have your text at the start of a word or as a part of a word. Then the pages of the docs, and **Search the docs for** your text |
 | Paste an id | The page of that item. The prefixes are `run_`, `ds_`, `spc_`, `mdl_`, `dsh_`, `exp_`, `wf_`, `val_`, `pol_`, `whk_`, `plg_` and `lib_` |
 
 Each group shows at most 5 results. **See all in** opens the list page of the group with your

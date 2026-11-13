@@ -85,9 +85,9 @@ v0.18. The documentation site uses the same look
   `components/brand/` draw them. One file serves the two themes (the utility
   `art-on-black`). The share page and the client portal must not load the empty-list art.
 - **Plots.** The plot sandbox and the server-side plot palette (`mapi_plots.palette`) use the
-  same series colours. The sandbox renders in the system font. A plot that a model version
-  stored before v0.21 keeps its fixed recipe colours
-  ([What's new in 0.21](../whats-new-0.21.md#chart-colours)).
+  same series colours. The sandbox renders in the system font. For a plot that a model
+  version stored before v0.21, the sandbox draws each old fixed recipe colour as the new
+  colour of the same role ([What's new in 0.21](../whats-new-0.21.md#chart-colours)).
 
 Tests (`theme-contrast.test.ts`, `theme-tokens.test.ts`, `theme-series-parity.test.ts`) make
 sure that the tokens pass the contrast rules in the two themes and agree with the palettes.

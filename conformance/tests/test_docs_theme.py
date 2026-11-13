@@ -1,6 +1,7 @@
 """The docs theme (the "Mono" look) is checked like code.
 
-Fast, no network and no build:
+Fast and with no network. One test builds three small pages with the templates in a temporary
+directory; no test builds the docs:
 
 * ``mkdocs.yml`` uses the ``overrides/`` directory and does not ask Material for Google Fonts;
 * nothing in the theme layer (``overrides/``, ``docs/stylesheets/``, ``docs/javascripts/``,
@@ -11,7 +12,11 @@ Fast, no network and no build:
 * the header row has three columns, so the tabs are in the centre of the page;
 * every custom class that a page uses still has a rule;
 * the theme only points at brand art that is in the agreed manifest;
-* the popular search links point at pages that exist.
+* the popular search links point at pages that exist;
+* a built page has one ``<h1>`` inside ``<main>``, and "Skip to content" goes to the article;
+* the focus rings have room, a link row stays in one piece with code in it, the art of a band
+  stays clear of the figures, and print uses the light colours;
+* a sequence diagram has no semicolon in a message (mermaid ends the statement there).
 """
 
 from __future__ import annotations
@@ -20,6 +25,7 @@ import hashlib
 import importlib.util
 import json
 import re
+from html.parser import HTMLParser
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -391,3 +397,278 @@ def test_brand_art_paths_are_in_the_manifest() -> None:
     assert refs, "the theme uses no brand art"
     unknown = {r for r in refs if r not in BRAND_MANIFEST and not BRAND_ICON.fullmatch(r)}
     assert not unknown, f"not in the art manifest: {sorted(unknown)}"
+
+
+# ---------------------------------------------------------------------------- built pages
+
+
+class _Outline(HTMLParser):
+    """The start tags of a page, each with the tags that it is inside."""
+
+    VOID = frozenset(
+        {
+            "area",
+            "base",
+            "br",
+            "col",
+            "embed",
+            "hr",
+            "img",
+            "input",
+            "link",
+            "meta",
+            "source",
+            "wbr",
+        }
+    )
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.stack: list[str] = []
+        self.nodes: list[tuple[str, dict[str, str | None], tuple[str, ...]]] = []
+        self.unbalanced: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self.nodes.append((tag, dict(attrs), tuple(self.stack)))
+        if tag not in self.VOID:
+            self.stack.append(tag)
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in self.VOID:
+            return
+        if not self.stack or self.stack[-1] != tag:
+            self.unbalanced.append(f"</{tag}> closes <{self.stack[-1] if self.stack else None}>")
+        if tag in self.stack:
+            while self.stack.pop() != tag:
+                pass
+
+    def find(self, tag: str, **attrs: str) -> list[tuple[dict[str, str | None], tuple[str, ...]]]:
+        return [
+            (a, inside)
+            for name, a, inside in self.nodes
+            if name == tag and all(a.get(k.rstrip("_")) == v for k, v in attrs.items())
+        ]
+
+
+def _build_small_site(tmp: Path) -> Path:
+    """Three pages with the real templates: a full-bleed home page, a page that starts with
+    its title, and a page with no title."""
+    from mkdocs.commands.build import build
+    from mkdocs.config import load_config
+
+    docs = tmp / "docs"
+    (docs / "guides").mkdir(parents=True)
+    (docs / "index.md").write_text("---\ntemplate: home.html\n---\n\n# Home\n\nText.\n", "utf-8")
+    (docs / "guides" / "one.md").write_text(
+        "# A guide\n\nText with a [link](../index.md).\n\n## Part one\n\nMore text.\n", "utf-8"
+    )
+    (docs / "guides" / "bare.md").write_text("Text with no title.\n\n## Part\n", "utf-8")
+    theme = _config()["theme"]
+    config = {
+        "site_name": "test",
+        "docs_dir": str(docs),
+        "site_dir": str(tmp / "site"),
+        "theme": {
+            "name": "material",
+            "custom_dir": str(OVERRIDES),
+            "font": False,
+            "features": theme["features"],
+        },
+        "markdown_extensions": [{"toc": {"permalink": True}}, "attr_list", "md_in_html"],
+        "nav": [{"Home": ["index.md"]}, {"Guides": ["guides/one.md", "guides/bare.md"]}],
+    }
+    (tmp / "mkdocs.yml").write_text(yaml.safe_dump(config), "utf-8")
+    build(load_config(str(tmp / "mkdocs.yml")))
+    return tmp / "site"
+
+
+def test_a_built_page_has_its_title_in_main_and_a_skip_link_to_the_article(tmp_path: Path) -> None:
+    """The title of a page is in the head band, above the two sidebars. The band is inside
+    ``<main>``, and "Skip to content" goes to the article, which is after the sidebars."""
+    site = _build_small_site(tmp_path)
+    pages = ("guides/one/index.html", "guides/bare/index.html", "index.html", "404.html")
+    for name in pages:
+        page = _Outline()
+        page.feed((site / name).read_text("utf-8"))
+        assert not page.unbalanced, f"{name}: {page.unbalanced[:3]}"
+        assert len(page.find("main")) == 1, name
+        titles = page.find("h1")
+        assert len(titles) == 1, f"{name} has {len(titles)} <h1>"
+        assert "main" in titles[0][1], f"{name}: the <h1> is not inside <main>"
+        # the one link that the reader gets: it points at the article, inside <main>
+        skips = [a for a, _ in page.find("a") if "mono-skip" in (a.get("class") or "")]
+        assert [a.get("href") for a in skips] == ["#mono-content"], name
+        targets = page.find("article", id="mono-content")
+        assert len(targets) == 1 and "main" in targets[0][1], name
+        assert targets[0][0].get("tabindex") == "-1", "the article takes the focus"
+        # the link is before the header, so it is the first stop of the Tab key
+        order = [
+            n for n, a, _ in page.nodes if n == "header" or "mono-skip" in (a.get("class") or "")
+        ]
+        assert order[:2] == ["a", "header"], name
+
+    # a page that starts with its title: the title is in the band, before the two sidebars,
+    # and the article does not print it again
+    one = _Outline()
+    one.feed((site / "guides/one/index.html").read_text("utf-8"))
+    names = [
+        "band" if "mono-pagehead" in (a.get("class") or "").split() else "sidebar"
+        for n, a, _ in one.nodes
+        if n == "div" and {"mono-pagehead", "md-sidebar"} & set((a.get("class") or "").split())
+    ]
+    assert names == ["band", "sidebar", "sidebar"]
+    band = one.find("div", class_="mono-pagehead")[0]
+    assert band[1][-1] == "main", "the band is a child of <main>, outside the grid"
+    assert all("article" not in inside for _, inside in one.find("h1"))
+    assert one.find("h2", id="part-one"), "the headings keep their anchors"
+    # a page with no title in its content gets one in the article, and no band
+    bare = _Outline()
+    bare.feed((site / "guides/bare/index.html").read_text("utf-8"))
+    assert not bare.find("div", class_="mono-pagehead")
+    assert "article" in bare.find("h1")[0][1]
+
+    # the stylesheet hides Material's own link, which goes to the title, and the empty grid
+    # that main.html leaves before the band
+    css = _css()
+    assert re.search(r'\[data-md-component="skip"\] \{\s*display: none;', css)
+    assert re.search(r"\.md-main__inner:has\(\+ \.mono-pagehead\) \{\s*display: none;", css)
+    main = (OVERRIDES / "main.html").read_text("utf-8")
+    assert "{% block hero %}" not in main, "the band is not in the hero block (before <main>)"
+
+
+def _rule(css: str, selector: str) -> str:
+    """The declarations of the first rule whose selector list ends with ``selector``."""
+    match = re.search(rf"(?:^|[\n,}}]) *{re.escape(selector)} \{{([^}}]*)\}}", css)
+    assert match, f"no rule for {selector}"
+    return match.group(1)
+
+
+def _px(rule: str, name: str) -> float:
+    match = re.search(rf"(?<![\w-]){re.escape(name)}: (-?[\d.]+)(?:px)?;", rule)
+    assert match, f"{name} is not in {rule!r}"
+    return float(match.group(1))
+
+
+def test_focus_rings_are_not_clipped_in_the_header_and_the_sidebars() -> None:
+    css = _css()
+    ring = _rule(css, ".md-typeset .md-button:focus-visible")
+    width = re.search(r"outline: (\d+)px solid", ring)
+    assert width, "the ring is an outline"
+    reach = _px(ring, "outline-offset") + float(width.group(1))
+    # the row of tabs scrolls sideways, so it clips: its padding is the room for the ring
+    assert "overflow-x: auto" in _rule(css, ".mono-tabs")
+    assert _px(_rule(css, ".mono-tabs__list"), "padding") >= reach
+    # the lists of the sidebars clip too: the ring of a link there is inside its own box
+    assert _px(_rule(css, ".md-nav__link.focus-visible"), "outline-offset") < 0
+    # the panes fade at the top and at the bottom; the padding of a pane holds the two fades,
+    # and a link that gets the focus does not stop in a fade
+    pane = _rule(css, ".md-sidebar--secondary .md-sidebar__scrollwrap")
+    fade = re.search(
+        r"mask-image: linear-gradient\(180deg, transparent 0, #000 (\d+)px, "
+        r"#000 calc\(100% - (\d+)px\)",
+        pane,
+    )
+    assert fade, "the panes of the sidebars have no fade"
+    top, bottom = (float(g) for g in fade.groups())
+    assert _px(pane, "padding-top") >= top and _px(pane, "padding-bottom") >= bottom
+    pad = re.search(r"scroll-padding: (\d+)px 0 (\d+)px;", pane)
+    assert pad and float(pad.group(1)) >= top and float(pad.group(2)) >= bottom
+
+
+def test_a_link_row_stays_in_one_piece_with_code_in_it() -> None:
+    """As a flex column, each inline part of the description (a name in code) was a row."""
+    css = _css()
+    row = _rule(css, ".md-typeset :is(ul.mono-links, .mono-links > ul) > li > a")
+    assert "display: block" in row and "flex" not in row
+    title = _rule(css, ".md-typeset :is(ul.mono-links, .mono-links > ul) > li > a :is(b, strong)")
+    assert "display: block" in title
+    assert "var(--mono-ink-2)" in _rule(
+        css, ".md-typeset :is(ul.mono-links, .mono-links > ul) > li > a code"
+    )
+    # the pages do use code in a row, so the rule has a reader
+    rows = [
+        line
+        for page in ("guides/index.md", "reference/index.md")
+        for line in (DOCS / page).read_text("utf-8").splitlines()
+        if line.startswith("- [**") and "`" in line
+    ]
+    assert len(rows) >= 5
+
+
+def test_the_art_of_a_left_band_stays_clear_of_its_figures() -> None:
+    """The backdrops have their art in the right 23% of the file (docs/project/docs-theme.md:
+    an empty black centre). The row of figures in such a band ends before the art starts."""
+    css = _css()
+    figures = _rule(css, ".mono-band--hero.mono-band--left .mono-figures")
+    limit = re.search(
+        r"max-width: calc\((\d+)vw - max\(var\(--mono-gutter\), 50vw - var\(--mono-wrap\) / 2\)\);",
+        figures,
+    )
+    assert limit, "the row of figures has no limit in a left band"
+    assert int(limit.group(1)) <= 75, "the art starts at 77% of the width"
+    assert css.index("@media screen and (min-width: 53.76em)") < css.index(figures)
+    # the home page is the page that has such a band
+    home = (DOCS / "index.md").read_text("utf-8")
+    band = re.search(
+        r'<section class="([^"]*mono-band--left[^"]*)"[^>]*>(.*?)</section>', home, re.S
+    )
+    assert band and "mono-band--hero" in band.group(1) and 'class="mono-figures"' in band.group(2)
+
+
+def test_print_uses_the_light_colours_in_the_dark_scheme() -> None:
+    """The dark tokens are for the screen. On paper a page in the dark scheme, and a dark
+    band, take the light tokens of ``:root``."""
+    mono = (STYLES / "mono.css").read_text("utf-8")
+    dark = mono.index('[data-md-color-scheme="slate"],\n  .mono-band--dark {')
+    before = mono[:dark]
+    assert before.rstrip().endswith("@media not print {"), "the dark tokens are also for print"
+    block = mono[dark:].split("\n  }\n", 1)[0]
+    light = mono.split('[data-md-color-scheme="default"] {', 1)[1].split("\n}\n", 1)[0]
+    names = set(re.findall(r"(--mono-[a-z0-9-]+):", block))
+    assert len(names) >= 30 and names <= set(re.findall(r"(--mono-[a-z0-9-]+):", light)), (
+        "each dark token has a light value to fall back on"
+    )
+    # no art and no dark fill on paper: the print rule names each selector that draws them
+    blocks = (STYLES / "mono-blocks.css").read_text("utf-8")
+    screen, printed = blocks.split("@media print {", 1)
+    for selector in (
+        '[data-md-color-scheme="slate"] .mono-band--hero',
+        ".mono-band--dark.mono-band--hero",
+        '[data-md-color-scheme="slate"] .mono-band--hero.mono-band--left',
+        ".mono-band--dark.mono-band--hero.mono-band--left",
+        '[data-md-color-scheme="slate"] .mono-band:is(.tex-contours, .tex-lattice, .tex-curves)',
+        ".mono-band--dark:is(.tex-contours, .tex-lattice, .tex-curves)",
+    ):
+        assert f"\n{selector}" in screen, f"{selector} draws no art now: remove it here"
+        assert re.search(rf"\n  {re.escape(selector)}(?:,| \{{)\n", printed), (
+            f"print does not reset {selector}"
+        )
+    # the last selector of that list opens the rule
+    assert "background: none;" in _rule(
+        printed, ".mono-band--dark:is(.tex-contours, .tex-lattice, .tex-curves)"
+    )
+
+
+def test_a_title_in_code_is_plain_text_in_the_head_band() -> None:
+    """The title of a Python API page is a name in code. In the head band it is plain
+    monospace, not a grey chip of 40 px."""
+    code = _rule((STYLES / "mono-chrome.css").read_text("utf-8"), ".mono-pagehead__title > h1 code")
+    assert "background: none" in code and "padding: 0" in code
+
+
+def test_a_sequence_diagram_has_no_semicolon_in_a_message() -> None:
+    """mermaid ends a statement of a sequence diagram at a semicolon. The rest of the line is
+    then a statement that it cannot read, and the page shows the source and not the diagram."""
+    fence = re.compile(r"^( *)```mermaid\n(.*?)^\1```", re.M | re.S)
+    count = 0
+    for page in sorted(DOCS.rglob("*.md")):
+        text = page.read_text("utf-8")
+        for match in fence.finditer(text):
+            body = match.group(2)
+            if body.split("\n", 1)[0].strip() != "sequenceDiagram":
+                continue
+            count += 1
+            for line in body.splitlines():
+                bare = re.sub(r"#\d+;|&[a-z]+;", "", line)  # a character entity is not a separator
+                assert ";" not in bare, f"{page.relative_to(ROOT)}: {line.strip()}"
+    assert count >= 5, "the docs have sequence diagrams"

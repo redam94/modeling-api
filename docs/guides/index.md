@@ -12,7 +12,7 @@ Each guide does one task from start to end.
 
 -   ![](../assets/brand/icons/dashboard.webp){ .mono-icon }
 
-    ### Build a dashboard
+    ## Build a dashboard
 
     Publish the results of a model to a client.
 
@@ -20,7 +20,7 @@ Each guide does one task from start to end.
 
 -   ![](../assets/brand/icons/choose-model.webp){ .mono-icon }
 
-    ### Choose a model
+    ## Choose a model
 
     Answer some questions and get a ranked shortlist.
 
@@ -28,7 +28,7 @@ Each guide does one task from start to end.
 
 -   ![](../assets/brand/icons/null-tests.webp){ .mono-icon }
 
-    ### Check a model
+    ## Check a model
 
     Prove that a model is better than noise.
 

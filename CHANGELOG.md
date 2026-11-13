@@ -15,15 +15,17 @@ change.
 
 #### Added
 - Web app, search: one overlay (`Cmd/Ctrl+K` or `/`, or **Search** in the top bar) with the
-  groups **Recent**, **Go to**, **Actions**, a group for each kind of item (datasets, models,
-  specs, runs, experiments, dashboards, workflows, endpoints, the catalog and Make your
-  own) and **Docs**. Each group shows at most 5 results and **See all in**, which opens the
+  groups **Recent**, **Go to**, a group for each kind of item (datasets, models, specs,
+  runs, experiments, dashboards, workflows, endpoints, the catalog and Make your own),
+  **Actions** and **Docs**. With text, the actions come after the pages and the items, and
+  an item shows only when its name has each word of the text. Each group shows at most 5 results and **See all in**, which opens the
   list page with `?q=`. A pasted id with one of 12 prefixes (`run_`, `ds_`, `spc_`, `mdl_`,
   `dsh_`, `exp_`, `wf_`, `val_`, `pol_`, `whk_`, `plg_`, `lib_`) opens its page.
 - The search follows the navigation mode and the role: it offers no page, group, id or
   recent item that the sidebar hides. The client portal and the share page have no search.
 - Recent items of the search: the last 8 for each project, in the browser
-  (`mapi.search.recent`), with **Clear recent items**.
+  (`mapi.search.recent`), with **Clear recent items**. The list has the items opened from
+  the search and the pages visited. Sign-out removes it.
 - A search index of the documentation for the app (`scripts/gen_docs_search_index.py` writes
   `apps/web/src/features/search/docs-index.gen.json`, at most 120 KB). `make web-check`
   fails when the file is not current. The group **Docs** needs `VITE_DOCS_URL`.
@@ -57,9 +59,10 @@ change.
 - The chart palette: each swatch of `mapi_plots.palette` (`mapi-plots`, Apache-2.0) has new
   light and dark values. The names of the swatches and the functions do not change. The
   plot sandbox and the series colours of the app (`--series-1` to `--series-8`) use the same
-  new values. A plot that a model version stored before this release keeps its fixed recipe
-  colours, and the sandbox does not change these old colours to dark values in the dark
-  theme. Fit the model again to get the new colours.
+  new values. A plot that a model version stored before this release keeps its old colour
+  values in the stored document. The plot sandbox draws each old fixed recipe colour as the
+  new colour of the same role, in the two themes (`apps/plot-sandbox/src/legacy-palette.ts`),
+  so a new fit is not necessary.
 - The tokens of the web app (`apps/web/src/app.css`) have new values in the two themes. The
   ramps `brand-*`, `lime-*` and `coral-*` are removed. The ramps are now `grey-*`, `blue-*`,
   `orange-*`, `green-*` and `red-*`.
@@ -101,17 +104,27 @@ change.
 #### Known gaps
 - The app has no search endpoint on the server. For datasets, models, specs, dashboards,
   workflows and endpoints, the search reads the first 200 items of each kind in the project
-  and does not find an item after these.
-- The recent items of the search stay in one browser.
-- Most screenshots in the docs show the look of earlier versions. In the dark scheme of the
-  docs they show as light panels.
+  and does not search the names of the items after these.
+- **See all in** and the search field of a list show an item only when the item has each
+  word of the text.
+- The recent items of the search (the items opened from the search and the pages visited)
+  stay in one browser until sign-out.
+- **Read the docs** and the group **Docs** show only when the build of the app has
+  `VITE_DOCS_URL`. No build that comes with the platform sets it: not the `mapi/web` image,
+  not `make dev` and not the mock build.
+- 25 screenshots in the docs show the look of earlier versions: 13 science screenshots
+  (`science-*.png`), 5 of the 8 screenshots of release 0.15 (`whats-new-015-*.png`) and the
+  7 screenshots in `docs/assets/first-model/`. All other screenshots show the new look. In
+  the dark scheme of the docs, a screenshot of the light theme shows as a light panel.
+- The pictures of the plot recipes catalog (`docs/assets/plots/`) have the new fixed
+  colours. Their series keep the default colours of the renderer.
+- The account chooser of the development IdP and the HTML page of an evidence pack are not
+  themed.
 - The OpenAPI explorer (Redoc) stays light in the dark scheme of the docs.
 - The new look was checked in Chromium only. Safari and Firefox were not checked. Some
   small refinements of the docs need `:has()`. Without it the pages still read correctly.
 - The tabs of the docs move into the menu below 1220 px, not below 980 px.
-- The anchors in the docs index of the app are computed from the headings and were not
-  compared with a built site. Headings that come from an included file are not in the
-  index.
+- Headings that come from an included file are not in the docs index of the app.
 - The fonts and mermaid of the docs site are not in `THIRD-PARTY-NOTICES.md`, because that
   file comes from the lock files. Each has its licence text beside it.
 

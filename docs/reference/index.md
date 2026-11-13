@@ -12,7 +12,7 @@ The catalogs and the settings pages come from the code at each build.
 
 -   ![](../assets/brand/icons/reference.webp){ .mono-icon }
 
-    ### Spec format
+    ## Spec format
 
     Each field of a ModelSpec, with examples.
 
@@ -20,7 +20,7 @@ The catalogs and the settings pages come from the code at each build.
 
 -   ![](../assets/brand/icons/developer.webp){ .mono-icon }
 
-    ### HTTP API
+    ## HTTP API
 
     Each route, with its request and its response.
 
@@ -28,7 +28,7 @@ The catalogs and the settings pages come from the code at each build.
 
 -   ![](../assets/brand/icons/error-codes.webp){ .mono-icon }
 
-    ### Error codes
+    ## Error codes
 
     Each stable error code and its meaning.
 

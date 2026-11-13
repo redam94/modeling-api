@@ -163,7 +163,7 @@ sufficient to converge. Each warning tells you what to do. The metrics come from
 holdout weeks. The model scored these weeks through the same code path as a forecast. This
 occurred before the model was fitted again on all the data (`fit.mode: evaluate_then_refit`).
 
-Open **Plots** → **Contribution by channel**:
+Open **Plots** → **Contribution by component**:
 
 ![Revenue in parts: baseline, channels, seasonality and holidays](../assets/screenshots/decomposition.png){ .mapi-shot }
 

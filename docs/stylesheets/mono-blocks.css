@@ -85,11 +85,13 @@
     var(--hero-art, none) center / cover no-repeat,
     var(--mono-bg);
 }
-/* a left-aligned head clears the left side, not the centre */
+/* A left-aligned head clears the left side, not the centre. The art is in the right 23% of
+   its file. The scrim is solid to 60% of the width and then lets the art come in slowly, so
+   the art has no hard left edge. */
 [data-md-color-scheme="slate"] .mono-band--hero.mono-band--left,
 .mono-band--dark.mono-band--hero.mono-band--left {
   background:
-    linear-gradient(90deg, var(--mono-bg) 40%, color-mix(in srgb, var(--mono-bg) 25%, transparent) 80%),
+    linear-gradient(90deg, var(--mono-bg) 60%, color-mix(in srgb, var(--mono-bg) 25%, transparent) 100%),
     var(--hero-art, none) right center / cover no-repeat,
     var(--mono-bg);
 }
@@ -445,6 +447,20 @@ a.mono-tile:hover::before,
   font-size: 15px;
   line-height: 1.4;
 }
+/* Figures in a left-aligned head with art: the row ends at 73% of the width of the page, so
+   no number and no label is on the art (which starts at 77%). The row keeps four columns;
+   on a narrow desktop it has two. Below 53.75em the art is above the text (see the bands). */
+@media screen and (min-width: 53.76em) {
+  .mono-band--hero.mono-band--left .mono-figures {
+    max-width: calc(73vw - max(var(--mono-gutter), 50vw - var(--mono-wrap) / 2));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media screen and (min-width: 60em) {
+  .mono-band--hero.mono-band--left .mono-figures {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
 
 /* ------------------------------------------------------------------------------ steps */
 /* <ol class="mono-steps">, or a numbered Markdown list in <div class="mono-steps" markdown>. */
@@ -539,11 +555,11 @@ a.mono-tile:hover::before,
 .md-typeset :is(ul.mono-links, .mono-links > ul) > li {
   margin: 0;
 }
+/* The link is a block and only the title is a line of its own. (As a flex column, each
+   inline part of the description, such as a name in code, was a row of its own.) */
 .md-typeset :is(ul.mono-links, .mono-links > ul) > li > a {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  display: block;
   padding: 16px 110px 16px 22px;
   background: var(--mono-bg-alt);
   color: var(--mono-muted);
@@ -573,10 +589,16 @@ a.mono-tile:hover::before,
   color: var(--mono-ink-2);
 }
 .md-typeset :is(ul.mono-links, .mono-links > ul) > li > a :is(b, strong) {
+  display: block;
+  margin-bottom: 2px;
   color: var(--mono-ink);
   font-size: 17px;
   font-weight: 600;
   letter-spacing: -0.012em;
+}
+/* a name in code in the description: --mono-muted on the chip is below 4.5:1 */
+.md-typeset :is(ul.mono-links, .mono-links > ul) > li > a code {
+  color: var(--mono-ink-2);
 }
 .md-typeset :is(ul.mono-links, .mono-links > ul) > li > a :is(i, em) {
   position: absolute;
@@ -593,6 +615,8 @@ a.mono-tile:hover::before,
   }
   .md-typeset :is(ul.mono-links, .mono-links > ul) > li > a :is(i, em) {
     position: static;
+    display: block;
+    margin-top: 2px;
     transform: none;
   }
 }
@@ -669,10 +693,16 @@ a.mono-tile:hover::before,
     opacity: 1;
     transform: none;
   }
+  /* no fill and no art on paper; the selectors repeat the ones that draw art above */
   .mono-band,
   .mono-band--alt,
   .mono-band--dark,
-  [data-md-color-scheme="slate"] .mono-band--hero {
+  [data-md-color-scheme="slate"] .mono-band--hero,
+  .mono-band--dark.mono-band--hero,
+  [data-md-color-scheme="slate"] .mono-band--hero.mono-band--left,
+  .mono-band--dark.mono-band--hero.mono-band--left,
+  [data-md-color-scheme="slate"] .mono-band:is(.tex-contours, .tex-lattice, .tex-curves),
+  .mono-band--dark:is(.tex-contours, .tex-lattice, .tex-curves) {
     padding: 24px 0;
     background: none;
     color: #1d1d1f;

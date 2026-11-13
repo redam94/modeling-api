@@ -87,11 +87,13 @@
 .mono-tabs::-webkit-scrollbar {
   display: none;
 }
+/* The row scrolls sideways when it is too wide, so it clips. The padding is the room for
+   the focus ring of a tab (2px, with a 3px gap). */
 .mono-tabs__list {
   display: flex;
   gap: 4px;
   margin: 0;
-  padding: 3px;
+  padding: 6px;
   list-style: none;
 }
 .mono-tabs__link {
@@ -701,8 +703,17 @@
 
 /* --------------------------------------------------------------------------- page head */
 /* The breadcrumbs and the page title, above the columns. In dark scheme the section's art
-   sits at the right edge behind a scrim that keeps the left side clear. Light is plain. */
+   sits at the right edge behind a scrim that keeps the left side clear. Light is plain.
+   The band is inside <main>: main.html closes Material's grid before the band and opens it
+   again after the band. The first grid is empty and takes no space. */
 
+.md-main__inner:has(+ .mono-pagehead) {
+  display: none;
+}
+/* Material gives the grid the height of <main>. With the band above it, that is too high. */
+.mono-pagehead + .md-main__inner {
+  height: auto;
+}
 .mono-pagehead {
   position: relative;
   background: var(--mono-bg);
@@ -712,6 +723,12 @@
 }
 .mono-pagehead__title > h1 {
   margin: 0;
+}
+/* a title that is a name in code (the Python API pages): plain monospace, not a chip */
+.mono-pagehead__title > h1 code {
+  padding: 0;
+  border-radius: 0;
+  background: none;
 }
 [data-md-color-scheme="slate"] .mono-pagehead {
   background:
@@ -809,10 +826,15 @@
   .md-sidebar--primary .md-sidebar__scrollwrap,
   .md-sidebar--secondary .md-sidebar__scrollwrap {
     margin: 0;
-    /* a long list fades out at the edges of its pane, with no hard cut */
-    -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 14px, #000 calc(100% - 20px), transparent 100%);
-    mask-image: linear-gradient(180deg, transparent 0, #000 14px, #000 calc(100% - 20px), transparent 100%);
+    /* A long list fades out at the edges of its pane, with no hard cut. The fades are in the
+       padding of the pane (6px at the top, 20px at the bottom), so the first and the last
+       link, and their focus rings, are clear of them when the list is at its start or end. */
+    -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 6px, #000 calc(100% - 20px), transparent 100%);
+    mask-image: linear-gradient(180deg, transparent 0, #000 6px, #000 calc(100% - 20px), transparent 100%);
     padding-top: 6px;
+    padding-bottom: 24px;
+    /* a link that gets the focus scrolls to a position that is clear of the two fades */
+    scroll-padding: 8px 0 24px;
   }
   [dir="ltr"] .md-sidebar--primary .md-sidebar__inner {
     padding-right: 0;

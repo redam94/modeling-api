@@ -1,7 +1,8 @@
 """The v0.21 docs are real: the release page and the contributor page are in the nav, the home
 page and the README point at the release page, the changelog has the release block, each
-label that the pages show as a control exists in the web app or in the docs theme, and the
-docs tests of the theme, the nav and the search index run with ``make docs-test``.
+label that the pages show as a control exists in the web app or in the docs theme, the known
+gaps say what is true (the counts of old screenshots come from the files), and the docs
+tests of the theme, the nav and the search index run with ``make docs-test``.
 
 Fast, text only: no build, no browser and no network.
 """
@@ -27,6 +28,20 @@ THEME_PAGE = DOCS / "project" / "docs-theme.md"
 LICENSING = DOCS / "project" / "licensing.md"
 ROADMAP = DOCS / "roadmap" / "expert-plugins.md"
 TITLE = "### One look, and a search that finds your work (v0.21)"
+SHOTS = DOCS / "assets" / "screenshots"
+
+#: What each list of known gaps must name (the release page and the changelog).
+GAPS = (
+    "200",  # the search reads the first 200 items of a kind
+    "each word",  # "See all in" and the search of a list need each word of the text
+    "VITE_DOCS_URL",  # no build that comes with the platform sets it
+    "screenshots",
+    "plot recipes catalog",
+    "development IdP",
+    "evidence pack",
+    "Redoc",
+    "Chromium",
+)
 
 APP_LABELS = {
     WHATS_NEW: [
@@ -163,11 +178,21 @@ def test_the_release_page_follows_the_pattern() -> None:
     # built from the building blocks of the new look, not from the old cards
     assert "mono-tiles" in text and "mono-links" in text
     assert "grid cards" not in text and ":material-" not in text and "octicons" not in text
-    icons = re.findall(r"!\[[^\]]*\]\(([^)]+)\)", text)
-    assert len(icons) >= 4
+    # two kinds of image: the icons of the tiles, and the screenshots of this release
+    images = re.findall(r"!\[([^\]]*)\]\(([^)\s]+)\)", text)
+    icons = [ref for _, ref in images if ref.startswith("assets/brand/icons/")]
+    shots = [(alt, ref) for alt, ref in images if ref.startswith("assets/screenshots/")]
+    assert len(icons) >= 4 and len(shots) >= 5
+    assert len(icons) + len(shots) == len(images), "an image is an icon or a screenshot"
     for ref in icons:
-        assert ref.startswith("assets/brand/icons/"), f"{ref}: no screenshot on this page yet"
         assert (DOCS / ref).is_file(), f"{ref} does not exist"
+    for alt, ref in shots:
+        assert ref.startswith("assets/screenshots/whats-new-021-"), (
+            f"{ref}: a screenshot of this release has the name whats-new-021-*.png"
+        )
+        assert (DOCS / ref).is_file(), f"{ref} does not exist"
+        assert len(alt.split()) >= 5, f"{ref} needs alt text that says what the picture shows"
+    assert len({ref for _, ref in shots}) == len(shots), "each screenshot shows one time"
     for link in re.findall(r"(?<!\!)\[[^\]]*\]\(([^)#\s]+)(?:#[^)]*)?\)", text):
         if not re.match(r"[a-z]+:", link):
             assert (DOCS / link).is_file(), f"the page links a missing file: {link}"
@@ -182,7 +207,7 @@ def test_the_release_page_says_what_is_true_about_the_limits() -> None:
     flat = _flat(WHATS_NEW)
     gaps = flat.split("## Known gaps", 1)[1]
     assert "200" in flat.split("## Known gaps", 1)[0], "the limit is also where search is described"
-    for item in ("200", "Chromium", "Redoc", "screenshots"):
+    for item in GAPS:
         assert item in gaps, f"Known gaps does not name {item}"
     # the limits in the code are the ones the page states
     rows = re.search(
@@ -193,6 +218,73 @@ def test_the_release_page_says_what_is_true_about_the_limits() -> None:
     assert f"{rows.group(1)} results" in flat and f"last {recents.group(1)}" in flat
     remote = _text(WEB / "features/search/remote-sources.tsx")
     assert "200" in remote, "the search reads at most 200 items of a kind"
+
+
+def test_the_known_gaps_count_the_screenshots_of_earlier_versions() -> None:
+    """The lists name three sets of screenshots that show the old look. The size of each set
+    is the number of its files, and the total is their sum."""
+    science = len(list(SHOTS.glob("science-*.png")))
+    release_015 = len(list(SHOTS.glob("whats-new-015-*.png")))
+    first_model = len(list((DOCS / "assets" / "first-model").glob("*.png")))
+    for name, text in (
+        ("whats-new-0.21.md", _flat(WHATS_NEW).split("## Known gaps", 1)[1]),
+        ("CHANGELOG.md", _flat(ROOT / "CHANGELOG.md").split(TITLE, 1)[1].split(" ### ", 1)[0]),
+    ):
+        item = re.search(
+            r"- (\d+) screenshots in the docs show the look of earlier versions: "
+            r"(\d+) [^,]*science[^,]*, (\d+) of the (\d+) screenshots of release 0\.15.{0,40}?"
+            r"the (\d+) screenshots ",
+            text,
+        )
+        assert item, f"{name} does not count the screenshots of earlier versions"
+        total, n_science, n_old_015, n_015, n_first = (int(g) for g in item.groups())
+        assert (n_science, n_015, n_first) == (science, release_015, first_model), name
+        assert 0 < n_old_015 < n_015 and total == n_science + n_old_015 + n_first, name
+        # the earlier claim, that most screenshots show the old look, is gone
+        assert "Most screenshots" not in text, name
+
+
+def test_the_docs_say_what_is_true_about_recent_items_and_stored_plots() -> None:
+    """Recent holds what you opened, from the search or as a page, until you sign out. A plot
+    that was stored before 0.21 gets the new colours when the app draws it."""
+    release, guide, changelog = _flat(WHATS_NEW), _flat(WEB_UI), _flat(ROOT / "CHANGELOG.md")
+    for name, text in (("whats-new-0.21.md", release), ("web-ui.md", guide)):
+        assert "opened from the search," not in text and "opened from the search in" not in text, (
+            f"{name}: a visit to a page goes into Recent too"
+        )
+        assert "until you sign out" in text, name
+    # the code does what the pages say
+    assert (WEB / "features/search/use-record-recent.ts").is_file(), "pages record their visit"
+    sign_out = _text(WEB / "features/auth/gate.tsx").split("export function useSignOut", 1)[1]
+    assert re.search(r"RECENTS_STORAGE_KEY|useRecents", sign_out.split("\n}\n", 1)[0]), (
+        "the docs say that sign-out removes the recent items"
+    )
+    # stored plots: no advice to fit a model again only to get the new colours
+    colours = release.split("## Chart colours", 1)[1].split("## For developers", 1)[0]
+    assert "new colour of the same role" in colours
+    assert "do not have to fit a model again" in colours
+    for name, text in (("whats-new-0.21.md", release), ("CHANGELOG.md", changelog)):
+        assert "Fit the model again to get the new colours" not in text, name
+        assert "To get the new colours on an old model" not in text, name
+    legacy = re.search(r"`(apps/plot-sandbox/src/[a-z-]+\.ts)`\), so a new fit", changelog)
+    assert legacy and (ROOT / legacy.group(1)).is_file(), "the changelog names the table"
+
+
+def test_the_quickstart_names_the_plot_as_the_app_shows_it() -> None:
+    """The quickstart tells the reader to open a plot by its title. The title comes from the
+    recipe, so a title that the recipe does not have sends the reader nowhere."""
+    pack = _text(ROOT / "packages/plots-core/src/mapi_plots/packs/mmm.py")
+    recipe = pack.split('"mmm.decomposition"', 1)[1]
+    title = re.search(r'title="([^"]+)"', recipe)
+    assert title is not None
+    quickstart = _text(DOCS / "getting-started" / "quickstart.md")
+    assert f"**{title.group(1)}**" in quickstart
+    stale = "Contribution by channel"
+    assert stale not in pack
+    for page in _hand_written():
+        assert stale not in _text(page), (
+            f"{page.relative_to(ROOT)} names a plot that does not exist"
+        )
 
 
 def test_the_home_page_names_the_new_release() -> None:
@@ -206,6 +298,12 @@ def test_the_readme_points_at_the_newest_release_page() -> None:
     readme = _text(ROOT / "README.md")
     assert "docs/whats-new-0.21.md" in readme
     assert "MEI / ODS" not in readme, "the look of v0.16 is not the look of the app now"
+    # the README and the home page of the docs state the same number of built-in models
+    stated = re.search(r"The built-in catalog has (\d+) models", readme)
+    figure = re.search(
+        r'<p class="mono-figure-num[^"]*">(\d+)</p>\s+Built-in models', _text(DOCS / "index.md")
+    )
+    assert stated and figure and stated.group(1) == figure.group(1)
 
 
 # ---------------------------------------------------------------------------------- labels
@@ -415,5 +513,6 @@ def test_changelog_has_the_v021_section() -> None:
     ):
         assert item in changed, f"Changed does not name {item}"
     gaps = flat.split("#### Known gaps", 1)[1]
-    for item in ("200", "screenshots", "Redoc", "Chromium"):
+    for item in GAPS:
         assert item in gaps, f"Known gaps does not name {item}"
+    assert "were not compared with a built site" not in gaps, "the anchors were compared"
