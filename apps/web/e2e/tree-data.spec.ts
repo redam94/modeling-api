@@ -338,6 +338,12 @@ test("a tree version shows its nodes and the Data Explorer explores one node at 
 /** Put the cursor at the end of the first line containing `line`, minus `back` characters. */
 async function cursorAfter(page: Page, line: string, back = 0) {
   const editor = page.getByTestId("yaml-editor");
+  // Each insert shows a toast at the bottom centre of the window. A toast on top of the line
+  // takes the click: Playwright then scrolls the line inside Monaco, and the cursor lands on a
+  // different line. Close the toasts first.
+  const dismiss = page.getByRole("button", { name: "Dismiss", exact: true });
+  for (let n = await dismiss.count(); n > 0; n--) await dismiss.first().click();
+  await expect(dismiss).toHaveCount(0);
   await editor.locator(".view-line", { hasText: line }).first().click();
   await page.keyboard.press("End");
   for (let i = 0; i < back; i++) await page.keyboard.press("Backspace");

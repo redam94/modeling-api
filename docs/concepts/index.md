@@ -96,7 +96,7 @@ arrays and runs plugins in notebooks and in the sandboxed runner. The
     1 000 000 images in shared packs, uploads only new images and gives batches to the
     networks.
 
--   **[Measure the effect of a change](causal-effects.md)** <span class="mapi-badge">v0.13</span>
+-   **[How the platform measures the effect of a change](causal-effects.md)** <span class="mapi-badge">v0.13</span>
 
     Actual values against a prediction of the values without the change. Three causal
     designs, the `impact` group and the path from a geo-lift test to a calibrated marketing
@@ -130,7 +130,7 @@ arrays and runs plugins in notebooks and in the sandboxed runner. The
     Endpoints and aliases, with gates on promotion. Code snippets, signed webhooks, and
     rendered and embedded plots. The trust lifecycle from sign-up to deletion.
 
--   **[Workflows](workflows.md)** <span class="mapi-badge">v0.5</span>
+-   **[How workflows work](workflows.md)** <span class="mapi-badge">v0.5</span>
 
     Versioned DAGs of statistical tests, transforms, branches, train/test plans, searches,
     fits, comparisons, governance and reports. Bayesian checks, stacking weights, scores and

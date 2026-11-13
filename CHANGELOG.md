@@ -5,6 +5,129 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+### One look, and a search that finds your work (v0.21)
+
+The web app and the documentation site have one look: monochrome controls, colour for data,
+in light and dark. The command palette of the web app is now a search that finds pages,
+actions, your items by name, ids and documentation pages. The documentation has six tabs, a
+new home page and a tuned search. The API, the database and the stored documents do not
+change.
+
+#### Added
+- Web app, search: one overlay (`Cmd/Ctrl+K` or `/`, or **Search** in the top bar) with the
+  groups **Recent**, **Go to**, a group for each kind of item (datasets, models, specs,
+  runs, experiments, dashboards, workflows, endpoints, the catalog and Make your own),
+  **Actions** and **Docs**. With text, the actions come after the pages and the items, and
+  an item shows only when its name has each word of the text. Each group shows at most 5 results and **See all in**, which opens the
+  list page with `?q=`. A pasted id with one of 12 prefixes (`run_`, `ds_`, `spc_`, `mdl_`,
+  `dsh_`, `exp_`, `wf_`, `val_`, `pol_`, `whk_`, `plg_`, `lib_`) opens its page.
+- The search follows the navigation mode and the role: it offers no page, group, id or
+  recent item that the sidebar hides. The client portal and the share page have no search.
+- Recent items of the search: the last 8 for each project, in the browser
+  (`mapi.search.recent`), with **Clear recent items**. The list has the items opened from
+  the search and the pages visited. Sign-out removes it.
+- A search index of the documentation for the app (`scripts/gen_docs_search_index.py` writes
+  `apps/web/src/features/search/docs-index.gen.json`, at most 120 KB). `make web-check`
+  fails when the file is not current. The group **Docs** needs `VITE_DOCS_URL`.
+- Web app, lists: one toolbar on the list pages (Datasets, Build, Runs, Models,
+  Experiments, Workflows, Dashboards, Integrations, Catalog and Make your own) with a search
+  field and the filters of the page. The text is in the address (`?q=`), and a line counts
+  the results. The Runs page keeps `name=` in its address and reads `?q=` as the name too.
+- Web app, navigation: breadcrumbs on each detail page (`PageHeader` takes `crumbs`), and a
+  **Help** group in the account menu with **Read the docs** (needs `VITE_DOCS_URL`),
+  **Keyboard shortcuts** and the tours.
+- Generated line art, committed with its provenance (model, prompt, request id and date):
+  11 backdrops and 28 tile icons for the docs (`docs/assets/brand/`), and the sign-in,
+  Start here, not-found and empty-list images of the app (`apps/web/src/assets/brand/`).
+  The app has a favicon.
+- Docs, theme: templates in `overrides/`, four stylesheets (`docs/stylesheets/mono*.css`),
+  one script (`docs/javascripts/mono.js`) and building blocks for pages (bands, tiles,
+  steps, link rows, figures). The theme has a light and a dark scheme.
+- Docs, navigation: a home page with a path for each role and links to tasks, landing pages
+  for the guides (`guides/index.md`) and the reference (`reference/index.md`), and
+  breadcrumbs on each page.
+- Docs, search: `/` and `Cmd/Ctrl+K` open it, a **Try** list shows for an empty field
+  (`extra.search_popular`), each result names its section, and `scripts/mkdocs_hooks.py`
+  sets the rank of each page from its path. Version badges are not in result titles. The
+  changelog and the old upload roadmap are not in the index.
+- `scripts/vendor_mermaid.py` (mermaid 11.17.2, with a pinned SHA-256).
+- Docs: "What's new in 0.21" and "The docs theme" (for contributors).
+- Tests: `test_docs_theme.py`, `test_docs_nav.py`, `test_docs_search_index.py` and
+  `test_docs_v021.py`. `make docs-test` runs them.
+
+#### Changed
+- The chart palette: each swatch of `mapi_plots.palette` (`mapi-plots`, Apache-2.0) has new
+  light and dark values. The names of the swatches and the functions do not change. The
+  plot sandbox and the series colours of the app (`--series-1` to `--series-8`) use the same
+  new values. A plot that a model version stored before this release keeps its old colour
+  values in the stored document. The plot sandbox draws each old fixed recipe colour as the
+  new colour of the same role, in the two themes (`apps/plot-sandbox/src/legacy-palette.ts`),
+  so a new fit is not necessary.
+- The tokens of the web app (`apps/web/src/app.css`) have new values in the two themes. The
+  ramps `brand-*`, `lime-*` and `coral-*` are removed. The ramps are now `grey-*`, `blue-*`,
+  `orange-*`, `green-*` and `red-*`.
+- The Bricolage Grotesque font and its package
+  (`@fontsource-variable/bricolage-grotesque`) are removed. Text uses the system font, with
+  Inter and JetBrains Mono (self-hosted) where the system has none.
+- The docs site loads no file from another host. Inter and JetBrains Mono (`docs/assets/fonts/`,
+  OFL-1.1) and mermaid (`docs/assets/vendor/mermaid/`, MIT) are vendored. Before, the fonts
+  came from Google Fonts and mermaid came from unpkg. A page loads mermaid only when it has
+  a diagram.
+- The docs have six tabs (Home, Learn, Guides, Extend, Reference, Operate), not ten. No page
+  moved and no address changed.
+- Nine docs page titles changed. The address of each page is the same, but the anchor of
+  the title is new:
+  "Getting started" is "Get started: install and first steps",
+  "Your first analysis in Guided mode" is "Your first MMM in Guided mode",
+  "Marketing-mix models" is "Marketing-mix models (MMM)",
+  "Share dashboards securely" is "Share dashboards securely with a share link",
+  "Authentication" is "Sign in",
+  "Authentication and tenant isolation" is "Set up sign-in and tenant isolation",
+  "Upload your own code" is "Upload your own code: models, steps and plots",
+  "Workflows" (concept) is "How workflows work", and
+  "Measure the effect of a change" (concept) is "How the platform measures the effect of a
+  change".
+- The docs search separator also splits at `_`, at a `.` that is not before a digit and at
+  punctuation. Thus `share link` finds `share_link`. The inline suggestion
+  (`search.suggest`) is removed.
+- The label of the command palette, "Jump to…", is now "Search". The dialog and its field
+  have the accessible name "Search". The shortcuts dialog shows `Ctrl` on Windows and Linux.
+- The `g` shortcuts go only to pages that the sidebar shows. Before, a member of a project
+  that is locked to Guided mode could open a hidden page with a shortcut or from the
+  command palette.
+- The SVG illustration components `HeroArt` and the seven `Empty…Art` components are removed
+  from `components/illustrations`. The generated images replace them. `CatalogGlyph` stays.
+- The back links of the detail pages are removed. The breadcrumbs replace them.
+- `docs/stylesheets/extra.css` is removed. The four `mono*.css` files replace it.
+- The home page of the docs is short. Its long sections moved to "Why modeling-api?".
+
+#### Known gaps
+- The app has no search endpoint on the server. For datasets, models, specs, dashboards,
+  workflows and endpoints, the search reads the first 200 items of each kind in the project
+  and does not search the names of the items after these.
+- **See all in** and the search field of a list show an item only when the item has each
+  word of the text.
+- The recent items of the search (the items opened from the search and the pages visited)
+  stay in one browser until sign-out.
+- **Read the docs** and the group **Docs** show only when the build of the app has
+  `VITE_DOCS_URL`. No build that comes with the platform sets it: not the `mapi/web` image,
+  not `make dev` and not the mock build.
+- 25 screenshots in the docs show the look of earlier versions: 13 science screenshots
+  (`science-*.png`), 5 of the 8 screenshots of release 0.15 (`whats-new-015-*.png`) and the
+  7 screenshots in `docs/assets/first-model/`. All other screenshots show the new look. In
+  the dark scheme of the docs, a screenshot of the light theme shows as a light panel.
+- The pictures of the plot recipes catalog (`docs/assets/plots/`) have the new fixed
+  colours. Their series keep the default colours of the renderer.
+- The account chooser of the development IdP and the HTML page of an evidence pack are not
+  themed.
+- The OpenAPI explorer (Redoc) stays light in the dark scheme of the docs.
+- The new look was checked in Chromium only. Safari and Firefox were not checked. Some
+  small refinements of the docs need `:has()`. Without it the pages still read correctly.
+- The tabs of the docs move into the menu below 1220 px, not below 980 px.
+- Headings that come from an included file are not in the docs index of the app.
+- The fonts and mermaid of the docs site are not in `THIRD-PARTY-NOTICES.md`, because that
+  file comes from the lock files. Each has its licence text beside it.
+
 ### Ask about your dashboard (v0.20)
 
 Readers can ask an AI assistant about the numbers on a dashboard. The assistant reads the

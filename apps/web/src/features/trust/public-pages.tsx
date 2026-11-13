@@ -13,12 +13,12 @@ import { ApiError } from "@/api/client";
 import { signIn } from "@/api/session";
 import { signup, TERMS_VERSION, verifyEmail } from "@/api/trust";
 import type { VerificationResult } from "@/api/types";
+import { Wordmark } from "@/components/brand/logo";
 import { ErrorNotice, Mono, Spinner } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/overlays";
 import { Field, Input } from "@/components/ui/primitives";
 import { env } from "@/env";
-import { Logo } from "@/features/auth/gate";
 import { useApplyTheme } from "@/hooks/use-theme";
 
 import { VERIFY_TOKEN_RE, type PublicPath } from "./public-paths";
@@ -32,13 +32,10 @@ function PublicFrame({ children }: { children: ReactNode }) {
   return (
     <main id="main" className="grid min-h-svh place-items-center bg-background px-4 py-10">
       <div className="grid w-full max-w-md gap-6">
-        <a href="/" className="flex w-fit items-center gap-2.5">
-          <Logo className="size-8" />
-          <span className="text-lg font-semibold tracking-tight">
-            modeling<span className="text-muted-foreground">-api</span>
-          </span>
+        <a href="/" className="focus-ring w-fit rounded-sm">
+          <Wordmark className="size-7" />
         </a>
-        <div className="grid gap-5 rounded-xl border bg-card p-6 shadow-sm">{children}</div>
+        <div className="grid gap-5 rounded-3xl bg-card p-8 max-sm:p-6">{children}</div>
       </div>
     </main>
   );
@@ -113,7 +110,7 @@ function DevOutboxHint({ email }: { email: string }) {
   return (
     <p className="rounded-md border border-dashed p-3 text-sm">
       Development server: the e-mail is in the outbox.{" "}
-      <a href={link} className="font-medium text-primary hover:underline">
+      <a href={link} className="link font-medium">
         Open the verification link
       </a>
     </p>
@@ -164,7 +161,7 @@ export function SignupPage() {
       <PublicFrame>
         <div className="grid gap-3" role="status" aria-live="polite">
           <Inbox className="size-8 text-primary" aria-hidden />
-          <h1 className="text-[22px] leading-tight font-semibold tracking-tight">Check your inbox</h1>
+          <h1 className="display-title text-2xl">Check your inbox</h1>
           <p className="text-muted-foreground">
             If <span className="font-medium text-foreground">{sent.email}</span> can sign up, we send a link to confirm the address. The link works one time, for {sent.hours} hours. It creates your workspace.
           </p>
@@ -196,7 +193,7 @@ export function SignupPage() {
   return (
     <PublicFrame>
       <div className="grid gap-1.5">
-        <h1 className="text-[22px] leading-tight font-semibold tracking-tight">Create your workspace</h1>
+        <h1 className="display-title text-2xl">Create your workspace</h1>
         <p className="text-sm text-muted-foreground">Free workspaces run the built-in models and declarative specs on your data. We send you an e-mail with a link to confirm the address.</p>
       </div>
       <form className="grid gap-4" onSubmit={(e) => void submit(e)} noValidate>
@@ -214,11 +211,11 @@ export function SignupPage() {
             <Checkbox id="su-terms" className="mt-0.5" checked={form.terms} onCheckedChange={(v) => set("terms", v === true)} aria-invalid={shown.terms ? true : undefined} aria-describedby={shown.terms ? "su-terms-error" : undefined} />
             <span>
               I accept the{" "}
-              <a href={env.termsUrl} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">
+              <a href={env.termsUrl} target="_blank" rel="noopener noreferrer" className="link font-medium">
                 terms of service
               </a>{" "}
               and the{" "}
-              <a href={env.acceptableUseUrl} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">
+              <a href={env.acceptableUseUrl} target="_blank" rel="noopener noreferrer" className="link font-medium">
                 acceptable-use policy
               </a>{" "}
               (version <Mono>{TERMS_VERSION}</Mono>). They open in a new tab.
@@ -237,7 +234,7 @@ export function SignupPage() {
       </form>
       <p className="text-sm text-muted-foreground">
         Do you have an account?{" "}
-        <button type="button" className="font-medium text-primary hover:underline" onClick={() => signIn("/")}>
+        <button type="button" className="link font-medium" onClick={() => signIn("/")}>
           Sign in
         </button>
       </p>
@@ -271,7 +268,7 @@ export function VerifyEmailPage() {
       <PublicFrame>
         <div className="grid gap-3" role="status">
           <CheckCircle2 className="size-8 text-success" aria-hidden />
-          <h1 className="text-[22px] leading-tight font-semibold tracking-tight">Your workspace is ready</h1>
+          <h1 className="display-title text-2xl">Your workspace is ready</h1>
           <p className="text-muted-foreground">
             <span className="font-medium text-foreground">{result.email}</span> is confirmed. Workspace <Mono>{result.tenant_id}</Mono> has a <Mono>{result.project_id}</Mono> project. You are its admin.
           </p>
@@ -290,7 +287,7 @@ export function VerifyEmailPage() {
       {!valid ? (
         <div className="grid gap-3">
           <MailWarning className="size-8 text-warning" aria-hidden />
-          <h1 className="text-[22px] leading-tight font-semibold tracking-tight">This link is incomplete</h1>
+          <h1 className="display-title text-2xl">This link is incomplete</h1>
           <p className="text-muted-foreground">Open the link from the e-mail with no changes, or ask for a new link.</p>
           <Button asChild variant="outline">
             <a href="/signup">Sign up again</a>
@@ -299,7 +296,7 @@ export function VerifyEmailPage() {
       ) : expired ? (
         <div className="grid gap-3" role="alert">
           <MailWarning className="size-8 text-warning" aria-hidden />
-          <h1 className="text-[22px] leading-tight font-semibold tracking-tight">This link has expired</h1>
+          <h1 className="display-title text-2xl">This link has expired</h1>
           <p className="text-muted-foreground">A link works one time, for 24 hours. Only the newest link to an address works. If you confirmed the address before, sign in.</p>
           <div className="flex flex-wrap gap-2">
             <Button onClick={() => signIn("/")}>
@@ -312,7 +309,7 @@ export function VerifyEmailPage() {
         </div>
       ) : (
         <div className="grid gap-3">
-          <h1 className="text-[22px] leading-tight font-semibold tracking-tight">Confirm your e-mail address</h1>
+          <h1 className="display-title text-2xl">Confirm your e-mail address</h1>
           <p className="text-muted-foreground">Click the button to create your workspace. You will be its admin.</p>
           {error ? <ErrorNotice error={error} title="The app could not confirm the address" /> : null}
           <Button
@@ -350,21 +347,18 @@ function DocumentPage({ title, children }: { title: string; children: ReactNode 
   return (
     <main id="main" className="grid min-h-svh justify-items-center bg-background px-4 py-10">
       <article className="grid w-full max-w-2xl content-start gap-5">
-        <a href="/" className="flex w-fit items-center gap-2.5">
-          <Logo className="size-8" />
-          <span className="text-lg font-semibold tracking-tight">
-            modeling<span className="text-muted-foreground">-api</span>
-          </span>
+        <a href="/" className="focus-ring w-fit rounded-sm">
+          <Wordmark className="size-7" />
         </a>
         <div className="grid gap-1.5">
-          <h1 className="text-[26px] leading-tight font-semibold tracking-tight">{title}</h1>
+          <h1 className="display-title text-[clamp(1.75rem,3vw,2.25rem)] leading-[1.1]">{title}</h1>
           <p className="text-sm text-muted-foreground">
             Version <Mono>{TERMS_VERSION}</Mono>. The organisation that operates this service can publish its own, longer version. Then the sign-up page links to that version.
           </p>
         </div>
         <div className="grid gap-4 text-sm leading-relaxed [&_h2]:text-[16px] [&_h2]:font-semibold [&_ul]:grid [&_ul]:list-disc [&_ul]:gap-1.5 [&_ul]:pl-5">{children}</div>
         <p className="border-t pt-4 text-sm">
-          <a href="/signup" className="font-medium text-primary hover:underline">
+          <a href="/signup" className="link font-medium">
             Back to sign-up
           </a>
         </p>

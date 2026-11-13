@@ -54,7 +54,7 @@ export function DatasetAboutCard({ datasetId, actions }: { datasetId: string; ac
       <CardContent className="grid gap-4 md:grid-cols-2">
         <section className="grid content-start gap-2" aria-labelledby="ds-desc-h">
           <div className="flex items-center justify-between gap-2">
-            <h3 id="ds-desc-h" className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            <h3 id="ds-desc-h" className="kicker">
               Description
             </h3>
             {editable && !editing ? (
@@ -97,7 +97,7 @@ export function DatasetAboutCard({ datasetId, actions }: { datasetId: string; ac
           )}
         </section>
         <section className="grid content-start gap-2" aria-labelledby="ds-summary-h">
-          <h3 id="ds-summary-h" className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+          <h3 id="ds-summary-h" className="flex items-center gap-1.5 kicker">
             <Sparkles aria-hidden className="size-3.5" /> Summary from the data
           </h3>
           <p className="text-sm leading-relaxed" data-testid="dataset-summary">

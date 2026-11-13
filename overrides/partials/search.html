@@ -1,0 +1,65 @@
+{#-
+  Mono theme: the search dialog (a centred panel over a blurred page).
+
+  Material's search code still does the work. It needs: the form named "search", the input
+  with data-md-component="search-query", and the result block, whose first child is the
+  count line and whose last child is the list. The scrolling element must be the parent of
+  the result block. Do not put other elements inside the result block.
+
+  The "Try" list shows when the box is empty. docs/javascripts/mono.js builds it from the
+  JSON below, which comes from `extra.search_popular` in mkdocs.yml: a list of
+  {title, url, hint}, where url is a site path such as "guides/client-dashboards/".
+
+  "sections" in the same JSON names the tab of each page that is not in the tab of its
+  folder (guides/authentication/ is in Operate). mono.js uses it for the label above a
+  result; for all other pages it uses the folder (SECTION_LABELS in mono.js, mono_sections
+  in main.html).
+-#}
+<div class="mono-search" data-md-component="search" role="dialog" aria-label="Search the documentation">
+  <label class="mono-search__scrim" for="__search"></label>
+  <div class="mono-search__panel" role="search">
+    <form class="mono-search__field" name="search">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4.5 4.5"/></svg>
+      <input type="text" class="mono-search__input" name="query" aria-label="Search the documentation" placeholder="Search guides, concepts and reference" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <button type="reset" class="mono-search__clear" title="Clear" aria-label="Clear" tabindex="-1">
+        <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="m4.5 4.5 9 9m0-9-9 9"/></svg>
+      </button>
+      <label class="mono-search__esc" for="__search" title="Close">Esc</label>
+    </form>
+    <div class="mono-search__output">
+      <div class="mono-search__scroll" tabindex="-1" data-md-scrollfix>
+        <div class="mono-search__try" data-mono-search-try hidden></div>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            {{ lang.t("search.result.initializer") }}
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+    <p class="mono-search__hints" aria-hidden="true">
+      <span><kbd>&uarr;</kbd><kbd>&darr;</kbd> Move</span>
+      <span><kbd>Enter</kbd> Open</span>
+      <span><kbd>Esc</kbd> Close</span>
+    </p>
+  </div>
+</div>
+{% set mono_popular = [] %}
+{% for entry in config.extra.search_popular or [] %}
+  {% set _ = mono_popular.append({"title": entry.title, "hint": entry.hint, "url": entry.url | url}) %}
+{% endfor %}
+{% set mono_page_sections = {} %}
+{% for tab in nav %}
+  {% if tab.children %}
+    {%- for item in tab.children recursive -%}
+      {%- if item.children -%}
+        {{- loop(item.children) -}}
+      {%- elif item.is_page and item.url -%}
+        {%- if mono_sections.get(item.url.split("/")[0], "home") != tab.title | lower -%}
+          {%- set _ = mono_page_sections.update({item.url: tab.title}) -%}
+        {%- endif -%}
+      {%- endif -%}
+    {%- endfor -%}
+  {% endif %}
+{% endfor %}
+<script id="__mono_search" type="application/json">{{ {"popular": mono_popular, "sections": mono_page_sections} | tojson }}</script>

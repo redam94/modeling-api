@@ -1,5 +1,5 @@
 /**
- * The Studio filter pills (v0.18 direction §9, as the Catalog's filters): a single choice among
+ * The filter pills (as the Catalog's filters): a single choice among
  * a few page-level options, each a pill with a 1.5 px `border-strong` edge; the chosen one is
  * filled with the foreground (`filter-pill` in app.css). `SegmentedControl` stays the compact
  * grey strip for dense toolbars.

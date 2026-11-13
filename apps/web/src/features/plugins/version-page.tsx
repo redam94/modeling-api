@@ -1,18 +1,18 @@
 /**
  * One uploaded version (`/plugins/:pluginId/versions/:versionId`, D20): the ink header (the
  * page's one block) with the state chip, who uploaded it and the actions (ask for a review:
- * the page's one lime highlighter; withdraw), then what the state calls for: the live checks,
+ * the page's one inverted ink action; withdraw), then what the state calls for: the live checks,
  * the problems in plain words, the test report, what it adds, the SBOM and the file facts, or,
  * while it waits for a reviewer, the reviewer panel.
  */
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, Send, Undo2 } from "lucide-react";
+import { Send, Undo2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 import { ApiError, errorMessage } from "@/api/client";
 import { qk, useMembers, useProjectScope } from "@/api/queries";
-import { EmptyState, ErrorNotice, LoadingRows, ProblemNotice } from "@/components/common";
+import { Breadcrumbs, EmptyState, ErrorNotice, LoadingRows, ProblemNotice } from "@/components/common";
 import { InlineMessage } from "@/components/ods/inline-message";
 import { Button } from "@/components/ui/button";
 import { useWorkspace } from "@/features/auth/workspace";
@@ -94,7 +94,7 @@ export function CheckSteps({ state }: { state: PluginVersion["state"] }) {
             <span
               aria-hidden
               className={cn(
-                "grid size-6 flex-none place-items-center rounded-full text-xs font-bold",
+                "grid size-6 flex-none place-items-center rounded-full text-xs font-semibold",
                 s.done ? "bg-success/15 text-success" : s.active ? cn("bg-primary text-primary-foreground", !paused && "animate-pulse") : "bg-muted text-muted-foreground",
               )}
             >
@@ -113,7 +113,7 @@ function Decisions({ records, nameOf }: { records: readonly PluginDecisionRecord
   if (!records.length) return null;
   return (
     <section aria-labelledby="plugin-decisions-title" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 rounded-2xl border bg-card p-5" data-testid="plugin-decisions">
-      <h3 id="plugin-decisions-title" className="font-display text-lg leading-tight font-bold">
+      <h3 id="plugin-decisions-title" className="font-display text-lg leading-tight font-semibold">
         Reviews
       </h3>
       <ul className="grid gap-3">
@@ -140,7 +140,7 @@ function Examples({ version }: { version: PluginVersion }) {
   return (
     <section aria-labelledby="plugin-examples-title" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 overflow-hidden rounded-2xl border bg-card p-5">
       <div className="grid gap-1">
-        <h3 id="plugin-examples-title" className="font-display text-lg leading-tight font-bold">
+        <h3 id="plugin-examples-title" className="font-display text-lg leading-tight font-semibold">
           Chart examples
         </h3>
         <p className="text-sm text-muted-foreground">Drawn on toy data during the tests, in the same sandbox as every chart.</p>
@@ -166,9 +166,6 @@ function Header({ plugin, version, uploader, onYank }: { plugin: Plugin; version
   const canAsk = canRequestApproval(version, ws.me, tenantId);
   return (
     <header className="grid gap-4 rounded-3xl bg-block p-6 text-block-foreground sm:p-8" data-testid="plugin-version-header">
-      <Link to="/plugins/$pluginId" params={{ pluginId: plugin.id }} className="inline-flex w-fit items-center gap-1 text-xs font-semibold text-block-muted hover:underline">
-        <ArrowLeft aria-hidden className="size-3.5" /> All versions of {displayText(plugin.title)}
-      </Link>
       <div className="grid gap-2">
         <p className="font-mono text-xs text-block-muted [overflow-wrap:anywhere]">{plugin.namespace}</p>
         <h1 className="display-title text-[clamp(2rem,5vw,2.75rem)] leading-[1.05] [overflow-wrap:anywhere]">
@@ -194,7 +191,8 @@ function Header({ plugin, version, uploader, onYank }: { plugin: Plugin; version
             <Button
               data-testid="plugin-request-approval"
               disabled={request.isPending}
-              className="h-auto min-h-11 rounded-full bg-highlight px-5 text-highlight-foreground hover:bg-highlight/85 active:bg-highlight"
+              // the last two classes: the focus ring of the block (`BLOCK_RING` in features/library/ui.tsx)
+              className="h-auto min-h-11 bg-block-foreground px-5 text-block hover:bg-block-foreground/85 active:bg-block-foreground [--card:var(--block)] [--ring:var(--block-foreground)]"
               onClick={() =>
                 request.mutate(
                   { pluginId: version.plugin_id, versionId: version.id },
@@ -251,6 +249,13 @@ export function VersionPage({ pluginId, versionId }: { pluginId: string; version
   return (
     <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6" data-testid="plugin-version-page" data-state={v.state}>
       <DevBanner />
+      <Breadcrumbs
+        crumbs={[
+          { label: "Catalog", to: "/catalog" }, { label: "Yours", to: "/catalog", search: { tab: "yours" } },
+          { label: displayText(p.title), to: "/plugins/$pluginId", params: { pluginId: p.id } },
+          { label: `Version ${displayText(v.version)}` },
+        ]}
+      />
       <Header plugin={p} version={v} uploader={uploader} onYank={canYank(v, ws.me, tenantId) ? () => setYankOpen(true) : null} />
       {oneAdmin ? <InlineMessage tone="info">{oneAdmin}</InlineMessage> : null}
       {v.problem ? <ProblemNotice problem={v.problem} /> : null}
@@ -295,7 +300,7 @@ export function VersionPage({ pluginId, versionId }: { pluginId: string; version
       <Decisions records={v.approvals ?? []} nameOf={nameOf} />
       {(v.issues ?? []).length ? (
         <section className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2 rounded-2xl border bg-card p-5" aria-label="Issues">
-          <h3 className="font-display text-lg font-bold">Issues found in the description</h3>
+          <h3 className="font-display text-lg font-semibold">Issues found in the description</h3>
           <ul className="grid gap-1 text-sm">
             {(v.issues ?? []).map((i, n) => (
               <li key={`${i.code}:${n}`} className="grid min-w-0 gap-0.5" data-testid="plugin-issue">
@@ -316,7 +321,7 @@ export function VersionPage({ pluginId, versionId }: { pluginId: string; version
 /** The version page when the plugin or version id is not one the caller can see. */
 export function VersionNotFound() {
   return (
-    <EmptyState title="We can't find this upload" action={<Link to="/catalog" search={{ tab: "yours" }} className="text-primary hover:underline">Back to Catalog › Yours</Link>}>
+    <EmptyState title="We can't find this upload" action={<Link to="/catalog" search={{ tab: "yours" }} className="link">Back to Catalog › Yours</Link>}>
       It may be private to the person who uploaded it, or the link is out of date.
     </EmptyState>
   );

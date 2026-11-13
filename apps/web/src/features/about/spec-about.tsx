@@ -35,7 +35,7 @@ export function SpecAboutPanel({ modelUse, steps }: { modelUse: string | null; s
       </div>
       {steps.length ? (
         <section className="grid gap-2" aria-labelledby="spec-steps-about">
-          <h3 id="spec-steps-about" className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+          <h3 id="spec-steps-about" className="kicker">
             Preparation steps
           </h3>
           <ul className="grid gap-2">

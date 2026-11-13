@@ -11,9 +11,9 @@ import { ArrowRight, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 
 import { safeReturnTo } from "@/api/session";
+import { Logo } from "@/components/brand/logo";
 import { Spinner } from "@/components/common";
 import { env } from "@/env";
-import { Logo } from "@/features/auth/gate";
 import { useApplyTheme } from "@/hooks/use-theme";
 
 import { PERSONAS } from "./tenancy";

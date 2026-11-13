@@ -130,7 +130,7 @@ The goal `classify` and the data shape `images` (v0.14) are for classifiers of i
 items. For example, `goal=classify&data_shape=images` ranks `tabular.image_logistic` and the
 `dl.*` image classifiers (v0.15) first. With `kind=step`, it ranks the step `dl.embed`. The goal `measure_impact`
 (v0.13) ranks the causal models and the Guided templates `campaign_impact` and `geo_lift`
-([Measure the effect of a change](causal-effects.md)).
+([How the platform measures the effect of a change](causal-effects.md)).
 
 ## In the web app
 

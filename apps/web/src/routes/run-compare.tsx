@@ -7,15 +7,14 @@
  */
 import { useQueries } from "@tanstack/react-query";
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, GitCompareArrows } from "lucide-react";
+import { GitCompareArrows } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { ApiError } from "@/api/client";
 import { MAX_COMPARE_MEDIA_KEYS, MIN_COMPARE_RUNS } from "@/api/experiments";
 import { runMediaKeysQuery, useProjectScope, useRunCompare } from "@/api/queries";
 import type { MediaKind } from "@/api/types";
-import { EmptyState, ErrorNotice, LoadingRows, PageHeader } from "@/components/common";
-import { Button } from "@/components/ui/button";
+import { EmptyState, ErrorNotice, LoadingRows, PageHeader, type Crumb } from "@/components/common";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/overlays";
 import { BarsSection } from "@/features/run-compare/bars";
 import { runLabels } from "@/features/run-compare/compare-model";
@@ -26,6 +25,8 @@ import { PlotsSection } from "@/features/run-compare/plots";
 import { RunChips } from "@/features/run-compare/run-chips";
 
 const route = getRouteApi("/runs/compare");
+
+const COMPARE_CRUMBS: readonly Crumb[] = [{ label: "Runs", to: "/runs" }, { label: "Compare runs" }];
 
 type Section = "curves" | "bars" | "params" | "plots" | "media";
 
@@ -62,12 +63,12 @@ export function RunComparePage() {
   if (runIds.length < MIN_COMPARE_RUNS) {
     return (
       <>
-        <PageHeader title="Compare runs" />
+        <PageHeader crumbs={COMPARE_CRUMBS} title="Compare runs" />
         <EmptyState
           icon={<GitCompareArrows />}
           title="Select two or more runs"
           action={
-            <Link to="/runs" className="text-primary hover:underline">
+            <Link to="/runs" className="link">
               Go to Runs
             </Link>
           }
@@ -81,17 +82,7 @@ export function RunComparePage() {
   const notFound = compare.error instanceof ApiError && compare.error.status === 404;
   return (
     <>
-      <PageHeader
-        title="Compare runs"
-        description={`${runIds.length} runs. The colour of a run is the same in every chart.`}
-        actions={
-          <Button asChild variant="outline" size="sm">
-            <Link to="/runs">
-              <ArrowLeft /> Runs
-            </Link>
-          </Button>
-        }
-      />
+      <PageHeader crumbs={COMPARE_CRUMBS} title="Compare runs" description={`${runIds.length} runs. The colour of a run is the same in every chart.`} />
       {compare.data ? (
         <div className="mb-5">
           <RunChips runs={compare.data.runs} labels={labels} onRemove={(id) => setRuns(runIds.filter((r) => r !== id))} onAdd={(id) => setRuns([...runIds, id])} />

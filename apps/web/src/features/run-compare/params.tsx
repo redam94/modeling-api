@@ -89,7 +89,7 @@ export function ParamsSection({ data, labels }: { data: RunCompare; labels: read
         </CardContent>
       </Card>
       {rows.length > shown.length ? (
-        <button type="button" className="justify-self-start text-xs text-primary hover:underline" onClick={() => setAll(true)}>
+        <button type="button" className="focus-ring link justify-self-start rounded-sm text-xs" onClick={() => setAll(true)}>
           Show all {rows.length.toLocaleString("en")} params
         </button>
       ) : null}

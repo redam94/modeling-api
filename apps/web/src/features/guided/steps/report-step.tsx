@@ -337,7 +337,7 @@ export function LiftTestCard({ session }: { session: GuidedSession }) {
 function KpiTile({ label, value, detail }: { label: string; value: ReactNode; detail?: string }) {
   return (
     <div className="grid content-start gap-1 rounded-lg bg-block-raised px-4 py-3.5">
-      <p className="font-display text-2xl leading-tight font-bold tracking-[-0.02em] tabular [overflow-wrap:anywhere]">{value}</p>
+      <p className="font-display text-2xl leading-tight font-semibold tracking-[-0.02em] tabular [overflow-wrap:anywhere]">{value}</p>
       <p className="text-xs font-semibold text-block-foreground">{label}</p>
       {detail ? <p className="text-xs text-block-muted">{detail}</p> : null}
     </div>
@@ -345,8 +345,8 @@ function KpiTile({ label, value, detail }: { label: string; value: ReactNode; de
 }
 
 /**
- * The report's one ink block (v0.18 Studio): the short answer as a big claim with the key number
- * on the lime highlighter, the range in plain words, and the supporting numbers as tiles.
+ * The report's one ink block (v0.18): the short answer as a big claim with the key number
+ * on the highlighter, the range in plain words, and the supporting numbers as tiles.
  */
 function HeadlineBlock({
   base,

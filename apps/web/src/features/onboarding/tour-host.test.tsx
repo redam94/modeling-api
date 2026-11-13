@@ -156,9 +156,9 @@ describe("TourView", () => {
     expect(pop).toHaveTextContent("step 1 of 6");
     expect(screen.getByTestId("tour-spotlight")).toBeInTheDocument();
     expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Welcome! Start right here" }));
-    // the Studio coach-mark: the ink block with the lime action (direction §7.1)
+    // the coach-mark: the dark block with the inverted ink action
     expect(pop.className).toContain("bg-block");
-    expect(screen.getByTestId("tour-next").className).toContain("bg-highlight");
+    expect(screen.getByTestId("tour-next").className).toContain("bg-block-foreground");
 
     fireEvent.keyDown(document.activeElement!, { key: "ArrowRight" });
     expect(props.onStep).toHaveBeenLastCalledWith(1);

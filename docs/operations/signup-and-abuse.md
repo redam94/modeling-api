@@ -24,7 +24,7 @@ sequenceDiagram
     API->>M: verification link (single use, 24 h)
     API-->>B: 202 {"status": "check_email"}
     B->>API: POST /auth/verify-email {token}
-    API->>API: create tenant (public), project "default", admin grant; Sybil checks
+    API->>API: create tenant (public), project "default", admin grant, then Sybil checks
     API-->>B: 200 {tenant_id, login_url}
     B->>API: GET /auth/login (OpenID sign-in with that address)
 ```

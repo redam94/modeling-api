@@ -96,8 +96,8 @@ try {
   await shot("diagnostics");
   await page.getByRole("tab", { name: "Plots" }).click();
   const plots = page.getByRole("navigation", { name: "Plots" });
-  await plots.getByRole("button", { name: /Contribution by channel/ }).click();
-  const card = page.locator("section").filter({ has: page.getByText("Contribution by channel", { exact: true }) }).last();
+  await plots.getByRole("button", { name: /Contribution by component/ }).click();
+  const card = page.locator("section").filter({ has: page.getByText("Contribution by component", { exact: true }) }).last();
   await plotDrawn(card);
   await shot("decomposition");
   await plots.getByRole("button", { name: /Fit and forecast/ }).click();
@@ -114,14 +114,15 @@ try {
     await go(modelPath);
     await page.getByRole("main").getByRole("link", { name: "Score" }).click();
     await expect(page).toHaveURL(/\/score\?model=mdl_/);
-    await page.getByLabel("Input data").fill(`dataset://default/${data}@v1`);
+    await page.getByRole("radio", { name: "Use a dataset" }).click();
+    await page.getByLabel("Dataset", { exact: true }).fill(`dataset://default/${data}@v1`);
     if (name === "score-forecast") await shot("score-form");
-    await page.getByRole("button", { name: "Score", exact: true }).click();
+    await page.getByRole("button", { name: "Forecast", exact: true }).click();
     const results = page.getByRole("region", { name: "Results" });
     await expect(results.locator("[data-state=succeeded]")).toBeVisible({ timeout: 5 * 60_000 });
     const runPlots = results.getByRole("region", { name: "Run plots" });
     await plotDrawn(runPlots);
-    await expect(runPlots.locator('iframe[data-testid="plot-frame"]').first().contentFrame().locator("svg.marks").first()).toContainText(market);
+    await expect(results.locator('iframe[data-testid="plot-frame"]').first().contentFrame().locator("svg.marks").first()).toContainText(market);
     await runPlots.scrollIntoViewIfNeeded();
     await shot(name);
   }

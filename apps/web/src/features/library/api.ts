@@ -12,6 +12,8 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 
 import { api, ApiError, unwrap } from "@/api/client";
 import { useProjectScope, type ProjectScope } from "@/api/queries";
+import { everyWord } from "@/features/search/rank";
+import { MAX_LIBRARY_QUERY_CHARS } from "@/lib/list-query";
 import { emitOnboarding } from "@/lib/onboarding-events";
 
 import { lk } from "./keys";
@@ -58,7 +60,8 @@ function definedQuery(f: LibraryListFilters) {
   return {
     ...(f.kind ? { kind: f.kind } : {}),
     ...(f.scope ? { scope: f.scope } : {}),
-    ...(f.q?.trim() ? { q: f.q.trim() } : {}),
+    // The API takes 120 characters of text: a longer text sends its start (see `fetchLibraryItems`).
+    ...(f.q?.trim() ? { q: f.q.trim().slice(0, MAX_LIBRARY_QUERY_CHARS).trim() } : {}),
     ...(f.include_archived ? { include_archived: true } : {}),
   };
 }
@@ -79,7 +82,9 @@ export async function fetchLibraryItems(s: ProjectScope, f: LibraryListFilters, 
     cursor = page.next_cursor;
     if (!cursor) break;
   }
-  return out;
+  // The server saw only the start of a long text: keep the items that have each word of it.
+  const q = f.q?.trim() ?? "";
+  return q.length > MAX_LIBRARY_QUERY_CHARS ? out.filter((i) => everyWord(q, [i.title, i.name])) : out;
 }
 
 /** The library items of the project (and the tenant's), most recently changed first. */

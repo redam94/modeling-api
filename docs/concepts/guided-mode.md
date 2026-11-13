@@ -18,7 +18,7 @@ and the client use the same contracts. The
     The modelling path includes business priors, lift tests, the scorecard, the what-if grids
     and the forecast and counterfactual views. [Guided modelling](../guides/guided-modelling.md)
     shows the modelling path. The Guided screens of the web app use all of it. Refer to
-    [Your first analysis in Guided mode](../guides/guided-tutorial.md).
+    [Your first MMM in Guided mode](../guides/guided-tutorial.md).
 
 ## The persona lock
 

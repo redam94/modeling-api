@@ -76,7 +76,7 @@ export function PlannerBody({
       {notice}
       <Tabs value={open} onValueChange={(v) => onTab(v as TabKey)}>
         {tabs.length > 1 ? (
-          <TabsList aria-label="Dashboard sections" className="w-full">
+          <TabsList aria-label="Dashboard sections">
             {tabs.map((t) => (
               <TabsTrigger key={t} value={t}>
                 {tabLabel(t, period)}

@@ -13,29 +13,39 @@ import { can } from "@/api/access";
 import { useDeleteExperiment, useExperiment, useExperiments, useUpdateExperiment } from "@/api/queries";
 import type { Experiment } from "@/api/types";
 import { EmptyState, ErrorNotice, LoadingRows, PageHeader, QueryView } from "@/components/common";
+import { ListNoMatches, ListToolbar } from "@/components/list-toolbar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle, Switch } from "@/components/ui/overlays";
 import { Badge, Card, CardContent, Label, Table, TBody, TD, TH, THead, TR } from "@/components/ui/primitives";
 import { useGrants } from "@/features/auth/workspace";
 import { ExperimentFormDialog } from "@/features/experiments/experiment-dialogs";
 import { RunsTable } from "@/features/runs/runs-table";
+import { useRecordRecent } from "@/features/search/use-record-recent";
 import { absoluteTime, relativeTime } from "@/lib/format";
 import { toast } from "@/stores/toast";
 
 const listRoute = getRouteApi("/experiments");
 const detailRoute = getRouteApi("/experiments/$experimentId");
 
+/** "3 runs", as the search says it; `null` when the server did not count. */
+function runCountText(n: number | null | undefined): string | null {
+  return n === null || n === undefined ? null : `${n} ${n === 1 ? "run" : "runs"}`;
+}
+
 function useCanUpdateRuns(): boolean {
   return can(useGrants(), "update", "run");
 }
 
 export function ExperimentsPage() {
-  const { archived } = listRoute.useSearch();
+  const { archived, q: query } = listRoute.useSearch();
+  const q = query ?? "";
   const navigate = useNavigate({ from: "/experiments" });
   const allowed = useCanUpdateRuns();
   const [creating, setCreating] = useState(false);
-  // without "show archived" the list asks for the active experiments only
-  const experiments = useExperiments(archived ? {} : { archived: false });
+  // Without "show archived" the list asks for the active experiments only. The server filters
+  // by name (`name=`, a part of the name in any case).
+  const experiments = useExperiments({ ...(archived ? {} : { archived: false }), ...(q ? { name: q } : {}) }, { keepPrevious: true });
+  const setQuery = (next: string) => void navigate({ search: (s) => ({ ...s, q: next || undefined }), replace: true });
 
   return (
     <>
@@ -43,66 +53,75 @@ export function ExperimentsPage() {
         title="Experiments"
         description="An experiment is a named group of runs. Put the runs that answer one question in an experiment. Then compare them and save views of their metrics."
         actions={
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="flex items-center gap-2">
-              <Switch id="show-archived" checked={Boolean(archived)} onCheckedChange={(on) => void navigate({ search: { archived: on ? true : undefined }, replace: true })} />
-              <Label htmlFor="show-archived" className="text-xs font-normal">
-                Show archived experiments
-              </Label>
-            </span>
-            {allowed ? (
-              <Button size="sm" onClick={() => setCreating(true)}>
-                <Plus /> New experiment
-              </Button>
-            ) : null}
-          </div>
+          allowed ? (
+            <Button size="sm" onClick={() => setCreating(true)}>
+              <Plus /> New experiment
+            </Button>
+          ) : null
         }
       />
-      <QueryView query={experiments} errorTitle="The app could not load the experiments">
-        {(page) =>
-          page.items.length === 0 ? (
-            <EmptyState icon={<FlaskConical />} title={archived ? "No experiments" : "No active experiments"}>
-              {allowed ? "Create an experiment. Then select runs on the Runs page and add them to the experiment." : "The project has no experiments. A member with the runner role can create them."}
-            </EmptyState>
-          ) : (
-            <Card>
-              <CardContent className="pt-4">
-                <Table aria-label="Experiments">
-                  <THead>
-                    <TR>
-                      <TH>Name</TH>
-                      <TH>Description</TH>
-                      <TH className="text-right">Runs</TH>
-                      <TH>Last run</TH>
-                      <TH>Created</TH>
-                    </TR>
-                  </THead>
-                  <TBody>
-                    {page.items.map((e) => (
-                      <TR key={e.id}>
-                        <TD>
-                          <span className="flex flex-wrap items-center gap-2">
-                            <Link to="/experiments/$experimentId" params={{ experimentId: e.id }} className="font-medium hover:underline [overflow-wrap:anywhere]">
-                              {e.name}
-                            </Link>
-                            {e.archived ? <Badge variant="secondary">archived</Badge> : null}
-                          </span>
-                        </TD>
-                        <TD className="max-w-96 text-muted-foreground">
-                          <span className="line-clamp-2 [overflow-wrap:anywhere]">{e.description ?? "—"}</span>
-                        </TD>
-                        <TD className="text-right tabular">{e.run_count ?? 0}</TD>
-                        <TD title={e.last_run_at ?? undefined}>{e.last_run_at ? relativeTime(e.last_run_at) : "—"}</TD>
-                        <TD title={absoluteTime(e.created_at)}>{relativeTime(e.created_at)}</TD>
+      <div className="grid gap-3">
+        <ListToolbar
+          things="experiments"
+          value={q}
+          onChange={setQuery}
+          count={experiments.data && !experiments.isPlaceholderData ? { shown: experiments.data.items.length, more: Boolean(experiments.data.next_cursor) } : undefined}
+        >
+          <span className="flex min-h-10 items-center gap-2">
+            <Switch id="show-archived" checked={Boolean(archived)} onCheckedChange={(on) => void navigate({ search: (s) => ({ ...s, archived: on ? true : undefined }), replace: true })} />
+            <Label htmlFor="show-archived" className="text-xs font-normal">
+              Show archived experiments
+            </Label>
+          </span>
+        </ListToolbar>
+        <QueryView query={experiments} errorTitle="The app could not load the experiments">
+          {(page) =>
+            page.items.length === 0 && q ? (
+              <ListNoMatches things="experiments" query={q} onClear={() => setQuery("")} />
+            ) : page.items.length === 0 ? (
+              <EmptyState icon={<FlaskConical />} title={archived ? "No experiments" : "No active experiments"}>
+                {allowed ? "Create an experiment. Then select runs on the Runs page and add them to the experiment." : "The project has no experiments. A member with the runner role can create them."}
+              </EmptyState>
+            ) : (
+              <Card>
+                <CardContent className="pt-4">
+                  <Table aria-label="Experiments">
+                    <THead>
+                      <TR>
+                        <TH>Name</TH>
+                        <TH>Description</TH>
+                        <TH className="text-right">Runs</TH>
+                        <TH>Last run</TH>
+                        <TH>Created</TH>
                       </TR>
-                    ))}
-                  </TBody>
-                </Table>
-              </CardContent>
-            </Card>
-          )
-        }
-      </QueryView>
+                    </THead>
+                    <TBody>
+                      {page.items.map((e) => (
+                        <TR key={e.id}>
+                          <TD>
+                            <span className="flex flex-wrap items-center gap-2">
+                              <Link to="/experiments/$experimentId" params={{ experimentId: e.id }} className="link font-medium [overflow-wrap:anywhere]">
+                                {e.name}
+                              </Link>
+                              {e.archived ? <Badge variant="secondary">archived</Badge> : null}
+                            </span>
+                          </TD>
+                          <TD className="max-w-96 text-muted-foreground">
+                            <span className="line-clamp-2 [overflow-wrap:anywhere]">{e.description ?? "—"}</span>
+                          </TD>
+                          <TD className="text-right tabular">{e.run_count ?? 0}</TD>
+                          <TD title={e.last_run_at ?? undefined}>{e.last_run_at ? relativeTime(e.last_run_at) : "—"}</TD>
+                          <TD title={absoluteTime(e.created_at)}>{relativeTime(e.created_at)}</TD>
+                        </TR>
+                      ))}
+                    </TBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )
+          }
+        </QueryView>
+      </div>
       <ExperimentFormDialog open={creating} onOpenChange={setCreating} onSaved={(exp) => void navigate({ to: "/experiments/$experimentId", params: { experimentId: exp.id } })} />
     </>
   );
@@ -152,6 +171,7 @@ export function ExperimentPage() {
   const navigate = useNavigate({ from: "/experiments/$experimentId" });
   const allowed = useCanUpdateRuns();
   const experiment = useExperiment(experimentId);
+  useRecordRecent(experiment.data ? { group: "experiments", title: experiment.data.name, secondary: runCountText(experiment.data.run_count) ?? experiment.data.id, href: `/experiments/${experiment.data.id}` } : null);
   const update = useUpdateExperiment();
   const [dialog, setDialog] = useState<"edit" | "delete" | null>(null);
 
@@ -162,13 +182,11 @@ export function ExperimentPage() {
   return (
     <>
       <PageHeader
+        crumbs={[{ label: "Experiments", to: "/experiments" }, { label: e.name }]}
         title={<span className="[overflow-wrap:anywhere]">{e.name}</span>}
         description={e.description ? <span className="whitespace-pre-wrap [overflow-wrap:anywhere]">{e.description}</span> : undefined}
         meta={
           <>
-            <Link to="/experiments" className="hover:underline">
-              Experiments
-            </Link>
             <span>
               {e.run_count ?? 0} {(e.run_count ?? 0) === 1 ? "run" : "runs"}
             </span>

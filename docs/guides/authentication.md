@@ -2,7 +2,7 @@
 description: Signing in to a multi-tenant modeling-api - the browser, the development identity provider, Google and Identity Platform, the CLI, and API tokens for programs.
 ---
 
-# Authentication <span class="mapi-badge">v0.3</span>
+# Sign in <span class="mapi-badge">v0.3</span>
 
 A v0.3 deployment answers `401 UNAUTHENTICATED` to all callers that it does not know. There
 are three ways in, one for each type of caller:
@@ -17,7 +17,7 @@ In all three ways, the caller is a user (`usr_…`) with roles in projects. The 
 checks each request against those roles at that time
 ([Administration](administration.md#roles)). This page is for the persons who sign in and
 who set up sign-in. For the protocol details (cookies, CSRF, PKCE, JWKS, the database roles),
-see [Authentication and tenant isolation](../operations/authentication.md).
+see [Set up sign-in and tenant isolation](../operations/authentication.md).
 
 ## Browser sign-in
 
@@ -257,7 +257,7 @@ token.
 ## Where next
 
 - [Administration](administration.md): tenants, members, roles, tokens, quotas and audit.
-- [Authentication and tenant isolation](../operations/authentication.md): the view of the
+- [Set up sign-in and tenant isolation](../operations/authentication.md): the view of the
   operator, with cookies, CSRF, row-level security and Pub/Sub push authentication.
 - [Tenancy and authentication](../concepts/tenancy-and-auth.md): the concepts and the
   request-authorization pipeline.

@@ -211,7 +211,7 @@ function TryIt({ endpoint, schema }: { endpoint: Endpoint; schema: EndpointSchem
               {score.data.result.done ? <CheckCircle2 className="size-4 text-success" /> : <Clock className="size-4 text-info" />}
               <span className="font-medium">{score.data.result.done ? "Scored" : "Still running"}</span>
               <StateBadge state={score.data.result.run.state} />
-              <Link to="/runs/$runId" params={{ runId: score.data.result.run.id }} className="text-sm text-primary hover:underline">
+              <Link to="/runs/$runId" params={{ runId: score.data.result.run.id }} className="link text-sm">
                 Open run <Mono>{score.data.result.run.id}</Mono>
               </Link>
             </div>

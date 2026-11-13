@@ -82,13 +82,14 @@ export const STATE_META: Record<RunState, StateMeta> = {
   cancelled: { label: "Cancelled", tone: "muted", description: "The run was cancelled." },
 };
 
+/** Soft pills: a tint of the tone and its ink, no border (v0.21). */
 export const TONE_CLASSES: Record<Tone, string> = {
-  neutral: "bg-secondary text-secondary-foreground border-border",
-  active: "bg-info/12 text-info border-info/30",
-  success: "bg-success/12 text-success border-success/30",
-  warning: "bg-warning/14 text-warning border-warning/35",
-  danger: "bg-destructive/12 text-destructive border-destructive/30",
-  muted: "bg-muted text-muted-foreground border-border",
+  neutral: "bg-secondary text-secondary-foreground",
+  active: "bg-info/12 text-info",
+  success: "bg-success/12 text-success",
+  warning: "bg-warning/14 text-warning",
+  danger: "bg-destructive/12 text-destructive",
+  muted: "bg-muted text-muted-foreground",
 };
 
 /** The resource classes, smallest first. v0.15: `GPU` (one NVIDIA L4) is the last one. */

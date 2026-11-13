@@ -64,7 +64,7 @@ export function WebhooksSection({ onCreate }: { onCreate?: () => void }) {
         header: "Receiver",
         cell: ({ row }) => (
           <div className="grid min-w-0 max-w-96">
-            <Link to="/integrations/webhooks/$webhookId" params={{ webhookId: row.original.id }} className="truncate font-mono text-[12px] text-primary hover:underline">
+            <Link to="/integrations/webhooks/$webhookId" params={{ webhookId: row.original.id }} className="link truncate font-mono text-[12px]">
               {row.original.url}
             </Link>
             {row.original.description ? <span className="truncate text-xs text-muted-foreground">{row.original.description}</span> : null}

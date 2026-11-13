@@ -6,7 +6,8 @@
  *
  * Mounted on the Catalog, the Build palette footer (`variant="compact"`), the workflow gallery
  * and the plot catalog, each with its `kind`. Signed-in surfaces only (never in share or client
- * chunks). Warm copy (relaxed voice, plan D28); token classes only (Studio).
+ * chunks). Warm copy (relaxed voice, plan D28); token classes only. v0.21: monochrome (the lead
+ * is a grey tile, the chips are hairline pills).
  */
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, Check, Copy, Terminal } from "lucide-react";
@@ -116,8 +117,8 @@ function CommandBox({ kind, compact }: { kind: AddYourOwnKind; compact?: boolean
               aria-pressed={pluginKind === k}
               onClick={() => setPluginKind(k)}
               className={cn(
-                "focus-ring inline-flex min-h-8 items-center rounded-full border-[1.5px] px-3 text-xs font-semibold transition-colors",
-                pluginKind === k ? "border-foreground bg-foreground text-background" : "border-border-strong bg-card text-foreground hover:border-primary",
+                "focus-ring inline-flex min-h-8 items-center rounded-full border px-3 text-xs font-semibold transition-colors",
+                pluginKind === k ? "border-foreground bg-foreground text-background" : "border-border-strong bg-card text-foreground hover:border-foreground",
               )}
             >
               {PLUGIN_KIND_LABEL[k]}
@@ -134,7 +135,7 @@ function CommandBox({ kind, compact }: { kind: AddYourOwnKind; compact?: boolean
           type="button"
           onClick={() => copy(command)}
           aria-label="Copy the command"
-          className="focus-ring inline-flex shrink-0 items-center gap-1.5 bg-block-raised px-3 text-xs font-semibold hover:bg-highlight hover:text-highlight-foreground"
+          className="focus-ring inline-flex shrink-0 items-center gap-1.5 bg-block-raised px-3 text-xs font-semibold hover:bg-block-foreground hover:text-block"
         >
           {done ? <Check aria-hidden className="size-4" /> : <Copy aria-hidden className="size-4" />}
           <span className={cn(compact && "sr-only")}>{done ? "Copied" : "Copy"}</span>
@@ -169,17 +170,17 @@ export function AddYourOwn({
     const first = options[0]!;
     return (
       <section aria-labelledby={titleId} data-testid="add-your-own" data-tour="extend-add-own" className={cn("grid gap-3 rounded-2xl border bg-card p-4", className)}>
-        <Heading id={titleId} className="text-lg leading-tight font-bold">
+        <Heading id={titleId} className="text-lg leading-tight font-semibold">
           Add your own
         </Heading>
         <div data-tour="extend-no-code" className="grid gap-1">
-          <p className="text-xs font-bold text-highlight-ink">No code</p>
-          <OptionLink option={first} className="focus-ring inline-flex items-center gap-1 rounded-md text-sm font-semibold text-primary hover:underline">
+          <p className="kicker">No code</p>
+          <OptionLink option={first} className="focus-ring link inline-flex items-center gap-1 rounded-md text-sm font-semibold">
             {first.title} <ArrowRight aria-hidden className="size-3.5" />
           </OptionLink>
         </div>
         <div data-tour="extend-with-code" className="grid gap-1.5">
-          <p className="text-xs font-bold text-attention">With code</p>
+          <p className="kicker">With code</p>
           <CommandBox kind={kind} compact />
         </div>
       </section>
@@ -192,25 +193,25 @@ export function AddYourOwn({
       data-tour="extend-add-own"
       className={cn("grid overflow-hidden rounded-2xl border bg-card lg:grid-cols-[minmax(0,0.85fr)_minmax(0,2fr)]", className)}
     >
-      <div className="flex flex-col gap-3 bg-highlight p-6 text-highlight-foreground sm:p-8">
+      <div className="flex flex-col gap-3 bg-muted p-6 sm:p-8">
         <Heading id={titleId} className="display-title text-[clamp(1.75rem,4vw,2.25rem)] leading-[1.02]">
           Add your own
         </Heading>
-        <p className="max-w-[40ch] text-sm leading-relaxed">
+        <p className="max-w-[40ch] text-sm leading-relaxed text-muted-foreground">
           Missing something? Make it. Most of it needs no code: build it from a form and it shows up here for your team. Developers can add a plugin too.
         </p>
       </div>
       <div className="grid gap-0 md:grid-cols-2">
         <div data-tour="extend-no-code" className="grid content-start gap-3 p-5 sm:p-6">
-          <h3 className="text-lg leading-tight font-bold">No code</h3>
+          <h3 className="text-lg leading-tight font-semibold">No code</h3>
           <ul className="grid gap-2">
             {options.map((o) => (
               <li key={o.key}>
                 <OptionLink
                   option={o}
-                  className="focus-ring group grid gap-1 rounded-xl border-[1.5px] border-transparent bg-background p-3.5 text-left transition-colors hover:border-primary"
+                  className="focus-ring group grid gap-1 rounded-xl border border-transparent bg-background p-3.5 text-left transition-colors hover:border-foreground"
                 >
-                  <span className="flex items-center justify-between gap-2 font-display text-base font-bold">
+                  <span className="flex items-center justify-between gap-2 font-display text-base font-semibold">
                     {o.title}
                     <ArrowRight aria-hidden className="size-4 shrink-0 text-primary transition-transform group-hover:translate-x-0.5" />
                   </span>
@@ -221,8 +222,8 @@ export function AddYourOwn({
           </ul>
         </div>
         <div data-tour="extend-with-code" className="grid content-start gap-3 border-t p-5 sm:p-6 md:border-t-0 md:border-l">
-          <h3 className="flex items-center gap-2 text-lg leading-tight font-bold">
-            <Terminal aria-hidden className="size-4 text-attention" /> With code
+          <h3 className="flex items-center gap-2 text-lg leading-tight font-semibold">
+            <Terminal aria-hidden className="size-4 text-muted-foreground" /> With code
           </h3>
           <p className="text-xs text-muted-foreground">Scaffold a Python plugin with one command. It comes with a filled-in About card and a test that checks it.</p>
           <CommandBox kind={kind} />

@@ -20,7 +20,7 @@ export function SbomSummary({ sbom }: { sbom: PluginSbom | null | undefined }) {
   return (
     <section data-testid="plugin-sbom" aria-labelledby="plugin-sbom-title" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 rounded-2xl border bg-card p-5">
       <div className="grid gap-1">
-        <h3 id="plugin-sbom-title" className="font-display text-lg leading-tight font-bold">
+        <h3 id="plugin-sbom-title" className="font-display text-lg leading-tight font-semibold">
           Software bill of materials
         </h3>
         <p className="text-sm text-muted-foreground">Every file in the wheel and every package it needs. Uploads use the packages the platform already has.</p>
@@ -28,17 +28,17 @@ export function SbomSummary({ sbom }: { sbom: PluginSbom | null | undefined }) {
       <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <div className={STAT}>
           <dt className="text-xs text-muted-foreground">Files</dt>
-          <dd className="font-display text-xl font-bold tabular" data-testid="plugin-sbom-files">
+          <dd className="font-display text-xl font-semibold tabular" data-testid="plugin-sbom-files">
             {s.files.toLocaleString()}
           </dd>
         </div>
         <div className={STAT}>
           <dt className="text-xs text-muted-foreground">Size</dt>
-          <dd className="font-display text-xl font-bold tabular">{formatBytes(s.bytes)}</dd>
+          <dd className="font-display text-xl font-semibold tabular">{formatBytes(s.bytes)}</dd>
         </div>
         <div className={STAT}>
           <dt className="text-xs text-muted-foreground">Requirements</dt>
-          <dd className="font-display text-xl font-bold tabular">{s.requirements.length}</dd>
+          <dd className="font-display text-xl font-semibold tabular">{s.requirements.length}</dd>
         </div>
         <div className={STAT}>
           <dt className="text-xs text-muted-foreground">Licence</dt>

@@ -77,11 +77,11 @@ export function ProjectSwitcher({ className }: { className?: string }) {
             type="button"
             aria-label={`Project: ${label}. Switch project`}
             className={cn(
-              "group flex h-8 max-w-[9.5rem] min-w-0 items-center sm:max-w-[16rem] lg:max-w-[19rem] xl:max-w-[26rem] focus-ring gap-2 rounded-lg border border-border-strong bg-card px-2 text-left text-sm hover:bg-surface-hover",
+              "group flex h-8 max-w-[9.5rem] min-w-0 items-center sm:max-w-[16rem] lg:max-w-[19rem] xl:max-w-[26rem] focus-ring gap-2 rounded-full px-1.5 pr-2.5 text-left text-sm transition-colors hover:bg-accent",
               className,
             )}
           >
-            <span aria-hidden className="grid size-5 shrink-0 place-items-center rounded-sm bg-accent text-2xs font-semibold text-accent-foreground uppercase">
+            <span aria-hidden className="grid size-5 shrink-0 place-items-center rounded-full bg-foreground text-2xs font-semibold text-background uppercase">
               {(current?.tenant.name ?? "?").slice(0, 1)}
             </span>
             <span className="min-w-0 truncate">
@@ -117,7 +117,7 @@ export function ProjectSwitcher({ className }: { className?: string }) {
                   const selected = c.key === current?.key;
                   return (
                     <DropdownMenuItem key={c.key} onSelect={() => switchTo(c)} aria-current={selected ? "true" : undefined} className="relative pl-7">
-                      <span className="absolute left-2.5 flex size-3.5 items-center">{selected ? <Check className="size-3.5 text-primary" /> : null}</span>
+                      <span className="absolute left-2.5 flex size-3.5 items-center">{selected ? <Check className="size-3.5 text-foreground" /> : null}</span>
                       <span className="min-w-0 flex-1 truncate">{c.project.name}</span>
                       <span className="text-xs text-hint" title={ROLE_META[c.role].description}>
                         {c.role}

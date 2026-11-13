@@ -1,7 +1,8 @@
 /**
  * InlineMessage (ODS): a short status line in the page flow. Size s is bare text with an icon;
- * size m sits on its tone's tint. The tone is said in words too (a visually hidden "Warning:"),
- * so it never depends on the icon colour alone.
+ * size m sits on its tone's tint (18px corners). The tone is said in words too (a visually
+ * hidden "Warning:"), so it never depends on the icon colour alone. On a phone the action goes
+ * under the text, so a wide button does not squeeze the words.
  */
 import { AlertTriangle, CheckCircle2, Info, XCircle } from "lucide-react";
 import type * as React from "react";
@@ -42,8 +43,8 @@ export function InlineMessage({
       data-tone={tone}
       role={r === "none" ? undefined : r}
       className={cn(
-        "flex min-w-0 items-start gap-2 text-foreground",
-        size === "m" ? cn("min-h-8 items-center rounded-md px-3 py-1.5 text-sm", t.fill) : "text-xs font-medium",
+        "flex min-w-0 items-start gap-2 text-foreground max-sm:flex-wrap",
+        size === "m" ? cn("min-h-8 items-center rounded-xl px-3 py-1.5 text-sm", t.fill) : "text-xs font-medium",
         className,
       )}
     >
@@ -52,7 +53,7 @@ export function InlineMessage({
         <span className="sr-only">{t.word}: </span>
         {children}
       </div>
-      {action ? <div className="flex-none">{action}</div> : null}
+      {action ? <div className="flex-none max-sm:basis-full max-sm:pl-6">{action}</div> : null}
     </div>
   );
 }

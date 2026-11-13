@@ -327,3 +327,22 @@ describe("v0.20 chat (plan D21, D22)", () => {
     expect(config).toContain("const SHARE_STATIC_FORBIDDEN = [...SHARE_FORBIDDEN, ...CHAT_PANEL_ONLY];");
   });
 });
+
+describe("v0.21 global search", () => {
+  const search = ["/r/apps/web/src/features/search/recents.ts", "/r/apps/web/src/features/search/use-record-recent.ts", "/r/apps/web/src/features/search/rank.ts"];
+
+  it("the search feature is signed-in only (share links and the portal have no search and record no visits)", () => {
+    for (const id of search) expect([id, SIGNED_IN_ONLY.some((p) => p.test(id))]).toEqual([id, true]);
+    expect(SIGNED_IN_ONLY.some((p) => p.test("/r/apps/web/src/lib/list-query.ts"))).toBe(false);
+  });
+
+  it("a client portal that reached the recent items fails its budget", () => {
+    const portal: ChunkBudget = { match: /client-app-/, maxBytes: 100_000, forbidden: SIGNED_IN_ONLY };
+    const chunks = [
+      chunk("index.js", { isEntry: true, dynamicImports: ["client-app-a.js"] }),
+      chunk("client-app-a.js", { imports: ["index.js", "z.js"] }),
+      chunk("z.js", { moduleIds: [search[1] ?? ""] }),
+    ];
+    expect(checkChunkBudgets(chunks, [portal])[0]).toContain("features/search/use-record-recent.ts");
+  });
+});

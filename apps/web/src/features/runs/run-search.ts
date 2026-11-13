@@ -5,10 +5,12 @@
  *
  * Search keys: `state`, `kind`, `experiment`, `name`, `f` (filters), `c` (columns), `o` (order),
  * `view` (the applied saved view) and, for views saved with them (the CLI can), `t` (tags),
- * `spec` and `parent`.
+ * `spec` and `parent`. v0.21: `q` (the key of every list page's search box, which the global
+ * search writes) is read as `name` when the URL has no `name`.
  */
 import type { RunFilters } from "@/api/queries";
 import type { RunKind, RunState, RunViewQuery } from "@/api/types";
+import { queryParam } from "@/lib/list-query";
 import { RUN_KINDS, RUN_STATES } from "@/lib/run-state";
 
 import { MAX_RUN_COLUMNS, MAX_RUN_FILTERS } from "./run-query";
@@ -25,6 +27,8 @@ export interface RunsSearch {
   t?: string[] | undefined;
   spec?: string | undefined;
   parent?: string | undefined;
+  /** v0.21: `?q=` is read as `name` and then leaves the URL (the router keeps keys it is not told to drop). */
+  q?: undefined;
 }
 
 /** Characters of one filter, column or order text in the URL. */
@@ -54,7 +58,7 @@ export function validateRunsSearch(s: Record<string, unknown>): RunsSearch {
     state: oneOf(s.state, RUN_STATES),
     kind: oneOf(s.kind, RUN_KINDS),
     experiment: idParam(s.experiment),
-    name: text(s.name, MAX_NAME_CHARS),
+    name: text(s.name, MAX_NAME_CHARS) ?? queryParam(s.q),
     f: texts(s.f, MAX_RUN_FILTERS),
     c: texts(s.c, MAX_RUN_COLUMNS),
     o: text(s.o, MAX_REF_CHARS),
@@ -62,6 +66,7 @@ export function validateRunsSearch(s: Record<string, unknown>): RunsSearch {
     t: texts(s.t, MAX_TAGS),
     spec: idParam(s.spec),
     parent: idParam(s.parent),
+    q: undefined,
   };
 }
 

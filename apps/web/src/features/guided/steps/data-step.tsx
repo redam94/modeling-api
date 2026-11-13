@@ -279,7 +279,7 @@ function DataPreview({ table, template, answers }: { table: LocalTable; template
                   const role = roleOfColumn(template, answers, h);
                   return (
                     <th key={i} scope="col" className="px-2 py-1.5 text-left align-bottom font-medium whitespace-nowrap text-muted-foreground">
-                      {role ? <span className="mb-0.5 block text-[10px] font-semibold tracking-wide text-primary uppercase">{role}</span> : null}
+                      {role ? <span className="mb-0.5 block text-[10px] font-semibold text-muted-foreground">{role}</span> : null}
                       {h}
                     </th>
                   );

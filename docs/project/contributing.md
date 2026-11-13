@@ -114,7 +114,8 @@ chore: bump ruff
 ## Documentation
 
 The site uses MkDocs Material. `mkdocs.yml` is at the repository root, and the pages are in
-`docs/`.
+`docs/`. [The docs theme](docs-theme.md) describes the look, the building blocks for a page,
+the search settings and the rules for generated art.
 
 - **The tests run all Python examples.** The examples are in `docs/snippets/*.py`. Pages
   include them with `--8<-- "file.py:section"`. `conformance/tests/test_docs_snippets.py`

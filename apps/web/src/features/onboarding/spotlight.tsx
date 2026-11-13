@@ -1,11 +1,11 @@
 /**
  * The tour spotlight (v0.18 D18): a fixed box over the element a step points at, drawn with
- * the Studio tour ring (lime inside ink, `tour-target` in app.css, which also pulses the
+ * the tour ring (the highlight inside ink, `tour-target` in app.css, which also pulses the
  * beacon three times) and a soft scrim over the rest of the page.
  *
  * It never blocks the page: `pointer-events: none`, so the highlighted control (and
  * everything else) stays clickable while a tour plays. Moving to the next step glides the
- * box on the Studio curve (a CSS transition: no animation library in this chunk, see the
+ * box on the app's easing curve (a CSS transition: no animation library in this chunk, see the
  * tour host); scrolling and resizing follow at once. Under reduced motion the box jumps, and
  * app.css switches the beacon off.
  *
@@ -189,7 +189,7 @@ export interface SpotlightProps {
   reduced: boolean;
 }
 
-/** How long the box glides to the next step (the coach-mark's Studio curve, with its small overshoot). */
+/** How long the box glides to the next step (the coach-mark's curve, with its small overshoot). */
 export const GLIDE_MS = 320;
 
 export function Spotlight({ box, stepKey, reduced }: SpotlightProps) {

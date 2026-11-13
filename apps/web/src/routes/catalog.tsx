@@ -115,7 +115,7 @@ export function activeCatalogTab(urlTab: string | undefined, pickedYours: boolea
 
 export function CatalogPage() {
   const catalog = useCatalog();
-  const { tab, about } = route.useSearch();
+  const { tab, about, q, kind, difficulty } = route.useSearch();
   const navigate = useNavigate({ from: "/catalog" });
   const [selected, setSelected] = useState<Selected | null>(null);
   const [pickedYours, setPickedYours] = useState(false);
@@ -141,7 +141,7 @@ export function CatalogPage() {
       <QueryView query={catalog}>
         {(c) => (
           <Tabs value={active} onValueChange={go}>
-            <TabsList className="max-w-full flex-wrap">
+            <TabsList className="h-auto min-h-10 flex-wrap">
               {yoursFirst ? yoursTrigger : null}
               <TabsTrigger value="browse">Browse</TabsTrigger>
               <TabsTrigger value="plots" data-tour="catalog.tab.plots">
@@ -149,7 +149,7 @@ export function CatalogPage() {
               </TabsTrigger>
               {yoursFirst ? null : yoursTrigger}
               <span aria-hidden className="mx-1 hidden h-5 w-px bg-border-strong sm:inline-block" />
-              <span aria-hidden className="hidden px-1 text-[10px] font-bold tracking-wide text-hint uppercase sm:inline">
+              <span aria-hidden className="hidden px-1 text-xs font-semibold text-hint sm:inline">
                 Technical view
               </span>
               <TabsTrigger value="models" title="Technical view: every model plugin, as a table">
@@ -163,7 +163,17 @@ export function CatalogPage() {
               <YoursTab />
             </TabsContent>
             <TabsContent value="browse" className="grid gap-12 pt-4">
-              <CatalogBrowser selected={about ?? null} onSelect={(key) => void navigate({ search: { about: key ?? undefined }, replace: true })} teamCount={team.count} onShowTeam={() => go("yours")} />
+              <CatalogBrowser
+                selected={about ?? null}
+                onSelect={(key) => void navigate({ search: (s) => ({ ...s, about: key ?? undefined }), replace: true })}
+                query={q ?? ""}
+                onQuery={(next) => void navigate({ search: (s) => ({ ...s, q: next || undefined }), replace: true })}
+                kind={kind}
+                difficulty={difficulty}
+                onFilters={(next) => void navigate({ search: (s) => ({ ...s, ...next }), replace: true })}
+                teamCount={team.count}
+                onShowTeam={() => go("yours")}
+              />
               <AddYourOwn kind="any" />
             </TabsContent>
             <TabsContent value="models" className="pt-4">

@@ -32,7 +32,8 @@ tour says so and offers to take you there.
 | Share a dashboard | Presets, panels, publish and share | `?tour=dashboard` |
 | Make your own | The catalog, a chart playground, Add your own and your first model recipe | `?tour=make_your_own` |
 
-Replay a tour from your user menu, or add `?tour=<id>` to any page's address. Some tours need
+Replay a tour from **Help** in your account menu (the button with your initials), or add
+`?tour=<id>` to any page's address. Some tours need
 the sample project; they tell you if it is not there yet. `?tour=off` keeps tours from
 starting by themselves during that visit.
 

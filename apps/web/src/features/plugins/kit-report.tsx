@@ -31,7 +31,7 @@ export function KitReport({ report }: { report: PluginKitReport | null | undefin
     <section data-testid="plugin-kit-report" aria-labelledby="plugin-kit-title" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 rounded-2xl border bg-card p-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="grid gap-1">
-          <h3 id="plugin-kit-title" className="font-display text-lg leading-tight font-bold">
+          <h3 id="plugin-kit-title" className="font-display text-lg leading-tight font-semibold">
             Test report
           </h3>
           <p className="max-w-[60ch] text-sm text-muted-foreground">
@@ -51,7 +51,7 @@ export function KitReport({ report }: { report: PluginKitReport | null | undefin
         const Icon = ICON[g.status];
         return (
           <div key={g.status} className="grid gap-1.5" data-kit-group={g.status}>
-            <h4 className={cn("text-xs font-bold tracking-wide uppercase", INK[g.status])}>
+            <h4 className={cn("text-xs font-semibold", INK[g.status])}>
               {KIT_STATUS_LABEL[g.status]} ({g.checks.length})
             </h4>
             <ul className="grid gap-1" aria-label={`${KIT_STATUS_LABEL[g.status]} tests`}>

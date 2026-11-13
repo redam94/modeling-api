@@ -7,17 +7,20 @@ exclude_docs: |
   architecture-plan.md
   snippets/
   reference/generated/fragments/
+  assets/brand/PROVENANCE.md
+  assets/brand/icons/PROVENANCE.md
 # v0.19: the old "Coming in 0.19" page stays as a short pointer for old links
 not_in_nav: |
   extend/upload-roadmap.md
 
 theme:
   name: material
+  # the Mono look: templates in overrides/, styles in docs/stylesheets/, scripts in docs/javascripts/
+  custom_dir: overrides
   logo: assets/logo.svg
   favicon: assets/favicon.svg
-  font:
-    text: Inter
-    code: JetBrains Mono
+  # no Google Fonts: Inter and JetBrains Mono are self-hosted in docs/assets/fonts/
+  font: false
   features:
     - navigation.tabs
     - navigation.tabs.sticky
@@ -25,7 +28,7 @@ theme:
     - navigation.indexes
     - navigation.top
     - navigation.footer
-    - search.suggest
+    - navigation.path
     - search.highlight
     - content.code.copy
     - content.code.annotate
@@ -44,18 +47,55 @@ theme:
       toggle: {icon: material/weather-sunny, name: Switch to light mode}
 
 extra_css:
-  - stylesheets/extra.css
+  - stylesheets/mono.css
+  - stylesheets/mono-chrome.css
+  - stylesheets/mono-content.css
+  - stylesheets/mono-blocks.css
 
-# Material loads `mermaid@11` (a moving tag) from unpkg unless mermaid is already present;
-# pin an exact release instead.
+# Material loads `mermaid@11` (a moving tag) from unpkg unless mermaid is already present.
+# The pinned bundle is vendored instead (scripts/vendor_mermaid.py), so no page asks another host.
+# overrides/main.html loads it, and only on a page that has a diagram (the file is 3.5 MB).
 extra_javascript:
-  - https://unpkg.com/mermaid@11.17.2/dist/mermaid.min.js
+  - javascripts/mono.js
+
+extra:
+  # The "Try" list in the search dialog when the box is empty. `url` is a site path.
+  search_popular:
+    - title: Your first Guided analysis
+      url: guides/guided-tutorial/
+      hint: Tutorial
+    - title: Install modeling-api
+      url: getting-started/
+      hint: Learn
+    - title: Build a client dashboard
+      url: guides/client-dashboards/
+      hint: Guide
+    - title: Share a dashboard with a link
+      url: guides/sharing-dashboards-securely/
+      hint: Guide
+    - title: Choose a model
+      url: guides/choosing-a-model/
+      hint: Guide
+    - title: Upload your own code
+      url: extend/upload/
+      hint: Extend
+    - title: Error codes
+      url: reference/generated/error-codes/
+      hint: Reference
+    - title: Troubleshooting
+      url: operations/troubleshooting/
+      hint: Operate
 
 hooks:
   - scripts/mkdocs_hooks.py
 
 plugins:
-  - search
+  # The separator also splits names: `share_link` and `core.calendar` give two words each, so
+  # a reader finds them with "share link" or "calendar". A dot before a digit stays (v0.20).
+  # CamelCase names stay whole: a split made a query for `ModelSpec` match "model" on every
+  # page. The boost of each page is set in scripts/mkdocs_hooks.py.
+  - search:
+      separator: '[\s\-,:!=\[\]()"`/]+|\.(?!\d)|_|&[lg]t;'
   - mkdocstrings:
       default_handler: python
       handlers:
@@ -122,116 +162,136 @@ markdown_extensions:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
+# Six tabs. A page keeps its file path when it changes tab: only this list changes.
+# conformance/tests/test_docs_nav.py checks the tabs, and that each page is here one time.
 nav:
   - Home:
       - index.md
-      - "What's new in 0.20": whats-new-0.20.md
-      - "What's new in 0.19": whats-new-0.19.md
-      - "What's new in 0.18": whats-new-0.18.md
-      - "What's new in 0.17": whats-new-0.17.md
-      - "What's new in 0.16": whats-new-0.16.md
-      - "What's new in 0.10 to 0.15": whats-new-0.15.md
-      - "What's new in 0.9": whats-new-0.9.md
-      - "What's new in 0.5": whats-new-0.5.md
       - "Why modeling-api?": why.md
       - Use cases: use-cases.md
-  - Getting started:
+      - "What's new":
+          - "What's new in 0.21": whats-new-0.21.md
+          - "What's new in 0.20": whats-new-0.20.md
+          - "What's new in 0.19": whats-new-0.19.md
+          - "What's new in 0.18": whats-new-0.18.md
+          - "What's new in 0.17": whats-new-0.17.md
+          - "What's new in 0.16": whats-new-0.16.md
+          - "What's new in 0.10 to 0.15": whats-new-0.15.md
+          - "What's new in 0.9": whats-new-0.9.md
+          - "What's new in 0.5": whats-new-0.5.md
+      - Roadmap:
+          - roadmap/index.md
+          - The local platform (v0.2): roadmap/platform-api.md
+          - Cloud and multi-tenant (v0.3): roadmap/cloud.md
+          - Guided mode and integrations (v0.4): roadmap/guided-ui.md
+          - Workflows, governance and explorers (v0.5): roadmap/workflows-governance.md
+          - "Plugin upload, dashboard chat and MCP (v0.19, v0.20)": roadmap/expert-plugins.md
+      - Project:
+          - Licensing: project/licensing.md
+          - Contributing: project/contributing.md
+          - Writing style: project/writing-style.md
+          - The docs theme: project/docs-theme.md
+          - Changelog: project/changelog.md
+  - Learn:
       - getting-started/index.md
-      - "Quickstart: zero to first model": getting-started/quickstart.md
-      - Your first model in Python: getting-started/first-model.md
-      - Runs and executors: getting-started/executor.md
-  - Tutorials:
-      - tutorials/index.md
-      - "Your first MMM in Guided mode": guides/guided-tutorial.md
-      - Connect Google Sheets: tutorials/google-sheets.md
-      - "Embed a chart in Notion, Slack or BI": tutorials/embed-a-chart.md
-      - Receive webhooks: guides/webhook-receivers.md
-      - Optimise a budget: tutorials/optimise-a-budget.md
-      - Complex workflows: tutorials/complex-workflows.md
-      - Science models from pymc-challenges:
-          - tutorials/pymc-challenges/index.md
-          - "E07 Earthquakes in Oklahoma": tutorials/pymc-challenges/e07-oklahoma-earthquakes.md
-          - "E18 Lip cancer disease map": tutorials/pymc-challenges/e18-scottish-lip-cancer.md
-          - "E19 Protein signalling graph": tutorials/pymc-challenges/e19-protein-signalling.md
-          - "E21 Law-firm network": tutorials/pymc-challenges/e21-law-firm-network.md
-          - "E23 Primate phylogenetic regression": tutorials/pymc-challenges/e23-phylogenetic-regression.md
-          - "E31 Indian buffet process on digits": tutorials/pymc-challenges/e31-indian-buffet-digits.md
-          - "E50 Scratch assay PDE": tutorials/pymc-challenges/e50-scratch-assay.md
-          - "E51 Heat plate design": tutorials/pymc-challenges/e51-heat-plate-design.md
-          - "E58 STORM localisation": tutorials/pymc-challenges/e58-storm-localisation.md
-          - "E60 Traction force microscopy": tutorials/pymc-challenges/e60-traction-force.md
-          - "E61 Turing patterns": tutorials/pymc-challenges/e61-turing-patterns.md
-          - "E77 Colour naming": tutorials/pymc-challenges/e77-colour-naming.md
-          - "E79 CMB behind the LMC mask": tutorials/pymc-challenges/e79-cmb-lmc-mask.md
-          - "E80 Strong gravitational lens": tutorials/pymc-challenges/e80-strong-lens.md
-          - "E81 Wind and animal activity": tutorials/pymc-challenges/e81-wind-and-activity.md
-  - Concepts:
-      - concepts/index.md
-      - Architecture overview: concepts/architecture.md
-      - Security model: concepts/security.md
-      - Labelled data: concepts/labelled-data.md
-      - Pipelines and stages: concepts/pipelines.md
-      - Representations and summaries: concepts/representations.md
-      - Bundles: concepts/bundles.md
-      - Coord plans and typed errors: concepts/coord-plans.md
-      - Forecasts with actuals: concepts/forecasting-with-actuals.md
-      - Capabilities and manifests: concepts/capabilities.md
-      - Tenancy and authentication: concepts/tenancy-and-auth.md
-      - Client dashboards: concepts/client-dashboards.md
-      - Quotas and cost: concepts/quotas-and-cost.md
-      - Guided mode: concepts/guided-mode.md
-      - Integrations: concepts/integrations.md
-      - Workflows: concepts/workflows.md
-      - Governance: concepts/governance.md
-      - About cards and choosing: concepts/about-and-choosing.md
-      - Run tracking and experiments: concepts/run-tracking.md
-      - Causal effects: concepts/causal-effects.md
-      - Image data and collections: concepts/image-collections.md
-  - Guides:
-      - Using the platform:
+      - First steps:
+          - "Quickstart: zero to first model": getting-started/quickstart.md
+          - Your first model in Python: getting-started/first-model.md
+          - Your first model in the web app: guides/first-model-in-the-ui.md
           - "Start here: tours, checklist and sample": guides/start-here.md
           - The Expert web app: guides/web-ui.md
-          - Your first model in the web app: guides/first-model-in-the-ui.md
-          - The command line: guides/cli.md
-          - The Python client: guides/python-client.md
-          - The HTTP API: guides/http-api.md
-          - "Track metrics, params and tags": guides/tracking.md
-          - "Compare runs and use experiments": guides/run-comparison.md
+          - Runs and executors: getting-started/executor.md
+      - Tutorials:
+          - tutorials/index.md
+          - "Your first MMM in Guided mode": guides/guided-tutorial.md
+          - Connect Google Sheets: tutorials/google-sheets.md
+          - "Embed a chart in Notion, Slack or BI": tutorials/embed-a-chart.md
+          - Receive webhooks: guides/webhook-receivers.md
+          - Optimise a budget: tutorials/optimise-a-budget.md
+          - Complex workflows: tutorials/complex-workflows.md
+          - Science models from pymc-challenges:
+              - tutorials/pymc-challenges/index.md
+              - "E07 Earthquakes in Oklahoma": tutorials/pymc-challenges/e07-oklahoma-earthquakes.md
+              - "E18 Lip cancer disease map": tutorials/pymc-challenges/e18-scottish-lip-cancer.md
+              - "E19 Protein signalling graph": tutorials/pymc-challenges/e19-protein-signalling.md
+              - "E21 Law-firm network": tutorials/pymc-challenges/e21-law-firm-network.md
+              - "E23 Primate phylogenetic regression": tutorials/pymc-challenges/e23-phylogenetic-regression.md
+              - "E31 Indian buffet process on digits": tutorials/pymc-challenges/e31-indian-buffet-digits.md
+              - "E50 Scratch assay PDE": tutorials/pymc-challenges/e50-scratch-assay.md
+              - "E51 Heat plate design": tutorials/pymc-challenges/e51-heat-plate-design.md
+              - "E58 STORM localisation": tutorials/pymc-challenges/e58-storm-localisation.md
+              - "E60 Traction force microscopy": tutorials/pymc-challenges/e60-traction-force.md
+              - "E61 Turing patterns": tutorials/pymc-challenges/e61-turing-patterns.md
+              - "E77 Colour naming": tutorials/pymc-challenges/e77-colour-naming.md
+              - "E79 CMB behind the LMC mask": tutorials/pymc-challenges/e79-cmb-lmc-mask.md
+              - "E80 Strong gravitational lens": tutorials/pymc-challenges/e80-strong-lens.md
+              - "E81 Wind and animal activity": tutorials/pymc-challenges/e81-wind-and-activity.md
+      - Concepts:
+          - concepts/index.md
+          - Data and models:
+              - Labelled data: concepts/labelled-data.md
+              - Pipelines and stages: concepts/pipelines.md
+              - Representations and summaries: concepts/representations.md
+              - Bundles: concepts/bundles.md
+              - Coord plans and typed errors: concepts/coord-plans.md
+              - Forecasts with actuals: concepts/forecasting-with-actuals.md
+              - Causal effects: concepts/causal-effects.md
+              - Image data and collections: concepts/image-collections.md
+          - Product:
+              - Guided mode: concepts/guided-mode.md
+              - "Workflows: the idea": concepts/workflows.md
+              - Integrations: concepts/integrations.md
+              - Client dashboards: concepts/client-dashboards.md
+              - About cards and choosing: concepts/about-and-choosing.md
+              - Run tracking and experiments: concepts/run-tracking.md
+              - Governance: concepts/governance.md
+          - Platform:
+              - Architecture overview: concepts/architecture.md
+              - Security model: concepts/security.md
+              - Capabilities and manifests: concepts/capabilities.md
+              - Tenancy and authentication: concepts/tenancy-and-auth.md
+              - Quotas and cost: concepts/quotas-and-cost.md
+  - Guides:
+      - guides/index.md
+      - Data:
           - "From a spreadsheet to a Guided draft": guides/guided-data.md
           - "Tree datasets, HDF5 and multi-file versions": guides/tree-data.md
           - Image data: guides/image-data.md
-          - Deep learning: guides/deep-learning.md
-          - Endpoints and webhooks: guides/endpoints-and-webhooks.md
-          - The Integrations hub: guides/integrations-hub.md
-          - Build a client dashboard: guides/client-dashboards.md
-          - Share dashboards securely: guides/sharing-dashboards-securely.md
-          - "For clients: read your dashboard": guides/for-clients.md
-          - Ask about your dashboard: guides/ask-about-your-dashboard.md
-          - Connect a chat tool with MCP: guides/connect-a-chat-tool-with-mcp.md
           - Explore a dataset: guides/data-explorer.md
-          - Explore a model: guides/model-explorer.md
-          - Validate models with governance policies: guides/governance.md
-          - "Can you trust this model? Null tests explained": guides/null-tests.md
+      - Models:
           - Choosing a model: guides/choosing-a-model.md
-      - Running it for teams:
-          - Authentication: guides/authentication.md
-          - Administration: guides/administration.md
-          - Deleting and exporting data: guides/data-deletion.md
-      - Modelling:
-          - Port a model in 15 minutes: guides/port-a-model.md
-          - Write a step or model plugin: guides/plugins.md
-          - Bring a PyMC model: guides/pymc.md
-          - Tabular models (scikit-learn, xgboost): guides/sklearn.md
-          - Marketing-mix models: guides/mmm.md
           - "Guided modelling: priors, lift tests, scorecard": guides/guided-modelling.md
+          - "Marketing-mix models (MMM)": guides/mmm.md
           - Forecasting and sequential models: guides/time-series.md
           - statsmodels time-series models: models/statsmodels.md
           - "Measure the effect of a change": guides/causal.md
+          - Deep learning: guides/deep-learning.md
+          - Bring a PyMC model: guides/pymc.md
+          - Tabular models (scikit-learn, xgboost): guides/sklearn.md
+      - Trust and compare:
+          - "Can you trust this model? Null tests explained": guides/null-tests.md
+          - Validate models with governance policies: guides/governance.md
+          - "Track metrics, params and tags": guides/tracking.md
+          - "Compare runs and use experiments": guides/run-comparison.md
+          - Explore a model: guides/model-explorer.md
+      - Workflows:
           - "Workflows: tests, decisions, models, automation": guides/workflows.md
           - Workflow cookbook: guides/workflow-cookbook.md
+      - Plots:
           - Plots, recipes and templates: guides/plots.md
           - Sharing plots: guides/sharing-plots.md
-          - Conformance corpus: guides/conformance.md
+      - Dashboards and clients:
+          - Build a client dashboard: guides/client-dashboards.md
+          - Share a dashboard with a link: guides/sharing-dashboards-securely.md
+          - "For clients: read your dashboard": guides/for-clients.md
+          - Ask about your dashboard: guides/ask-about-your-dashboard.md
+          - Connect a chat tool with MCP: guides/connect-a-chat-tool-with-mcp.md
+      - Automate:
+          - Endpoints and webhooks: guides/endpoints-and-webhooks.md
+          - The Integrations hub: guides/integrations-hub.md
+          - The command line: guides/cli.md
+          - The Python client: guides/python-client.md
+          - The HTTP API: guides/http-api.md
   - Extend:
       - extend/index.md
       - Your first extensions: tutorials/your-first-extensions.md
@@ -239,47 +299,55 @@ nav:
           - Your model: extend/your-model.md
           - Prep presets: extend/prep-presets.md
           - Chart templates: extend/chart-templates.md
-          - Workflow templates: extend/workflow-templates.md
+          - Workflow templates (no code): extend/workflow-templates.md
       - With Python:
           - extend/develop/index.md
+          - Port a model in 15 minutes: guides/port-a-model.md
+          - Write a step or model plugin: guides/plugins.md
           - Models: extend/develop/models.md
           - Preprocessing steps: extend/develop/steps.md
           - Plot recipes: extend/develop/plot-recipes.md
-          - Workflow nodes: extend/develop/workflow-nodes.md
-          - Workflow templates: extend/develop/workflow-templates.md
+          - Workflow nodes (Python): extend/develop/workflow-nodes.md
+          - Workflow templates (Python): extend/develop/workflow-templates.md
           - Contract kits: extend/develop/contract-kits.md
           - Run on your stack: extend/develop/run-on-your-stack.md
+          - Conformance corpus: guides/conformance.md
       - Upload your code:
           - Upload your own code: extend/upload.md
           - Review uploaded code: extend/review-uploads.md
   - Reference:
-      - Spec format: reference/spec-format.md
-      - Spec schema: reference/generated/spec-schema.md
-      - Python SDK: reference/sdk.md
-      - Built-in steps: reference/steps.md
-      - Steps catalog: reference/generated/steps-catalog.md
-      - Built-in models: reference/models.md
-      - "Marketing-mix models (mmm-framework)": models/mmm-framework.md
-      - "Causal models and Bayesian structural time series": models/causal.md
-      - Models catalog: reference/generated/models-catalog.md
-      - Workflow nodes: reference/workflow-nodes.md
-      - Governance checks: reference/generated/governance-checks.md
-      - Plots and the sanitizer: reference/plots.md
-      - Plot recipes catalog: reference/generated/plots-catalog.md
-      - Extension points: reference/generated/extension-points.md
-      - Error codes: reference/generated/error-codes.md
-      - HTTP API (v1): reference/http-api.md
-      - OpenAPI explorer: reference/openapi.md
-      - Run protocol: reference/run-protocol.md
-      - GCS shim: reference/gcs-shim.md
-      - Runner: reference/runner.md
-      - CLI and Python client: reference/cli.md
-      - CLI reference: reference/generated/cli-reference.md
-      - Permissions: reference/generated/permissions.md
-      - Server settings: reference/generated/server-settings.md
-      - Environment variables: reference/generated/environment-variables.md
-      - Web app and plot sandbox: reference/web-app.md
-      - API reference:
+      - reference/index.md
+      - Spec:
+          - Spec format: reference/spec-format.md
+          - Spec schema: reference/generated/spec-schema.md
+      - Catalogs:
+          - Built-in steps: reference/steps.md
+          - Steps catalog: reference/generated/steps-catalog.md
+          - Built-in models: reference/models.md
+          - Models catalog: reference/generated/models-catalog.md
+          - "Marketing-mix models (mmm-framework)": models/mmm-framework.md
+          - "Causal models and Bayesian structural time series": models/causal.md
+          - Workflow nodes: reference/workflow-nodes.md
+          - Governance checks: reference/generated/governance-checks.md
+          - Plots and the sanitizer: reference/plots.md
+          - Plot recipes catalog: reference/generated/plots-catalog.md
+          - Extension points: reference/generated/extension-points.md
+      - Interfaces:
+          - HTTP API (v1): reference/http-api.md
+          - OpenAPI explorer: reference/openapi.md
+          - CLI and client guide: reference/cli.md
+          - CLI commands: reference/generated/cli-reference.md
+          - Python SDK: reference/sdk.md
+          - Run protocol: reference/run-protocol.md
+          - Runner: reference/runner.md
+          - GCS shim: reference/gcs-shim.md
+          - Web app and plot sandbox: reference/web-app.md
+          - Error codes: reference/generated/error-codes.md
+      - Settings:
+          - Permissions: reference/generated/permissions.md
+          - Server settings: reference/generated/server-settings.md
+          - Environment variables: reference/generated/environment-variables.md
+      - Python API:
           - reference/api/index.md
           - mapi_spec: reference/api/spec.md
           - mapi_sdk: reference/api/sdk.md
@@ -289,36 +357,32 @@ nav:
           - mapi_plots: reference/api/plots.md
           - mapi_runner: reference/api/runner.md
           - mapi_client: reference/api/client.md
-  - Deployment:
+  - Operate:
       - operations/index.md
-      - Local, without Docker: operations/local-development.md
-      - Docker Compose: operations/docker.md
-      - Container images: operations/images.md
-      - Deploying to Google Cloud: operations/gcp-deployment.md
-      - Security hardening on Google Cloud: operations/security-hardening.md
-      - Authentication and isolation: operations/authentication.md
-      - Sign-up and abuse controls: operations/signup-and-abuse.md
-      - Cloud Run Jobs executor: operations/cloud-run.md
-      - Observability: operations/observability.md
-      - Security suite: operations/security-suite.md
-      - Uploaded code: operations/uploaded-code.md
-      - M2 verification: operations/m2-verification.md
-      - M3 verification: operations/m3-verification.md
-      - M3.5 verification: operations/m35-verification.md
-      - Configuration reference: operations/configuration.md
-      - Troubleshooting: operations/troubleshooting.md
-  - Roadmap:
-      - roadmap/index.md
-      - The local platform (v0.2): roadmap/platform-api.md
-      - Cloud and multi-tenant (v0.3): roadmap/cloud.md
-      - Guided mode and integrations (v0.4): roadmap/guided-ui.md
-      - Workflows, governance and explorers (v0.5): roadmap/workflows-governance.md
-      - "Planned: plugin upload, dashboard chat and MCP": roadmap/expert-plugins.md
-  - Project:
-      - Licensing: project/licensing.md
-      - Contributing: project/contributing.md
-      - Writing style: project/writing-style.md
-      - Changelog: project/changelog.md
+      - Run:
+          - Local, without Docker: operations/local-development.md
+          - Docker Compose: operations/docker.md
+          - Container images: operations/images.md
+          - Deploying to Google Cloud: operations/gcp-deployment.md
+          - Cloud Run Jobs executor: operations/cloud-run.md
+      - Secure:
+          - Security hardening on Google Cloud: operations/security-hardening.md
+          - Set up sign-in and isolation: operations/authentication.md
+          - Sign-up and abuse controls: operations/signup-and-abuse.md
+          - Security suite: operations/security-suite.md
+          - Uploaded code: operations/uploaded-code.md
+      - Teams:
+          - Sign in and tokens: guides/authentication.md
+          - Administration: guides/administration.md
+          - Deleting and exporting data: guides/data-deletion.md
+      - Observe and fix:
+          - Observability: operations/observability.md
+          - Troubleshooting: operations/troubleshooting.md
+          - Configuration reference: operations/configuration.md
+      - Verification records:
+          - M2 verification: operations/m2-verification.md
+          - M3 verification: operations/m3-verification.md
+          - M3.5 verification: operations/m35-verification.md
 
 validation:
   anchors: warn

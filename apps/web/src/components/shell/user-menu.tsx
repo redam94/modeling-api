@@ -1,17 +1,20 @@
 import { useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
-import { Compass, KeyRound, LogOut, Settings, ShieldCheck } from "lucide-react";
+import { BookOpen, Compass, Keyboard, KeyRound, LogOut, Settings, ShieldCheck } from "lucide-react";
 
 import { useSignOut } from "@/features/auth/gate";
 import { useWorkspace } from "@/features/auth/workspace";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/overlays";
+import { env } from "@/env";
 import { relativeTime } from "@/lib/format";
+import { useUi } from "@/stores/ui";
 
 export function initials(name: string): string {
   const parts = name.replace(/@.*$/, "").split(/[\s._-]+/).filter(Boolean);
@@ -43,13 +46,14 @@ export function withTourParam(pathname: string, search: string, id: string): str
   return `${pathname}?${params.toString()}`;
 }
 
-/** The signed-in user: identity, operator badge, tours, shortcuts and sign-out. */
+/** The signed-in user: identity, operator badge, the Help group (docs, shortcuts, tours) and sign-out. */
 export function UserMenu() {
   const ws = useWorkspace();
   const signOut = useSignOut();
   const navigate = useNavigate();
   const router = useRouter();
   const location = useRouterState({ select: (s) => s.location });
+  const setShortcutsOpen = useUi((s) => s.setShortcutsOpen);
   if (ws.mode === "none") return null;
   const { user } = ws;
   return (
@@ -59,12 +63,12 @@ export function UserMenu() {
           type="button"
           aria-label={`Account: ${user.name}`}
           data-tour="shell.help-menu"
-          className="focus-ring relative grid size-8 shrink-0 place-items-center rounded-full bg-accent text-2xs font-semibold text-accent-foreground hover:bg-brand-200 dark:hover:bg-secondary"
+          className="focus-ring relative grid size-8 shrink-0 place-items-center rounded-full bg-accent text-2xs font-semibold text-accent-foreground transition-colors hover:bg-border-strong"
         >
           {initials(user.name)}
           {ws.operator ? (
             <span aria-hidden className="absolute -right-0.5 -bottom-0.5 grid size-3.5 place-items-center rounded-full bg-background">
-              <ShieldCheck className="size-3 text-primary" />
+              <ShieldCheck className="size-3 text-foreground" />
             </span>
           ) : null}
         </button>
@@ -73,16 +77,28 @@ export function UserMenu() {
         <DropdownMenuLabel className="grid gap-0.5">
           <span className="truncate text-sm font-semibold text-foreground">{user.name}</span>
           {user.email ? <span className="truncate">{user.email}</span> : null}
-          {ws.operator ? <span className="text-primary">Platform operator</span> : null}
+          {ws.operator ? <span className="font-semibold text-foreground">Platform operator</span> : null}
           {ws.expiresAt ? <span>Session ends {relativeTime(ws.expiresAt)}</span> : null}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuLabel>Tours</DropdownMenuLabel>
-        {MENU_TOURS.map((t) => (
-          <DropdownMenuItem key={t.id} onSelect={() => router.history.push(withTourParam(location.pathname, location.searchStr, t.id))}>
-            {t.id === "welcome" ? <Compass /> : <span aria-hidden className="size-4" />} {t.label}
+        <DropdownMenuGroup aria-label="Help">
+          <DropdownMenuLabel>Help</DropdownMenuLabel>
+          {env.docsUrl ? (
+            <DropdownMenuItem asChild>
+              <a href={env.docsUrl} target="_blank" rel="noreferrer">
+                <BookOpen /> Read the docs
+              </a>
+            </DropdownMenuItem>
+          ) : null}
+          <DropdownMenuItem onSelect={() => setShortcutsOpen(true)}>
+            <Keyboard /> Keyboard shortcuts
           </DropdownMenuItem>
-        ))}
+          {MENU_TOURS.map((t) => (
+            <DropdownMenuItem key={t.id} onSelect={() => router.history.push(withTourParam(location.pathname, location.searchStr, t.id))}>
+              {t.id === "welcome" ? <Compass /> : <span aria-hidden className="size-4" />} {t.label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => void navigate({ to: "/tokens" })}>
           <KeyRound /> API tokens

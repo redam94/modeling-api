@@ -22,7 +22,7 @@ export function RunExperiment({ run }: { run: Run }) {
   const items = experiments.data?.items ?? [];
   const current = run.experiment_id ? items.find((e) => e.id === run.experiment_id) : undefined;
   const link = run.experiment_id ? (
-    <Link to="/experiments/$experimentId" params={{ experimentId: run.experiment_id }} className="text-primary hover:underline [overflow-wrap:anywhere]">
+    <Link to="/experiments/$experimentId" params={{ experimentId: run.experiment_id }} className="link [overflow-wrap:anywhere]">
       {current?.name ?? run.experiment_id}
     </Link>
   ) : null;
@@ -74,7 +74,7 @@ export function RunExperimentLink({ experimentId }: { experimentId: string | nul
   const experiment = useExperiment(experimentId ?? undefined);
   if (!experimentId) return <span>—</span>;
   return (
-    <Link to="/experiments/$experimentId" params={{ experimentId }} className="hover:underline [overflow-wrap:anywhere]">
+    <Link to="/experiments/$experimentId" params={{ experimentId }} className="link [overflow-wrap:anywhere]">
       {experiment.data?.name ?? experimentId}
     </Link>
   );

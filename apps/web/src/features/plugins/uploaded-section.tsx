@@ -30,7 +30,7 @@ export default function UploadedSection() {
     <section aria-labelledby="yours-uploaded" className="grid gap-3" data-testid="uploaded-section">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="grid gap-1">
-          <h3 id="yours-uploaded" className="text-xl leading-tight font-bold">
+          <h3 id="yours-uploaded" className="text-xl leading-tight font-semibold">
             Uploaded
             {list.length ? <span className="ml-2 align-middle text-xs font-semibold text-muted-foreground"> {list.length}</span> : null}
           </h3>
@@ -52,7 +52,7 @@ export default function UploadedSection() {
       ) : list.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-border-strong p-5 text-sm text-muted-foreground">
           Nothing uploaded yet. Got a model or a chart in Python?{" "}
-          <Link to="/plugins/new" className="font-semibold text-primary hover:underline">
+          <Link to="/plugins/new" className="link font-semibold">
             Upload your own code
           </Link>{" "}
           and try it out on your data in a few minutes.
@@ -63,7 +63,7 @@ export default function UploadedSection() {
             const v = p.latest_version;
             return (
               <li key={p.id} data-testid="uploaded-card" data-plugin={p.short_name} className="grid content-start gap-2 rounded-2xl border bg-card p-5">
-                <Link to="/plugins/$pluginId" params={{ pluginId: p.id }} className="w-fit font-display text-lg leading-snug font-bold [overflow-wrap:anywhere] hover:underline">
+                <Link to="/plugins/$pluginId" params={{ pluginId: p.id }} className="link w-fit font-display text-lg leading-snug font-semibold [overflow-wrap:anywhere]">
                   {displayText(p.title)}
                 </Link>
                 <p className="font-mono text-xs text-muted-foreground [overflow-wrap:anywhere]">{p.namespace}</p>

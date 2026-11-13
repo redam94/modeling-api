@@ -2,7 +2,7 @@
 description: Upload your own Python models, prep steps, plot recipes, workflow nodes and workflow templates to a shared modeling-api deployment - checked in the sandbox, private to you first, approved for the team by a second person.
 ---
 
-# Upload your own code <span class="mapi-badge">v0.19</span>
+# Upload your own code: models, steps and plots <span class="mapi-badge">v0.19</span>
 
 Got a model, a prep step or a chart in Python that the catalog doesn't have? From v0.19 you
 can upload it to your workspace. You don't need to run a stack or ask an operator to build an

@@ -12,11 +12,12 @@ import { ErrorNotice, IssueList, Spinner } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { useGrants } from "@/features/auth/workspace";
 import { cn } from "@/lib/utils";
+import { useDebounced } from "@/hooks/use-debounced";
 
 import { useSaveDoc, useStartFromTemplate } from "./actions";
 import { docKey, isStaleRevision, useLibraryItem, useLibraryValidation } from "./api";
 import { tidyDoc } from "./doc";
-import { BuilderSection, LIME, MetadataFields, PILL, PILL_SM, useDebounced } from "./ui";
+import { BuilderSection, MetadataFields, PILL, PILL_SM } from "./ui";
 import { LazyYamlTab as YamlTab } from "./yaml-tab-lazy";
 import { isWorkflowTemplateDoc, type JsonObject, type LibraryDoc, type WorkflowTemplateDoc } from "./types";
 
@@ -42,14 +43,14 @@ export function WorkflowTemplateEditor({ itemId, initial }: { itemId: string; in
       </BuilderSection>
       {issues?.length ? (
         <section aria-label="What the check found" className="rounded-2xl border bg-card p-4 [overflow-wrap:anywhere]">
-          <h2 className="mb-2 text-base font-bold">What the check found</h2>
+          <h2 className="mb-2 text-base font-semibold">What the check found</h2>
           <IssueList issues={issues} />
         </section>
       ) : null}
       <div className="flex flex-wrap items-center gap-3 rounded-3xl bg-block p-5 text-block-foreground">
         {canEdit ? (
           <Button
-            className={cn(PILL, LIME)}
+            className={PILL}
             disabled={!dirty || save.isPending}
             onClick={() =>
               void save

@@ -137,7 +137,7 @@ export function YourCharts({ modelId, version }: { modelId: string; version: num
         ) : (
           <p className="text-muted-foreground">
             Your team has no chart templates yet. Restyle any chart once and it shows here on every run.{" "}
-            <LibraryLink search={{ tab: "charts", new: "chart" }} className="font-semibold text-primary hover:underline">
+            <LibraryLink search={{ tab: "charts", new: "chart" }} className="link font-semibold">
               Make a chart template
             </LibraryLink>
           </p>

@@ -149,7 +149,7 @@ function DocsLink({ k }: { k: DocsKey }) {
   const href = docsHref(k);
   if (!href) return null;
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline-offset-4 hover:underline">
+    <a href={href} target="_blank" rel="noopener noreferrer" className="link font-semibold">
       Learn more
     </a>
   );

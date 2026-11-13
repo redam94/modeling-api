@@ -1,4 +1,4 @@
-# Getting started
+# Get started: install and first steps
 
 You can start in six ways. All six use the same spec format, steps, models and bundles.
 

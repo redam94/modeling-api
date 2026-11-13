@@ -24,16 +24,11 @@ export function phaseLabel(phase: string): string {
   return PHASE_LABEL[phase] ?? phase;
 }
 
-const CHAIN_COLORS = [
-  "bg-series-1",
-  "bg-series-2",
-  "bg-series-3",
-  "bg-series-4",
-  "bg-series-5",
-  "bg-series-6",
-  "bg-series-7",
-  "bg-series-8",
-];
+/**
+ * Chains are tints of one hue (the data blue): the label tells them apart, and red stays free
+ * for divergences.
+ */
+const CHAIN_COLORS = ["bg-chart-index", "bg-chart-index/80", "bg-chart-index/60", "bg-chart-index/45"];
 
 /** "0.12", "0.0031": two significant digits, no exponent for usual step sizes. */
 export function formatStepSize(v: number): string {
@@ -42,7 +37,8 @@ export function formatStepSize(v: number): string {
 
 /**
  * One lane per chain: draws done vs total, tuning shown hatched, divergences counted, and the
- * sampler's step size when the engine reports it (v0.11).
+ * sampler's step size when the engine reports it (v0.11). On a phone the numbers go under the
+ * bar, so the bar keeps its width.
  */
 export function ChainLanes({ chains }: { chains: ChainProgress[] }) {
   if (!chains.length) return null;
@@ -54,7 +50,7 @@ export function ChainLanes({ chains }: { chains: ChainProgress[] }) {
         const divergences = c.divergences ?? 0;
         const stepSize = c.step_size;
         return (
-          <div key={c.chain} role="listitem" className="grid grid-cols-[4.5rem_1fr_auto] items-center gap-3 text-xs">
+          <div key={c.chain} role="listitem" className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1 text-xs sm:grid-cols-[4.5rem_minmax(0,1fr)_auto]">
             <span className="font-medium text-muted-foreground">Chain {c.chain}</span>
             <div
               className="relative h-2.5 overflow-hidden rounded-full bg-muted"
@@ -69,11 +65,12 @@ export function ChainLanes({ chains }: { chains: ChainProgress[] }) {
                 style={{ width: `${frac * 100}%` }}
               />
             </div>
-            <span className="flex flex-wrap items-center justify-end gap-x-2 tabular text-muted-foreground">
+            <span className="col-start-2 flex flex-wrap items-center gap-x-2 tabular text-muted-foreground sm:col-start-auto sm:justify-end">
               {c.tuning ? <span className="text-xs">tuning</span> : null}
               {c.draws_done.toLocaleString("en")}/{c.draws_total.toLocaleString("en")}
               <span
-                className={cn("inline-flex min-w-16 items-center gap-1", divergences > 0 ? "font-medium text-destructive" : "text-muted-foreground/70")}
+                // plain muted text: a lighter tint of it is under 4.5:1 on the card in the two themes
+                className={cn("inline-flex min-w-16 items-center gap-1", divergences > 0 ? "font-medium text-destructive" : "text-muted-foreground")}
                 title="Divergent transitions"
               >
                 {divergences > 0 ? <AlertTriangle className="size-3" /> : null}

@@ -19,8 +19,20 @@ test.skip(!process.env.MAPI_GUIDED_SCREENSHOTS, "set MAPI_GUIDED_SCREENSHOTS=1 t
 test.use({ viewport: { width: 1180, height: 760 }, colorScheme: "light" });
 
 async function shot(page: Page, name: string) {
+  // Plot frames load only when they come into view, and a full-page capture draws the fixed
+  // shell at the scroll position. A window as tall as the page shows every frame, from the top.
+  const size = page.viewportSize()!;
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const height = await page.evaluate(() => document.documentElement.scrollHeight);
+  const tall = height > size.height;
+  if (tall) {
+    await page.setViewportSize({ width: size.width, height });
+    await page.waitForTimeout(1500); // the frames that came into view start to load
+    await frames(page);
+  }
   await page.waitForTimeout(400); // let transitions and the plot iframes settle
   await page.screenshot({ path: OUT(name), fullPage: true });
+  if (tall) await page.setViewportSize(size);
 }
 
 async function frames(page: Page) {

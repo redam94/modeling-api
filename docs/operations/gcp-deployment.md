@@ -53,7 +53,7 @@ Two more limits of v0.3 are not cloud facts, but they are important on the first
 
 - Browser sign-in uses an OpenID provider with an authorization-code endpoint (Google by
   default). The server does not accept the tokens of Identity Platform yet. Refer to
-  [Authentication](../guides/authentication.md#identity-platform).
+  [Sign in](../guides/authentication.md#identity-platform).
 - The nightly security suite has no probe Job in Terraform yet
   ([Security suite](security-suite.md#where-the-probes-run)).
 

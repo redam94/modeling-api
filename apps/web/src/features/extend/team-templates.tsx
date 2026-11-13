@@ -38,7 +38,7 @@ export function TeamTemplateCards({ items, mayCreate }: { items: readonly Librar
               <CatalogGlyph kind="workflow" seed={item.id} size="sm" />
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold text-muted-foreground">From your team</p>
-                <h3 className="text-xl leading-tight font-bold [overflow-wrap:anywhere]">{item.title}</h3>
+                <h3 className="text-xl leading-tight font-semibold [overflow-wrap:anywhere]">{item.title}</h3>
               </div>
             </div>
             {item.summary ? <p className="text-muted-foreground [overflow-wrap:anywhere]">{item.summary}</p> : null}

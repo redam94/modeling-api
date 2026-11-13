@@ -247,6 +247,6 @@ Two automatic suites run the same flow against the running stack (`make e2e`):
   log a business KPI after you use the model.
 - [Compare runs and use experiments](run-comparison.md): fit the spec again with other
   settings, then compare the runs side by side.
-- [Marketing-mix models](mmm.md): the model, its priors, derived quantities and budget plots.
+- [Marketing-mix models (MMM)](mmm.md): the model, its priors, derived quantities and budget plots.
 - [Spec format](../reference/spec-format.md) and the [steps](../reference/steps.md) that this guide uses.
 - [Web app and plot sandbox](../reference/web-app.md): all the pages, and how the app isolates plots.

@@ -72,7 +72,7 @@ export function DiagnosticsList({ items }: { items: readonly CatalogDiagnostic[]
     <div className="grid gap-4" data-testid="diagnostics-list">
       {[...groups.entries()].map(([dist, list]) => (
         <section key={dist ?? "-"} aria-label={dist ? `Problems from ${dist}` : "Problems not from one plugin"} className="rounded-2xl border bg-card px-5 py-2">
-          <h4 className="flex flex-wrap items-baseline justify-between gap-2 pt-3 pb-1 text-base font-bold">
+          <h4 className="flex flex-wrap items-baseline justify-between gap-2 pt-3 pb-1 text-base font-semibold">
             <span className="font-mono text-sm [overflow-wrap:anywhere]">{dist ?? "Not from one plugin"}</span>
             <span className="text-xs font-medium text-muted-foreground">
               {list.length} {list.length === 1 ? "problem" : "problems"}
@@ -101,7 +101,7 @@ export function CatalogProblems({ operator }: { operator: boolean }) {
     <section aria-labelledby="catalog-problems" className="grid gap-3">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="grid gap-1">
-          <h3 id="catalog-problems" className="text-xl leading-tight font-bold">
+          <h3 id="catalog-problems" className="text-xl leading-tight font-semibold">
             Problems
           </h3>
           <p className="max-w-[60ch] text-sm text-muted-foreground">

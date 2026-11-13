@@ -29,6 +29,7 @@ import { SchemaForm, type JsonObject as FormObject } from "@/features/forms/json
 import { safeSchema } from "@/features/forms/schema-sanitize";
 import { plainIssue } from "@/lib/plain-issue";
 import { cn } from "@/lib/utils";
+import { useDebounced } from "@/hooks/use-debounced";
 
 import { useModelRecipeUse, useSaveDoc, type Saved } from "./actions";
 import { useModelCatalog } from "./catalog";
@@ -36,7 +37,7 @@ import { docKey, isStaleRevision, useLibraryItem, useLibraryValidation } from ".
 import { DatasetPicker, isGroupLike, isNumeric, useDatasetColumns, type ColumnInfo } from "./data-source";
 import { FAMILY_OPTIONS, isDeclarativeDoc, moveItem, newTerm, SIGN_OPTIONS, summarizeModelRecipe, tidyDoc, TRANSFORM_OPTIONS } from "./doc";
 import { PriorPicker } from "./prior-picker";
-import { BuilderSection, Chip, focusPointer, IssueLines, issueText, LIME, MetadataFields, PILL, PILL_SM, ScopeChoice, ToggleChip, useDebounced } from "./ui";
+import { BuilderSection, Chip, focusPointer, IssueLines, issueText, MetadataFields, PILL, PILL_SM, ScopeChoice, ToggleChip } from "./ui";
 import { LazyYamlTab as YamlTab } from "./yaml-tab-lazy";
 import {
   hasErrors,
@@ -126,7 +127,7 @@ function TermCard({
   return (
     <li className="rounded-2xl border bg-background p-4 sm:p-5" data-term={term.var || `#${index}`} aria-label={`Driver ${index + 1}: ${name}`}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-lg leading-tight font-bold [overflow-wrap:anywhere]">{name}</h3>
+        <h3 className="text-lg leading-tight font-semibold [overflow-wrap:anywhere]">{name}</h3>
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon-sm" data-action="up" aria-label={`Move ${name} up`} disabled={index === 0} onClick={() => onMove(index - 1)}>
             <ArrowUp />
@@ -240,11 +241,11 @@ function DeclarativeSections({ model, onModel, issues, columns, datasetPicked }:
                     aria-pressed={on}
                     onClick={() => onModel({ ...model, outcome: { ...model.outcome, family: f.value, ...(f.value === "ordinal" ? { n_categories: model.outcome.n_categories ?? 5 } : { n_categories: null }) } })}
                     className={cn(
-                      "focus-ring grid gap-1 rounded-xl border-[1.5px] p-3 text-left transition-colors",
+                      "focus-ring grid gap-1 rounded-xl border p-3 text-left transition-colors",
                       on ? "border-primary bg-accent" : "border-transparent bg-background hover:border-border-strong",
                     )}
                   >
-                    <span className="display text-base font-bold">{f.label}</span>
+                    <span className="display text-base font-semibold">{f.label}</span>
                     <span className="text-xs text-muted-foreground">{f.hint}</span>
                   </button>
                 );
@@ -346,7 +347,7 @@ function DeclarativeSections({ model, onModel, issues, columns, datasetPicked }:
         <summary className="cursor-pointer text-base font-semibold">More: interactions, baseline and noise</summary>
         <div className="mt-4 grid gap-6">
           <div className="grid gap-3" data-pointer={`${P}/interactions`}>
-            <h3 className="text-base font-bold">Drivers that work together</h3>
+            <h3 className="text-base font-semibold">Drivers that work together</h3>
             <p className="text-muted-foreground">An interaction lets one driver change the effect of another (a promo that works better when the price is low).</p>
             {(model.interactions ?? []).map((x, i) => (
               <div key={i} className="grid items-end gap-3 rounded-xl border p-3 sm:grid-cols-[1fr_1fr_auto]">
@@ -493,7 +494,7 @@ function ReviewBlock({
   return (
     <aside aria-label="Your model in words" className="grid content-start gap-5 rounded-3xl bg-block p-6 text-block-foreground lg:sticky lg:top-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-xl font-bold">Your model, in words</h2>
+        <h2 className="text-xl font-semibold">Your model, in words</h2>
         <Chip tone="block">
           {checking ? <Spinner className="size-3" /> : null}
           {status}
@@ -507,7 +508,7 @@ function ReviewBlock({
         ))}
       </div>
       <div className="grid gap-2">
-        <Button className={cn(PILL, LIME, "w-full")} onClick={onSave} disabled={saving || (!dirty && saved)}>
+        <Button className={cn(PILL, "w-full")} onClick={onSave} disabled={saving || (!dirty && saved)}>
           {saving ? <Spinner /> : <Save />}
           {saved && !dirty ? "Saved" : saved ? "Save a new version" : "Save model"}
         </Button>
@@ -639,7 +640,7 @@ export function ModelBuilder({ itemId, initial, onCreated }: ModelBuilderProps) 
                     </div>
                     {presetEntry && (doc.exposed ?? []).length ? (
                       <div className="mt-5 grid gap-3 rounded-xl border p-4">
-                        <h3 className="text-base font-bold">When you use it now</h3>
+                        <h3 className="text-base font-semibold">When you use it now</h3>
                         <SchemaForm schema={exposedSchema(safeSchema((presetEntry.manifest.settings_schema ?? {}) as FormObject), doc.exposed ?? [])} value={exposedValues} onChange={setExposedValues} nested />
                       </div>
                     ) : null}
@@ -656,7 +657,7 @@ export function ModelBuilder({ itemId, initial, onCreated }: ModelBuilderProps) 
           )}
           {issues?.length ? (
             <section aria-label="What the check found" className="rounded-2xl border bg-card p-4 [overflow-wrap:anywhere]">
-              <h2 className="mb-2 text-base font-bold">What the check found</h2>
+              <h2 className="mb-2 text-base font-semibold">What the check found</h2>
               <IssueList
                 issues={issues}
                 onSelect={(i) => {

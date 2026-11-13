@@ -5,13 +5,15 @@
  */
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Archive, GitBranchPlus, Play, Plus, Workflow as WorkflowIcon } from "lucide-react";
+import { Archive, GitBranchPlus, Play, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { can } from "@/api/access";
 import { ApiError } from "@/api/client";
+import { EmptyArt } from "@/components/brand/empty-art";
 import { EmptyState, ErrorNotice, LoadingRows, Mono, PageHeader, QueryView } from "@/components/common";
 import { DataTable } from "@/components/data-table";
+import { ListNoMatches, ListToolbar, matchesQuery, toolbarShown } from "@/components/list-toolbar";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/overlays";
 import { Badge, Field, Input } from "@/components/ui/primitives";
@@ -27,6 +29,7 @@ import { WorkflowRunMonitor } from "@/features/workflows/run-monitor";
 import { RUN_STATUS_META, TONE_BADGE, TRIGGER_LABEL } from "@/features/workflows/status";
 import { RecipePicker, RecipeRunner, TemplateGallery, TemplateWizard } from "@/features/workflows/templates";
 import type { Workflow, WorkflowDoc, WorkflowRun } from "@/features/workflows/types";
+import { useRecordRecent } from "@/features/search/use-record-recent";
 import { runCostView } from "@/lib/cost";
 import { elapsedSeconds, formatDuration, relativeTime, shortId } from "@/lib/format";
 import { toast } from "@/stores/toast";
@@ -46,7 +49,7 @@ const workflowColumns: ColumnDef<Workflow, unknown>[] = [
     accessorKey: "name",
     header: "Workflow",
     cell: ({ row }) => (
-      <Link to="/workflows/$workflowId" params={{ workflowId: row.original.id }} className="font-medium hover:underline" onClick={(e) => e.stopPropagation()}>
+      <Link to="/workflows/$workflowId" params={{ workflowId: row.original.id }} className="link font-medium" onClick={(e) => e.stopPropagation()}>
         {row.original.name}
       </Link>
     ),
@@ -63,9 +66,15 @@ export function WorkflowsPage() {
   const persona = useEffectivePersona();
   const ws = useWorkspace();
   const guided = persona === "guided";
-  const tab = search.tab ?? (guided ? "templates" : "workflows");
+  const q = search.q ?? "";
+  // A search (the global search's "See all in Workflows") is for the list, in each mode.
+  const tab = search.tab ?? (guided && !q ? "templates" : "workflows");
+  const setQuery = (next: string) => void navigate({ search: (s) => ({ ...s, q: next || undefined }), replace: true });
   const workflows = useWorkflows();
   const mayCreate = can(ws.grants, "create", "workflow");
+  const items = workflows.data?.items;
+  const more = Boolean(workflows.data?.next_cursor);
+  const rows = q && items ? items.filter((w) => matchesQuery(q, [w.name], [w.description, w.template])) : (items ?? []);
   return (
     <>
       <PageHeader
@@ -85,7 +94,7 @@ export function WorkflowsPage() {
           ) : null
         }
       />
-      <Tabs value={tab} onValueChange={(v) => void navigate({ search: { tab: v as "workflows" | "templates" } })}>
+      <Tabs value={tab} onValueChange={(v) => void navigate({ search: (s) => ({ ...s, tab: v as "workflows" | "templates" }) })}>
         <TabsList>
           <TabsTrigger value="templates">{guided ? "Recipes" : "Templates"}</TabsTrigger>
           <TabsTrigger value="workflows">{guided ? "Your workflows" : "Workflows"}</TabsTrigger>
@@ -93,25 +102,33 @@ export function WorkflowsPage() {
         <TabsContent value="templates">
           <TemplateGallery guided={guided} />
         </TabsContent>
-        <TabsContent value="workflows">
+        <TabsContent value="workflows" className="space-y-3">
+          {/* Outside the query view: a link with ?q= shows its text while the list loads and when the project has no workflow. */}
+          {toolbarShown(q, items?.length) ? <ListToolbar things="workflows" value={q} onChange={setQuery} count={items ? { shown: rows.length, total: items.length, more } : undefined} /> : null}
           <QueryView query={workflows}>
-            {(page) =>
-              page.items.length ? (
-                <DataTable label="Workflows" data={page.items} columns={workflowColumns} getRowId={(w) => w.id} onRowClick={(w) => void navigate({ to: "/workflows/$workflowId", params: { workflowId: w.id } })} />
+            {(page) => {
+              return page.items.length ? (
+                <div className="grid gap-3">
+                  {rows.length ? (
+                    <DataTable label="Workflows" data={rows} columns={workflowColumns} getRowId={(w) => w.id} onRowClick={(w) => void navigate({ to: "/workflows/$workflowId", params: { workflowId: w.id } })} />
+                  ) : (
+                    <ListNoMatches things="workflows" query={q} firstPage={more ? page.items.length : undefined} onClear={() => setQuery("")} />
+                  )}
+                </div>
               ) : (
                 <EmptyState
-                  icon={<WorkflowIcon />}
+                  illustration={<EmptyArt kind="workflows" />}
                   title="No workflows yet"
                   action={
-                    <Button variant="outline" onClick={() => void navigate({ search: { tab: "templates" } })}>
+                    <Button variant="outline" onClick={() => void navigate({ search: (s) => ({ ...s, tab: "templates" as const }) })}>
                       Browse the templates
                     </Button>
                   }
                 >
                   Start from a template. The readiness-to-ARIMAX recipe is a good first template.
                 </EmptyState>
-              )
-            }
+              );
+            }}
           </QueryView>
         </TabsContent>
       </Tabs>
@@ -178,7 +195,7 @@ export function NewWorkflowPage() {
   const { template, data } = newRoute.useSearch();
   return (
     <>
-      <PageHeader title={template ? "New workflow from a template" : "New workflow"} description={template ? "Give it a name. Then set its defaults and bind your data." : "Give it a name. Then add nodes from the palette."} />
+      <PageHeader crumbs={[{ label: "Workflows", to: "/workflows" }, { label: "New workflow" }]} title={template ? "New workflow from a template" : "New workflow"} description={template ? "Give it a name. Then set its defaults and bind your data." : "Give it a name. Then add nodes from the palette."} />
       {template ? <TemplateWizard templateId={template} initialData={data} /> : <BlankWorkflow />}
     </>
   );
@@ -188,7 +205,7 @@ export function RecipePage() {
   const { template, data } = recipeRoute.useSearch();
   return (
     <>
-      <PageHeader title="Run a recipe on your data" description="Select your data and click Run. The app explains each step while it runs." />
+      <PageHeader crumbs={[{ label: "Workflows", to: "/workflows" }, { label: "Run a recipe" }]} title="Run a recipe on your data" description="Select your data and click Run. The app explains each step while it runs." />
       {template ? <RecipeRunner templateId={template} initialData={data} /> : <RecipePicker />}
     </>
   );
@@ -205,7 +222,7 @@ function RunsTable({ runs }: { runs: WorkflowRun[] }) {
         accessorKey: "run_id",
         header: "Run",
         cell: ({ row }) => (
-          <Link to="/workflow-runs/$runId" params={{ runId: row.original.run_id }} className="hover:underline" onClick={(e) => e.stopPropagation()}>
+          <Link to="/workflow-runs/$runId" params={{ runId: row.original.run_id }} className="link" onClick={(e) => e.stopPropagation()}>
             <Mono>{shortId(row.original.run_id)}</Mono>
           </Link>
         ),
@@ -228,6 +245,7 @@ export function WorkflowPage() {
   const ws = useWorkspace();
   const persona = useEffectivePersona();
   const wf = useWorkflow(workflowId);
+  useRecordRecent(wf.data ? { group: "workflows", title: wf.data.name, secondary: wf.data.description || wf.data.id, href: `/workflows/${wf.data.id}` } : null);
   const latest = wf.data?.latest_revision;
   const revNo = search.rev ?? latest;
   const rev = useWorkflowRevision(workflowId, revNo);
@@ -270,6 +288,7 @@ export function WorkflowPage() {
   return (
     <>
       <PageHeader
+        crumbs={[{ label: "Workflows", to: "/workflows" }, { label: w.name }]}
         title={w.name}
         description={w.description ?? undefined}
         meta={
@@ -318,7 +337,7 @@ export function WorkflowPage() {
           {search.rev && latest && search.rev !== latest ? (
             <p className="mb-3 text-sm text-muted-foreground">
               You see revision {search.rev}. When you save, the app makes revision {latest + 1} from it.{" "}
-              <Link to="/workflows/$workflowId" params={{ workflowId }} search={{ tab: "editor" }} className="text-primary hover:underline">
+              <Link to="/workflows/$workflowId" params={{ workflowId }} search={{ tab: "editor" }} className="link">
                 Open the latest
               </Link>
             </p>

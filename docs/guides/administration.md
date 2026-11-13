@@ -9,7 +9,7 @@ manage the deployment. It tells who can do what, and how the platform limits com
 charges for it. It also tells what to do when a problem occurs. For the concepts, see
 [Tenancy and authentication](../concepts/tenancy-and-auth.md) and
 [Quotas and cost](../concepts/quotas-and-cost.md). For sign-in, see
-[Authentication](authentication.md).
+[Sign in](authentication.md).
 
 There are three administrative jobs, and the platform keeps them separate:
 
@@ -29,7 +29,7 @@ operator). It also signs in as `analyst@dev.local`, who becomes the admin of the
 ```
 
 On a real deployment, each person runs `mapi login` instead (see
-[Authentication](authentication.md#the-command-line)). Operator commands always need a
+[Sign in](authentication.md#the-command-line)). Operator commands always need a
 sign-in. An API token never has operator powers, also when its owner is an operator.
 
 ## Tenants
@@ -350,7 +350,7 @@ filter by tenant, project, actor, action, result and time.
 
 ## Where next
 
-- [Authentication](authentication.md): browser sign-in, the development IdP, Identity
+- [Sign in](authentication.md): browser sign-in, the development IdP, Identity
   Platform, API tokens and the CLI.
 - [Permissions](../reference/generated/permissions.md): the generated matrices.
 - [CLI reference](../reference/generated/cli-reference.md#mapi-admin): all `mapi admin` and

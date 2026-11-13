@@ -110,11 +110,11 @@ export function DecisionView({ decision, doc, run, labelOf = (id) => id, expert 
 
 function ChildRunLink({ id, workflow }: { id: string; workflow: boolean }) {
   return workflow ? (
-    <Link to="/workflow-runs/$runId" params={{ runId: id }} className="inline-flex items-center gap-1 text-primary hover:underline">
+    <Link to="/workflow-runs/$runId" params={{ runId: id }} className="link inline-flex items-center gap-1">
       <Mono>{shortId(id)}</Mono> <ExternalLink className="size-3" aria-hidden />
     </Link>
   ) : (
-    <Link to="/runs/$runId" params={{ runId: id }} className="inline-flex items-center gap-1 text-primary hover:underline">
+    <Link to="/runs/$runId" params={{ runId: id }} className="link inline-flex items-center gap-1">
       <Mono>{shortId(id)}</Mono> <ExternalLink className="size-3" aria-hidden />
     </Link>
   );

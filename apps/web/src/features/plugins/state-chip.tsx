@@ -1,6 +1,6 @@
 /**
  * The state chip of an uploaded version (D20, I-8): the relaxed words of `STATE_LABEL` on the
- * run-state tones (coral `danger` for refusals), a live dot while the checks run, and "Only you
+ * run-state tones (red `danger` for refusals), a live dot while the checks run, and "Only you
  * can use this" beside a private version.
  */
 import { Lock } from "lucide-react";
@@ -18,7 +18,7 @@ export function PluginStateChip({ state, className }: { state: PluginVersionStat
       data-testid="plugin-state-chip"
       data-state={state}
       title={STATE_DESCRIPTION[state]}
-      className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap", TONE_CLASSES[tone], className)}
+      className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap", TONE_CLASSES[tone], className)}
     >
       <span
         aria-hidden

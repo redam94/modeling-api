@@ -86,7 +86,7 @@ test("Guided what-if leads to budget optimisation and back", async ({ page }) =>
   await expect(page.getByRole("heading", { name: "Optimise a budget" })).toBeVisible();
   await page.getByRole("button", { name: "Optimise the budget" }).click();
   await expect(page.getByTestId("plan-result")).toBeVisible({ timeout: 15_000 });
-  await page.getByRole("link", { name: "Back to your analysis" }).click();
+  await page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "Your analysis" }).click();
   await expect(page).toHaveURL(/\/guided\/[^/]+\/explore$/);
   await expect(page.getByTestId("optimise-entry")).toBeVisible();
 });

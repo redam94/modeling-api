@@ -3,7 +3,7 @@
  * comparison of several model versions (`/models/compare`), M3.5.
  */
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, GitCompare, Wallet } from "lucide-react";
+import { GitCompare, Wallet } from "lucide-react";
 
 import { errorMessage } from "@/api/client";
 import { useModel, useModelVersion } from "@/api/queries";
@@ -38,6 +38,12 @@ export function ModelExplorerPage() {
   return (
     <div className="grid gap-6">
       <PageHeader
+        crumbs={[
+          { label: "Models", to: "/models" },
+          { label: model.data?.name ?? "Model", to: "/models/$modelId", params: { modelId } },
+          { label: `Version ${v}`, to: "/models/$modelId/versions/$version", params: { modelId, version: String(v) } },
+          { label: "Explore" },
+        ]}
         title={
           <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             Explore {model.data?.name ?? "the model"}
@@ -64,11 +70,6 @@ export function ModelExplorerPage() {
                 </Link>
               </Button>
             ) : null}
-            <Button asChild variant="ghost">
-              <Link to="/models/$modelId/versions/$version" params={{ modelId, version: String(v) }}>
-                <ArrowLeft /> Back to the version
-              </Link>
-            </Button>
           </>
         }
       />
@@ -106,6 +107,7 @@ export function ComparePage() {
   return (
     <div className="grid gap-6">
       <PageHeader
+        crumbs={[{ label: "Models", to: "/models" }, { label: "Compare versions" }]}
         title="Compare model versions"
         description="Compare some versions on held-out data. The page shows their errors and a ranking for each metric. Tests show if the differences are more than chance."
       />

@@ -268,3 +268,21 @@ describe("library type helpers", () => {
     expect(isLibraryItemId("lib_01JAF3Q2X8M9V7K5H4G3F2E1D0")).toBe(false);
   });
 });
+
+describe("the list for the global search (v0.21)", () => {
+  it("answers at most `limit` items and a cursor to the others, with the text filter", async () => {
+    type Page = { items: LibraryItem[]; next_cursor: string | null };
+    const all = await list();
+    expect(all.length).toBeGreaterThan(2);
+    const first = (await call<Page>("ana", "GET", "/v1/library?limit=2")).data;
+    expect(first.items.map((i) => i.id)).toEqual(all.slice(0, 2).map((i) => i.id));
+    expect(first.next_cursor).toEqual(expect.any(String));
+    const rest = (await call<Page>("ana", "GET", `/v1/library?limit=200&cursor=${encodeURIComponent(first.next_cursor ?? "")}`)).data;
+    expect(rest.items.map((i) => i.id)).toEqual(all.slice(2).map((i) => i.id));
+    expect(rest.next_cursor).toBeNull();
+    const word = all[0]!.title.split(" ")[0]!.toLowerCase();
+    const found = (await call<Page>("ana", "GET", `/v1/library?q=${encodeURIComponent(word)}&limit=1`)).data;
+    expect(found.items).toHaveLength(1);
+    expect(found.items[0]!.title.toLowerCase()).toContain(word);
+  });
+});

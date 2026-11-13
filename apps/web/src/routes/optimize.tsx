@@ -5,15 +5,14 @@
  * `?run=` keeps the plan in the URL; `?back=` returns to the Guided analysis it came from.
  */
 import { useQuery } from "@tanstack/react-query";
-import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Wallet } from "lucide-react";
+import { getRouteApi, useNavigate } from "@tanstack/react-router";
+import { Wallet } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { can } from "@/api/access";
 import { errorMessage } from "@/api/client";
 import { modelArtifactLink, useModel, useModelVersion, useProjectScope } from "@/api/queries";
-import { EmptyState, ErrorNotice, LoadingRows, Mono, PageHeader, ProblemNotice } from "@/components/common";
-import { Button } from "@/components/ui/button";
+import { EmptyState, ErrorNotice, LoadingRows, Mono, PageHeader, ProblemNotice, type Crumb } from "@/components/common";
 import { Badge } from "@/components/ui/primitives";
 import { useGrants } from "@/features/auth/workspace";
 import { RunBanner } from "@/features/explore/explorer-shell";
@@ -86,21 +85,18 @@ export function OptimizePage() {
 
   if (!valid) return <ErrorNotice error={new Error("The version must be a positive integer.")} />;
   if (mv.isError) return <ErrorNotice error={mv.error} title="The app could not load this model version" />;
-  const back = search.back ? (
-    <Button asChild variant="ghost">
-      <Link to="/guided/$specId/$step" params={{ specId: search.back, step: "explore" }}>
-        <ArrowLeft /> Back to your analysis
-      </Link>
-    </Button>
-  ) : (
-    <Button asChild variant="ghost">
-      <Link to="/models/$modelId/versions/$version" params={{ modelId, version: String(v) }}>
-        <ArrowLeft /> Back to the version
-      </Link>
-    </Button>
-  );
+  // From a guided analysis the trail goes back to it; otherwise it is the model's own trail.
+  const crumbs: Crumb[] = search.back
+    ? [{ label: "Guided", to: "/guided" }, { label: "Your analysis", to: "/guided/$specId/$step", params: { specId: search.back, step: "explore" } }, { label: "Optimise a budget" }]
+    : [
+        { label: "Models", to: "/models" },
+        { label: model.data?.name ?? "Model", to: "/models/$modelId", params: { modelId } },
+        { label: `Version ${v}`, to: "/models/$modelId/versions/$version", params: { modelId, version: String(v) } },
+        { label: "Optimise a budget" },
+      ];
   const header = (
     <PageHeader
+      crumbs={crumbs}
       title="Optimise a budget"
       description={expert ? "Divide the budget across channels (and markets) to get the maximum result. The plan uses all the plausible versions of the model. It has bounds, groups, a cautious objective and the efficient frontier." : "Find the best division of your marketing budget from what the model learned. The plan includes the uncertainty of the model."}
       meta={
@@ -110,7 +106,6 @@ export function OptimizePage() {
           <Badge variant="outline">mmm-framework planning</Badge>
         </>
       }
-      actions={back}
     />
   );
   if (mv.isPending || channels.isPending) {

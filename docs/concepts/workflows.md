@@ -2,7 +2,7 @@
 description: Workflows nest statistical tests, data processing, train/test plans and models into one versioned, automated DAG - with a safe condition language for the decisions in between.
 ---
 
-# Workflows <span class="mapi-badge">v0.5</span>
+# How workflows work <span class="mapi-badge">v0.5</span>
 
 A **workflow** connects the steps of an analysis. The steps run as one unit, in the same way
 each time. A usual sequence is: do a check of the data, decide what to do, prepare the data,

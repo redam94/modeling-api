@@ -204,7 +204,7 @@ describe("Make your own: model builder", () => {
     const list = await screen.findByTestId("library-list", undefined, { timeout: 4000 });
     await userEvent.click(within(list).getByRole("button", { name: "Open Revenue by market" }));
     expect(await screen.findByRole("heading", { name: "Revenue by market", level: 1 }, { timeout: 4000 })).toBeInTheDocument();
-    expect(screen.getByText(/version 2/)).toBeInTheDocument();
+    expect(screen.getByText("Version 2")).toBeInTheDocument();
     expect(screen.getByTestId("model-recipe-summary")).toHaveTextContent("Media spend (spend_local), logged and standardised, can only lift it, differently in each market.");
     expect(screen.getByLabelText("Short name")).toHaveAttribute("readonly");
   });

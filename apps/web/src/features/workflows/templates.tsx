@@ -116,7 +116,7 @@ function GallerySection({ id, title, hint, children }: { id: string; title: stri
   return (
     <section aria-labelledby={id} className="grid gap-4">
       <div className="grid gap-1">
-        <h2 id={id} className="text-2xl leading-tight font-bold">
+        <h2 id={id} className="text-2xl leading-tight font-semibold">
           {title}
         </h2>
         <p className="max-w-[62ch] text-sm text-muted-foreground">{hint}</p>

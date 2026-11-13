@@ -17,7 +17,7 @@ export function InspectFacts({ inspection, namespace }: { inspection: PluginInsp
   return (
     <section data-testid="plugin-inspect-facts" aria-labelledby="plugin-facts-title" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 rounded-2xl border bg-card p-5">
       <div className="grid gap-1">
-        <h3 id="plugin-facts-title" className="font-display text-lg leading-tight font-bold">
+        <h3 id="plugin-facts-title" className="font-display text-lg leading-tight font-semibold">
           What's in the file
         </h3>
         <p className="text-sm text-muted-foreground">We read these from the wheel without running any of it.</p>

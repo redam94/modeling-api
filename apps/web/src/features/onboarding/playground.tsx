@@ -517,7 +517,7 @@ export function Playground({ className, anchor = "home.playground" }: { classNam
       <header className="flex flex-wrap items-start justify-between gap-4 lg:col-span-2">
         <div className="grid max-w-[52ch] gap-1.5">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 id={titleId} className="text-2xl leading-tight font-bold">
+            <h2 id={titleId} className="text-2xl leading-tight font-semibold">
               What if you moved the budget?
             </h2>
             <ExampleChip />
@@ -574,7 +574,7 @@ export function Playground({ className, anchor = "home.playground" }: { classNam
               const s = stateOf(ch);
               return (
                 <div key={ch} className="min-w-0 truncate rounded-lg bg-muted px-3 py-2.5 text-xs text-muted-foreground" title={channelLabel(ch)}>
-                  <b className={cn("block font-display text-lg leading-tight font-bold tabular", s.nextPound >= 1 ? "text-highlight-ink" : "text-foreground")}>
+                  <b className={cn("block font-display text-lg leading-tight font-semibold tabular", s.nextPound >= 1 ? "text-highlight-ink" : "text-foreground")}>
                     {pounds(s.nextPound)}
                   </b>
                   {channelLabel(ch)}
@@ -592,7 +592,7 @@ export function Playground({ className, anchor = "home.playground" }: { classNam
               {view.weeklySales !== null ? (
                 <CountUp value={view.weeklySales} format={money} className="font-display text-4xl leading-none font-[750] tracking-[-0.03em]" />
               ) : null}
-              <span data-testid="playground-delta" data-tone={tone} className={cn("rounded-full px-2.5 py-1 text-sm font-bold tabular", TONE_CLASS[tone])}>
+              <span data-testid="playground-delta" data-tone={tone} className={cn("rounded-full px-2.5 py-1 text-sm font-semibold tabular", TONE_CLASS[tone])}>
                 {deltaText(view.change.mid)}
               </span>
             </div>
@@ -673,7 +673,7 @@ export function MiniPlayground({ className, anchor = "catalog.playground" }: { c
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="grid gap-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 id={titleId} className="text-xl leading-tight font-bold">
+            <h3 id={titleId} className="text-xl leading-tight font-semibold">
               Try the curve
             </h3>
             <ExampleChip />
@@ -694,7 +694,7 @@ export function MiniPlayground({ className, anchor = "catalog.playground" }: { c
             aria-pressed={ch === channel}
             onClick={() => setChannel(ch)}
             className={cn(
-              "focus-ring inline-flex h-8 items-center gap-1.5 rounded-full border-[1.5px] border-border-strong px-3 text-xs font-semibold transition-colors hover:bg-muted",
+              "focus-ring inline-flex h-8 items-center gap-1.5 rounded-full border border-border-strong px-3 text-xs font-semibold transition-colors hover:bg-muted",
               ch === channel && "border-foreground bg-foreground text-background hover:bg-foreground",
             )}
           >
@@ -745,9 +745,9 @@ export function MiniPlayground({ className, anchor = "catalog.playground" }: { c
 
       <div data-testid="playground-result" aria-live="polite" aria-atomic="true" className="grid gap-1.5">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-display text-2xl leading-none font-bold tabular">{money(s.added)}</span>
+          <span className="font-display text-2xl leading-none font-semibold tabular">{money(s.added)}</span>
           <span className="text-xs text-muted-foreground">of sales a week from {name}</span>
-          <span data-testid="playground-delta" data-tone={tone} className={cn("rounded-full px-2.5 py-0.5 text-xs font-bold tabular", TONE_CLASS[tone])}>
+          <span data-testid="playground-delta" data-tone={tone} className={cn("rounded-full px-2.5 py-0.5 text-xs font-semibold tabular", TONE_CLASS[tone])}>
             {deltaText(view.change.mid)}
           </span>
         </div>

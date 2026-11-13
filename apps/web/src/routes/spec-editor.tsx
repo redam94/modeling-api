@@ -39,6 +39,7 @@ import { useHintSources, useSchemaHints } from "@/features/editor/use-spec-hints
 import { YamlEditor, type YamlEditorHandle } from "@/features/editor/yaml-editor";
 import { GuidedReturnLink } from "@/features/guided/return-link";
 import { VisualBuilder } from "@/features/spec-builder/visual-builder";
+import { useRecordRecent } from "@/features/search/use-record-recent";
 import { env } from "@/env";
 import { useDebounced } from "@/hooks/use-debounced";
 import { relativeTime, shortId } from "@/lib/format";
@@ -144,6 +145,7 @@ export function SpecEditorPage() {
 function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: string | null; revision: number | undefined; starter?: string }) {
   const navigate = useNavigate();
   const spec = useSpec(specId ?? undefined);
+  useRecordRecent(spec.data ? { group: "specs", title: spec.data.name, secondary: `Revision ${spec.data.latest_revision} · ${spec.data.id}`, href: `/build/${spec.data.id}` } : null);
   const revisions = useSpecRevisions(specId ?? undefined);
   const selectedRev = revision ?? spec.data?.latest_revision;
   const loaded = useSpecRevision(specId ?? undefined, selectedRev);
@@ -314,6 +316,7 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
   return (
     <>
       <PageHeader
+        crumbs={[{ label: "Build", to: "/build" }, { label: spec.data?.name ?? (specId ? "Spec" : "New spec") }]}
         title={spec.data?.name ?? (specId ? <Spinner /> : "New spec")}
         meta={
           <>

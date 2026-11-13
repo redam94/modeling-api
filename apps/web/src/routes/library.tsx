@@ -3,7 +3,7 @@
  * templates and workflow templates, made without code.
  *
  * - The overview has one tab per kind (Models · Prep · Charts · Workflow templates): an ink
- *   block that starts a new one (the page's one block, with its one lime call to action) and
+ *   block that starts a new one (the page's one block, with its one inverted ink call to action) and
  *   the items of that kind.
  * - `?new=model|preset|prep|chart` opens a builder for a new item (`source=` starts a chart
  *   template from a chart type, `base=` a preset from a catalog model); `?item=lib_…` opens a
@@ -13,11 +13,11 @@
  * page lazily: its chunk is `library-*`, signed-in only, never in share or client bundles).
  */
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { ArrowLeft, BookOpen, ChartSpline, Layers, Workflow } from "lucide-react";
+import { BookOpen, ChartSpline, Layers, Workflow } from "lucide-react";
 import { useRef, type ReactNode } from "react";
 
-import { ErrorNotice, LoadingRows } from "@/components/common";
-import { EmptyLibraryArt, HeroArt } from "@/components/illustrations";
+import { EmptyArt, type EmptyArtKind } from "@/components/brand/empty-art";
+import { EmptyState, ErrorNotice, LoadingRows, PageHeader } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/overlays";
 import { useWorkspace } from "@/features/auth/workspace";
@@ -29,7 +29,7 @@ import { LibraryList } from "@/features/library/library-list";
 import { ModelBuilder } from "@/features/library/model-builder";
 import { PrepBuilder } from "@/features/library/prep-builder";
 import { LIBRARY_TABS, TAB_OF_KIND, validateLibrarySearch, type LibraryNew, type LibrarySearch, type LibraryTab } from "@/features/library/search";
-import { LIME, PILL } from "@/features/library/ui";
+import { BLOCK_CTA, PILL } from "@/features/library/ui";
 import { WorkflowTemplateEditor } from "@/features/library/workflow-template-editor";
 import { docOfKind, type LibraryDoc, type LibraryItem, type LibraryKind } from "@/features/library/types";
 import { cn } from "@/lib/utils";
@@ -53,6 +53,9 @@ interface Lead {
   second?: { label: string; onClick: () => void };
 }
 
+/** The glyph beside each kind's lead. */
+const LEAD_ART: Record<LibraryTab, EmptyArtKind> = { models: "models", prep: "datasets", charts: "dashboards", workflows: "workflows" };
+
 function LeadBlock({ lead, art }: { lead: Lead; art: ReactNode }) {
   return (
     <section className="grid items-center gap-6 overflow-hidden rounded-3xl bg-block p-[clamp(1.5rem,4vw,2.75rem)] text-block-foreground md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
@@ -60,7 +63,7 @@ function LeadBlock({ lead, art }: { lead: Lead; art: ReactNode }) {
         <h2 className="display-title text-[clamp(1.75rem,4vw,2.25rem)] leading-[1.05] text-balance">{lead.title}</h2>
         <p className="max-w-[48ch] text-lg leading-relaxed text-block-muted">{lead.body}</p>
         <div className="flex flex-wrap gap-3 pt-2">
-          <Button className={cn(PILL, LIME)} onClick={lead.onCta} data-tour={lead.anchor}>
+          <Button className={cn(PILL, BLOCK_CTA)} onClick={lead.onCta} data-tour={lead.anchor}>
             {lead.cta}
           </Button>
           {lead.second ? (
@@ -70,7 +73,7 @@ function LeadBlock({ lead, art }: { lead: Lead; art: ReactNode }) {
           ) : null}
         </div>
       </div>
-      <div className="mx-auto w-full max-w-[280px] max-md:max-w-[200px]">{art}</div>
+      <div className="mx-auto w-full max-w-[220px] max-md:max-w-[140px]">{art}</div>
     </section>
   );
 }
@@ -84,25 +87,35 @@ function EmptyKind({ tab, onNew }: { tab: LibraryTab; onNew: () => void }) {
   };
   const c = copy[tab];
   return (
-    <div className="grid justify-items-center gap-3 rounded-3xl border-[1.5px] border-dashed border-border-strong bg-card p-8 text-center">
-      <EmptyLibraryArt className="max-w-[180px]" />
-      <h3 className="text-xl font-bold">{c.title}</h3>
-      <p className="max-w-[46ch] text-muted-foreground">{c.body}</p>
-      {c.cta ? (
-        <Button variant="secondary" className={PILL} onClick={onNew}>
-          {c.cta}
-        </Button>
-      ) : null}
-    </div>
+    <EmptyState
+      title={c.title}
+      illustration={<EmptyArt kind="library" />}
+      primaryAction={
+        c.cta ? (
+          <Button variant="secondary" className={PILL} onClick={onNew}>
+            {c.cta}
+          </Button>
+        ) : undefined
+      }
+    >
+      {c.body}
+    </EmptyState>
   );
 }
 
-function Overview({ tab }: { tab: LibraryTab }) {
+function Overview({ tab: urlTab, query, archived }: { tab: LibraryTab | undefined; query: string; archived: boolean }) {
   const go = useLibraryNav();
   const navigate = useNavigate();
   const ws = useWorkspace();
-  const counts = useLibraryItems();
+  // With a search, the numbers on the tabs count what the search found.
+  const counts = useLibraryItems(query ? { q: query } : {});
   const count = (t: LibraryTab) => (counts.data ?? []).filter((i) => i.kind === TAB_KIND[t]).length;
+  // A search without a tab (the global search's "See all in Make your own") opens the first
+  // tab that has a match.
+  const tab = urlTab ?? (query ? LIBRARY_TABS.find((t) => count(t) > 0) : undefined) ?? "models";
+  // The text and the "Show archived" chip stay in the URL together (a history replace).
+  const filters = (q: string, shown: boolean): LibrarySearch => ({ q: q || undefined, archived: shown || undefined });
+  const setQuery = (next: string) => go({ tab, ...filters(next, archived) }, true);
   const leads: Record<LibraryTab, Lead> = {
     models: {
       title: "Describe a model in plain words",
@@ -119,20 +132,20 @@ function Overview({ tab }: { tab: LibraryTab }) {
   const icons: Record<LibraryTab, ReactNode> = { models: <Layers />, prep: <BookOpen />, charts: <ChartSpline />, workflows: <Workflow /> };
   return (
     <div className="mx-auto grid w-full max-w-[1180px] grid-cols-[minmax(0,1fr)] gap-8">
-      <header className="grid gap-3">
-        <p className="eyebrow">Make your own</p>
-        <h1 className="display-title text-[clamp(2.25rem,5vw,3rem)] leading-[1.02] text-balance">Make it yours.</h1>
-        <p className="max-w-[60ch] text-lg text-muted-foreground">
-          Save the models, prep steps, charts and workflows your team uses again and again. No code needed: everything you make here shows up in Build, the Catalog and on your runs.
-        </p>
-      </header>
-      <Tabs value={tab} onValueChange={(t) => go({ tab: t as LibraryTab }, true)}>
-        <TabsList className="h-auto gap-2 shadow-none" aria-label="Kinds">
+      <div className="-mb-6">
+        <PageHeader
+          eyebrow="Make your own"
+          title="Make it yours."
+          description="Save the models, prep steps, charts and workflows your team uses again and again. No code needed: everything you make here shows up in Build, the Catalog and on your runs."
+        />
+      </div>
+      <Tabs value={tab} onValueChange={(t) => go({ tab: t as LibraryTab, ...filters(query, archived) }, true)}>
+        <TabsList className="h-auto flex-wrap gap-2" aria-label="Kinds">
           {LIBRARY_TABS.map((t) => (
             <TabsTrigger
               key={t}
               value={t}
-              className="h-auto min-h-10 gap-2 rounded-full border-[1.5px] border-border-strong bg-card px-4 text-foreground data-[state=active]:border-foreground data-[state=active]:bg-foreground data-[state=active]:text-background hover:text-foreground"
+              className="h-auto min-h-10 gap-2 border border-border-strong bg-card px-4 font-semibold text-foreground hover:border-foreground data-[state=active]:border-foreground data-[state=active]:bg-foreground data-[state=active]:text-background"
             >
               {icons[t]}
               {TAB_LABEL[t]}
@@ -142,10 +155,19 @@ function Overview({ tab }: { tab: LibraryTab }) {
         </TabsList>
         {LIBRARY_TABS.map((t) => (
           <TabsContent key={t} value={t} className="grid gap-8 pt-6">
-            <LeadBlock lead={leads[t]} art={<HeroArt animate={false} />} />
+            <LeadBlock lead={leads[t]} art={<EmptyArt kind={LEAD_ART[t]} onBlock className="size-full" />} />
             <section aria-label={`Your ${TAB_LABEL[t].toLowerCase()}`} className="grid gap-4">
-              <h2 className="text-2xl font-bold">From your team</h2>
-              <LibraryList kind={TAB_KIND[t]} me={ws.user.id} onOpen={(item) => go({ tab: TAB_OF_KIND[item.kind], item: item.id })} empty={<EmptyKind tab={t} onNew={leads[t].onCta} />} />
+              <h2 className="text-2xl font-semibold">From your team</h2>
+              <LibraryList
+                kind={TAB_KIND[t]}
+                me={ws.user.id}
+                query={query}
+                onQuery={setQuery}
+                archived={archived}
+                onArchived={(shown) => go({ tab, ...filters(query, shown) }, true)}
+                onOpen={(item) => go({ tab: TAB_OF_KIND[item.kind], item: item.id })}
+                empty={<EmptyKind tab={t} onNew={leads[t].onCta} />}
+              />
             </section>
           </TabsContent>
         ))}
@@ -158,19 +180,14 @@ function Overview({ tab }: { tab: LibraryTab }) {
 
 const NEW_TITLE: Record<LibraryNew, string> = { model: "Describe a model", preset: "Preset a catalog model", prep: "Make a prep preset", chart: "Make a chart template" };
 
-function EditorFrame({ title, tab, children, eyebrow }: { title: string; tab: LibraryTab; eyebrow: string; children: ReactNode }) {
-  const go = useLibraryNav();
+function EditorFrame({ title, tab, children, note }: { title: string; tab: LibraryTab; note: string; children: ReactNode }) {
   return (
-    <div className="mx-auto grid w-full max-w-[1280px] grid-cols-[minmax(0,1fr)] gap-6">
-      <div>
-        <Button variant="ghost" size="sm" className="-ml-2 rounded-full" onClick={() => go({ tab })}>
-          <ArrowLeft /> Make your own
-        </Button>
-      </div>
-      <header className="grid gap-2">
-        <p className="eyebrow">{eyebrow}</p>
-        <h1 className="display-title text-[clamp(2rem,4.5vw,3rem)] leading-[1.02] text-balance [overflow-wrap:anywhere]">{title}</h1>
-      </header>
+    <div className="mx-auto grid w-full max-w-[1280px] grid-cols-[minmax(0,1fr)]">
+      <PageHeader
+        crumbs={[{ label: "Make your own", to: "/library" }, { label: TAB_LABEL[tab], to: "/library", search: { tab } }, { label: title }]}
+        title={<span className="[overflow-wrap:anywhere]">{title}</span>}
+        meta={<span>{note}</span>}
+      />
       {children}
     </div>
   );
@@ -212,7 +229,7 @@ function ItemEditor({ id, onCreated }: { id: string; onCreated: (saved: Saved) =
   const it: LibraryItem = item.data;
   const doc = docOfKind(it.kind, rev.data.document);
   return (
-    <EditorFrame title={it.title} tab={TAB_OF_KIND[it.kind]} eyebrow={`Make your own · version ${it.latest_revision}`}>
+    <EditorFrame title={it.title} tab={TAB_OF_KIND[it.kind]} note={`Version ${it.latest_revision}`}>
       {doc ? (
         <Builder kind={it.kind} itemId={it.id} initial={doc} onCreated={onCreated} />
       ) : (
@@ -237,7 +254,7 @@ export function LibraryPage() {
   const made = search.item ? created.current.get(search.item) : undefined;
   if (made) {
     return (
-      <EditorFrame title={made.title} tab={made.tab} eyebrow="Make your own · saved">
+      <EditorFrame title={made.title} tab={made.tab} note="Saved">
         <Builder key={made.key} kind={made.kind} itemId={search.item ?? null} initial={made.initial} onCreated={() => undefined} />
       </EditorFrame>
     );
@@ -250,7 +267,7 @@ export function LibraryPage() {
     const initial = fresh.current.initial;
     const tab = TAB_OF_KIND[kind];
     return (
-      <EditorFrame title={NEW_TITLE[search.new]} tab={tab} eyebrow="Make your own · new">
+      <EditorFrame title={NEW_TITLE[search.new]} tab={tab} note="Not saved">
         <Builder
           key={key}
           kind={kind}
@@ -265,5 +282,5 @@ export function LibraryPage() {
     );
   }
 
-  return <Overview tab={search.tab ?? "models"} />;
+  return <Overview tab={search.tab} query={search.q ?? ""} archived={Boolean(search.archived)} />;
 }

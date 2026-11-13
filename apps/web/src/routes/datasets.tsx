@@ -8,7 +8,8 @@ import { useCreateDataset, useDataset, useDatasets, useDatasetVersion, useDatase
 import type { Dataset, DatasetVersion } from "@/api/types";
 import { CopyButton, EmptyState, ErrorNotice, IssueList, KeyValues, LoadingRows, Mono, PageHeader, QueryView } from "@/components/common";
 import { DataTable } from "@/components/data-table";
-import { EmptyDatasetsArt } from "@/components/illustrations";
+import { ListNoMatches, ListToolbar, matchesQuery, toolbarShown } from "@/components/list-toolbar";
+import { EmptyArt } from "@/components/brand/empty-art";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/overlays";
 import { Badge, Card, CardContent, CardHeader, CardTitle, Field, Input, Textarea } from "@/components/ui/primitives";
@@ -18,6 +19,7 @@ import { UploadWizard } from "@/features/datasets/upload-wizard";
 import { isTree } from "@/features/datasets/tree";
 import { TreeBrowser } from "@/features/datasets/tree-view";
 import { CollectionSummary, CoordBrowser, MissingnessPanel, PreviewPanel, SchemaTable } from "@/features/datasets/version-views";
+import { useRecordRecent } from "@/features/search/use-record-recent";
 import { formatBytes, relativeTime, shortId } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { toast } from "@/stores/toast";
@@ -38,7 +40,7 @@ const columns: ColumnDef<Dataset, unknown>[] = [
   { accessorKey: "updated_at", header: "Updated", cell: ({ row }) => relativeTime(row.original.updated_at) },
 ];
 
-/** The three hint cards under the empty Datasets page (Studio empty state). */
+/** The three hint cards under the empty Datasets page. */
 const DATASET_HINTS: [string, string][] = [
   ["Map it once", "Tell us which columns are dates, markets and channels. The ingest keeps that map."],
   ["Versions stay put", "Each upload makes a new version. Fits always say which version they used."],
@@ -90,58 +92,75 @@ function CreateDatasetDialog({ open, onOpenChange }: { open: boolean; onOpenChan
   );
 }
 
+const listRoute = getRouteApi("/datasets");
+
 export function DatasetsPage() {
   const datasets = useDatasets();
   const navigate = useNavigate();
+  const q = listRoute.useSearch().q ?? "";
+  const setQuery = (next: string) => void navigate({ to: "/datasets", search: { q: next || undefined }, replace: true });
   const [open, setOpen] = useState(false);
+  const items = datasets.data?.items;
+  const more = Boolean(datasets.data?.next_cursor);
+  const rows = q && items ? items.filter((d) => matchesQuery(q, [d.name], [d.ref, d.description])) : (items ?? []);
   return (
     <>
-      <header className="flex min-w-0 flex-wrap items-end justify-between gap-x-6 gap-y-4 pb-8">
-        <div className="grid min-w-0 gap-3">
-          <p className="eyebrow">Your data</p>
-          <h1 className="display-title text-[clamp(2.25rem,5vw,3rem)] leading-[1.02] text-balance">Datasets</h1>
-          <p className="max-w-[60ch] text-lg text-muted-foreground">Labelled data with a schema. Only a sandboxed ingest run reads the files.</p>
-        </div>
-        <Button className="rounded-full" onClick={() => setOpen(true)}>
-          <Plus /> New dataset
-        </Button>
-      </header>
-      <QueryView query={datasets}>
-        {(page) =>
-          page.items.length ? (
-            <DataTable
-              label="Datasets"
-              data={page.items}
-              columns={columns}
-              getRowId={(d) => d.id}
-              filterPlaceholder="Filter datasets"
-              onRowClick={(d) => void navigate({ to: "/datasets/$datasetId", params: { datasetId: d.id } })}
-            />
-          ) : (
-            <div className="grid gap-4">
-              <EmptyState
-                title="No datasets yet"
-                illustration={<EmptyDatasetsArt />}
-                primaryAction={
-                  <Button className="rounded-full" onClick={() => setOpen(true)}>
-                    <Plus /> New dataset
-                  </Button>
-                }
-              >
-                Bring your sales and spend in. Create a dataset, then upload a CSV, Parquet, zarr zip, netCDF or HDF5 file (or several files), or a folder of images, as its first version.
-              </EmptyState>
-              <ul className="grid gap-4 md:grid-cols-3">
-                {DATASET_HINTS.map(([title, body]) => (
-                  <li key={title} className="rounded-2xl border bg-card p-5">
-                    <p className="font-display text-lg font-bold tracking-[-0.02em]">{title}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{body}</p>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )
+      <PageHeader
+        eyebrow="Your data"
+        title="Datasets"
+        description="Labelled data with a schema. Only a sandboxed ingest run reads the files."
+        actions={
+          <Button onClick={() => setOpen(true)}>
+            <Plus /> New dataset
+          </Button>
         }
-      </QueryView>
+      />
+      {/* A block, not a grid: a grid item around the table would take the width of the table on a phone. */}
+      <div className="space-y-3">
+        {/* Outside the query view: a link with ?q= shows its text while the list loads and when the project has no dataset. */}
+        {toolbarShown(q, items?.length) ? <ListToolbar things="datasets" value={q} onChange={setQuery} count={items ? { shown: rows.length, total: items.length, more } : undefined} /> : null}
+        <QueryView query={datasets}>
+          {(page) => {
+            return page.items.length ? (
+              <div className="grid gap-3">
+                {rows.length ? (
+                  <DataTable
+                    label="Datasets"
+                    data={rows}
+                    columns={columns}
+                    getRowId={(d) => d.id}
+                    onRowClick={(d) => void navigate({ to: "/datasets/$datasetId", params: { datasetId: d.id } })}
+                  />
+                ) : (
+                  <ListNoMatches things="datasets" query={q} firstPage={more ? page.items.length : undefined} onClear={() => setQuery("")} />
+                )}
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                <EmptyState
+                  title="No datasets yet"
+                  illustration={<EmptyArt kind="datasets" />}
+                  primaryAction={
+                    <Button className="rounded-full" onClick={() => setOpen(true)}>
+                      <Plus /> New dataset
+                    </Button>
+                  }
+                >
+                  Bring your sales and spend in. Create a dataset, then upload a CSV, Parquet, zarr zip, netCDF or HDF5 file (or several files), or a folder of images, as its first version.
+                </EmptyState>
+                <ul className="grid gap-4 md:grid-cols-3">
+                  {DATASET_HINTS.map(([title, body]) => (
+                    <li key={title} className="rounded-2xl border bg-card p-5">
+                      <p className="font-display text-lg font-semibold tracking-[-0.02em]">{title}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{body}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          }}
+        </QueryView>
+      </div>
       <CreateDatasetDialog open={open} onOpenChange={setOpen} />
     </>
   );
@@ -186,7 +205,7 @@ function VersionDetail({ version }: { version: DatasetVersion }) {
           </Button>
         ) : null}
         {version.ingest_run_id ? (
-          <Link to="/runs/$runId" params={{ runId: version.ingest_run_id }} className="text-xs text-muted-foreground hover:underline">
+          <Link to="/runs/$runId" params={{ runId: version.ingest_run_id }} className="link text-xs text-muted-foreground">
             ingest run {shortId(version.ingest_run_id)}
           </Link>
         ) : null}
@@ -257,6 +276,7 @@ export function DatasetDetailPage() {
   const search = detailRoute.useSearch();
   const navigate = useNavigate({ from: "/datasets/$datasetId" });
   const dataset = useDataset(datasetId);
+  useRecordRecent(dataset.data ? { group: "datasets", title: dataset.data.name, secondary: dataset.data.description || dataset.data.id, href: `/datasets/${dataset.data.id}` } : null);
   const versions = useDatasetVersions(datasetId);
   const sorted = [...(versions.data?.items ?? [])].sort((a, b) => b.version - a.version);
   const selected = search.version ?? sorted[0]?.version;
@@ -267,6 +287,7 @@ export function DatasetDetailPage() {
   return (
     <>
       <PageHeader
+        crumbs={[{ label: "Datasets", to: "/datasets" }, { label: dataset.data?.name ?? "Dataset" }]}
         title={dataset.data?.name ?? "Dataset"}
         description={dataset.data?.description ?? undefined}
         meta={dataset.data ? <Mono>{dataset.data.ref}</Mono> : null}

@@ -112,7 +112,7 @@ function StepsTable({ run, doc, catalog, onOpen }: { run: WorkflowRun; doc: Work
           return (
             <TR key={n.node_id} data-node={n.node_id} data-status={n.status}>
               <TD>
-                <button type="button" className="text-left hover:underline" onClick={() => onOpen(n.node_id)}>
+                <button type="button" className="link text-left" onClick={() => onOpen(n.node_id)}>
                   <span className="block font-medium">{label ?? n.node_id}</span>
                   <span className="block text-xs text-muted-foreground">
                     {KIND_LABEL[n.kind]} · <Mono>{n.node_id}</Mono>
@@ -185,10 +185,15 @@ export function WorkflowRunMonitor({ runId, plain = false }: { runId: string; pl
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-5" data-testid="run-monitor" data-status={run.status}>
       <PageHeader
+        crumbs={[
+          { label: "Workflows", to: "/workflows" },
+          { label: wf.data?.name ?? "Workflow", to: "/workflows/$workflowId", params: { workflowId: run.workflow_id }, search: { tab: "runs" } },
+          { label: `Run ${shortId(run.run_id)}` },
+        ]}
         title={
           <span className="flex flex-wrap items-center gap-3">
             {wf.data ? (
-              <Link to="/workflows/$workflowId" params={{ workflowId: run.workflow_id }} className="hover:underline">
+              <Link to="/workflows/$workflowId" params={{ workflowId: run.workflow_id }} className="link">
                 {wf.data.name}
               </Link>
             ) : (
@@ -209,7 +214,7 @@ export function WorkflowRunMonitor({ runId, plain = false }: { runId: string; pl
             {run.parent_run_id ? (
               <>
                 <span>·</span>
-                <Link to="/workflow-runs/$runId" params={{ runId: run.parent_run_id }} className="text-primary hover:underline">
+                <Link to="/workflow-runs/$runId" params={{ runId: run.parent_run_id }} className="link">
                   parent run
                 </Link>
               </>

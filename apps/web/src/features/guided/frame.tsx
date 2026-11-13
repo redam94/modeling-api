@@ -4,10 +4,10 @@
  * applied" note when Expert edits changed what Guided mode keeps fixed.
  */
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Check, ChevronLeft, FileCode2, SlidersHorizontal } from "lucide-react";
+import { Check, FileCode2, SlidersHorizontal } from "lucide-react";
 import { lazy, Suspense, type ReactNode } from "react";
 
-import { Spinner } from "@/components/common";
+import { Breadcrumbs, Spinner } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/overlays";
 import { Badge, Progress } from "@/components/ui/primitives";
@@ -157,9 +157,7 @@ export function GuidedFrame({
     <div className="mx-auto grid w-full max-w-6xl gap-6">
       <div className="grid gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Link to="/guided" className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">
-            <ChevronLeft className="size-3.5" /> All analyses
-          </Link>
+          <Breadcrumbs crumbs={[{ label: "Guided", to: "/guided" }, { label: sessionName ? `${templateTitle} · ${sessionName}` : templateTitle }]} />
           <div className="flex flex-wrap items-center gap-2">
             {advanced.length ? (
               <Tooltip content={`Guided mode keeps these changes from Expert mode: ${advanced.join(", ")}.`}>
@@ -173,11 +171,7 @@ export function GuidedFrame({
         </div>
         <Stepper steps={steps} current={current} />
         <header className="grid gap-1">
-          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            {templateTitle}
-            {sessionName ? <span className="normal-case"> · {sessionName}</span> : null}
-          </p>
-          <h1 className="text-[26px] leading-tight font-semibold tracking-[-0.015em] text-balance">{def?.title}</h1>
+          <h1 className="display-title text-[clamp(1.5rem,2.6vw,2rem)] leading-[1.1]">{def?.title}</h1>
           {def?.question ? <p className="max-w-[68ch] text-muted-foreground">{def.question}</p> : null}
         </header>
       </div>

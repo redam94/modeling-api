@@ -1,7 +1,8 @@
 /**
  * The runs table of the runs workspace and the experiment page (v0.14). The URL search holds
  * its state (I-12): state, kind, experiment, name, filters (`f`), tracked columns (`c`), the
- * order (`o`) and the applied saved view. The server filters, sorts and pages (`GET /v1/runs`
+ * order (`o`) and the applied saved view. v0.21: the name box is the shared list toolbar (it
+ * writes `name`; a `?q=` from the global search is read as `name`). The server filters, sorts and pages (`GET /v1/runs`
  * with `filter`/`order_by`/`column` and a keyset cursor: "Load more"); the table only shows
  * what it answers.
  *
@@ -9,8 +10,8 @@
  * experiment. Names, tags, column values and experiment names are untrusted text.
  */
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ArrowDown, ArrowUp, ArrowUpDown, FlaskConical, GitCompareArrows, Search, X } from "lucide-react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { ArrowDown, ArrowUp, ArrowUpDown, FlaskConical, GitCompareArrows, X } from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
 
 import { can } from "@/api/access";
 import { ApiError } from "@/api/client";
@@ -19,13 +20,13 @@ import { useExperiments, useRunPages } from "@/api/queries";
 import { runName, runTags } from "@/api/tracking";
 import type { Experiment, Run, RunKind, RunState } from "@/api/types";
 import { EmptyState, ErrorNotice, LoadingRows, Mono, StateBadge } from "@/components/common";
-import { EmptyRunsArt } from "@/components/illustrations";
+import { EmptyArt } from "@/components/brand/empty-art";
+import { ListNoMatches, ListToolbar } from "@/components/list-toolbar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/overlays";
-import { Input, NativeSelect, Table, TBody, TD, TH, THead, TR } from "@/components/ui/primitives";
+import { NativeSelect, Table, TBody, TD, TH, THead, TR } from "@/components/ui/primitives";
 import { useGrants } from "@/features/auth/workspace";
 import { AddToExperimentDialog } from "@/features/experiments/experiment-dialogs";
-import { useDebounced } from "@/hooks/use-debounced";
 import { runCostView } from "@/lib/cost";
 import { elapsedSeconds, formatDuration, formatNumber, relativeTime, shortId } from "@/lib/format";
 import { RUN_KINDS, RUN_STATES, runSubject, STATE_META } from "@/lib/run-state";
@@ -111,7 +112,7 @@ function ExperimentCell({ id, experiments }: { id: string | null | undefined; ex
   if (!id) return <span className="text-muted-foreground">—</span>;
   const exp = experiments.get(id);
   return (
-    <Link to="/experiments/$experimentId" params={{ experimentId: id }} className="inline-block max-w-48 truncate align-bottom hover:underline" title={exp?.name ?? id}>
+    <Link to="/experiments/$experimentId" params={{ experimentId: id }} className="link inline-block max-w-48 truncate align-bottom" title={exp?.name ?? id}>
       {exp ? exp.name : <Mono>{shortId(id)}</Mono>}
     </Link>
   );
@@ -142,18 +143,8 @@ export function RunsTable({
   const order = currentOrder(search.o);
   const [selected, setSelected] = useState<string[]>([]);
   const [adding, setAdding] = useState(false);
-  const [name, setName] = useState(search.name ?? "");
-  const debouncedName = useDebounced(name, 400);
   const set = (patch: Partial<RunsSearch>) => onSearch(compactSearch({ ...search, ...patch }));
-
-  // The name box writes the URL after a pause; a new URL (a view, Back) fills the box.
-  useEffect(() => {
-    if ((debouncedName.trim() || undefined) !== (search.name ?? undefined)) set({ name: debouncedName.trim() || undefined });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only the debounced value starts a write
-  }, [debouncedName]);
-  useEffect(() => {
-    setName((n) => ((n.trim() || undefined) === (search.name ?? undefined) ? n : (search.name ?? "")));
-  }, [search.name]);
+  const name = search.name?.trim() ?? "";
 
   const items = useMemo(() => runs.data?.pages.flatMap((p) => p.items) ?? [], [runs.data]);
   const problem = searchProblem(runs.error);
@@ -165,9 +156,15 @@ export function RunsTable({
 
   return (
     <div className="grid min-w-0 gap-4">
-      <div className="flex flex-wrap items-center gap-2" role="toolbar" aria-label="Run filters">
+      <ListToolbar
+        things="runs"
+        placeholder="Search runs by name"
+        value={name}
+        onChange={(next) => set({ name: next || undefined })}
+        count={runs.data && !runs.isPlaceholderData ? { shown: items.length, more: Boolean(runs.hasNextPage) } : undefined}
+      >
         {experimentId ? null : (
-          <NativeSelect aria-label="Filter by experiment" value={search.experiment ?? ""} onChange={(e) => set({ experiment: e.target.value || undefined })} className="h-8 w-48">
+          <NativeSelect aria-label="Filter by experiment" value={search.experiment ?? ""} onChange={(e) => set({ experiment: e.target.value || undefined })} className="w-48">
             <option value="">All experiments</option>
             {(experiments.data?.items ?? []).map((e) => (
               <option key={e.id} value={e.id}>
@@ -176,7 +173,7 @@ export function RunsTable({
             ))}
           </NativeSelect>
         )}
-        <NativeSelect aria-label="Filter by state" value={search.state ?? ""} onChange={(e) => set({ state: (e.target.value || undefined) as RunState | undefined })} className="h-8 w-40">
+        <NativeSelect aria-label="Filter by state" value={search.state ?? ""} onChange={(e) => set({ state: (e.target.value || undefined) as RunState | undefined })} className="w-40">
           <option value="">All states</option>
           {RUN_STATES.map((s) => (
             <option key={s} value={s}>
@@ -184,7 +181,7 @@ export function RunsTable({
             </option>
           ))}
         </NativeSelect>
-        <NativeSelect aria-label="Filter by kind" value={search.kind ?? ""} onChange={(e) => set({ kind: (e.target.value || undefined) as RunKind | undefined })} className="h-8 w-36">
+        <NativeSelect aria-label="Filter by kind" value={search.kind ?? ""} onChange={(e) => set({ kind: (e.target.value || undefined) as RunKind | undefined })} className="w-36">
           <option value="">All kinds</option>
           {RUN_KINDS.map((k) => (
             <option key={k} value={k}>
@@ -192,15 +189,11 @@ export function RunsTable({
             </option>
           ))}
         </NativeSelect>
-        <div className="relative min-w-40 flex-1 sm:max-w-64">
-          <Search className="pointer-events-none absolute top-2 left-2.5 size-4 text-muted-foreground" />
-          <Input aria-label="Find runs by name" placeholder="Find runs by name" value={name} onChange={(e) => setName(e.target.value)} className="h-8 pl-8" />
-        </div>
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <ColumnPicker columns={search.c ?? []} onChange={(c) => set({ c })} experimentId={experimentId ?? search.experiment ?? null} />
           <SavedViews search={search} experimentId={experimentId} onApply={onSearch} />
         </div>
-      </div>
+      </ListToolbar>
 
       <FilterBar filters={search.f ?? []} onChange={(f) => set({ f })} serverError={problem} />
 
@@ -233,11 +226,13 @@ export function RunsTable({
         <LoadingRows rows={6} />
       ) : runs.isError && !runs.data ? (
         problem ? null : <ErrorNotice error={runs.error} title="The app could not load the runs" />
+      ) : !items.length && name ? (
+        <ListNoMatches things="runs" query={name} filtered={hasRunFilters({ ...search, name: undefined }, experimentId)} onClear={() => set({ name: undefined })} />
       ) : !items.length && !filtered ? (
         (emptyState ?? (
           <EmptyState
             title="No runs yet"
-            illustration={<EmptyRunsArt />}
+            illustration={<EmptyArt kind="runs" />}
             primaryAction={
               <Button asChild className="rounded-full">
                 <Link to="/build">Fit a spec</Link>
@@ -351,7 +346,7 @@ function RunRow({
       <TD>
         {/* v0.11: the run's name (or its short id) and up to three tags. Both are untrusted text. */}
         <span className="grid max-w-80 min-w-32 gap-1">
-          <Link to="/runs/$runId" params={{ runId: run.id }} className="hover:underline">
+          <Link to="/runs/$runId" params={{ runId: run.id }} className="link">
             {name ? (
               <span className="font-medium [overflow-wrap:anywhere]" title={run.id}>
                 {name}

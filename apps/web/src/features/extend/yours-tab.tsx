@@ -19,7 +19,8 @@ import { lazy, Suspense, useMemo } from "react";
 import { can } from "@/api/access";
 import { EmptyState, ErrorNotice, LoadingRows } from "@/components/common";
 import { AddYourOwn } from "@/components/extend/add-your-own";
-import { CatalogGlyph, EmptyLibraryArt, glyphKind } from "@/components/illustrations";
+import { EmptyArt } from "@/components/brand/empty-art";
+import { CatalogGlyph, glyphKind } from "@/components/illustrations";
 import { Button } from "@/components/ui/button";
 import { useWorkspace } from "@/features/auth/workspace";
 import { useLibraryItems } from "@/features/library/api";
@@ -71,7 +72,7 @@ function TeamRow({ item, me }: { item: LibraryItem; me: string }) {
     <li className="grid grid-cols-[2.75rem_minmax(0,1fr)] items-start gap-x-3.5 gap-y-2 border-b py-4 last:border-b-0 sm:grid-cols-[2.75rem_minmax(0,1fr)_auto] sm:items-center">
       <CatalogGlyph kind={glyphKind(item.kind)} seed={item.id} size="sm" />
       <div className="min-w-0">
-        <p className="font-display text-base leading-snug font-bold [overflow-wrap:anywhere]">{item.title}</p>
+        <p className="font-display text-base leading-snug font-semibold [overflow-wrap:anywhere]">{item.title}</p>
         <p className="text-xs text-muted-foreground">
           <span className="font-semibold text-foreground">{KIND_LABEL[item.kind]}</span> · {itemByline(item, me)}
         </p>
@@ -135,7 +136,7 @@ function InstalledList({ rows }: { rows: InstalledRow[] }) {
         <li key={`${r.kind}:${r.id}`} className="grid grid-cols-[2.75rem_minmax(0,1fr)] items-center gap-3.5 border-b py-3.5 last:border-b-0 sm:grid-cols-[2.75rem_minmax(0,1fr)_auto]">
           <CatalogGlyph kind={glyphKind(r.kind)} seed={r.id} size="sm" />
           <div className="min-w-0">
-            <p className="font-display text-base leading-snug font-bold [overflow-wrap:anywhere]">{r.title}</p>
+            <p className="font-display text-base leading-snug font-semibold [overflow-wrap:anywhere]">{r.title}</p>
             <p className="font-mono text-xs text-muted-foreground [overflow-wrap:anywhere]">
               {r.id}
               {r.version ? `@${r.version}` : ""}
@@ -158,7 +159,7 @@ function SectionHead({ id, title, count, children }: { id: string; title: string
   return (
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div className="grid gap-1">
-        <h3 id={id} className="text-xl leading-tight font-bold">
+        <h3 id={id} className="text-xl leading-tight font-semibold">
           {title}
           {count !== undefined ? <span className="ml-2 align-middle text-xs font-semibold text-muted-foreground">{" "}{count}</span> : null}
         </h3>
@@ -194,7 +195,7 @@ export function YoursTab() {
       {nothing ? (
         <EmptyState
           title="Nothing from your team yet"
-          illustration={<EmptyLibraryArt />}
+          illustration={<EmptyArt kind="library" />}
           primaryAction={
             <Button className="h-auto min-h-11 rounded-full px-5" asChild>
               <LibLink search={{ tab: "models", new: "model" }}>
@@ -223,7 +224,7 @@ export function YoursTab() {
           ) : (
             <p className="rounded-2xl border border-dashed border-border-strong p-5 text-sm text-muted-foreground">
               Nothing made here yet.{" "}
-              <LibLink search={{}} className="font-semibold text-primary hover:underline">
+              <LibLink search={{}} className="link font-semibold">
                 Open Make your own
               </LibLink>{" "}
               to start one.

@@ -239,7 +239,7 @@ export function AutomationPanel({ workflowId, doc }: { workflowId: string; doc: 
                           {s.last_run_id ? (
                             <>
                               {" · last "}
-                              <Link to="/workflow-runs/$runId" params={{ runId: s.last_run_id }} className="text-primary hover:underline">
+                              <Link to="/workflow-runs/$runId" params={{ runId: s.last_run_id }} className="link">
                                 {shortId(s.last_run_id)}
                               </Link>
                             </>

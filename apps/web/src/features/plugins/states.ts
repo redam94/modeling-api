@@ -47,7 +47,7 @@ export const STATE_LABEL: Record<PluginVersionState, string> = {
   purged: "Removed",
 };
 
-/** The chip's tone (the run-state palette: coral `danger` for refusals). */
+/** The chip's tone (the run-state palette: red `danger` for refusals). */
 export const STATE_TONE: Record<PluginVersionState, Tone> = {
   uploaded: "active",
   inspecting: "active",

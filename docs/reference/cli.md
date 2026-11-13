@@ -180,7 +180,7 @@ mapi spec upgrade spec.yaml --check
 mapi config show | path | set KEY VALUE | unset KEY
 ```
 
-Multi-tenant commands (v0.3). [Authentication](../guides/authentication.md#the-command-line)
+Multi-tenant commands (v0.3). [Sign in](../guides/authentication.md#the-command-line)
 and [Administration](../guides/administration.md) show these commands step by step. The test
 suite runs the two guides:
 

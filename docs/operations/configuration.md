@@ -74,7 +74,7 @@ above:
 | `MAPI_TRACING_ENABLED` | `true` | Make OpenTelemetry spans for requests, outgoing HTTP calls and runs |
 | `MAPI_OTLP_ENDPOINT` | unset | The OTLP/HTTP collector that gets the spans. The server also reads it from `OTEL_EXPORTER_OTLP_ENDPOINT`. If unset, the server makes spans but does not export them |
 | `MAPI_INTERNAL_TOKEN` | unset | If set (and Pub/Sub push authentication is not set), `POST /internal/events` needs this bearer token. A multi-tenant profile with neither refuses all pushes |
-| `MAPI_PUBSUB_PUSH_AUDIENCE`, `MAPI_PUBSUB_PUSH_SERVICE_ACCOUNT` | unset | Set the two to make `POST /internal/events` need an OIDC token that Google signed for the service account of the push subscription. Refer to [Authentication](authentication.md#pubsub-push) and the Cloud Run settings below |
+| `MAPI_PUBSUB_PUSH_AUDIENCE`, `MAPI_PUBSUB_PUSH_SERVICE_ACCOUNT` | unset | Set the two to make `POST /internal/events` need an OIDC token that Google signed for the service account of the push subscription. Refer to [Set up sign-in and tenant isolation](authentication.md#pubsub-push) and the Cloud Run settings below |
 | `MAPI_SSE_HEARTBEAT_S` | `15` | The seconds between `: keepalive` comments on event streams |
 | `MAPI_SSE_POLL_S` | `5` | The fallback poll of an event stream when no PostgreSQL `NOTIFY` comes |
 | `MAPI_SSE_REAUTH_S` | `60` | How frequently an open event stream does a check of the credential of its caller again. Revoked tokens, ended sessions and lost access close the stream |
@@ -97,7 +97,7 @@ above:
 | `MAPI_DATABASE_APP_URL` | unset | The dedicated login of the request-path role (row-level security applies). If unset: `DATABASE_URL` with the start-up option `role=$MAPI_DB_APP_ROLE` |
 | `MAPI_DATABASE_SYSTEM_URL` | unset | The dedicated login of the platform role. It is the only role that bypasses row-level security. The dispatcher, reconciler, finalizer and housekeeper of the orchestrator use it. The API never needs it. If unset: `DATABASE_URL` with `role=$MAPI_DB_SYSTEM_ROLE` |
 | `MAPI_DATABASE_GATEWAY_URL` | unset | The dedicated login of the gateway role. The API and events service use it for look-ups before they know the tenant (sign-in, memberships, operator metadata, pushed events). Row-level security applies. If unset: `DATABASE_URL` with `role=$MAPI_DB_GATEWAY_ROLE` |
-| `MAPI_DB_APP_ROLE`, `MAPI_DB_SYSTEM_ROLE`, `MAPI_DB_GATEWAY_ROLE` | `mapi_app`, `mapi_system`, `mapi_gateway` | The three runtime roles that `mapi-server migrate` makes and grants (refer to [Authentication](authentication.md#row-level-security)) |
+| `MAPI_DB_APP_ROLE`, `MAPI_DB_SYSTEM_ROLE`, `MAPI_DB_GATEWAY_ROLE` | `mapi_app`, `mapi_system`, `mapi_gateway` | The three runtime roles that `mapi-server migrate` makes and grants (refer to [Set up sign-in and tenant isolation](authentication.md#row-level-security)) |
 
 **Authentication (v0.3)**
 
@@ -147,7 +147,7 @@ Refer to [Sharing plots](../guides/sharing-plots.md).
 **Client dashboards and share links (v0.16)**
 
 Refer to [Client dashboards](../guides/client-dashboards.md) and
-[Share dashboards securely](../guides/sharing-dashboards-securely.md).
+[Share dashboards securely with a share link](../guides/sharing-dashboards-securely.md).
 
 | Variable | Default | Meaning |
 |---|---|---|
@@ -480,7 +480,7 @@ build, set them yourself.
 | `VITE_APP_ORIGINS` (sandbox) | `http://127.0.0.1:5173,http://localhost:5173` | The origins that can frame the sandbox and send messages to it |
 | `VITE_AUTH_BASE` | `VITE_API_BASE` | The location of the sign-in routes (`/auth/*`), when they are not on the API base |
 | `VITE_TERMS_URL` | `/terms` | The terms of service that sign-up links to (an `http(s)` URL or a path on the origin of the app). The default is the plain-language summary in the app |
-| `VITE_DOCS_URL` | none | The root of the documentation site (an `http(s)` URL). The "Learn more" links of the chat panel go to its guide pages. Without it, the panel shows no "Learn more" links |
+| `VITE_DOCS_URL` | none | The root of the documentation site (an `http(s)` URL). The "Learn more" links of the chat panel go to its guide pages. Without it, the panel shows no "Learn more" links. From v0.21, the search of the app shows pages of the docs, and the account menu shows **Read the docs**, only when this variable is set |
 | `VITE_ACCEPTABLE_USE_URL` | `/acceptable-use` | The acceptable-use policy that sign-up links to, in the same way. A public installation must publish its own versions of the two documents |
 
 The Playwright smoke suite of the web app serves the app on 5173 and the sandbox on 5174. If

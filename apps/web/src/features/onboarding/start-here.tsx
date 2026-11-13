@@ -3,8 +3,8 @@
  * start page. A lazy chunk (`start-here-*`, ≤ 48 KiB): Home and Guided load it with
  * `import()`, so the entry, share links and the client portal never carry it.
  *
- * Expert Home, open: the page's one ink block (a greeting, the headline, the sample card with
- * the one lime action, and the hero art that assembles once), then the first-run checklist
+ * Expert Home, open: the page's one dark band (a greeting, the headline, the sample card with
+ * the one inverted ink action, over the Start here art), then the first-run checklist
  * beside the what-if playground (its own lazy `playground-*` chunk). Once the checklist is
  * done or hidden, or tips are off, the hub folds into a one-line banner that opens again on
  * a click. Without a signed-in tenant (the v0.2 profile) there is no progress to show, so
@@ -16,14 +16,15 @@
 import { ChevronDown, Compass, X } from "lucide-react";
 import { lazy, Suspense, useId, useState } from "react";
 
-import { HeroArt } from "@/components/illustrations/hero";
+import startHereArt from "@/assets/brand/start-here.webp";
+import { BrandArt } from "@/components/brand/brand-art";
 import { ProgressRing } from "@/components/ods/progress-ring";
 import { useWorkspace } from "@/features/auth/workspace";
 import { cn } from "@/lib/utils";
 
 import { CHECKLIST_STEPS, checklistCount, hubFolded, useOnboarding, useOnboardingTenant, usePatchOnboarding, type OnboardingState } from "./api";
 import { Checklist, CHECKLIST_COPY, nextStep, StepAction } from "./checklist";
-import { BLOCK_FOCUS, LIME, PILL_SM, QUIET, SampleCard, UploadLink } from "./sample-card";
+import { BLOCK_CTA, BLOCK_FOCUS, PILL_SM, QUIET, SampleCard, UploadLink } from "./sample-card";
 import { startTour } from "./use-onboarding";
 import { useSample } from "./use-samples";
 
@@ -32,7 +33,7 @@ const Playground = lazy(() => import("./playground"));
 /** The playground card's shape while its chunk loads (no motion). */
 function PlaygroundSkeleton() {
   return (
-    <div aria-hidden data-slot="playground-skeleton" className="grid min-h-96 content-start gap-4 rounded-2xl border bg-card p-7">
+    <div aria-hidden data-slot="playground-skeleton" className="grid min-h-96 content-start gap-4 rounded-3xl bg-card p-7">
       <div className="h-7 w-3/5 rounded-full bg-muted" />
       <div className="h-4 w-4/5 rounded-full bg-muted" />
       <div className="mt-4 grid gap-5">
@@ -107,10 +108,13 @@ function Hero({ titleId, state }: { titleId: string; state: OnboardingState | un
   const name = ws.mode === "session" ? firstName(ws.user.name) : null;
   const tourDone = Boolean(state?.checklist?.took_tour);
   return (
-    <div className="grid items-center gap-6 overflow-hidden rounded-3xl bg-block p-[clamp(1.75rem,5vw,3.5rem)] text-block-foreground md:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
-      <div className="grid min-w-0 justify-items-start gap-5">
-        <p className="font-medium text-block-muted">{name ? `${greeting()}, ${name}` : `${greeting()}!`}</p>
-        <h2 id={titleId} className="display-title max-w-[14ch] text-[clamp(2.5rem,6vw,4.5rem)] leading-[0.98] text-balance">
+    // Dark in both themes. The art sits at the right, behind a scrim that runs from the left.
+    <div className="band-dark relative isolate overflow-hidden rounded-3xl p-[clamp(1.75rem,5vw,3.5rem)]">
+      <BrandArt src={startHereArt} width={1600} height={686} blend={false} className="absolute inset-0 -z-10 size-full object-cover object-right max-md:hidden" />
+      <div aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,var(--background)_35%,transparent_75%)]" />
+      <div className="grid min-w-0 max-w-[40rem] justify-items-start gap-5">
+        <p className="kicker text-block-muted">{name ? `${greeting()}, ${name}` : `${greeting()}!`}</p>
+        <h2 id={titleId} className="display-title max-w-[14ch] text-[clamp(2.25rem,5vw,4rem)] leading-[1.02]">
           Find out what's really driving your numbers.
         </h2>
         <p className="max-w-[46ch] text-lg leading-relaxed text-block-muted">
@@ -122,7 +126,7 @@ function Hero({ titleId, state }: { titleId: string; state: OnboardingState | un
             <SampleCard info={info} variant="hero" secondary={<UploadLink onBlock />} className="mt-3 w-full" />
           ) : (
             <div className="mt-3 flex flex-wrap items-center gap-3">
-              <button type="button" className={LIME} onClick={() => startTour("welcome")}>
+              <button type="button" className={BLOCK_CTA} onClick={() => startTour("welcome")}>
                 <Compass /> Take the 2-minute tour
               </button>
               <UploadLink onBlock />
@@ -134,9 +138,6 @@ function Hero({ titleId, state }: { titleId: string; state: OnboardingState | un
             </button>
           ) : null}
         </div>
-      </div>
-      <div className="order-first w-full max-w-[260px] justify-self-start md:order-none md:max-w-[380px] md:justify-self-end">
-        <HeroArt className="w-full" />
       </div>
     </div>
   );
@@ -153,10 +154,10 @@ function Banner({ state, onOpen }: { state: OnboardingState | undefined; onOpen:
       data-state="collapsed"
       data-tour="home.start-here"
       aria-label="Start here"
-      className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border bg-card px-4 py-3 text-card-foreground"
+      className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-3xl bg-card px-5 py-3 text-card-foreground"
     >
       <ProgressRing value={done} max={total} label="Your first steps" showText={false} className="size-9" />
-      <p className="min-w-0 flex-1 text-sm">
+      <p className="min-w-0 flex-1 basis-56 text-sm">
         <span className="font-semibold">{all ? "You've finished the checklist." : `Start here: ${done} of ${total} first steps done.`}</span>{" "}
         <span className="text-muted-foreground">The sample project, the tours and the playground are one click away.</span>
       </p>
@@ -190,13 +191,13 @@ export function StartHereStrip() {
     <section
       data-testid="start-here-strip"
       aria-labelledby={titleId}
-      className="grid gap-5 rounded-2xl border bg-card p-5 text-card-foreground md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:p-6"
+      className="grid gap-5 rounded-3xl bg-card p-5 text-card-foreground md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:p-7"
     >
       <div className="grid content-start gap-3">
         <div className="flex items-center gap-3">
           <ProgressRing value={done} max={total} label="Your first steps" className="size-12" />
           <div className="grid min-w-0 flex-1 gap-0.5">
-            <h2 id={titleId} className="text-lg leading-tight font-bold">
+            <h2 id={titleId} className="text-lg leading-tight font-semibold">
               Start here
             </h2>
             <p className="text-xs text-muted-foreground">
@@ -215,7 +216,7 @@ export function StartHereStrip() {
         </div>
         {next ? (
           <div className="grid gap-2 rounded-lg bg-highlight-soft p-3">
-            <p className="text-xs font-bold tracking-wide text-highlight-ink uppercase">Next up</p>
+            <p className="text-[0.8125rem] font-semibold text-highlight-ink">Next up</p>
             <p className="font-semibold">{CHECKLIST_COPY[next].title}</p>
             <p className="text-xs text-muted-foreground">{CHECKLIST_COPY[next].desc}</p>
             <div className="flex flex-wrap gap-2 pt-1">

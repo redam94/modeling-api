@@ -2,7 +2,7 @@
 description: Share a client dashboard with persons who have no account - make, send and revoke share links, add a passcode and allow inputs, and how the platform protects the token, the session and your compute.
 ---
 
-# Share dashboards securely <span class="mapi-badge">v0.16</span>
+# Share dashboards securely with a share link <span class="mapi-badge">v0.16</span>
 
 A **share link** lets a person without an account read one published dashboard. This page
 tells how to make a link, and how the platform protects it. For client users who sign in,

@@ -1,7 +1,8 @@
 /**
  * The search params of "Make your own" (`/library`): which tab, which item is open, whether a
- * new item is being made, and where a new chart template starts from. Tiny and import-free, so
- * the router can validate them without loading the page.
+ * new item is being made, where a new chart template starts from, and the text of the search
+ * box. Tiny (its one import has no imports), so the router can validate them without loading the
+ * page.
  *
  * - `tab`: `models` (default) · `prep` · `charts` · `workflows`
  * - `item`: `lib_<ulid>` opens that item in its builder (a new revision on save)
@@ -9,7 +10,11 @@
  * - `source`: a plot recipe id (`core.fit_vs_actual`) for a new chart template ("Make a chart
  *   template from this" on a plot card)
  * - `base`: a catalog model id for a new preset ("Save as preset" elsewhere)
+ * - `q`: the text of the search box of the lists (v0.21)
+ * - `archived`: the "Show archived" chip of the lists is on (v0.21)
  */
+import { queryParam } from "@/lib/list-query";
+
 export const LIBRARY_TABS = ["models", "prep", "charts", "workflows"] as const;
 export type LibraryTab = (typeof LIBRARY_TABS)[number];
 
@@ -22,6 +27,8 @@ export interface LibrarySearch {
   new?: LibraryNew | undefined;
   source?: string | undefined;
   base?: string | undefined;
+  q?: string | undefined;
+  archived?: boolean | undefined;
 }
 
 const ID_CHARS = "0123456789abcdefghijklmnopqrstuvwxyz";
@@ -58,6 +65,8 @@ export function validateLibrarySearch(s: Record<string, unknown>): LibrarySearch
     new: oneOf(s.new, LIBRARY_NEW),
     source: catalogId(s.source),
     base: catalogId(s.base),
+    q: queryParam(s.q),
+    archived: s.archived === true || s.archived === "true" ? true : undefined,
   };
 }
 

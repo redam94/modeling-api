@@ -44,7 +44,7 @@ function Section({ icon, title, items, tone }: { icon: ReactNode; title: string;
   if (!items.length) return null;
   return (
     <section className="grid content-start gap-1.5">
-      <h4 className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase [&_svg]:size-3.5">
+      <h4 className="flex items-center gap-1.5 kicker [&_svg]:size-3.5">
         <span aria-hidden className={cn(tone === "good" && "text-success", tone === "bad" && "text-destructive")}>
           {icon}
         </span>
@@ -114,7 +114,7 @@ function RelatedChips({ ids, onRelated }: { ids: readonly string[]; onRelated?: 
   if (!ids.length) return null;
   return (
     <section className="grid gap-1.5">
-      <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Related</h4>
+      <h4 className="kicker">Related</h4>
       <ul className="flex flex-wrap gap-1.5" aria-label="Related items">
         {ids.map((id) => {
           const entry = index.data?.byId.get(id);
@@ -227,7 +227,7 @@ export function AboutCard({
         <Section icon={<PackageOpen />} title="What you get" items={about.outputs} />
         <Section icon={<Scale />} title="It assumes" items={about.assumptions} />
         <section className="grid content-start gap-1.5">
-          <h4 className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase [&_svg]:size-3.5">
+          <h4 className="flex items-center gap-1.5 kicker [&_svg]:size-3.5">
             <Lightbulb aria-hidden /> For example
           </h4>
           <p className="rounded-md border-l-2 border-primary/50 bg-muted/40 px-3 py-2 text-sm italic">{about.example}</p>
@@ -260,14 +260,14 @@ export function AboutCard({
                     <li key={r.title}>
                       {r.href && uploaded ? (
                         <>
-                          <a href={r.href} target="_blank" rel="noopener noreferrer nofollow ugc" referrerPolicy="no-referrer" className="inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline">
+                          <a href={r.href} target="_blank" rel="noopener noreferrer nofollow ugc" referrerPolicy="no-referrer" className="link inline-flex items-center gap-1">
                             {r.title}
                             <ExternalLink aria-label="(opens an outside site)" className="size-3" />
                           </a>{" "}
                           <span className="font-mono text-xs text-muted-foreground">{r.host}</span>
                         </>
                       ) : r.href ? (
-                        <a href={r.href} target="_blank" rel="noopener noreferrer" className="text-primary underline-offset-2 hover:underline">
+                        <a href={r.href} target="_blank" rel="noopener noreferrer" className="link">
                           {r.title}
                         </a>
                       ) : (
@@ -286,7 +286,7 @@ export function AboutCard({
   );
 }
 
-/** "Beginner" (lime), "Some experience", "For experts": the Studio chip of a difficulty. */
+/** "Beginner" (the highlight tint), "Some experience", "For experts": the chip of a difficulty. */
 export function DifficultyChip({ difficulty, onBlock = false }: { difficulty: About["difficulty"]; onBlock?: boolean }) {
   const meta = DIFFICULTY_META[difficulty];
   return (
@@ -344,7 +344,7 @@ export function AboutTile({
           {kind ? KIND_META[kind].label : null}
         </span>
       ) : null}
-      <span className="block font-display text-xl leading-tight font-bold tracking-[-0.02em] [overflow-wrap:anywhere]">{about.title}</span>
+      <span className="block font-display text-xl leading-tight font-semibold tracking-[-0.02em] [overflow-wrap:anywhere]">{about.title}</span>
       <span className="line-clamp-3 text-sm text-muted-foreground">{about.summary_plain}</span>
       {goodFor ? (
         <span className="line-clamp-2 text-sm">

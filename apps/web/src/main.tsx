@@ -1,7 +1,5 @@
 import "./trusted-types";
 import "@fontsource-variable/inter";
-// The display face, wght axis only (its Latin file is ~40 KiB; the opsz cut is not shipped).
-import "@fontsource-variable/bricolage-grotesque/wght.css";
 import "@fontsource-variable/jetbrains-mono";
 import "./app.css";
 

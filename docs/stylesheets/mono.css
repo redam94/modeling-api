@@ -1,0 +1,490 @@
+/* modeling-api docs: the "Mono" look.
+
+   Chrome is monochrome: ink on background. Colour is for meaning only, and it always means
+   the same thing: orange = new or attention, blue = information, green = good, red = danger.
+   Depth comes from two surfaces (--mono-bg and --mono-bg-alt), not from borders or shadows.
+
+   Files (loaded in this order by mkdocs.yml):
+     mono.css          fonts, tokens for light and dark, the Material variable map, base type
+     mono-chrome.css   header, tabs, drawer, search dialog, sidebars, page head, footer
+     mono-content.css  what Markdown makes: text, code, tables, admonitions, tabs, cards,
+                       buttons, and the mapi-* classes that pages use
+     mono-blocks.css   the building blocks below, and the scroll reveal
+   Templates are in overrides/ and the script is docs/javascripts/mono.js.
+
+   --------------------------------------------------------------------------------------
+   BUILDING BLOCKS (use them from Markdown with md_in_html and attr_list)
+
+   A full-bleed page: put `template: home.html` in the front matter. The content then has no
+   sidebars and no width cap, and each top-level block must be a band.
+
+     <section class="mono-band" markdown>              a full-width band on --mono-bg
+     <section class="mono-band mono-band--alt">        the same on --mono-bg-alt
+     <section class="mono-band mono-band--dark">       dark in both colour schemes
+     <section class="mono-band mono-band--hero mono-hero--home">
+                                                       centred head; the art shows in dark
+                                                       scheme only, behind a scrim. Art:
+                                                       mono-hero--home | --learn | --guides |
+                                                       --extend | --reference | --operate
+       + mono-band--tight                              less vertical padding
+       + mono-band--left                               with --hero: left-aligned head, art at
+                                                       the right edge
+       + tex-contours | tex-lattice | tex-curves       a faint corner texture, dark scheme only
+     <div class="mono-wrap" markdown>                  the 1080px column inside a band
+     <div class="mono-wrap mono-wrap--narrow">         a 764px column for running text
+     .mono-center                                      on a wrap: centre the text and actions
+
+     <p class="mono-kicker">                           the small grey line above a headline
+     <h1 class="mono-display">                         the page headline (one per page)
+     <h2 class="mono-headline">                        a band headline; + mono-headline--s
+     <p class="mono-lead">                             grey running copy; <strong> is ink
+
+     Tiles, written as a Markdown list (the build checks these links):
+       <div class="mono-tiles mono-tiles--3" markdown>   --3: three in a row; default: two;
+                                                         --7-5: rows of 7 + 5, then 5 + 7
+       -   ![](assets/brand/icons/guides.webp){ .mono-icon }
+
+           ### Title
+
+           One or two sentences.
+
+           [Read the guide](guides/start-here.md){ .mono-more }
+       </div>
+       The .mono-more link is pinned to the bottom and covers the whole tile.
+     Tiles with a chosen width: the same content in a <div class="mono-tile">:
+       <div class="mono-tiles" markdown>
+       <div class="mono-tile mono-span-7" markdown>
+       ![](assets/brand/icons/dashboard.webp){ .mono-icon }
+
+       ### Title
+
+       Text.
+
+       [Read the guide](guides/client-dashboards.md){ .mono-more }
+       </div>
+       </div>
+       spans: mono-span-4 | -5 | -6 (default) | -7 | -8 | -12; all stack on phones
+     Do not write a tile as <a class="mono-tile"> in Markdown: the permalink that the
+     build adds to a heading is a link too, and a link inside a link breaks the tile.
+     (In a template, where no heading gets a permalink, <a class="mono-tile"> is fine.)
+     <img class="mono-icon">                           a 56px icon drawn on black; one file
+                                                       serves both schemes
+     <div class="mono-actions">                        a row of buttons and links
+       [Label](url){ .md-button .md-button--primary }  the ink pill
+       [Label](url){ .mono-more }                      a text link with a chevron
+
+     <div class="mono-figures">                        a row of big numbers
+       <div><p class="mono-figure-num">46 s</p><p>What the number measures.</p></div>
+       colour for meaning: + is-orange | is-blue | is-green | is-red
+     <ol class="mono-steps">                           a numbered sequence (only for real steps)
+       <li><h3>Title</h3><p>Text.</p></li>
+     <ul class="mono-links">                           stacked link rows (quick links)
+       <li><a href="..."><b>Title</b><span>One line.</span><i>Guide</i></a></li>
+     <span class="mono-chip">                          a small neutral pill;
+                                                       + is-orange | is-blue | is-green | is-red
+
+     data-reveal                                       on any block: fade and rise when it
+                                                       scrolls into view; siblings stagger.
+                                                       Visible without JavaScript, in print
+                                                       and with reduced motion.
+   -------------------------------------------------------------------------------------- */
+
+/* ----------------------------------------------------------------------------- fonts */
+/* Self-hosted (docs/assets/fonts/, OFL-1.1). Apple devices use the system font, so these
+   files load only where the system has no San Francisco. */
+
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("../assets/fonts/inter-latin-wght-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("../assets/fonts/inter-latin-ext-wght-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308,
+    U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Inter Variable";
+  font-style: italic;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("../assets/fonts/inter-latin-wght-italic.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Inter Variable";
+  font-style: italic;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("../assets/fonts/inter-latin-ext-wght-italic.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308,
+    U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "JetBrains Mono Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 800;
+  src: url("../assets/fonts/jetbrains-mono-latin-wght-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "JetBrains Mono Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 800;
+  src: url("../assets/fonts/jetbrains-mono-latin-ext-wght-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308,
+    U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "JetBrains Mono Variable";
+  font-style: italic;
+  font-display: swap;
+  font-weight: 100 800;
+  src: url("../assets/fonts/jetbrains-mono-latin-wght-italic.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "JetBrains Mono Variable";
+  font-style: italic;
+  font-display: swap;
+  font-weight: 100 800;
+  src: url("../assets/fonts/jetbrains-mono-latin-ext-wght-italic.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308,
+    U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* ---------------------------------------------------------------------------- tokens */
+
+:root {
+  --mono-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter Variable",
+    "Segoe UI Variable Text", "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --mono-code-font: ui-monospace, "SF Mono", SFMono-Regular, "JetBrains Mono Variable", Menlo,
+    Consolas, monospace;
+  --mono-nav-h: 2.4rem;
+  --mono-wrap: 1080px;
+  --mono-gutter: 22px;
+  --mono-radius-l: 28px;
+  --mono-radius-m: 18px;
+  --mono-radius-s: 10px;
+  --mono-radius-pill: 980px;
+  --mono-ease: cubic-bezier(0.28, 0.11, 0.32, 1);
+}
+
+/* Light. Material puts data-md-color-scheme on <body>. */
+:root,
+[data-md-color-scheme="default"] {
+  color-scheme: light;
+  --mono-bg: #ffffff;
+  --mono-bg-alt: #f5f5f7;
+  --mono-bg-raise: #ffffff;
+  --mono-ink: #1d1d1f;
+  --mono-ink-2: #424245;
+  --mono-muted: #6e6e73;
+  /* --mono-faint is for rules, icons and marks. Small text uses --mono-subtle, which keeps
+     4.5:1 on both surfaces. */
+  --mono-faint: #86868b;
+  --mono-subtle: #6e6e73;
+  --mono-line: #d2d2d7;
+  --mono-line-soft: #e8e8ed;
+  /* data hues, for marks and fills */
+  --mono-orange: #d55e00;
+  --mono-blue: #0072b2;
+  --mono-green: #00865f;
+  --mono-red: #c8102e;
+  /* the same hues for text: 4.5:1 on both surfaces and on their own soft tint */
+  --mono-orange-text: #a04600;
+  --mono-blue-text: #005f96;
+  --mono-green-text: #006b4c;
+  --mono-red-text: #b00d27;
+  --mono-orange-soft: rgba(213, 94, 0, 0.16);
+  --mono-blue-soft: rgba(0, 114, 178, 0.16);
+  --mono-green-soft: rgba(0, 134, 95, 0.12);
+  --mono-red-soft: rgba(200, 16, 46, 0.1);
+  --mono-nav-base: #ffffff;
+  --mono-nav-bg: rgba(255, 255, 255, 0.78);
+  --mono-scrim: rgba(255, 255, 255, 0.62);
+  --mono-code-bg: #f5f5f7;
+  --mono-tok-key: #9b2393;
+  --mono-tok-str: #c41a16;
+  --mono-tok-num: #1c00cf;
+  --mono-tok-com: #6e6e73;
+  --mono-tok-fn: #0f68a0;
+  /* Generated icons are drawn on black. Light surfaces invert them and multiply. */
+  --mono-icon-filter: invert(1) hue-rotate(180deg) saturate(1.4);
+  --mono-icon-blend: multiply;
+  --mono-card-glow: 0;
+}
+
+/* Dark. The same block serves a band that is dark in both schemes.
+   Not in print: on paper a page in dark scheme, and a dark band, take the light tokens of
+   :root, so the text is dark ink on white. */
+@media not print {
+  [data-md-color-scheme="slate"],
+  .mono-band--dark {
+    color-scheme: dark;
+    --mono-bg: #000000;
+    --mono-bg-alt: #161617;
+    --mono-bg-raise: #1d1d1f;
+    --mono-ink: #f5f5f7;
+    --mono-ink-2: #d2d2d7;
+    --mono-muted: #a1a1a6;
+    --mono-faint: #86868b;
+    --mono-subtle: #98989d;
+    --mono-line: #424245;
+    --mono-line-soft: #2a2a2c;
+    --mono-orange: #ff9a52;
+    --mono-blue: #56b4e9;
+    --mono-green: #34d399;
+    --mono-red: #ff6b6b;
+    --mono-orange-text: #ff9a52;
+    --mono-blue-text: #56b4e9;
+    --mono-green-text: #34d399;
+    --mono-red-text: #ff6b6b;
+    --mono-orange-soft: rgba(255, 154, 82, 0.2);
+    --mono-blue-soft: rgba(86, 180, 233, 0.2);
+    --mono-green-soft: rgba(52, 211, 153, 0.14);
+    --mono-red-soft: rgba(255, 107, 107, 0.14);
+    --mono-nav-base: #161617;
+    --mono-nav-bg: rgba(22, 22, 23, 0.78);
+    --mono-scrim: rgba(0, 0, 0, 0.62);
+    --mono-code-bg: #161617;
+    --mono-tok-key: #ff7ab2;
+    --mono-tok-str: #ff8170;
+    --mono-tok-num: #d9c97c;
+    --mono-tok-com: #98989d;
+    --mono-tok-fn: #6bdfff;
+    --mono-icon-filter: none;
+    --mono-icon-blend: screen;
+    --mono-card-glow: 0.12;
+  }
+}
+
+/* ------------------------------------------------- Material's variables, from the tokens */
+
+[data-md-color-scheme="default"],
+[data-md-color-scheme="slate"] {
+  --md-hue: 240;
+
+  --md-default-fg-color: var(--mono-ink);
+  --md-default-fg-color--light: var(--mono-muted);
+  --md-default-fg-color--lighter: var(--mono-faint);
+  --md-default-fg-color--lightest: var(--mono-line-soft);
+  --md-default-bg-color: var(--mono-bg);
+  --md-default-bg-color--light: var(--mono-nav-bg);
+  --md-default-bg-color--lighter: var(--mono-scrim);
+  --md-default-bg-color--lightest: var(--mono-line-soft);
+
+  /* "primary" and "accent" are ink: no brand colour in the chrome */
+  --md-primary-fg-color: var(--mono-ink);
+  --md-primary-fg-color--light: var(--mono-ink-2);
+  --md-primary-fg-color--dark: var(--mono-ink);
+  --md-primary-bg-color: var(--mono-bg);
+  --md-primary-bg-color--light: var(--mono-bg-alt);
+  --md-accent-fg-color: var(--mono-ink);
+  --md-accent-fg-color--transparent: color-mix(in srgb, var(--mono-ink) 8%, transparent);
+  --md-accent-bg-color: var(--mono-bg);
+  --md-accent-bg-color--light: var(--mono-bg-alt);
+
+  --md-typeset-color: var(--mono-ink);
+  --md-typeset-a-color: var(--mono-ink);
+  --md-typeset-mark-color: var(--mono-orange-soft);
+  --md-typeset-del-color: var(--mono-red-soft);
+  --md-typeset-ins-color: var(--mono-green-soft);
+  --md-typeset-kbd-color: var(--mono-bg-raise);
+  --md-typeset-kbd-accent-color: var(--mono-bg-raise);
+  --md-typeset-kbd-border-color: var(--mono-line);
+  --md-typeset-table-color: var(--mono-line-soft);
+  --md-typeset-table-color--light: color-mix(in srgb, var(--mono-ink) 4%, transparent);
+
+  --md-code-fg-color: var(--mono-ink);
+  --md-code-bg-color: var(--mono-code-bg);
+  --md-code-bg-color--light: var(--mono-code-bg);
+  --md-code-bg-color--lighter: var(--mono-code-bg);
+  --md-code-hl-color: var(--mono-blue);
+  --md-code-hl-color--light: var(--mono-blue-soft);
+  /* the five syntax colours */
+  --md-code-hl-keyword-color: var(--mono-tok-key);
+  --md-code-hl-special-color: var(--mono-tok-key);
+  --md-code-hl-string-color: var(--mono-tok-str);
+  --md-code-hl-number-color: var(--mono-tok-num);
+  --md-code-hl-constant-color: var(--mono-tok-num);
+  --md-code-hl-comment-color: var(--mono-tok-com);
+  --md-code-hl-function-color: var(--mono-tok-fn);
+  --md-code-hl-name-color: var(--mono-ink);
+  --md-code-hl-operator-color: var(--mono-ink-2);
+  --md-code-hl-punctuation-color: var(--mono-ink-2);
+  --md-code-hl-generic-color: var(--mono-ink-2);
+  --md-code-hl-variable-color: var(--mono-ink);
+
+  --md-admonition-fg-color: var(--mono-ink-2);
+  --md-admonition-bg-color: var(--mono-bg-alt);
+  --md-warning-fg-color: var(--mono-ink);
+  --md-warning-bg-color: var(--mono-orange-soft);
+
+  --md-footer-fg-color: var(--mono-ink);
+  --md-footer-fg-color--light: var(--mono-muted);
+  --md-footer-fg-color--lighter: var(--mono-subtle);
+  --md-footer-bg-color: var(--mono-bg-alt);
+  --md-footer-bg-color--dark: var(--mono-bg-alt);
+
+  /* no drop shadows: the two surfaces carry depth */
+  --md-shadow-z1: 0 0 0 0 transparent;
+  --md-shadow-z2: 0 0 0 0 transparent;
+  --md-shadow-z3: 0 0 0 0 transparent;
+}
+
+/* Material declares the mermaid variables on every child of <html>. */
+:root > * {
+  --md-mermaid-font-family: var(--mono-font);
+  --md-mermaid-edge-color: var(--mono-muted);
+  --md-mermaid-node-bg-color: var(--mono-bg-alt);
+  --md-mermaid-node-fg-color: var(--mono-line);
+  --md-mermaid-label-bg-color: var(--mono-bg);
+  --md-mermaid-label-fg-color: var(--mono-ink);
+  --md-mermaid-sequence-actor-bg-color: var(--mono-bg-alt);
+  --md-mermaid-sequence-actor-fg-color: var(--mono-ink);
+  --md-mermaid-sequence-actor-border-color: var(--mono-line);
+  --md-mermaid-sequence-actor-line-color: var(--mono-line);
+  --md-mermaid-sequence-actorman-bg-color: var(--mono-bg-alt);
+  --md-mermaid-sequence-actorman-line-color: var(--mono-muted);
+  --md-mermaid-sequence-box-bg-color: var(--mono-bg-alt);
+  --md-mermaid-sequence-box-fg-color: var(--mono-ink-2);
+  --md-mermaid-sequence-label-bg-color: var(--mono-bg-alt);
+  --md-mermaid-sequence-label-fg-color: var(--mono-ink);
+  --md-mermaid-sequence-loop-bg-color: var(--mono-bg-alt);
+  --md-mermaid-sequence-loop-fg-color: var(--mono-ink-2);
+  --md-mermaid-sequence-loop-border-color: var(--mono-line);
+  --md-mermaid-sequence-message-fg-color: var(--mono-ink-2);
+  --md-mermaid-sequence-message-line-color: var(--mono-muted);
+  --md-mermaid-sequence-note-bg-color: var(--mono-bg-raise);
+  --md-mermaid-sequence-note-fg-color: var(--mono-ink-2);
+  --md-mermaid-sequence-note-border-color: var(--mono-line);
+  --md-mermaid-sequence-number-bg-color: var(--mono-ink);
+  --md-mermaid-sequence-number-fg-color: var(--mono-bg);
+}
+
+/* ------------------------------------------------------------------------------ base */
+
+/* Material grows the root size on very wide screens; the Mono sizes are tuned at 20px. */
+html {
+  font-size: 125%;
+  scroll-padding-top: calc(var(--mono-nav-h) + 24px);
+}
+/* scrollbars and form controls of the page follow the scheme that the reader chose */
+@media not print {
+  html:has(> body[data-md-color-scheme="slate"]) {
+    color-scheme: dark;
+  }
+}
+
+body {
+  --md-text-font-family: var(--mono-font);
+  --md-code-font-family: var(--mono-code-font);
+  background: var(--mono-bg);
+  color: var(--mono-ink);
+  text-rendering: optimizeLegibility;
+}
+
+.md-grid {
+  max-width: 66rem;
+}
+
+::selection {
+  background: var(--mono-blue-soft);
+}
+
+/* One focus ring everywhere: ink, 2px, with a gap. */
+:focus-visible,
+.md-typeset a:focus-visible,
+.md-nav__link.focus-visible,
+.md-typeset .md-button:focus-visible {
+  outline: 2px solid var(--mono-ink);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+.md-typeset .md-button:focus-visible,
+.mono-tabs__link:focus-visible,
+.mono-search-btn:focus-visible,
+.md-top:focus-visible {
+  border-radius: var(--mono-radius-pill);
+}
+.mono-search__input:focus-visible {
+  outline: none;
+}
+/* The lists of the two sidebars clip their content (Material hides the overflow of a list
+   for its collapse animation, and each pane scrolls). A ring outside the link is cut there,
+   so the ring of a sidebar link is the outer 2px of its own box. */
+.md-nav__link:focus-visible,
+.md-nav__link.focus-visible {
+  outline-offset: -2px;
+}
+/* The link of a section page has no padding of its own: the padding is on its container.
+   So the container shows the ring, and the row looks the same as the other rows. Without
+   :has() the ring is around the text of the link. */
+.md-nav__container > .md-nav__link:focus-visible,
+.md-nav__container > .md-nav__link.focus-visible {
+  outline-offset: 0;
+}
+@supports selector(:has(a)) {
+  .md-nav__container:has(> a.md-nav__link:focus-visible) {
+    outline: 2px solid var(--mono-ink);
+    outline-offset: -2px;
+    border-radius: 4px;
+  }
+  .md-nav__container > a.md-nav__link:focus-visible {
+    outline: none;
+  }
+}
+
+/* "Skip to content". main.html prints the link (.mono-skip) and the stylesheet hides the
+   link of Material, which goes to the page title: the two sidebars are after the title in
+   the document. The target is the article. It takes the focus, shows no ring (it is not a
+   control) and does not scroll the title out of view. */
+[data-md-component="skip"] {
+  display: none;
+}
+.md-skip {
+  background: var(--mono-ink);
+  color: var(--mono-bg);
+  border-radius: var(--mono-radius-pill);
+  font-size: 0.7rem;
+  padding: 8px 14px;
+}
+#mono-content {
+  scroll-margin-top: 100vh;
+}
+#mono-content:focus,
+#mono-content:focus-visible {
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    transition-delay: 0ms !important;
+  }
+}

@@ -3,13 +3,12 @@
  * (untrusted text, rendered as text), who made it and when, its scope, and the actions (open,
  * start from it for workflow templates, archive, share with the whole tenant for tenant admins).
  */
-import { Archive, ArchiveRestore, ArrowRight, Pencil, Play, Search, Share2 } from "lucide-react";
-import { useId, useState } from "react";
+import { Archive, ArchiveRestore, ArrowRight, Pencil, Play, Share2 } from "lucide-react";
 
 import { can } from "@/api/access";
 import { ErrorNotice, LoadingRows, Spinner } from "@/components/common";
+import { ListNoMatches, ListToolbar } from "@/components/list-toolbar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/primitives";
 import { CatalogGlyph, glyphKind } from "@/components/illustrations";
 import { useGrants } from "@/features/auth/workspace";
 import { relativeTime } from "@/lib/format";
@@ -17,7 +16,7 @@ import { cn } from "@/lib/utils";
 
 import { useStartFromTemplate } from "./actions";
 import { useArchiveLibraryItem, useLibraryItems, usePromoteLibraryItem } from "./api";
-import { Chip, PILL_SM, QUIET, ToggleChip, useDebounced } from "./ui";
+import { Chip, PILL_SM, QUIET, ToggleChip } from "./ui";
 import type { LibraryItem, LibraryKind } from "./types";
 
 function byline(item: LibraryItem, me: string): string {
@@ -38,13 +37,13 @@ function ItemCard({ item, onOpen, me }: { item: LibraryItem; onOpen: (item: Libr
       <div className="flex items-start gap-3">
         <CatalogGlyph kind={glyphKind(item.kind)} seed={item.id} size="sm" />
         <div className="min-w-0 flex-1">
-          <h3 className="text-lg leading-tight font-bold [overflow-wrap:anywhere]">{item.title}</h3>
+          <h3 className="text-lg leading-tight font-semibold [overflow-wrap:anywhere]">{item.title}</h3>
           <p className="font-mono text-xs text-muted-foreground [overflow-wrap:anywhere]">{item.name}</p>
         </div>
       </div>
       {item.summary ? <p className="text-muted-foreground [overflow-wrap:anywhere]">{item.summary}</p> : null}
       <div className="flex flex-wrap gap-1.5">
-        <Chip tone={item.scope === "tenant" ? "lime" : "plain"}>{item.scope === "tenant" ? "Whole tenant" : "This project"}</Chip>
+        <Chip tone={item.scope === "tenant" ? "highlight" : "plain"}>{item.scope === "tenant" ? "Whole tenant" : "This project"}</Chip>
         <Chip>v{item.latest_revision}</Chip>
         {item.created_by === "system" ? <Chip tone="attention">Sample</Chip> : null}
         {item.archived ? <Chip tone="warn">Archived</Chip> : null}
@@ -78,28 +77,40 @@ function ItemCard({ item, onOpen, me }: { item: LibraryItem; onOpen: (item: Libr
   );
 }
 
-export function LibraryList({ kind, onOpen, empty, me }: { kind: LibraryKind; onOpen: (item: LibraryItem) => void; empty: React.ReactNode; me: string }) {
-  const id = useId();
-  const [q, setQ] = useState("");
-  const [archived, setArchived] = useState(false);
-  const query = useDebounced(q, 250);
+/** The things of one kind, as the search box names them. */
+const THINGS: Record<LibraryKind, string> = { model_recipe: "model recipes", prep_preset: "prep presets", chart_template: "chart templates", workflow_template: "workflow templates" };
+
+export function LibraryList({
+  kind,
+  onOpen,
+  empty,
+  me,
+  query,
+  onQuery,
+  archived,
+  onArchived,
+}: {
+  kind: LibraryKind;
+  onOpen: (item: LibraryItem) => void;
+  empty: React.ReactNode;
+  me: string;
+  /** The text of the search box (the page keeps it in the URL as `?q=`); the server filters by it. */
+  query: string;
+  onQuery: (query: string) => void;
+  /** The "Show archived" chip (the page keeps it in the URL as `?archived=true`). */
+  archived: boolean;
+  onArchived: (shown: boolean) => void;
+}) {
   const items = useLibraryItems({ kind, q: query || undefined, include_archived: archived || undefined });
   const list = items.data ?? [];
-  const filtering = Boolean(query) || archived;
+  const things = THINGS[kind];
   return (
     <div className="grid gap-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <label htmlFor={`${id}-q`} className="sr-only">
-          Search
-        </label>
-        <div className="relative w-full max-w-xs">
-          <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input id={`${id}-q`} type="search" className="rounded-full pl-9" placeholder="Search by name or title" value={q} onChange={(e) => setQ(e.target.value)} />
-        </div>
-        <ToggleChip pressed={archived} onClick={() => setArchived(!archived)}>
+      <ListToolbar things={things} placeholder="Search by name or title" value={query} onChange={onQuery} count={items.data && !items.isPlaceholderData ? { shown: list.length } : undefined}>
+        <ToggleChip pressed={archived} onClick={() => onArchived(!archived)}>
           Show archived
         </ToggleChip>
-      </div>
+      </ListToolbar>
       {items.isPending ? (
         <LoadingRows rows={3} />
       ) : items.isError ? (
@@ -110,8 +121,10 @@ export function LibraryList({ kind, onOpen, empty, me }: { kind: LibraryKind; on
             <ItemCard key={item.id} item={item} onOpen={onOpen} me={me} />
           ))}
         </ul>
-      ) : filtering ? (
-        <p className="rounded-2xl border border-dashed border-border-strong p-6 text-muted-foreground">Nothing matches. Try another word{archived ? "" : ", or show archived items"}.</p>
+      ) : query ? (
+        <ListNoMatches things={things} query={query} onClear={() => onQuery("")} />
+      ) : archived ? (
+        <p className="rounded-2xl border border-dashed border-border-strong p-6 text-muted-foreground">There are no {things}, and there are none in the archive.</p>
       ) : (
         empty
       )}

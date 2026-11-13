@@ -95,7 +95,7 @@ export function DataTable<T>({
         <table className="w-full text-sm" aria-label={label} aria-rowcount={rows.length}>
           <thead className="sticky top-0 z-[1] bg-card">
             {table.getHeaderGroups().map((hg) => (
-              <tr key={hg.id} className="border-b border-border-strong">
+              <tr key={hg.id} className="border-b">
                 {hg.headers.map((h) => {
                   const sorted = h.column.getIsSorted();
                   const canSort = h.column.getCanSort();
@@ -104,12 +104,12 @@ export function DataTable<T>({
                       key={h.id}
                       scope="col"
                       aria-sort={sorted === "asc" ? "ascending" : sorted === "desc" ? "descending" : undefined}
-                      className="h-10 px-3 text-left text-sm font-semibold whitespace-nowrap text-foreground"
+                      className="h-10 px-3 text-left text-xs font-semibold whitespace-nowrap text-muted-foreground"
                     >
                       {h.isPlaceholder ? null : canSort ? (
                         <button
                           type="button"
-                          className="focus-ring inline-flex items-center gap-1 rounded-sm hover:text-primary-hover"
+                          className="focus-ring inline-flex items-center gap-1 rounded-sm hover:text-foreground"
                           onClick={h.column.getToggleSortingHandler()}
                         >
                           {flexRender(h.column.columnDef.header, h.getContext())}
@@ -133,7 +133,7 @@ export function DataTable<T>({
             {visible.map((row) => (
               <tr
                 key={row.id}
-                className={cn("border-b last:border-0", onRowClick && "cursor-pointer hover:bg-surface-hover focus-visible:bg-accent")}
+                className={cn("border-b last:border-0", onRowClick && "cursor-pointer hover:bg-muted/50 focus-visible:bg-accent")}
                 style={{ height: rowHeight }}
                 {...(onRowClick
                   ? {

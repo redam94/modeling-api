@@ -1,7 +1,7 @@
 /**
- * Small building blocks of "Make your own": Studio chips and pills, numbered builder sections,
- * field problems from `:validate` pointers, the metadata fields every item has, the scope
- * choice, and a debounce hook. Token classes only (Studio, `plans/v018-direction.md`).
+ * Small building blocks of "Make your own": chips and pills, numbered builder sections,
+ * field problems from `:validate` pointers, the metadata fields every item has, and the scope
+ * choice. Token classes only.
  */
 import { Link } from "@tanstack/react-router";
 import { useEffect, useId, useRef, useState, type ComponentProps, type ReactNode } from "react";
@@ -15,20 +15,7 @@ import { slugify } from "./doc";
 import type { LibrarySearch } from "./search";
 import { issuesAt, type LibraryMetadata, type LibraryScope } from "./types";
 
-// ------------------------------------------------------------------------------ hooks
-
-/** `value` after it has stopped changing for `ms` (compared by its JSON, so new objects with the same content do not restart the wait). */
-export function useDebounced<T>(value: T, ms: number): T {
-  const [out, setOut] = useState(value);
-  const key = JSON.stringify(value);
-  const latest = useRef(value);
-  latest.current = value;
-  useEffect(() => {
-    const t = setTimeout(() => setOut(latest.current), ms);
-    return () => clearTimeout(t);
-  }, [key, ms]);
-  return out;
-}
+// ------------------------------------------------------------------------------ focus
 
 /** Move focus to the field a JSON pointer names (the closest one that exists). */
 export function focusPointer(root: HTMLElement | null, pointer: string | null | undefined): boolean {
@@ -50,11 +37,11 @@ export function focusPointer(root: HTMLElement | null, pointer: string | null | 
 
 // ------------------------------------------------------------------------------ chips and pills
 
-export type ChipTone = "plain" | "lime" | "attention" | "ok" | "warn" | "block";
+export type ChipTone = "plain" | "highlight" | "attention" | "ok" | "warn" | "block";
 
 const CHIP: Record<ChipTone, string> = {
   plain: "bg-muted text-muted-foreground",
-  lime: "bg-highlight-soft text-highlight-ink",
+  highlight: "bg-highlight-soft text-highlight-ink",
   attention: "bg-attention-soft text-attention",
   ok: "bg-[color-mix(in_srgb,var(--success)_12%,var(--card))] text-success",
   warn: "bg-[color-mix(in_srgb,var(--warning)_14%,var(--card))] text-warning",
@@ -65,13 +52,20 @@ export function Chip({ tone = "plain", className, children }: { tone?: ChipTone;
   return <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap", CHIP[tone], className)}>{children}</span>;
 }
 
-/** Studio pill shapes for `Button`'s `className` (min 44 px, 36 px small). */
+/** Taller pill shapes for `Button`'s `className` (min 44 px, 36 px small). */
 export const PILL = "h-auto min-h-11 rounded-full px-5";
 export const PILL_SM = "h-auto min-h-9 rounded-full px-4 text-xs";
-/** The lime call to action on an ink block (one per view). */
-export const LIME = "bg-highlight text-highlight-foreground hover:bg-highlight hover:shadow-[inset_0_0_0_2px_var(--highlight-foreground)] active:bg-highlight";
+/**
+ * The focus ring of a `Button` on the dark block. The ring of the page is a gap in the card
+ * colour and then ink: in the light theme the ink has no contrast with the block, and the white
+ * gap has none with an inverted button. On the block the gap takes the colour of the block and
+ * the ring takes its light ink.
+ */
+export const BLOCK_RING = "[--card:var(--block)] [--ring:var(--block-foreground)]";
+/** The call to action on a dark block (one per view): the ink button, inverted. */
+export const BLOCK_CTA = `${BLOCK_RING} bg-block-foreground text-block hover:bg-block-foreground/85 active:bg-block-foreground`;
 /** A quiet pill (muted fill). */
-export const QUIET = "bg-muted text-foreground ring-0 hover:bg-surface-hover";
+export const QUIET = "bg-muted text-foreground ring-0 hover:bg-border-strong";
 
 /** A toggle chip (aria-pressed): pressed = foreground fill, like the Catalog filters. */
 export function ToggleChip({ pressed, onClick, children, title, disabled, className }: { pressed: boolean; onClick: () => void; children: ReactNode; title?: string; disabled?: boolean; className?: string }) {
@@ -83,8 +77,8 @@ export function ToggleChip({ pressed, onClick, children, title, disabled, classN
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "focus-ring inline-flex min-h-9 items-center gap-1.5 rounded-full border-[1.5px] px-3.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-        pressed ? "border-foreground bg-foreground text-background" : "border-border-strong bg-card text-foreground hover:border-primary",
+        "focus-ring inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+        pressed ? "border-foreground bg-foreground text-background" : "border-border-strong bg-card text-foreground hover:border-foreground",
         className,
       )}
     >
@@ -103,12 +97,12 @@ export function BuilderSection({ n, title, hint, children, className, done }: { 
       <header className="mb-4 flex items-start gap-3">
         <span
           aria-hidden
-          className={cn("display grid size-8 shrink-0 place-items-center rounded-full text-sm font-bold", done ? "bg-primary text-primary-foreground" : "bg-highlight-soft text-highlight-ink")}
+          className={cn("display grid size-8 shrink-0 place-items-center rounded-full text-sm font-semibold", done ? "bg-primary text-primary-foreground" : "bg-highlight-soft text-highlight-ink")}
         >
           {n}
         </span>
         <div className="min-w-0">
-          <h2 id={id} className="text-xl leading-tight font-bold">
+          <h2 id={id} className="text-xl leading-tight font-semibold">
             {title}
           </h2>
           {hint ? <p className="mt-1 max-w-[60ch] text-muted-foreground">{hint}</p> : null}

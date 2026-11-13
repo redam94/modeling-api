@@ -66,7 +66,7 @@ export function ExplorerNav({
     <nav aria-label={label} className="grid content-start gap-4 lg:sticky lg:top-4">
       {groups.map((g) => (
         <div key={g} className="grid gap-0.5">
-          <h2 className="px-2 pb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{g}</h2>
+          <h2 className="px-2 pb-1 kicker">{g}</h2>
           <ul className="flex flex-wrap gap-1 lg:grid lg:gap-0.5">
             {entries
               .filter((e) => e.group === g)
@@ -153,7 +153,7 @@ export function RunBanner({ exploration, error, title }: { exploration: { done: 
         </span>
         <span className="flex items-center gap-2">
           <StateBadge state={run.state} />
-          <Link to="/runs/$runId" params={{ runId: run.id }} className="text-xs text-muted-foreground hover:underline">
+          <Link to="/runs/$runId" params={{ runId: run.id }} className="link text-xs text-muted-foreground">
             Open the run
           </Link>
         </span>
