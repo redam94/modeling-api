@@ -11,6 +11,7 @@
  *   template from this" on a plot card)
  * - `base`: a catalog model id for a new preset ("Save as preset" elsewhere)
  * - `q`: the text of the search box of the lists (v0.21)
+ * - `archived`: the "Show archived" chip of the lists is on (v0.21)
  */
 import { queryParam } from "@/lib/list-query";
 
@@ -27,6 +28,7 @@ export interface LibrarySearch {
   source?: string | undefined;
   base?: string | undefined;
   q?: string | undefined;
+  archived?: boolean | undefined;
 }
 
 const ID_CHARS = "0123456789abcdefghijklmnopqrstuvwxyz";
@@ -64,6 +66,7 @@ export function validateLibrarySearch(s: Record<string, unknown>): LibrarySearch
     source: catalogId(s.source),
     base: catalogId(s.base),
     q: queryParam(s.q),
+    archived: s.archived === true || s.archived === "true" ? true : undefined,
   };
 }
 

@@ -4,7 +4,6 @@
  * start from it for workflow templates, archive, share with the whole tenant for tenant admins).
  */
 import { Archive, ArchiveRestore, ArrowRight, Pencil, Play, Share2 } from "lucide-react";
-import { useState } from "react";
 
 import { can } from "@/api/access";
 import { ErrorNotice, LoadingRows, Spinner } from "@/components/common";
@@ -88,6 +87,8 @@ export function LibraryList({
   me,
   query,
   onQuery,
+  archived,
+  onArchived,
 }: {
   kind: LibraryKind;
   onOpen: (item: LibraryItem) => void;
@@ -96,15 +97,17 @@ export function LibraryList({
   /** The text of the search box (the page keeps it in the URL as `?q=`); the server filters by it. */
   query: string;
   onQuery: (query: string) => void;
+  /** The "Show archived" chip (the page keeps it in the URL as `?archived=true`). */
+  archived: boolean;
+  onArchived: (shown: boolean) => void;
 }) {
-  const [archived, setArchived] = useState(false);
   const items = useLibraryItems({ kind, q: query || undefined, include_archived: archived || undefined });
   const list = items.data ?? [];
   const things = THINGS[kind];
   return (
     <div className="grid gap-4">
       <ListToolbar things={things} placeholder="Search by name or title" value={query} onChange={onQuery} count={items.data && !items.isPlaceholderData ? { shown: list.length } : undefined}>
-        <ToggleChip pressed={archived} onClick={() => setArchived(!archived)}>
+        <ToggleChip pressed={archived} onClick={() => onArchived(!archived)}>
           Show archived
         </ToggleChip>
       </ListToolbar>

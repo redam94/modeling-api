@@ -7,6 +7,7 @@ import userEvent from "@testing-library/user-event";
 import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { useRecents } from "@/features/search/recents";
 import { createHandlers } from "@/mocks/handlers";
 import { useUi } from "@/stores/ui";
 import { renderApp } from "@/test/render-app";
@@ -142,6 +143,24 @@ describe("the account menu", () => {
     expect(useUi.getState().shortcutsOpen).toBe(false);
     await user.click(within(help).getByRole("menuitem", { name: "Keyboard shortcuts" }));
     expect(useUi.getState().shortcutsOpen).toBe(true);
+  });
+
+  it("removes the recent items of the search from this browser on sign-out", async () => {
+    // the lists hold names and descriptions: the next person on this browser must not get them
+    useRecents.setState({ owner: null, byScope: {} });
+    useRecents.getState().add("acme/growth", { group: "datasets", title: "ACQUISITION TARGET due diligence", secondary: "Confidential: Project Falcon", href: "/datasets/ds_01jaf3a1b2c3d4e5f6g7h8j9k0" });
+    expect(localStorage.getItem("mapi.search.recent")).toContain("ACQUISITION TARGET");
+    // jsdom has no navigation: the reload at "/" is a call that the test only counts
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, assign });
+    try {
+      const { user, menu } = await openMenu();
+      await user.click(within(menu).getByRole("menuitem", { name: "Sign out" }));
+      await waitFor(() => expect(assign).toHaveBeenCalledWith("/"));
+      expect(localStorage.getItem("mapi.search.recent")).toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("links to the docs in a new tab when the docs address is set", async () => {

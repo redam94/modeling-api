@@ -11,12 +11,13 @@ import { EmptyArt } from "./brand/empty-art";
 import { EmptyState, PageHeader } from "./common";
 
 /** Render inside a router: breadcrumb links are router links. */
-async function renderAt(ui: ReactNode) {
+async function renderAt(ui: ReactNode, url = "/") {
   const root = createRootRoute({ component: () => <>{ui}</> });
   const index = createRoute({ getParentRoute: () => root, path: "/" });
   const models = createRoute({ getParentRoute: () => root, path: "/models" });
   const model = createRoute({ getParentRoute: () => root, path: "/models/$modelId" });
-  const router = createRouter({ routeTree: root.addChildren([index, models, model]), history: createMemoryHistory({ initialEntries: ["/"] }) });
+  const version = createRoute({ getParentRoute: () => root, path: "/models/$modelId/versions/$version" });
+  const router = createRouter({ routeTree: root.addChildren([index, models, model, version]), history: createMemoryHistory({ initialEntries: [url] }) });
   render(<RouterProvider router={router as never} />);
   await screen.findByRole("heading", { level: 1 });
 }
@@ -42,6 +43,21 @@ describe("PageHeader", () => {
     const header = screen.getByRole("heading", { level: 1, name: "Version 3" }).closest("header")!;
     expect(header.querySelector("nav, h1")).toBe(nav);
     expect(nav.querySelector("ol")!.className).toContain("kicker");
+  });
+
+  it("marks only the last item as the current page on a page below the pages of the trail", async () => {
+    // the router marks a link to a page above the open page as active: the trail must not
+    await renderAt(
+      <PageHeader
+        title="Version 3"
+        crumbs={[{ label: "Models", to: "/models" }, { label: "Weekly sales", to: "/models/$modelId", params: { modelId: "mdl_1" } }, { label: "Version 3" }]}
+      />,
+      "/models/mdl_1/versions/3?tab=fit",
+    );
+    const nav = screen.getByRole("navigation", { name: "Breadcrumb" });
+    const current = Array.from(nav.querySelectorAll("[aria-current]"));
+    expect(current.map((el) => `${el.tagName}:${el.textContent}:${el.getAttribute("aria-current")}`)).toEqual(["SPAN:Version 3:page"]);
+    expect(within(nav).getAllByRole("link")).toHaveLength(2);
   });
 
   it("stays as it was without a trail: the title, the description, the meta row and the actions", async () => {

@@ -55,8 +55,15 @@ export function Chip({ tone = "plain", className, children }: { tone?: ChipTone;
 /** Taller pill shapes for `Button`'s `className` (min 44 px, 36 px small). */
 export const PILL = "h-auto min-h-11 rounded-full px-5";
 export const PILL_SM = "h-auto min-h-9 rounded-full px-4 text-xs";
+/**
+ * The focus ring of a `Button` on the dark block. The ring of the page is a gap in the card
+ * colour and then ink: in the light theme the ink has no contrast with the block, and the white
+ * gap has none with an inverted button. On the block the gap takes the colour of the block and
+ * the ring takes its light ink.
+ */
+export const BLOCK_RING = "[--card:var(--block)] [--ring:var(--block-foreground)]";
 /** The call to action on a dark block (one per view): the ink button, inverted. */
-export const BLOCK_CTA = "bg-block-foreground text-block hover:bg-block-foreground/85 active:bg-block-foreground";
+export const BLOCK_CTA = `${BLOCK_RING} bg-block-foreground text-block hover:bg-block-foreground/85 active:bg-block-foreground`;
 /** A quiet pill (muted fill). */
 export const QUIET = "bg-muted text-foreground ring-0 hover:bg-border-strong";
 

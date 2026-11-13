@@ -5,6 +5,10 @@ hoc colours: they use these swatches, which are the light-theme values. The plot
 (``apps/plot-sandbox/src/recipe-palette.ts``, kept in sync by a test) swaps every light value
 for its dark variant when it renders in dark mode. Static renders keep the light values.
 
+A stored plot keeps the light values of the release that made it. When a light value here
+changes, add the old value to ``apps/plot-sandbox/src/legacy-palette.ts`` (a test holds that
+table against this one), so the sandbox still draws old plots in the colours of today.
+
 Swatches marked ``legible`` are strokes, dots or text: they keep at least 3:1 contrast (WCAG
 non-text) against the light card (``#ffffff``) and the dark card (``#161617``). The others
 are fills (bands at :func:`band_opacity`, empty cells, separators), never a data mark: a bar,

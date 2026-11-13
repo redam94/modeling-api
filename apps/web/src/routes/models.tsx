@@ -7,7 +7,7 @@ import { useModel, useModels, useModelVersion, useModelVersions } from "@/api/qu
 import type { Model, ModelVersion } from "@/api/types";
 import { CopyButton, EmptyState, ErrorNotice, KeyValues, LoadingRows, Mono, PageHeader, QueryView } from "@/components/common";
 import { DataTable } from "@/components/data-table";
-import { ListNoMatches, ListToolbar, matchesQuery } from "@/components/list-toolbar";
+import { ListNoMatches, ListToolbar, matchesQuery, toolbarShown } from "@/components/list-toolbar";
 import { EmptyArt } from "@/components/brand/empty-art";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/overlays";
@@ -40,6 +40,9 @@ export function ModelsPage() {
   const navigate = useNavigate();
   const q = listRoute.useSearch().q ?? "";
   const setQuery = (next: string) => void navigate({ to: "/models", search: { q: next || undefined }, replace: true });
+  const items = models.data?.items;
+  const more = Boolean(models.data?.next_cursor);
+  const rows = q && items ? items.filter((m) => matchesQuery(q, [m.name], [m.ref])) : (items ?? []);
   return (
     <>
       <PageHeader
@@ -47,54 +50,56 @@ export function ModelsPage() {
         title="Models"
         description="Each successful fit makes a verified, signed model version. Open one to read its scorecard, plots and diagnostics."
       />
-      <QueryView query={models}>
-        {(page) => {
-          const more = Boolean(page.next_cursor);
-          const rows = q ? page.items.filter((m) => matchesQuery(q, [m.name], [m.ref])) : page.items;
-          return page.items.length ? (
-            <div className="grid gap-3">
-              <ListToolbar things="models" value={q} onChange={setQuery} count={{ shown: rows.length, total: page.items.length, more }} />
-              {rows.length ? (
-                <DataTable
-                  label="Models"
-                  data={rows}
-                  columns={modelColumns}
-                  getRowId={(m) => m.id}
-                  onRowClick={(m) => void navigate({ to: "/models/$modelId", params: { modelId: m.id } })}
+      {/* A block, not a grid: a grid item around the table would take the width of the table on a phone. */}
+      <div className="space-y-3">
+        {/* Outside the query view: a link with ?q= shows its text while the list loads and when the project has no model. */}
+        {toolbarShown(q, items?.length) ? <ListToolbar things="models" value={q} onChange={setQuery} count={items ? { shown: rows.length, total: items.length, more } : undefined} /> : null}
+        <QueryView query={models}>
+          {(page) => {
+            return page.items.length ? (
+              <div className="grid gap-3">
+                {rows.length ? (
+                  <DataTable
+                    label="Models"
+                    data={rows}
+                    columns={modelColumns}
+                    getRowId={(m) => m.id}
+                    onRowClick={(m) => void navigate({ to: "/models/$modelId", params: { modelId: m.id } })}
+                  />
+                ) : (
+                  <ListNoMatches things="models" query={q} firstPage={more ? page.items.length : undefined} onClear={() => setQuery("")} />
+                )}
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                <EmptyState
+                  title="No models yet"
+                  illustration={<EmptyArt kind="models" />}
+                  primaryAction={
+                    <Button asChild className="rounded-full">
+                      <Link to="/build">Fit a spec</Link>
+                    </Button>
+                  }
+                  action={
+                    <Button asChild variant="outline" className="rounded-full">
+                      <Link to="/guided">Start a guided analysis</Link>
+                    </Button>
+                  }
+                >
+                  Your fitted models land here. Fit a spec on the Build page: when the fit is successful and the server verifies its outputs, the model version shows here.
+                </EmptyState>
+                <EmptyHints
+                  hints={[
+                    ["Signed", "Each version has a signature, so you know it is the one that was fitted."],
+                    ["Scored", "A sanity scorecard checks the fit, the forecast and the data."],
+                    ["Ready to use", "Score it, explore what-ifs or plan a budget from the version page."],
+                  ]}
                 />
-              ) : (
-                <ListNoMatches things="models" query={q} firstPage={more ? page.items.length : undefined} onClear={() => setQuery("")} />
-              )}
-            </div>
-          ) : (
-            <div className="grid gap-4">
-              <EmptyState
-                title="No models yet"
-                illustration={<EmptyArt kind="models" />}
-                primaryAction={
-                  <Button asChild className="rounded-full">
-                    <Link to="/build">Fit a spec</Link>
-                  </Button>
-                }
-                action={
-                  <Button asChild variant="outline" className="rounded-full">
-                    <Link to="/guided">Start a guided analysis</Link>
-                  </Button>
-                }
-              >
-                Your fitted models land here. Fit a spec on the Build page: when the fit is successful and the server verifies its outputs, the model version shows here.
-              </EmptyState>
-              <EmptyHints
-                hints={[
-                  ["Signed", "Each version has a signature, so you know it is the one that was fitted."],
-                  ["Scored", "A sanity scorecard checks the fit, the forecast and the data."],
-                  ["Ready to use", "Score it, explore what-ifs or plan a budget from the version page."],
-                ]}
-              />
-            </div>
-          );
-        }}
-      </QueryView>
+              </div>
+            );
+          }}
+        </QueryView>
+      </div>
     </>
   );
 }

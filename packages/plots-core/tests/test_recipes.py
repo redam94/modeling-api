@@ -901,6 +901,38 @@ def test_the_plot_sandbox_mirrors_the_dark_variants() -> None:
     assert pairs == dark_variants()
 
 
+def test_the_plot_sandbox_maps_the_colours_of_earlier_releases() -> None:
+    """A stored plot keeps the colours of the release that made it. The sandbox table
+    ``legacy-palette.ts`` gives each of them the light swatch of the same role now, so the
+    dark variants above apply to it. A palette change must move the dropped values there."""
+    from mapi_plots.palette import PALETTE
+
+    ts = Path(__file__).parents[3] / "apps" / "plot-sandbox" / "src" / "legacy-palette.ts"
+    if not ts.parent.is_dir():
+        pytest.skip("the plot sandbox sources are not in this checkout")
+    legacy = dict(re.findall(r'"(#[0-9a-f]{6})":\s*"(#[0-9a-f]{6})"', ts.read_text()))
+    lights = {swatch.light for swatch in PALETTE.values()}
+    assert set(legacy.values()) <= lights, sorted(set(legacy.values()) - lights)
+    assert not set(legacy) & lights, sorted(set(legacy) & lights)
+    # the Studio palette (v0.18 to v0.20), role by role
+    studio = {
+        "band": "#dcd8ff",
+        "estimate": "#3a2bd6",
+        "observed": "#18152f",
+        "alert": "#c0182f",
+        "ok": "#0b6b3a",
+        "reference": "#84819b",
+        "muted": "#625f79",
+        "strong": "#2d2a45",
+        "baseline": "#6e6a8a",
+        "scenario": "#b56a00",
+        "positive": "#0a7fb5",
+        "empty": "#e0deec",
+    }
+    for role, old in studio.items():
+        assert legacy[old] == PALETTE[role].light, role
+
+
 def test_the_card_the_palette_is_checked_on_is_the_web_card() -> None:
     """The 3:1 checks above use the app's ``--card`` in each theme; ``surface`` draws it."""
     from mapi_plots.palette import PALETTE

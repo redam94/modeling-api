@@ -9,7 +9,7 @@
  * playground on example data (WP-T5's `catalog-playground`, lazy).
  */
 import { Sparkles } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 
 import { useCatalog } from "@/api/queries";
@@ -101,7 +101,8 @@ function FeaturedCard({ entry, onOpen }: { entry: CatalogAbout; onOpen: () => vo
           <span className="font-mono text-xs text-block-muted">{entry.id}</span>
         </div>
         <div className="flex flex-wrap gap-2.5 pt-3 [&_[data-slot=button]]:h-auto [&_[data-slot=button]]:min-h-11 [&_[data-slot=button]]:rounded-full [&_[data-slot=button]]:px-5">
-          <span className="contents [&_[data-slot=button]]:bg-block-foreground [&_[data-slot=button]]:text-block [&_[data-slot=button]:hover]:bg-block-foreground/85">
+          {/* the last two classes: the focus ring of the block (`BLOCK_RING` in features/library/ui.tsx) */}
+          <span className="contents [&_[data-slot=button]]:bg-block-foreground [&_[data-slot=button]]:text-block [&_[data-slot=button]:hover]:bg-block-foreground/85 [&_[data-slot=button]]:[--card:var(--block)] [&_[data-slot=button]]:[--ring:var(--block-foreground)]">
             <StartButton kind="model" id={entry.id}>
               Use this model
             </StartButton>
@@ -124,6 +125,9 @@ export function CatalogBrowser({
   onSelect,
   query: text = "",
   onQuery,
+  kind: urlKind,
+  difficulty: urlDifficulty,
+  onFilters,
   teamCount = 0,
   onShowTeam,
 }: {
@@ -132,13 +136,21 @@ export function CatalogBrowser({
   /** The text of the search box (the page keeps it in the URL as `?q=`). */
   query?: string;
   onQuery: (query: string) => void;
+  /** The kind pill and the difficulty of the URL (`?kind=`, `?difficulty=`); nothing: all. */
+  kind?: string | undefined;
+  difficulty?: Difficulty | undefined;
+  /** Write the two filters to the URL (`undefined` removes a key). Use a history replace. */
+  onFilters: (next: { kind: AboutKind | undefined; difficulty: Difficulty | undefined }) => void;
   /** Items in Catalog › Yours; with `onShowTeam`, a "Your team's" filter pill opens that tab. */
   teamCount?: number;
   onShowTeam?: (() => void) | undefined;
 }) {
   const index = useAboutIndex();
-  const [kind, setKind] = useState<AboutKind | "all">("all");
-  const [difficulty, setDifficulty] = useState<Difficulty | "all">("all");
+  // The filters are in the URL like the text: a reload, Back and a copied link keep them.
+  const kind: AboutKind | "all" = KIND_ORDER.find((k) => k === urlKind) ?? "all";
+  const difficulty: Difficulty | "all" = urlDifficulty ?? "all";
+  const setKind = (k: AboutKind | "all") => onFilters({ kind: k === "all" ? undefined : k, difficulty: urlDifficulty });
+  const setDifficulty = (d: Difficulty | "all") => onFilters({ kind: kind === "all" ? undefined : kind, difficulty: d === "all" ? undefined : d });
   const all = useMemo(() => filterAbouts(index.data?.items ?? [], { kind, difficulty, text }), [index.data, kind, difficulty, text]);
   const featured = useMemo(() => featuredAbout(index.data?.items ?? []), [index.data]);
   const counts = useMemo(() => {
@@ -146,7 +158,15 @@ export function CatalogBrowser({
     for (const a of index.data?.items ?? []) m.set(a.kind, (m.get(a.kind) ?? 0) + 1);
     return m;
   }, [index.data]);
-  if (index.isPending) return <LoadingRows rows={6} />;
+  // The box shows the text of a link (?q=) while the cards load.
+  if (index.isPending) {
+    return (
+      <div className="grid gap-6">
+        {text ? <ListToolbar things="catalog items" label="Search the catalog" value={text} onChange={onQuery} /> : null}
+        <LoadingRows rows={6} />
+      </div>
+    );
+  }
   if (index.isError) return <ErrorNotice error={index.error} title="The app cannot load the catalog" onRetry={() => void index.refetch()} />;
   const open = parseAboutKey(selected);
   const entry = open ? index.data.byKey.get(aboutKey(open.kind, open.id)) : undefined;

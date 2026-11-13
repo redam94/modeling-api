@@ -219,17 +219,23 @@ const scoreRoute = createRoute({
 });
 
 export const CATALOG_TABS = ["yours", "models", "steps", "plots"] as const;
+const CATALOG_DIFFICULTIES = ["beginner", "intermediate", "expert"] as const;
 
 const catalogRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/catalog",
   component: lazyRouteComponent(page.catalog, "CatalogPage"),
   // M3.5: without a tab the page browses About cards; `about=kind:id` opens one card.
-  // v0.21: `q` is the text of the search box of the browse view.
-  validateSearch: (s: Record<string, unknown>): { tab?: (typeof CATALOG_TABS)[number] | undefined; about?: string | undefined; q?: string | undefined } => ({
+  // v0.21: `q` is the text of the search box of the browse view; `kind` (the pill, an About
+  // kind: the page knows the names) and `difficulty` are its two filters.
+  validateSearch: (
+    s: Record<string, unknown>,
+  ): { tab?: (typeof CATALOG_TABS)[number] | undefined; about?: string | undefined; q?: string | undefined; kind?: string | undefined; difficulty?: (typeof CATALOG_DIFFICULTIES)[number] | undefined } => ({
     tab: oneOf(s.tab, CATALOG_TABS),
     about: typeof s.about === "string" && /^[a-z_]{1,32}:[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*$/.test(s.about) ? s.about : undefined,
     q: queryParam(s.q),
+    kind: typeof s.kind === "string" && /^[a-z_]{1,32}$/.test(s.kind) ? s.kind : undefined,
+    difficulty: oneOf(s.difficulty, CATALOG_DIFFICULTIES),
   }),
 });
 
@@ -525,6 +531,8 @@ export interface LibraryRouteSearch {
   base?: string | undefined;
   /** v0.21: the text of the search box of the lists. */
   q?: string | undefined;
+  /** v0.21: the "Show archived" chip of the lists is on. */
+  archived?: boolean | undefined;
 }
 
 function dottedCatalogId(v: unknown): string | undefined {
@@ -543,6 +551,7 @@ const libraryRoute = createRoute({
     source: dottedCatalogId(s.source),
     base: dottedCatalogId(s.base),
     q: queryParam(s.q),
+    archived: s.archived === true || s.archived === "true" ? true : undefined,
   }),
 });
 

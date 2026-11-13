@@ -115,7 +115,7 @@ export function activeCatalogTab(urlTab: string | undefined, pickedYours: boolea
 
 export function CatalogPage() {
   const catalog = useCatalog();
-  const { tab, about, q } = route.useSearch();
+  const { tab, about, q, kind, difficulty } = route.useSearch();
   const navigate = useNavigate({ from: "/catalog" });
   const [selected, setSelected] = useState<Selected | null>(null);
   const [pickedYours, setPickedYours] = useState(false);
@@ -168,6 +168,9 @@ export function CatalogPage() {
                 onSelect={(key) => void navigate({ search: (s) => ({ ...s, about: key ?? undefined }), replace: true })}
                 query={q ?? ""}
                 onQuery={(next) => void navigate({ search: (s) => ({ ...s, q: next || undefined }), replace: true })}
+                kind={kind}
+                difficulty={difficulty}
+                onFilters={(next) => void navigate({ search: (s) => ({ ...s, ...next }), replace: true })}
                 teamCount={team.count}
                 onShowTeam={() => go("yours")}
               />

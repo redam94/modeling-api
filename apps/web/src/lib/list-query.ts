@@ -3,8 +3,12 @@
  * router can validate it without loading a page.
  */
 
-/** Characters of a query in the URL. */
+/** Characters of a query in the URL, in the search box of a list page and in the global search. */
 export const MAX_QUERY_CHARS = 200;
+/** Characters the API takes in the `name` filter of `/v1/runs` and `/v1/experiments`. */
+export const MAX_NAME_FILTER_CHARS = 200;
+/** Characters the API takes in the `q` of `/v1/library`. */
+export const MAX_LIBRARY_QUERY_CHARS = 120;
 
 /**
  * The query of a list page from its URL search, or `undefined` (the key is then left out of

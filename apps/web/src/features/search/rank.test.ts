@@ -88,6 +88,35 @@ describe("rankRows", () => {
   });
 });
 
+describe("rankRows with every word (the rule of the list pages)", () => {
+  const rows = [
+    { title: "eu_media_daily" },
+    { title: "eu-geo-mmm" },
+    { title: "Weekly media readout", alt: "weekly-media-readout" },
+    { title: "Neural network for tables", alt: "ml.tabular_mlp" },
+    { title: "eu-geo-mmm", alt: "eu-revenue-planner", id: "dsh_01" },
+  ];
+  const titles = (q: string) => rankRows(q, rows, { every: true }).map((r) => r.row.alt ?? r.row.title);
+
+  it("keeps only the rows where each word is in the title or in the other text", () => {
+    expect(titles("media zzz")).toEqual([]);
+    expect(titles("eu daily")).toEqual(["eu_media_daily"]);
+    expect(titles("weekly media")).toEqual(["weekly-media-readout"]);
+    // one word in the title and one in the other text
+    expect(titles("geo revenue")).toEqual(["eu-revenue-planner"]);
+    // without the option, a match of some words is enough
+    expect(rankRows("media zzz", rows).length).toBeGreaterThan(0);
+  });
+
+  it("still finds a row by its exact id and keeps the order of the scores", () => {
+    expect(titles("dsh_01")).toEqual(["eu-revenue-planner"]);
+    const eu = rankRows("eu", rows, { every: true }).map((r) => r.row.title);
+    // three names start with the text; a name that only contains it comes after them
+    expect([...eu.slice(0, 3)].sort()).toEqual(["eu-geo-mmm", "eu-geo-mmm", "eu_media_daily"]);
+    expect(eu.slice(3)).toEqual(["Neural network for tables"]);
+  });
+});
+
 describe("fuzzyScore", () => {
   it("keeps the v0.20 behaviour", () => {
     expect(fuzzyScore("Datasets", "")).toBe(1);

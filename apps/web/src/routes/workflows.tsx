@@ -13,7 +13,7 @@ import { ApiError } from "@/api/client";
 import { EmptyArt } from "@/components/brand/empty-art";
 import { EmptyState, ErrorNotice, LoadingRows, Mono, PageHeader, QueryView } from "@/components/common";
 import { DataTable } from "@/components/data-table";
-import { ListNoMatches, ListToolbar, matchesQuery } from "@/components/list-toolbar";
+import { ListNoMatches, ListToolbar, matchesQuery, toolbarShown } from "@/components/list-toolbar";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/overlays";
 import { Badge, Field, Input } from "@/components/ui/primitives";
@@ -72,6 +72,9 @@ export function WorkflowsPage() {
   const setQuery = (next: string) => void navigate({ search: (s) => ({ ...s, q: next || undefined }), replace: true });
   const workflows = useWorkflows();
   const mayCreate = can(ws.grants, "create", "workflow");
+  const items = workflows.data?.items;
+  const more = Boolean(workflows.data?.next_cursor);
+  const rows = q && items ? items.filter((w) => matchesQuery(q, [w.name], [w.description, w.template])) : (items ?? []);
   return (
     <>
       <PageHeader
@@ -99,14 +102,13 @@ export function WorkflowsPage() {
         <TabsContent value="templates">
           <TemplateGallery guided={guided} />
         </TabsContent>
-        <TabsContent value="workflows">
+        <TabsContent value="workflows" className="space-y-3">
+          {/* Outside the query view: a link with ?q= shows its text while the list loads and when the project has no workflow. */}
+          {toolbarShown(q, items?.length) ? <ListToolbar things="workflows" value={q} onChange={setQuery} count={items ? { shown: rows.length, total: items.length, more } : undefined} /> : null}
           <QueryView query={workflows}>
             {(page) => {
-              const more = Boolean(page.next_cursor);
-              const rows = q ? page.items.filter((w) => matchesQuery(q, [w.name], [w.description, w.template])) : page.items;
               return page.items.length ? (
                 <div className="grid gap-3">
-                  <ListToolbar things="workflows" value={q} onChange={setQuery} count={{ shown: rows.length, total: page.items.length, more }} />
                   {rows.length ? (
                     <DataTable label="Workflows" data={rows} columns={workflowColumns} getRowId={(w) => w.id} onRowClick={(w) => void navigate({ to: "/workflows/$workflowId", params: { workflowId: w.id } })} />
                   ) : (

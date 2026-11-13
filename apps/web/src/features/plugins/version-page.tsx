@@ -191,7 +191,8 @@ function Header({ plugin, version, uploader, onYank }: { plugin: Plugin; version
             <Button
               data-testid="plugin-request-approval"
               disabled={request.isPending}
-              className="h-auto min-h-11 bg-block-foreground px-5 text-block hover:bg-block-foreground/85 active:bg-block-foreground"
+              // the last two classes: the focus ring of the block (`BLOCK_RING` in features/library/ui.tsx)
+              className="h-auto min-h-11 bg-block-foreground px-5 text-block hover:bg-block-foreground/85 active:bg-block-foreground [--card:var(--block)] [--ring:var(--block-foreground)]"
               onClick={() =>
                 request.mutate(
                   { pluginId: version.plugin_id, versionId: version.id },

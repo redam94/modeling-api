@@ -27,6 +27,7 @@ import { ErrorNotice, Spinner } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/overlays";
 import { useApplyTheme } from "@/hooks/use-theme";
+import { RECENTS_STORAGE_KEY } from "@/lib/recents-key";
 import { useAuth } from "@/stores/auth";
 import { scopeKey, useScope } from "@/stores/scope";
 
@@ -204,7 +205,8 @@ function SessionExpiredDialog({ info }: { info: SessionInfo | null }) {
 
 /**
  * Sign out: end the server session, then reload at `/` so nothing from the session (cached
- * data, the workspace) stays in memory; the gate then shows the sign-in screen.
+ * data, the workspace) stays in memory; the gate then shows the sign-in screen. The recent
+ * items of the search (names and descriptions, kept in this browser) go too.
  */
 export function useSignOut(): () => Promise<void> {
   return async () => {
@@ -212,6 +214,11 @@ export function useSignOut(): () => Promise<void> {
       await logout();
     } catch {
       // The server forgets the session either way; reloading shows what it thinks.
+    }
+    try {
+      localStorage.removeItem(RECENTS_STORAGE_KEY);
+    } catch {
+      // No storage (a private window): there is nothing to remove.
     }
     window.location.assign("/");
   };

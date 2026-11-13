@@ -69,7 +69,8 @@ export function ChainLanes({ chains }: { chains: ChainProgress[] }) {
               {c.tuning ? <span className="text-xs">tuning</span> : null}
               {c.draws_done.toLocaleString("en")}/{c.draws_total.toLocaleString("en")}
               <span
-                className={cn("inline-flex min-w-16 items-center gap-1", divergences > 0 ? "font-medium text-destructive" : "text-muted-foreground/70")}
+                // plain muted text: a lighter tint of it is under 4.5:1 on the card in the two themes
+                className={cn("inline-flex min-w-16 items-center gap-1", divergences > 0 ? "font-medium text-destructive" : "text-muted-foreground")}
                 title="Divergent transitions"
               >
                 {divergences > 0 ? <AlertTriangle className="size-3" /> : null}

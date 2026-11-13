@@ -9,6 +9,7 @@
 import { useEffect } from "react";
 
 import { useProjectScope } from "@/api/queries";
+import { useWorkspace } from "@/features/auth/workspace";
 
 import { useRecents, type RecentItem } from "./recents";
 
@@ -20,12 +21,16 @@ import { useRecents, type RecentItem } from "./recents";
 export function useRecordRecent(item: RecentItem | null | undefined): void {
   const scope = useProjectScope().key;
   const add = useRecents((s) => s.add);
+  const claim = useRecents((s) => s.claim);
+  const me = useWorkspace().user.id;
   const group = item?.group;
   const title = item?.title;
   const secondary = item?.secondary;
   const href = item?.href;
   useEffect(() => {
     if (!group || !title || !href) return;
+    // The lists of a different person (a session that ended without a sign-out) go first.
+    claim(me);
     add(scope, { group, title, ...(secondary ? { secondary } : {}), href });
-  }, [add, scope, group, title, secondary, href]);
+  }, [add, claim, me, scope, group, title, secondary, href]);
 }

@@ -110,9 +110,12 @@ test("\"See all\" lands on the list page with the search box filled and the list
   await expect(page.getByRole("heading", { name: "No datasets match" })).toBeVisible();
   await expect(page).toHaveURL(/\/datasets\?q=media(\+|%20)zzqq$/);
   await shot(page, "list-no-matches");
-  await page.getByRole("button", { name: "Clear the search", exact: true }).click();
+  // With the keyboard: the button goes away, and the focus goes to the search box.
+  await page.getByRole("button", { name: "Clear the search", exact: true }).focus();
+  await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/datasets$/);
   await expect(search).toHaveValue("");
+  await expect(search).toBeFocused();
   await expect(table.getByText("lens_cubes", { exact: true })).toBeVisible();
 
   // The same from another group, on a page that also has filter pills.
@@ -134,6 +137,104 @@ test("a visit to a page shows under Recent, without a search for it first", asyn
   await page.keyboard.press("ControlOrMeta+k");
   const recent = page.getByRole("dialog", { name: "Search" }).getByRole("group", { name: "Recent" });
   await expect(recent.getByRole("option").first()).toContainText("eu_media_daily");
+});
+
+test("a mouse click in the overlay leaves the keyboard focus in the search box", async ({ page }) => {
+  await as(page, "ana");
+  const box = await openSearch(page);
+  const dialog = page.getByRole("dialog", { name: "Search" });
+  // An example fills the box; the next keys go to the box.
+  await dialog.getByRole("group", { name: "Try" }).getByRole("option").filter({ hasText: "fit" }).click();
+  await expect(box).toHaveValue("fit");
+  await expect(box).toBeFocused();
+  await page.keyboard.type("ness");
+  await expect(box).toHaveValue("fitness");
+  await dialog.getByRole("button", { name: "Clear the text" }).click();
+  await expect(box).toBeFocused();
+  await page.keyboard.type("media");
+  await expect(box).toHaveValue("media");
+  // A group heading, the empty area of the list and the footer.
+  await dialog.getByText("Datasets", { exact: true }).first().click();
+  await expect(box).toBeFocused();
+  await dialog.getByTestId("search-hints").click();
+  await expect(box).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(dialog.getByRole("option", { selected: true })).toHaveCount(1);
+  await page.keyboard.type("x");
+  await expect(box).toHaveValue("mediax");
+  // The last use of the pointer: the Close button of a phone is not in the way here.
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+});
+
+test("a list that answers late does not move the row the user is on", async ({ page }) => {
+  await as(page, "ana");
+  // The list of datasets takes 1.5 s longer than the other lists.
+  await page.addInitScript(() => {
+    const orig = window.fetch.bind(window);
+    window.fetch = async (input, init) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      if (/\/v1\/datasets(\?|$)/.test(url)) await new Promise((r) => setTimeout(r, 1500));
+      return orig(input, init);
+    };
+  });
+  const box = await openSearch(page);
+  const dialog = page.getByRole("dialog", { name: "Search" });
+  await box.pressSequentially("media");
+  const dashboard = dialog.getByRole("group", { name: "Dashboards" }).getByRole("option").filter({ hasText: "Weekly media readout" });
+  await expect(dashboard).toBeVisible();
+  const datasets = dialog.getByRole("group", { name: "Datasets" });
+  await expect(datasets).toHaveAttribute("aria-busy", "true");
+  await expect(datasets.getByRole("option")).toHaveCount(0);
+  // The user moves to a row, by the keyboard, while the datasets load.
+  const chosen = dialog.getByRole("option", { selected: true });
+  await page.keyboard.press("ArrowDown");
+  const title = await chosen.locator("[data-title]").textContent();
+  const kind = await chosen.evaluate((el) => el.closest("[role=group]")?.getAttribute("aria-labelledby"));
+  // The datasets come in above that row. The same row is still the active row.
+  await expect(datasets.getByRole("option").filter({ hasText: "eu_media_daily" })).toBeVisible();
+  await expect(dialog.getByRole("option", { selected: true })).toHaveCount(1);
+  expect(await chosen.locator("[data-title]").textContent()).toBe(title);
+  expect(await chosen.evaluate((el) => el.closest("[role=group]")?.getAttribute("aria-labelledby"))).toBe(kind);
+  expect(await datasets.getByRole("option").first().getAttribute("aria-selected")).toBe("false");
+  expect(await box.getAttribute("aria-activedescendant")).toBe(await chosen.getAttribute("id"));
+  await page.keyboard.press("Enter");
+  await expect(dialog).toHaveCount(0);
+  await expect(page).not.toHaveURL(/\/datasets\//);
+});
+
+test("\"See all\" shows the rows the search showed, for a text of two words and for a text that looks like a value", async ({ page }) => {
+  await as(page, "ana");
+  const box = await openSearch(page);
+  const dialog = page.getByRole("dialog", { name: "Search" });
+  // One word of two is no match: the list page needs each word.
+  await box.pressSequentially("media zzqq");
+  await expect(dialog.getByText("No page, action or item matches this text.")).toBeVisible();
+  await expect(dialog.getByRole("group", { name: "Datasets" })).toHaveCount(0);
+
+  await box.fill("eu daily");
+  const datasets = dialog.getByRole("group", { name: "Datasets" });
+  await expect(datasets.getByRole("option").filter({ hasText: "eu_media_daily" })).toBeVisible();
+  await expect(dialog.locator("[aria-busy='true']")).toHaveCount(0);
+  const shown = await datasets.locator("[role=option] [data-title]").allTextContents();
+  const names = shown.filter((t) => !t.startsWith("See all in "));
+  expect(names.length).toBeGreaterThan(0);
+  await datasets.getByRole("option", { name: /See all in Datasets/ }).click();
+  await expect(page).toHaveURL(/\/datasets\?q=eu(\+|%20)daily$/);
+  await expect(page.getByRole("searchbox", { name: "Search datasets" })).toHaveValue("eu daily");
+  const table = page.getByRole("table", { name: "Datasets" });
+  for (const name of names) await expect(table.getByText(name, { exact: true })).toBeVisible();
+  await expect(page.getByTestId("list-count")).toHaveText(new RegExp(`^${names.length} of \\d+ datasets$`));
+
+  // "null" is a word in a modeling app; a plain ?q=null would be read as no query.
+  await page.keyboard.press("ControlOrMeta+k");
+  await box.pressSequentially("null");
+  const catalog = dialog.getByRole("group", { name: "Catalog" });
+  await expect(catalog.getByRole("option").first()).toBeVisible();
+  await catalog.getByRole("option", { name: /See all in Catalog/ }).click();
+  await expect(page).toHaveURL(/\/catalog\?q=%22null%22$/);
+  await expect(page.getByRole("searchbox", { name: "Search the catalog" })).toHaveValue("null");
+  await expect(page.getByTestId("list-count")).toHaveText(/^\d+ of \d+ catalog items$/);
 });
 
 test("a client user has no search", async ({ page }) => {
@@ -166,6 +267,16 @@ for (const theme of ["light", "dark"] as const) {
       };
       await inside();
       await shot(page, `search-${theme}-${width}-empty`);
+      // A phone has no Esc key: it gets a Close button and no row of key hints.
+      const close = dialog.getByRole("button", { name: "Close", exact: true });
+      const hints = dialog.getByTestId("search-hints");
+      if (width < 640) {
+        await expect(close).toBeVisible();
+        await expect(hints).toBeHidden();
+      } else {
+        await expect(close).toBeHidden();
+        await expect(hints).toBeVisible();
+      }
 
       await box.pressSequentially("media");
       await expect(dialog.getByRole("group", { name: "Datasets" }).getByRole("option").first()).toContainText("eu_media_daily");

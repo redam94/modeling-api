@@ -10,7 +10,7 @@
 import { Search, X } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
-import { normaliseQuery, matchText } from "@/features/search/rank";
+import { everyWord } from "@/features/search/rank";
 import { useDebounced } from "@/hooks/use-debounced";
 import { MAX_QUERY_CHARS } from "@/lib/list-query";
 import { cn } from "@/lib/utils";
@@ -47,13 +47,26 @@ type Text = string | null | undefined;
  * Does a thing answer the query of a list page? Each word of the query must be in one of the
  * texts. A word finds a `name` as the global search finds a title (a part of it, or its
  * letters in order); it finds `more` (a description, a reference) only as a part of the text.
+ * The item groups of the global search use the same rule for the names (`everyWord`).
  */
 export function matchesQuery(query: string, names: readonly Text[], more: readonly Text[] = []): boolean {
-  const words = normaliseQuery(query).split(" ").filter(Boolean);
-  if (!words.length) return true;
   const titles = names.filter((t): t is string => Boolean(t));
   const others = more.filter((t): t is string => Boolean(t)).map((t) => t.toLowerCase());
-  return words.every((w) => titles.some((t) => matchText(w, t) !== null) || others.some((t) => t.includes(w)));
+  return everyWord(query, titles, true, (w) => others.some((t) => t.includes(w)));
+}
+
+/**
+ * Does the page show its toolbar? Always with a query in the URL (a link from the global search
+ * must show its text), and while the list loads (`loaded` is `undefined`). A loaded list with
+ * no things and no query has nothing to search: the page shows its first-time view only.
+ */
+export function toolbarShown(query: string, loaded: number | undefined): boolean {
+  return Boolean(query) || loaded === undefined || loaded > 0;
+}
+
+/** The search box of the page takes the keyboard focus (the button that asks for it goes away). */
+function focusListSearch() {
+  document.querySelector<HTMLInputElement>("input[data-list-search]")?.focus();
 }
 
 export interface ListToolbarProps {
@@ -112,6 +125,7 @@ export function ListToolbar({ things, value, onChange, count, label = `Search ${
           <Input
             ref={input}
             type="search"
+            data-list-search=""
             aria-label={label}
             placeholder={placeholder}
             value={text}
@@ -172,7 +186,15 @@ export function ListNoMatches({
       title={`No ${things} match`}
       className={className}
       action={
-        <Button variant="outline" className="rounded-full" onClick={onClear}>
+        <Button
+          variant="outline"
+          className="rounded-full"
+          onClick={() => {
+            onClear();
+            // This button goes away with the empty result: the focus goes to the search box.
+            focusListSearch();
+          }}
+        >
           Clear the search
         </Button>
       }

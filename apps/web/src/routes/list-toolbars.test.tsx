@@ -200,3 +200,161 @@ describe("list pages that the server filters send the query to the API", () => {
     server.events.removeAllListeners();
   });
 });
+
+// ------------------------------------------------------------------ the fixes of the v0.21 review
+
+describe("\"Clear the search\" in the empty result", () => {
+  it("puts the keyboard focus in the search box of the page", async () => {
+    const user = userEvent.setup();
+    renderApp("/models?q=zzzz");
+    const clear = await screen.findByRole("button", { name: "Clear the search" }, T);
+    clear.focus();
+    await user.keyboard("{Enter}");
+    expect(await screen.findByRole("table", { name: "Models" }, T)).toBeInTheDocument();
+    const box = screen.getByRole("searchbox", { name: "Search models" });
+    expect(box).toHaveValue("");
+    expect(box).toHaveFocus();
+  });
+});
+
+/** [url, name of the search box, path of the list in the API, title of the page without things]. */
+const WITH_QUERY: [string, string, string, string][] = [
+  ["/datasets?q=media", "Search datasets", "/v1/datasets", "No datasets yet"],
+  ["/models?q=media", "Search models", "/v1/models", "No models yet"],
+  ["/build?q=media", "Search specs", "/v1/specs", "No specs yet"],
+  ["/workflows?q=media", "Search workflows", "/v1/workflows", "No workflows yet"],
+  ["/integrations?q=media", "Search endpoints", "/v1/endpoints", "This project has no endpoints"],
+];
+
+describe("a list page that opens with ?q= always shows its toolbar with the text", () => {
+  it.each(WITH_QUERY)("%s: while the list loads", async (url, boxName, apiPath) => {
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    server.use(
+      http.get(`${env.apiBase}${apiPath}`, async () => {
+        await held;
+        return HttpResponse.json({ items: [], next_cursor: null });
+      }),
+    );
+    renderApp(url);
+    const box = await screen.findByRole("searchbox", { name: boxName }, T);
+    expect(box).toHaveValue("media");
+    // the list has no answer yet: no table and no empty state
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(document.querySelector("[data-slot='empty-state']")).toBeNull();
+    expect(screen.getByTestId("list-count")).toBeEmptyDOMElement();
+    release();
+  });
+
+  it.each(WITH_QUERY)("%s: when the project has no things of this kind", async (url, boxName, apiPath, emptyTitle) => {
+    server.use(http.get(`${env.apiBase}${apiPath}`, () => HttpResponse.json({ items: [], next_cursor: null })));
+    renderApp(url);
+    expect(await screen.findByRole("heading", { name: emptyTitle }, T)).toBeInTheDocument();
+    expect(screen.getByRole("searchbox", { name: boxName })).toHaveValue("media");
+  });
+
+  it("shows the box of the catalog with the text while the cards load", async () => {
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    server.use(
+      http.get(`${env.apiBase}/v1/catalog/abouts`, async () => {
+        await held;
+        return HttpResponse.json({ items: [], next_cursor: null });
+      }),
+    );
+    renderApp("/catalog?q=media");
+    expect(await screen.findByRole("searchbox", { name: "Search the catalog" }, T)).toHaveValue("media");
+    expect(screen.queryByRole("list", { name: "Catalog items" })).toBeNull();
+    release();
+  });
+
+  it("shows no box on a page without things and without a query: the first-time view stays", async () => {
+    server.use(http.get(`${env.apiBase}/v1/datasets`, () => HttpResponse.json({ items: [], next_cursor: null })));
+    renderApp("/datasets");
+    expect(await screen.findByRole("heading", { name: "No datasets yet" }, T)).toBeInTheDocument();
+    expect(screen.queryByRole("searchbox")).toBeNull();
+  });
+});
+
+describe("the filters of a list page are in the URL like the text", () => {
+  it("keeps the kind pill and the difficulty of the catalog, with a replace, and the default removes the key", async () => {
+    const user = userEvent.setup();
+    const { router } = renderApp("/catalog?q=model");
+    const bar = await screen.findByRole("search", { name: "Search and filter catalog items" }, T);
+    const kinds = await within(bar).findByRole("group", { name: "Kind" }, T);
+    const entries = router.history.length;
+    const before = screen.getByTestId("list-count").textContent;
+    await user.click(within(kinds).getByRole("button", { name: /^Models/ }));
+    await waitFor(() => expect(router.state.location.search).toEqual({ q: "model", kind: "model" }), T);
+    expect(within(kinds).getByRole("button", { name: /^Models/ })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByTestId("list-count").textContent).not.toBe(before);
+    await user.selectOptions(within(bar).getByRole("combobox", { name: "Difficulty" }), "beginner");
+    await waitFor(() => expect(router.state.location.search).toEqual({ q: "model", kind: "model", difficulty: "beginner" }), T);
+    expect(router.history.length).toBe(entries);
+    await user.click(within(kinds).getByRole("button", { name: /^Everything/ }));
+    await waitFor(() => expect(router.state.location.search).toEqual({ q: "model", difficulty: "beginner" }), T);
+    await user.selectOptions(within(bar).getByRole("combobox", { name: "Difficulty" }), "all");
+    await waitFor(() => expect(router.state.location.search).toEqual({ q: "model" }), T);
+    expect(router.state.location.href).toBe("/catalog?q=model");
+  });
+
+  it("opens the catalog with the kind and the difficulty of the URL", async () => {
+    renderApp("/catalog?kind=model&difficulty=beginner");
+    const bar = await screen.findByRole("search", { name: "Search and filter catalog items" }, T);
+    const kinds = await within(bar).findByRole("group", { name: "Kind" }, T);
+    expect(within(kinds).getByRole("button", { name: /^Models/ })).toHaveAttribute("aria-pressed", "true");
+    expect(within(kinds).getByRole("button", { name: /^Everything/ })).toHaveAttribute("aria-pressed", "false");
+    expect(within(bar).getByRole("combobox", { name: "Difficulty" })).toHaveValue("beginner");
+  });
+
+  it("drops a kind or a difficulty of the URL that is not one", async () => {
+    const { router } = renderApp("/catalog?kind=NOPE&difficulty=hard&q=model");
+    await screen.findByRole("search", { name: "Search and filter catalog items" }, T);
+    await waitFor(() => expect(router.state.location.search).toEqual({ q: "model" }), T);
+  });
+
+  it("keeps the Show archived chip of Make your own, with the text", async () => {
+    const asked: string[] = [];
+    server.events.on("request:start", ({ request }) => {
+      const u = new URL(request.url);
+      if (u.pathname === "/v1/library" && u.searchParams.has("kind")) asked.push(u.searchParams.get("include_archived") ?? "");
+    });
+    const user = userEvent.setup();
+    const { router } = renderApp("/library?tab=charts");
+    const chip = await screen.findByRole("button", { name: "Show archived" }, T);
+    expect(chip).toHaveAttribute("aria-pressed", "false");
+    const entries = router.history.length;
+    await user.click(chip);
+    await waitFor(() => expect(router.state.location.search).toEqual({ tab: "charts", archived: true }), T);
+    expect(router.history.length).toBe(entries);
+    await waitFor(() => expect(asked).toContain("true"), T);
+    await user.type(screen.getByRole("searchbox", { name: "Search chart templates" }), "fan");
+    await waitFor(() => expect(router.state.location.search).toEqual({ tab: "charts", q: "fan", archived: true }), T);
+    await user.click(screen.getByRole("button", { name: "Show archived" }));
+    await waitFor(() => expect(router.state.location.search).toEqual({ tab: "charts", q: "fan" }), T);
+    server.events.removeAllListeners();
+  });
+
+  it("opens Make your own with the chip on for ?archived=true", async () => {
+    renderApp("/library?tab=charts&archived=true");
+    expect(await screen.findByRole("button", { name: "Show archived" }, T)).toHaveAttribute("aria-pressed", "true");
+    expect(await within(await screen.findByTestId("library-list", undefined, T)).findByText("Plain fan (old)", undefined, T)).toBeInTheDocument();
+  });
+});
+
+describe("a text longer than the API of Make your own takes", () => {
+  it("sends the first 120 characters and keeps the full text in the box", async () => {
+    const asked: string[] = [];
+    server.events.on("request:start", ({ request }) => {
+      const u = new URL(request.url);
+      if (u.pathname === "/v1/library" && u.searchParams.has("q")) asked.push(u.searchParams.get("q") ?? "");
+    });
+    const long = "plain fan ".repeat(15).trim();
+    expect(long.length).toBeGreaterThan(120);
+    renderApp(`/library?tab=charts&q=${encodeURIComponent(long)}`);
+    expect(await screen.findByRole("searchbox", { name: "Search chart templates" }, T)).toHaveValue(long);
+    await waitFor(() => expect(asked.length).toBeGreaterThan(0), T);
+    for (const q of asked) expect(q.length).toBeLessThanOrEqual(120);
+    server.events.removeAllListeners();
+  });
+});

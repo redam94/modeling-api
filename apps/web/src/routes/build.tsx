@@ -6,7 +6,7 @@ import { useSpecs } from "@/api/queries";
 import type { SpecDoc } from "@/api/types";
 import { EmptyState, Mono, PageHeader, QueryView } from "@/components/common";
 import { DataTable } from "@/components/data-table";
-import { ListNoMatches, ListToolbar, matchesQuery } from "@/components/list-toolbar";
+import { ListNoMatches, ListToolbar, matchesQuery, toolbarShown } from "@/components/list-toolbar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/primitives";
 import { relativeTime } from "@/lib/format";
@@ -47,6 +47,9 @@ export function BuildPage() {
   const navigate = useNavigate();
   const q = listRoute.useSearch().q ?? "";
   const setQuery = (next: string) => void navigate({ to: "/build", search: { q: next || undefined }, replace: true });
+  const items = specs.data?.items;
+  const more = Boolean(specs.data?.next_cursor);
+  const rows = q && items ? items.filter((s) => matchesQuery(q, [s.name], [s.ref, s.kind])) : (items ?? []);
   return (
     <>
       <PageHeader
@@ -60,42 +63,44 @@ export function BuildPage() {
           </Button>
         }
       />
-      <QueryView query={specs}>
-        {(page) => {
-          const more = Boolean(page.next_cursor);
-          const rows = q ? page.items.filter((s) => matchesQuery(q, [s.name], [s.ref, s.kind])) : page.items;
-          return page.items.length ? (
-            <div className="grid gap-3">
-              <ListToolbar things="specs" value={q} onChange={setQuery} count={{ shown: rows.length, total: page.items.length, more }} />
-              {rows.length ? (
-                <DataTable
-                  label="Specs"
-                  data={rows}
-                  columns={columns}
-                  getRowId={(s) => s.id}
-                  onRowClick={(s) => void navigate({ to: "/build/$specId", params: { specId: s.id } })}
-                />
-              ) : (
-                <ListNoMatches things="specs" query={q} firstPage={more ? page.items.length : undefined} onClear={() => setQuery("")} />
-              )}
-            </div>
-          ) : (
-            <EmptyState
-              icon={<FileCode2 />}
-              title="No specs yet"
-              action={
-                <Button asChild>
-                  <Link to="/build/new">
-                    <Plus /> Start from the geo MMM template
-                  </Link>
-                </Button>
-              }
-            >
-              A spec names a dataset, a preprocessing pipeline and a model plugin. The app does a check of the spec while you type.
-            </EmptyState>
-          );
-        }}
-      </QueryView>
+      {/* A block, not a grid: a grid item around the table would take the width of the table on a phone. */}
+      <div className="space-y-3">
+        {/* Outside the query view: a link with ?q= shows its text while the list loads and when the project has no spec. */}
+        {toolbarShown(q, items?.length) ? <ListToolbar things="specs" value={q} onChange={setQuery} count={items ? { shown: rows.length, total: items.length, more } : undefined} /> : null}
+        <QueryView query={specs}>
+          {(page) => {
+            return page.items.length ? (
+              <div className="grid gap-3">
+                {rows.length ? (
+                  <DataTable
+                    label="Specs"
+                    data={rows}
+                    columns={columns}
+                    getRowId={(s) => s.id}
+                    onRowClick={(s) => void navigate({ to: "/build/$specId", params: { specId: s.id } })}
+                  />
+                ) : (
+                  <ListNoMatches things="specs" query={q} firstPage={more ? page.items.length : undefined} onClear={() => setQuery("")} />
+                )}
+              </div>
+            ) : (
+              <EmptyState
+                icon={<FileCode2 />}
+                title="No specs yet"
+                action={
+                  <Button asChild>
+                    <Link to="/build/new">
+                      <Plus /> Start from the geo MMM template
+                    </Link>
+                  </Button>
+                }
+              >
+                A spec names a dataset, a preprocessing pipeline and a model plugin. The app does a check of the spec while you type.
+              </EmptyState>
+            );
+          }}
+        </QueryView>
+      </div>
     </>
   );
 }

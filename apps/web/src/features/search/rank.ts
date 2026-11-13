@@ -3,6 +3,8 @@
  * was; `matchText` adds the order of the global search on top of it:
  * exact id, then title prefix, word start, substring and subsequence, with a match of all the
  * words of the query before a match of some. Ties go to the newest row, then to the alphabet.
+ * The item groups of the search and the list pages keep only the rows that have every word
+ * (`everyWord`).
  */
 
 /** Score a label against a query: substring first, then in-order subsequence. */
@@ -124,6 +126,17 @@ export function matchText(query: string, title: string, id?: string, loose = tru
   return { score: matched === words.length ? SCORE.all + min : max, ranges: mark(ranges) };
 }
 
+/**
+ * Is each word of `query` in one of `names`? This is the rule of the list pages
+ * (`matchesQuery` in `components/list-toolbar.tsx`) and of the item groups of the global search,
+ * so "See all" lands on a list that shows the rows the search showed. `more` lets a caller
+ * accept a word that is in other text (a description).
+ */
+export function everyWord(query: string, names: readonly string[], loose = true, more?: (word: string) => boolean): boolean {
+  const words = normaliseQuery(query).split(" ").filter(Boolean);
+  return words.every((w) => names.some((t) => matchText(w, t, undefined, loose) !== null) || Boolean(more?.(w)));
+}
+
 export interface Rankable {
   title: string;
   /** The id of the thing: the query that equals it puts the row first. */
@@ -147,11 +160,16 @@ export function compareRanked<T extends Rankable>(a: Ranked<T>, b: Ranked<T>): n
   return a.row.title.localeCompare(b.row.title, undefined, { sensitivity: "base" });
 }
 
-/** The rows that match `query`, best first, at most `limit`. */
-export function rankRows<T extends Rankable>(query: string, rows: readonly T[], opts: { limit?: number; loose?: boolean } = {}): Ranked<T>[] {
+/**
+ * The rows that match `query`, best first, at most `limit`. With `every`, a row must have each
+ * word of the query in its title or its other text (or have the query as its id).
+ */
+export function rankRows<T extends Rankable>(query: string, rows: readonly T[], opts: { limit?: number; loose?: boolean; every?: boolean } = {}): Ranked<T>[] {
   const out: Ranked<T>[] = [];
+  const loose = opts.loose ?? true;
+  const q = normaliseQuery(query);
   for (const row of rows) {
-    const loose = opts.loose ?? true;
+    if (opts.every && row.id?.toLowerCase() !== q && !everyWord(q, row.alt ? [row.title, row.alt] : [row.title], loose)) continue;
     const m = matchText(query, row.title, row.id, loose);
     if (m) {
       out.push({ row, score: m.score, ranges: m.ranges });

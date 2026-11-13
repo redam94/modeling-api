@@ -16,7 +16,7 @@ import { useModels, useModelVersion, useModelVersions } from "@/api/queries";
 import type { Endpoint, EndpointPromote, EndpointRevision, EvaluationPolicy, GateOutcome, PromotionGateDecision, Scorecard } from "@/api/types";
 import { EmptyState, ErrorNotice, Mono, QueryView, Spinner } from "@/components/common";
 import { DataTable } from "@/components/data-table";
-import { ListNoMatches, ListToolbar, matchesQuery } from "@/components/list-toolbar";
+import { ListNoMatches, ListToolbar, matchesQuery, toolbarShown } from "@/components/list-toolbar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/overlays";
 import { Badge, Field, Input, NativeSelect, Textarea } from "@/components/ui/primitives";
@@ -136,6 +136,9 @@ export function EndpointsSection({ query = "", onQuery }: { /** The text of the 
     ],
     [],
   );
+  const items = endpoints.data?.items;
+  const more = Boolean(endpoints.data?.next_cursor);
+  const rows = query && items ? items.filter((e) => matchesQuery(query, [e.alias], [e.ref, e.model_ref])) : (items ?? []);
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -146,13 +149,12 @@ export function EndpointsSection({ query = "", onQuery }: { /** The text of the 
           <ArrowUpCircle /> Promote a model
         </Button>
       </div>
+      {/* Outside the query view: a link with ?q= shows its text while the list loads and when the project has no endpoint. */}
+      {onQuery && toolbarShown(query, items?.length) ? <ListToolbar things="endpoints" value={query} onChange={onQuery} count={items ? { shown: rows.length, total: items.length, more } : undefined} /> : null}
       <QueryView query={endpoints}>
         {(page) => {
-          const more = Boolean(page.next_cursor);
-          const rows = query ? page.items.filter((e) => matchesQuery(query, [e.alias], [e.ref, e.model_ref])) : page.items;
           return page.items.length ? (
             <div className="grid gap-3">
-              {onQuery ? <ListToolbar things="endpoints" value={query} onChange={onQuery} count={{ shown: rows.length, total: page.items.length, more }} /> : null}
               {rows.length ? (
                 <DataTable
                   label="Endpoints"

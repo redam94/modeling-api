@@ -34,13 +34,13 @@ import {
   ADMIN_NAV,
   EXPERT_NAV,
   EXPERT_NAV_GROUPS,
-  GUIDED_MODE_NAV,
   GUIDED_MORE_NAV,
   GUIDED_PRIMARY_NAV,
   inGuidedMore,
   LOCKED_NAV,
   PROJECT_NAV,
   SETTINGS_NAV,
+  shellNav,
   type NavGroup,
   type NavItem,
 } from "./nav";
@@ -341,10 +341,9 @@ export function AppShell({ children }: { children?: ReactNode }) {
   const projectNav = ws.mode === "session" ? PROJECT_NAV : [];
   const adminNav = ws.operator ? [ADMIN_NAV] : [];
   // A chord goes only where the sidebar goes: a Guided-locked member cannot jump by key to a
-  // page that the lock hides.
-  const modeNav = navMode === "locked" ? LOCKED_NAV : navMode === "guided" ? GUIDED_MODE_NAV : EXPERT_NAV;
+  // page that the lock hides. The list of shortcuts ("?") reads the same list.
   const chords = Object.fromEntries(
-    [...modeNav, ...projectNav, ...adminNav, SETTINGS_NAV].map((item) => [`g ${item.chord}`, () => void navigate({ to: item.to })]),
+    shellNav(navMode, ws.mode === "session", ws.operator).map((item) => [`g ${item.chord}`, () => void navigate({ to: item.to })]),
   );
   useHotkeys({
     "mod+k": () => setPaletteOpen(true),

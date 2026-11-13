@@ -103,7 +103,7 @@ function EmptyKind({ tab, onNew }: { tab: LibraryTab; onNew: () => void }) {
   );
 }
 
-function Overview({ tab: urlTab, query }: { tab: LibraryTab | undefined; query: string }) {
+function Overview({ tab: urlTab, query, archived }: { tab: LibraryTab | undefined; query: string; archived: boolean }) {
   const go = useLibraryNav();
   const navigate = useNavigate();
   const ws = useWorkspace();
@@ -113,7 +113,9 @@ function Overview({ tab: urlTab, query }: { tab: LibraryTab | undefined; query: 
   // A search without a tab (the global search's "See all in Make your own") opens the first
   // tab that has a match.
   const tab = urlTab ?? (query ? LIBRARY_TABS.find((t) => count(t) > 0) : undefined) ?? "models";
-  const setQuery = (next: string) => go({ tab, q: next || undefined }, true);
+  // The text and the "Show archived" chip stay in the URL together (a history replace).
+  const filters = (q: string, shown: boolean): LibrarySearch => ({ q: q || undefined, archived: shown || undefined });
+  const setQuery = (next: string) => go({ tab, ...filters(next, archived) }, true);
   const leads: Record<LibraryTab, Lead> = {
     models: {
       title: "Describe a model in plain words",
@@ -137,7 +139,7 @@ function Overview({ tab: urlTab, query }: { tab: LibraryTab | undefined; query: 
           description="Save the models, prep steps, charts and workflows your team uses again and again. No code needed: everything you make here shows up in Build, the Catalog and on your runs."
         />
       </div>
-      <Tabs value={tab} onValueChange={(t) => go({ tab: t as LibraryTab, q: query || undefined }, true)}>
+      <Tabs value={tab} onValueChange={(t) => go({ tab: t as LibraryTab, ...filters(query, archived) }, true)}>
         <TabsList className="h-auto flex-wrap gap-2" aria-label="Kinds">
           {LIBRARY_TABS.map((t) => (
             <TabsTrigger
@@ -161,6 +163,8 @@ function Overview({ tab: urlTab, query }: { tab: LibraryTab | undefined; query: 
                 me={ws.user.id}
                 query={query}
                 onQuery={setQuery}
+                archived={archived}
+                onArchived={(shown) => go({ tab, ...filters(query, shown) }, true)}
                 onOpen={(item) => go({ tab: TAB_OF_KIND[item.kind], item: item.id })}
                 empty={<EmptyKind tab={t} onNew={leads[t].onCta} />}
               />
@@ -278,5 +282,5 @@ export function LibraryPage() {
     );
   }
 
-  return <Overview tab={search.tab} query={search.q ?? ""} />;
+  return <Overview tab={search.tab} query={search.q ?? ""} archived={Boolean(search.archived)} />;
 }

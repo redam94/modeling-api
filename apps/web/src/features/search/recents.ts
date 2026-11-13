@@ -1,11 +1,15 @@
 /**
- * The things a user opened from the global search (v0.21): the last eight for each project,
- * newest first, kept in this browser. As in `stores/scope.ts`, whatever is in storage is
- * user-controlled, so only well-formed in-app links are kept.
+ * The things a user opened (from the global search or as a page, v0.21): the last eight for
+ * each project, newest first, kept in this browser. As in `stores/scope.ts`, whatever is in
+ * storage is user-controlled, so only well-formed in-app links are kept.
+ *
+ * The lists hold names and descriptions, so they are of one person: sign-out removes them
+ * (`useSignOut`), and when a different user id is in the session the lists start empty (`claim`).
  */
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
+import { RECENTS_STORAGE_KEY } from "@/lib/recents-key";
 import { parseScopeKey } from "@/stores/scope";
 
 import { isKindId, type KindId } from "./kinds";
@@ -25,8 +29,15 @@ export interface RecentItem {
 }
 
 export interface RecentsState {
+  /** The user id that the lists belong to. `null`: no person has taken them yet. */
+  owner: string | null;
   /** `tenant/project` → items, newest first. */
   byScope: Record<string, RecentItem[]>;
+  /**
+   * `user` is the person in the session now. The lists of a different person go away; lists
+   * that no person has taken become this person's.
+   */
+  claim: (user: string) => void;
   list: (scope: string) => RecentItem[];
   add: (scope: string, item: RecentItem) => void;
   clear: (scope: string) => void;
@@ -57,7 +68,13 @@ function isItem(v: unknown): v is RecentItem {
 export const useRecents = create<RecentsState>()(
   persist(
     (set, get) => ({
+      owner: null,
       byScope: {},
+      claim: (user) => {
+        const { owner } = get();
+        if (!user || owner === user) return;
+        set(owner === null ? { owner: user } : { owner: user, byScope: {} });
+      },
       list: (scope) => get().byScope[scope] ?? EMPTY,
       add: (scope, item) => {
         if (!isScope(scope) || !isItem(item)) return;
@@ -72,12 +89,13 @@ export const useRecents = create<RecentsState>()(
       },
     }),
     {
-      name: "mapi.search.recent",
+      name: RECENTS_STORAGE_KEY,
       version: 1,
       storage: createJSONStorage(() => localStorage),
-      partialize: (s) => ({ byScope: s.byScope }),
+      partialize: (s) => ({ owner: s.owner, byScope: s.byScope }),
       merge: (persisted, current) => {
-        const stored = (persisted ?? {}) as { byScope?: unknown };
+        const stored = (persisted ?? {}) as { owner?: unknown; byScope?: unknown };
+        const owner = typeof stored.owner === "string" && stored.owner.length <= 200 ? stored.owner : null;
         const byScope: Record<string, RecentItem[]> = {};
         if (typeof stored.byScope === "object" && stored.byScope !== null) {
           for (const [key, list] of Object.entries(stored.byScope).slice(-SCOPE_LIMIT)) {
@@ -86,7 +104,7 @@ export const useRecents = create<RecentsState>()(
             if (items.length) byScope[key] = items;
           }
         }
-        return { ...current, byScope };
+        return { ...current, owner, byScope };
       },
     },
   ),

@@ -106,10 +106,11 @@ export function PlotFrame({
     <figure className={cn("group relative grid gap-2", className)} aria-busy={status === "loading"}>
       {toolbar ? (
         <div className="absolute top-1 right-1 z-[1] flex gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
-          <Button variant="outline" size="sm" onClick={() => hostRef.current?.requestExport("svg")} disabled={status !== "rendered"}>
+          {/* bg-card: the buttons are over the chart, so its text must not show through them */}
+          <Button variant="outline" size="sm" className="bg-card" onClick={() => hostRef.current?.requestExport("svg")} disabled={status !== "rendered"}>
             <Download /> SVG
           </Button>
-          <Button variant="outline" size="sm" onClick={() => hostRef.current?.requestExport("png")} disabled={status !== "rendered"}>
+          <Button variant="outline" size="sm" className="bg-card" onClick={() => hostRef.current?.requestExport("png")} disabled={status !== "rendered"}>
             <Download /> PNG
           </Button>
         </div>

@@ -41,7 +41,15 @@ export function Breadcrumbs({ crumbs }: { crumbs: readonly Crumb[] }) {
               </span>
             ) : c.to ? (
               // The trail takes any route: the typed `to` of a literal link is not needed here.
-              <Link to={c.to as never} params={c.params as never} search={c.search as never} className="max-w-[32ch] truncate rounded-sm transition-colors hover:text-foreground">
+              // `exact`: the router marks a link to a page above the open page as the current
+              // page (aria-current). Only the last item of the trail is the current page.
+              <Link
+                to={c.to as never}
+                params={c.params as never}
+                search={c.search as never}
+                activeOptions={{ exact: true }}
+                className="max-w-[32ch] truncate rounded-sm transition-colors hover:text-foreground"
+              >
                 {c.label}
               </Link>
             ) : (

@@ -8,7 +8,7 @@ import { useCreateDataset, useDataset, useDatasets, useDatasetVersion, useDatase
 import type { Dataset, DatasetVersion } from "@/api/types";
 import { CopyButton, EmptyState, ErrorNotice, IssueList, KeyValues, LoadingRows, Mono, PageHeader, QueryView } from "@/components/common";
 import { DataTable } from "@/components/data-table";
-import { ListNoMatches, ListToolbar, matchesQuery } from "@/components/list-toolbar";
+import { ListNoMatches, ListToolbar, matchesQuery, toolbarShown } from "@/components/list-toolbar";
 import { EmptyArt } from "@/components/brand/empty-art";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/overlays";
@@ -100,6 +100,9 @@ export function DatasetsPage() {
   const q = listRoute.useSearch().q ?? "";
   const setQuery = (next: string) => void navigate({ to: "/datasets", search: { q: next || undefined }, replace: true });
   const [open, setOpen] = useState(false);
+  const items = datasets.data?.items;
+  const more = Boolean(datasets.data?.next_cursor);
+  const rows = q && items ? items.filter((d) => matchesQuery(q, [d.name], [d.ref, d.description])) : (items ?? []);
   return (
     <>
       <PageHeader
@@ -112,50 +115,52 @@ export function DatasetsPage() {
           </Button>
         }
       />
-      <QueryView query={datasets}>
-        {(page) => {
-          const more = Boolean(page.next_cursor);
-          const rows = q ? page.items.filter((d) => matchesQuery(q, [d.name], [d.ref, d.description])) : page.items;
-          return page.items.length ? (
-            <div className="grid gap-3">
-              <ListToolbar things="datasets" value={q} onChange={setQuery} count={{ shown: rows.length, total: page.items.length, more }} />
-              {rows.length ? (
-                <DataTable
-                  label="Datasets"
-                  data={rows}
-                  columns={columns}
-                  getRowId={(d) => d.id}
-                  onRowClick={(d) => void navigate({ to: "/datasets/$datasetId", params: { datasetId: d.id } })}
-                />
-              ) : (
-                <ListNoMatches things="datasets" query={q} firstPage={more ? page.items.length : undefined} onClear={() => setQuery("")} />
-              )}
-            </div>
-          ) : (
-            <div className="grid gap-4">
-              <EmptyState
-                title="No datasets yet"
-                illustration={<EmptyArt kind="datasets" />}
-                primaryAction={
-                  <Button className="rounded-full" onClick={() => setOpen(true)}>
-                    <Plus /> New dataset
-                  </Button>
-                }
-              >
-                Bring your sales and spend in. Create a dataset, then upload a CSV, Parquet, zarr zip, netCDF or HDF5 file (or several files), or a folder of images, as its first version.
-              </EmptyState>
-              <ul className="grid gap-4 md:grid-cols-3">
-                {DATASET_HINTS.map(([title, body]) => (
-                  <li key={title} className="rounded-2xl border bg-card p-5">
-                    <p className="font-display text-lg font-semibold tracking-[-0.02em]">{title}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{body}</p>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          );
-        }}
-      </QueryView>
+      {/* A block, not a grid: a grid item around the table would take the width of the table on a phone. */}
+      <div className="space-y-3">
+        {/* Outside the query view: a link with ?q= shows its text while the list loads and when the project has no dataset. */}
+        {toolbarShown(q, items?.length) ? <ListToolbar things="datasets" value={q} onChange={setQuery} count={items ? { shown: rows.length, total: items.length, more } : undefined} /> : null}
+        <QueryView query={datasets}>
+          {(page) => {
+            return page.items.length ? (
+              <div className="grid gap-3">
+                {rows.length ? (
+                  <DataTable
+                    label="Datasets"
+                    data={rows}
+                    columns={columns}
+                    getRowId={(d) => d.id}
+                    onRowClick={(d) => void navigate({ to: "/datasets/$datasetId", params: { datasetId: d.id } })}
+                  />
+                ) : (
+                  <ListNoMatches things="datasets" query={q} firstPage={more ? page.items.length : undefined} onClear={() => setQuery("")} />
+                )}
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                <EmptyState
+                  title="No datasets yet"
+                  illustration={<EmptyArt kind="datasets" />}
+                  primaryAction={
+                    <Button className="rounded-full" onClick={() => setOpen(true)}>
+                      <Plus /> New dataset
+                    </Button>
+                  }
+                >
+                  Bring your sales and spend in. Create a dataset, then upload a CSV, Parquet, zarr zip, netCDF or HDF5 file (or several files), or a folder of images, as its first version.
+                </EmptyState>
+                <ul className="grid gap-4 md:grid-cols-3">
+                  {DATASET_HINTS.map(([title, body]) => (
+                    <li key={title} className="rounded-2xl border bg-card p-5">
+                      <p className="font-display text-lg font-semibold tracking-[-0.02em]">{title}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{body}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          }}
+        </QueryView>
+      </div>
       <CreateDatasetDialog open={open} onOpenChange={setOpen} />
     </>
   );

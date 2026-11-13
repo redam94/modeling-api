@@ -8,7 +8,7 @@
  *   each group, so the local groups show at once and a slow or failed list holds nothing.
  * - Clients and share links never get this: the portal and the share frame do not mount it.
  */
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouter } from "@tanstack/react-router";
 import {
   Activity,
   ArrowRight,
@@ -45,14 +45,15 @@ import { idJump, kindAvailable, remoteGroups, visiblePages } from "@/features/se
 import { docsHref, docsSearchHref, loadDocsIndex, searchDocs, type DocsPage } from "@/features/search/docs";
 import { KINDS, SERVER_FILTERED, type KindId, type RemoteGroupId, type SourceState } from "@/features/search/kinds";
 import { Marked } from "@/features/search/marked";
-import { normaliseQuery, rankRows, type Range } from "@/features/search/rank";
+import { matchText, normaliseQuery, rankRows, type Range } from "@/features/search/rank";
 import { useRecents, type RecentItem } from "@/features/search/recents";
 import { isApplePlatform } from "@/hooks/platform";
 import { useDebounced } from "@/hooks/use-debounced";
+import { MAX_QUERY_CHARS } from "@/lib/list-query";
 import { cn } from "@/lib/utils";
 import { useUi } from "@/stores/ui";
 
-import { ADMIN_NAV, EXPERT_NAV, navForMode, PROJECT_NAV, SETTINGS_NAV, type NavMode } from "./nav";
+import { shellNav, type NavMode } from "./nav";
 import { useSwitchProject } from "./project-switcher";
 
 export { fuzzyScore } from "@/features/search/rank";
@@ -99,10 +100,14 @@ interface Row {
   ranges: readonly Range[];
   /** One muted line: a description, an id, a status, a section. */
   secondary?: string | undefined;
+  /** The parts of the muted line that the text matched (a row found by a name that is there). */
+  secondaryRanges?: readonly Range[] | undefined;
   /** The hint at the right: what the row is. */
   kind: string;
   icon: LucideIcon;
   action: RowAction;
+  /** A way on to more results ("See all in …", "Search the docs for …"): the count leaves it out. */
+  more?: boolean;
 }
 
 interface Group {
@@ -116,6 +121,10 @@ interface Group {
 
 const NO_RANGES: readonly Range[] = [];
 
+const NO_MATCH = "No page, action or item matches this text.";
+/** One letter finds pages and actions only: the lists are asked from two characters. */
+const ONE_MORE_LETTER = "No page or action matches this text. Type one more letter to find items by name.";
+
 function resultsText(count: number): string {
   return count === 0 ? "No results" : count === 1 ? "1 result" : `${count} results`;
 }
@@ -125,18 +134,26 @@ export function CommandPalette() {
   const setOpen = useUi((s) => s.setPaletteOpen);
   const setTheme = useUi((s) => s.setTheme);
   const navigate = useNavigate();
+  const router = useRouter();
   const ws = useWorkspace();
   const switchProject = useSwitchProject();
   const persona = useEffectivePersona();
   const lock = useGuidedLock();
   const scope = useProjectScope().key;
-  const recents = useRecents((s) => s.byScope[scope]);
+  const me = ws.user.id;
+  // The lists are of the person who made them: another person on this browser gets none.
+  const recents = useRecents((s) => (s.owner === me ? s.byScope[scope] : undefined));
+  const claimRecents = useRecents((s) => s.claim);
   const addRecent = useRecents((s) => s.add);
   const clearRecents = useRecents((s) => s.clear);
   const [query, setQuery] = useState("");
-  /** The row the keyboard is on (an index in the flat list of rows). */
-  const [cursor, setActive] = useState(0);
+  /**
+   * The row the user moved to (arrows, Home, End, the pointer), by its key: rows that come
+   * later (a slow list) do not move it. `null`: the first row, until the user moves.
+   */
+  const [pinned, setPinned] = useState<string | null>(null);
   const opener = useRef<HTMLElement | null>(null);
+  const input = useRef<HTMLInputElement | null>(null);
   const scroller = useRef<HTMLDivElement | null>(null);
   const [remote, setRemote] = useState<Partial<Record<RemoteGroupId, SourceState>>>({});
   const [docs, setDocs] = useState<DocsPage[] | null>(null);
@@ -148,10 +165,7 @@ export function CommandPalette() {
   const currentKey = ws.current?.key;
   const navMode: NavMode = lock.locked ? "locked" : persona === "guided" ? "guided" : "expert";
   const session = ws.mode === "session";
-  const pages = useMemo(
-    () => visiblePages([...navForMode(navMode), ...(session ? PROJECT_NAV : []), ...(ws.operator ? [ADMIN_NAV] : []), SETTINGS_NAV], grants),
-    [navMode, session, ws.operator, grants],
-  );
+  const pages = useMemo(() => visiblePages(shellNav(navMode, session, ws.operator), grants), [navMode, session, ws.operator, grants]);
   const paths = useMemo(() => new Set(pages.map((p) => p.to)), [pages]);
   const groupDefs = useMemo(() => remoteGroups(paths, grants), [paths, grants]);
   const groupIds = useMemo(() => groupDefs.map((g) => g.id as RemoteGroupId), [groupDefs]);
@@ -176,6 +190,8 @@ export function CommandPalette() {
     });
   }, []);
 
+  useEffect(() => claimRecents(me), [claimRecents, me]);
+
   useEffect(() => {
     if (!open || !docsUrl) return;
     let live = true;
@@ -191,7 +207,7 @@ export function CommandPalette() {
   const close = useCallback(() => {
     setOpen(false);
     setQuery("");
-    setActive(0);
+    setPinned(null);
   }, [setOpen]);
 
   const groups = useMemo<Group[]>(() => {
@@ -242,14 +258,13 @@ export function CommandPalette() {
       return [first, { id: "pages", heading: "Go to", rows: pageRows }, { id: "actions", heading: "Actions", rows: actionRows }];
     }
 
-    const ranked = (rows: Row[]) => rankRows(typed, rows, { limit: GROUP_ROWS }).map((r): Row => ({ ...r.row, ranges: r.ranges }));
+    const ranked = (rows: Row[], loose = true) => rankRows(typed, rows, { limit: GROUP_ROWS, loose }).map((r): Row => ({ ...r.row, ranges: r.ranges }));
     const out: Group[] = [];
     const jump = idJump(typed, paths, grants);
     const jumpRow: Row[] = jump
       ? [{ key: `id:${jump.id}`, title: jump.label, ranges: NO_RANGES, secondary: "By id", kind: KINDS[jump.kind].kind, icon: Hash, action: link(jump.href, { group: jump.kind, title: jump.id, href: jump.href }) }]
       : [];
     out.push({ id: "pages", heading: "Go to", rows: [...jumpRow, ...ranked(pageRows)].slice(0, GROUP_ROWS) });
-    out.push({ id: "actions", heading: "Actions", rows: ranked(actionRows) });
 
     for (const def of searching ? groupDefs : []) {
       const id = def.id as RemoteGroupId;
@@ -260,13 +275,15 @@ export function CommandPalette() {
       }
       // The answer of the server is for the text after the pause: until then the group waits.
       const waiting = state.status === "loading" || (SERVER_FILTERED.has(id) && remoteQuery !== typed);
-      // The row of a pasted id is in "Go to" already.
-      const found = rankRows(typed, state.items, { limit: GROUP_ROWS }).filter((r) => r.row.href !== jump?.href);
+      // Each word must be in the name, as on the list page that "See all" opens. The row of a
+      // pasted id is in "Go to" already.
+      const found = rankRows(typed, state.items, { limit: GROUP_ROWS, every: true }).filter((r) => r.row.href !== jump?.href);
       const rows = found.map(({ row, ranges }): Row => ({
         key: `${id}:${row.id}`,
         title: row.title,
         ranges,
         secondary: row.secondary,
+        secondaryRanges: row.secondary ? matchText(typed, row.secondary, undefined, false)?.ranges : undefined,
         kind: def.kind,
         icon: KIND_ICON[id],
         action: link(row.href, { group: id, title: row.title, secondary: row.secondary, href: row.href }),
@@ -274,18 +291,25 @@ export function CommandPalette() {
       if (rows.length) {
         const list = def.list ?? def.nav;
         const page = pages.find((p) => p.to === def.nav);
-        rows.push({ key: `${id}:all`, title: `See all in ${page?.label ?? def.heading}`, ranges: NO_RANGES, kind: "Page", icon: ArrowRight, action: link(`${list}?q=${encodeURIComponent(text)}`) });
+        // The router writes the query (it quotes text such as `1.0` or `null`, which a plain
+        // `?q=` would read as a number or as nothing).
+        const href = router.buildLocation({ to: list, search: { q: text } } as never).href;
+        rows.push({ key: `${id}:all`, title: `See all in ${page?.label ?? def.heading}`, ranges: NO_RANGES, kind: "Page", icon: ArrowRight, action: link(href), more: true });
       }
       out.push({ id, heading: def.heading, rows, loading: waiting });
     }
 
-    if (docsUrl && docs) {
-      out.push({
-        id: "docs",
-        heading: "Docs",
-        rows: searchDocs(docs, typed, GROUP_ROWS).map((d): Row => ({ key: `docs:${d.path}`, title: d.title, ranges: d.ranges, secondary: d.secondary, kind: "Docs", icon: BookOpen, action: { type: "external", url: docsHref(docsUrl, d.path) } })),
-      });
+    // After the pages and the names: an action never goes before a page or an item that has
+    // the text in its name. An action must have the text as a part (no letters in order):
+    // "eu" is not "Switch to Default".
+    out.push({ id: "actions", heading: "Actions", rows: ranked(actionRows, false) });
+
+    const docRows = docsUrl && docs ? searchDocs(docs, typed, GROUP_ROWS).map((d): Row => ({ key: `docs:${d.path}`, title: d.title, ranges: d.ranges, secondary: d.secondary, kind: "Docs", icon: BookOpen, action: { type: "external", url: docsHref(docsUrl, d.path) } })) : [];
+    // The docs site has a full-text search: the last row goes there with the text.
+    if (docsUrl && searching && (docRows.length || out.some((g) => g.rows.length))) {
+      docRows.push({ key: "docs:search", title: `Search the docs for “${text}”`, ranges: NO_RANGES, secondary: "Opens the documentation in a new tab", kind: "Docs", icon: BookOpen, action: { type: "external", url: docsSearchHref(docsUrl, text) }, more: true });
     }
+    out.push({ id: "docs", heading: "Docs", rows: docRows });
 
     const live = out.filter((g) => g.rows.length || g.loading);
     if (live.length) return live;
@@ -294,13 +318,22 @@ export function CommandPalette() {
     if (docsUrl) ways.push({ key: "empty:docs", title: "Search the docs", ranges: NO_RANGES, secondary: "Opens the documentation in a new tab", kind: "Docs", icon: BookOpen, action: { type: "external", url: docsSearchHref(docsUrl, text) } });
     if (paths.has("/choose")) ways.push({ key: "empty:choose", title: "Open Help me choose", ranges: NO_RANGES, secondary: "Answer some questions to find the applicable analyses", kind: "Page", icon: ArrowRight, action: link("/choose") });
     return [{ id: "empty", heading: null, rows: ways }];
-  }, [pages, paths, grants, choices, currentKey, session, typed, text, searching, remoteQuery, recents, groupDefs, remote, docs, docsUrl, scope, setTheme, switchProject, clearRecents]);
+  }, [pages, paths, grants, choices, currentKey, session, typed, text, searching, remoteQuery, recents, groupDefs, remote, docs, docsUrl, scope, router, setTheme, switchProject, clearRecents]);
 
   const rows = useMemo(() => groups.flatMap((g) => g.rows), [groups]);
   const loading = groups.some((g) => g.loading);
   const noResults = Boolean(typed) && !loading && groups.every((g) => g.heading === null);
-  const active = Math.min(cursor, Math.max(0, rows.length - 1));
+  /** The things found: the rows without the ways on to more results. */
+  const count = rows.filter((r) => !r.more).length;
+  const pinnedAt = pinned === null ? -1 : rows.findIndex((r) => r.key === pinned);
+  const active = Math.max(0, pinnedAt);
+  const moveTo = (i: number) => setPinned(rows[i]?.key ?? null);
   const optionId = (i: number) => `${listId}-option-${i}`;
+
+  // The row the user was on is not in the list now: the first row is the active row again.
+  useEffect(() => {
+    if (pinned !== null && pinnedAt < 0) setPinned(null);
+  }, [pinned, pinnedAt]);
 
   useEffect(() => {
     if (!open || !rows.length) return;
@@ -314,12 +347,15 @@ export function CommandPalette() {
     const a = row.action;
     if (a.type === "fill") {
       setQuery(a.text);
-      setActive(0);
+      setPinned(null);
+      input.current?.focus();
       return;
     }
     if (a.type === "run") {
-      if (a.keepOpen) setActive(0);
-      else close();
+      if (a.keepOpen) {
+        setPinned(null);
+        input.current?.focus();
+      } else close();
       a.run();
       return;
     }
@@ -339,16 +375,16 @@ export function CommandPalette() {
     const last = rows.length - 1;
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setActive(Math.min(last, active + 1));
+      moveTo(Math.min(last, active + 1));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setActive(Math.max(0, active - 1));
+      moveTo(Math.max(0, active - 1));
     } else if (e.key === "Home") {
       e.preventDefault();
-      setActive(0);
+      moveTo(0);
     } else if (e.key === "End") {
       e.preventDefault();
-      setActive(Math.max(0, last));
+      moveTo(Math.max(0, last));
     } else if (e.key === "Enter") {
       e.preventDefault();
       activate(rows[active], e.metaKey || e.ctrlKey);
@@ -373,12 +409,18 @@ export function CommandPalette() {
             e.preventDefault();
             opener.current?.focus();
           }}
+          // A click on a heading, a row or the footer must not take the focus off the box:
+          // the typed keys and the arrows go there.
+          onMouseDown={(e) => {
+            if (e.target !== input.current) e.preventDefault();
+          }}
           className="fixed top-[12vh] left-1/2 z-50 flex max-h-[76vh] w-[calc(100%-2rem)] max-w-[680px] -translate-x-1/2 flex-col overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-lg outline-none"
         >
           <DialogPrimitive.Title className="sr-only">Search</DialogPrimitive.Title>
           <div className="flex h-14 shrink-0 items-center gap-3 border-b px-4">
             <Search className="size-5 shrink-0 text-muted-foreground" aria-hidden />
             <input
+              ref={input}
               role="combobox"
               aria-label="Search"
               aria-expanded={rows.length > 0}
@@ -390,9 +432,11 @@ export function CommandPalette() {
               placeholder="Find a page, a name or an id"
               className="h-full min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-hint"
               value={query}
+              // The list pages and the server take 200 characters of text.
+              maxLength={MAX_QUERY_CHARS}
               onChange={(e) => {
-                setQuery(e.target.value);
-                setActive(0);
+                setQuery(e.target.value.slice(0, MAX_QUERY_CHARS));
+                setPinned(null);
               }}
               onKeyDown={onKeyDown}
             />
@@ -403,16 +447,19 @@ export function CommandPalette() {
                 className="focus-ring rounded-sm p-1 text-muted-foreground hover:text-foreground"
                 onClick={() => {
                   setQuery("");
-                  setActive(0);
+                  setPinned(null);
+                  input.current?.focus();
                 }}
               >
                 <X className="size-4" />
               </button>
             ) : null}
-            <Kbd>Esc</Kbd>
+            <Kbd className="max-sm:hidden">Esc</Kbd>
+            {/* A phone has no Esc key: a button closes the search there. */}
+            <DialogPrimitive.Close className="focus-ring rounded-full px-3 py-1.5 text-sm font-semibold text-foreground hover:bg-accent sm:hidden">Close</DialogPrimitive.Close>
           </div>
           <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto p-2">
-            {noResults ? <p className="px-3 pt-3 pb-2 text-sm text-muted-foreground">No page, action or item matches this text.</p> : null}
+            {noResults ? <p className="px-3 pt-3 pb-2 text-sm text-muted-foreground">{searching ? NO_MATCH : ONE_MORE_LETTER}</p> : null}
             <div id={listId} role="listbox" aria-label="Search results">
               {numbered.map((g) => (
                 <div key={g.id} role="group" aria-labelledby={g.heading ? `${listId}-group-${g.id}` : undefined} aria-label={g.heading ? undefined : "Other ways"} aria-busy={g.loading ? true : undefined}>
@@ -432,7 +479,7 @@ export function CommandPalette() {
                       id={optionId(i)}
                       role="option"
                       aria-selected={i === active}
-                      onMouseMove={() => (i === active ? undefined : setActive(i))}
+                      onMouseMove={() => (i === active ? undefined : moveTo(i))}
                       onClick={(e) => activate(row, e.metaKey || e.ctrlKey)}
                       className={cn(
                         "flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-sm",
@@ -446,7 +493,11 @@ export function CommandPalette() {
                         <Marked text={row.title} ranges={row.ranges} />
                       </span>
                       {/* muted grey is under 4.5:1 on the accent tint: the active row's lines take its text colour */}
-                      {row.secondary ? <span className={cn("min-w-0 flex-1 truncate text-xs", i === active ? "text-accent-foreground" : "text-muted-foreground")}>{row.secondary}</span> : null}
+                      {row.secondary ? (
+                        <span className={cn("min-w-0 flex-1 truncate text-xs", i === active ? "text-accent-foreground" : "text-muted-foreground")}>
+                          <Marked text={row.secondary} ranges={row.secondaryRanges ?? NO_RANGES} />
+                        </span>
+                      ) : null}
                       <span className={cn("ml-auto shrink-0 pl-2 text-xs", i === active ? "text-accent-foreground" : "text-hint")}>{row.kind}</span>
                     </div>
                   ))}
@@ -455,9 +506,10 @@ export function CommandPalette() {
             </div>
           </div>
           <div role="status" className="sr-only">
-            {typed && !(loading && rows.length === 0) ? resultsText(noResults ? 0 : rows.length) : ""}
+            {typed && !(loading && rows.length === 0) ? (noResults && !searching ? ONE_MORE_LETTER : resultsText(noResults ? 0 : count)) : ""}
           </div>
-          <div data-testid="search-hints" className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-t px-4 py-2 text-xs text-muted-foreground">
+          {/* The keys of a keyboard: a phone does not show them. */}
+          <div data-testid="search-hints" className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-t px-4 py-2 text-xs text-muted-foreground max-sm:hidden">
             <span className="flex items-center gap-1">
               <Kbd>↑</Kbd>
               <Kbd>↓</Kbd>
@@ -483,21 +535,25 @@ export function CommandPalette() {
   );
 }
 
-const SHORTCUTS: [string[], string][] = [
-  [["⌘", "K"], "Search"],
-  [["/"], "Search"],
-  [["?"], "This help"],
-  [["⌘", "B"], "Collapse the sidebar"],
-  ...[...EXPERT_NAV, SETTINGS_NAV].map((n): [string[], string] => [["g", n.chord], `Go to ${n.label}`]),
-  [["⌘", "S"], "Editor: save revision"],
-  [["⌘", "Enter"], "Editor: validate the spec now"],
-];
-
 export function ShortcutsDialog() {
   const open = useUi((s) => s.shortcutsOpen);
   const setOpen = useUi((s) => s.setShortcutsOpen);
+  const ws = useWorkspace();
+  const persona = useEffectivePersona();
+  const lock = useGuidedLock();
   // The list is written with the Apple key; other platforms use Ctrl for the same shortcuts.
   const apple = isApplePlatform();
+  // The "g" shortcuts that work now: the list the shell binds (app-shell.tsx).
+  const navMode: NavMode = lock.locked ? "locked" : persona === "guided" ? "guided" : "expert";
+  const SHORTCUTS: [string[], string][] = [
+    [["⌘", "K"], "Search"],
+    [["/"], "Search"],
+    [["?"], "This help"],
+    [["⌘", "B"], "Collapse the sidebar"],
+    ...shellNav(navMode, ws.mode === "session", ws.operator).map((n): [string[], string] => [["g", n.chord], `Go to ${n.label}`]),
+    [["⌘", "S"], "Editor: save revision"],
+    [["⌘", "Enter"], "Editor: validate the spec now"],
+  ];
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent>

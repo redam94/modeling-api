@@ -4,6 +4,7 @@ import { compile } from "vega-lite";
 
 import { deepMerge, polarSubplots, preparePlotly, prepareVegaLite, resolvePlotlyRefs, SpecError } from "./prepare";
 import { findUnsafeConstructs, type JsonObject } from "./protocol";
+import { LEGACY_COLOURS } from "./legacy-palette";
 import { contrast, DARK_VARIANTS, NON_TEXT_FILLS } from "./recipe-palette";
 
 const datasets = {
@@ -164,6 +165,93 @@ describe("preparePlotly", () => {
     expect(JSON.stringify(dark.frames)).toContain("#f5f5f7");
     const light = preparePlotly(spec, sets, "light");
     expect(((light.data[0] as JsonObject).line as JsonObject).color).toBe("#BFDCEC");
+  });
+});
+
+/**
+ * A plot stored before v0.21 keeps the spec of its day. This is `core.calibration` as the app of
+ * commit 991ea3aa stored it (apps/web/src/mocks/plot-examples.gen.json), with the Studio colours.
+ */
+const STORED_CALIBRATION: JsonObject = {
+  $schema: "https://vega.github.io/schema/vega-lite/v6.4.1.json",
+  config: { view: { continuousHeight: 300, continuousWidth: 300 } },
+  data: { name: "ecdf" },
+  height: 200,
+  layer: [
+    {
+      encoding: {
+        x: { field: "z", scale: { domain: [0, 1], nice: false }, title: "PIT value", type: "quantitative" },
+        y: { field: "lo", title: "ECDF − uniform", type: "quantitative" },
+        y2: { field: "hi" },
+      },
+      mark: { color: "#dcd8ff", opacity: 0.75, type: "area" },
+    },
+    { encoding: { y: { datum: 0.0 } }, mark: { color: "#84819b", strokeDash: [4, 4], type: "rule" } },
+    {
+      encoding: { x: { field: "z", type: "quantitative" }, y: { field: "diff", type: "quantitative" } },
+      mark: { color: "#3a2bd6", strokeWidth: 1.8, type: "line" },
+    },
+    {
+      encoding: { x: { field: "z", type: "quantitative" }, y: { field: "diff", type: "quantitative" } },
+      mark: { color: "#c0182f", size: 24, type: "circle" },
+      transform: [{ filter: { equal: "outside", field: "status" } }],
+    },
+  ],
+  title: "PIT-ECDF difference of y (95% simultaneous envelope)",
+  width: 480,
+};
+
+describe("a plot stored by an earlier release", () => {
+  const ecdf = { ecdf: [{ z: 0.5, lo: -0.1, hi: 0.1, diff: 0.02, status: "inside", note: "#3a2bd6" }] };
+  const markColours = (spec: JsonObject) => (spec.layer as JsonObject[]).map((l) => (l.mark as JsonObject).color);
+
+  it("draws each old colour as the colour of the same role now, in the light theme", () => {
+    const light = prepareVegaLite(STORED_CALIBRATION, ecdf, "light");
+    // band, reference, estimate, alert
+    expect(markColours(light)).toEqual(["#bfdcec", "#86868b", "#0072b2", "#c00f2c"]);
+  });
+
+  it("draws each old colour as the dark variant of the same role, legible on the dark card", () => {
+    const dark = prepareVegaLite(STORED_CALIBRATION, ecdf, "dark");
+    const colours = markColours(dark) as string[];
+    expect(colours).toEqual(["#0072b2", "#86868b", "#56b4e9", "#ff6b6b"]);
+    for (const c of colours) expect(contrast(c, "#161617"), c).toBeGreaterThanOrEqual(3);
+    // the data is not styling: a value that looks like an old colour stays
+    expect((dark.datasets as Record<string, unknown>).ecdf).toEqual(ecdf.ecdf);
+  });
+
+  it("does the same in the traces of a Plotly plot, in any letter case", () => {
+    const spec: JsonObject = { data: [{ type: "scatter", x: [1], y: [2], text: ["#18152f"], line: { color: "#18152F" }, fillcolor: "#121619" }], layout: {} };
+    const light = preparePlotly(spec, {}, "light").data[0] as JsonObject;
+    expect((light.line as JsonObject).color).toBe("#1d1d1f");
+    expect(light.fillcolor).toBe("#1d1d1f");
+    const dark = preparePlotly(spec, {}, "dark").data[0] as JsonObject;
+    expect((dark.line as JsonObject).color).toBe("#f5f5f7");
+    expect(dark.fillcolor).toBe("#f5f5f7");
+    expect(dark.text).toEqual(["#18152f"]);
+  });
+
+  it("leaves a text that is the name of an object member as it is, in the two themes", () => {
+    // a field can have the name "constructor": the colour tables must not answer for it
+    for (const theme of ["light", "dark"] as const) {
+      const spec: JsonObject = { mark: "bar", data: { name: "contrib" }, encoding: { x: { field: "constructor" }, y: { field: "toString" }, color: { field: "__proto__" } } };
+      const out = prepareVegaLite(spec, datasets, theme);
+      expect(out.encoding).toEqual({ x: { field: "constructor" }, y: { field: "toString" }, color: { field: "__proto__" } });
+    }
+  });
+
+  it("maps every old colour to a swatch of the palette of today, and no swatch of today is an old colour", () => {
+    expect(Object.keys(LEGACY_COLOURS).length).toBeGreaterThanOrEqual(24);
+    for (const [old, now] of Object.entries(LEGACY_COLOURS)) {
+      expect(old, old).toMatch(/^#[0-9a-f]{6}$/);
+      expect(Object.keys(DARK_VARIANTS), `${old} -> ${now}`).toContain(now);
+      expect(Object.keys(DARK_VARIANTS), old).not.toContain(old);
+      // a stroke or a dot of an old plot is legible on both cards
+      if (!NON_TEXT_FILLS.has(now) && now !== "#bfdcec") {
+        expect(contrast(now, "#ffffff"), `${old} light`).toBeGreaterThanOrEqual(3);
+        expect(contrast(DARK_VARIANTS[now] ?? "", "#161617"), `${old} dark`).toBeGreaterThanOrEqual(3);
+      }
+    }
   });
 });
 

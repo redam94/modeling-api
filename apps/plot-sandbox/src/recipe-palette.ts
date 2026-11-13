@@ -5,8 +5,11 @@
  * fixed light palette and the sandbox swaps each of those colours for its dark variant when it
  * renders in dark mode. Plotly recipes (`sci.*`) use the same palette in trace colours, so
  * their specs get the same swap. A Python test (plots-core `test_the_plot_sandbox_mirrors_the_dark_variants`)
- * keeps this table equal to `mapi_plots.palette.dark_variants()`.
+ * keeps this table equal to `mapi_plots.palette.dark_variants()`. Do not write another colour
+ * pair in this file: that test reads all of them. The colours of earlier releases are in
+ * `legacy-palette.ts`.
  */
+import { LEGACY_COLOURS } from "./legacy-palette";
 import type { JsonValue, Theme } from "./protocol";
 
 /** `{light: dark}`; keys and values are lowercase `#rrggbb`. */
@@ -40,10 +43,26 @@ export const PLOTLY_DATA_KEYS: ReadonlySet<string> = new Set([
   "x", "y", "z", "text", "hovertext", "customdata", "ids", "labels", "values", "parents",
 ]);
 
-/** The spec with every recipe-palette colour replaced by its `theme` variant. */
+/** The entry of `key` itself: a text such as "constructor" must not get a member of Object. */
+function own(table: Readonly<Record<string, string>>, key: string): string | undefined {
+  return Object.prototype.hasOwnProperty.call(table, key) ? table[key] : undefined;
+}
+
+/** One colour for `theme`: an old recipe colour takes the role's colour of today first. */
+function themed(colour: string, theme: Theme): string {
+  const lower = colour.toLowerCase();
+  const legacy = own(LEGACY_COLOURS, lower);
+  if (theme !== "dark") return legacy ?? colour;
+  return own(DARK_VARIANTS, legacy ?? lower) ?? legacy ?? colour;
+}
+
+/**
+ * The spec with every recipe-palette colour replaced by its `theme` variant. A colour of an
+ * earlier release (`legacy-palette.ts`) is replaced in the two themes; a colour of today is
+ * replaced only in the dark theme.
+ */
 export function themeRecipeColours(node: JsonValue, theme: Theme, skip: ReadonlySet<string> = DATA_KEYS): JsonValue {
-  if (theme !== "dark") return node;
-  if (typeof node === "string") return DARK_VARIANTS[node.toLowerCase()] ?? node;
+  if (typeof node === "string") return themed(node, theme);
   if (Array.isArray(node)) return node.map((v) => themeRecipeColours(v, theme, skip));
   if (node === null || typeof node !== "object") return node;
   const out: Record<string, JsonValue> = {};

@@ -166,3 +166,12 @@ export type NavMode = "expert" | "guided" | "locked";
 export function navForMode(mode: NavMode): NavItem[] {
   return mode === "locked" ? LOCKED_NAV : mode === "guided" ? GUIDED_MODE_NAV : EXPERT_NAV;
 }
+
+/**
+ * All the pages the shell leads to now: the nav of `mode`, then Project (a signed-in session),
+ * Admin (an operator) and Settings. The "g" shortcuts, the list of shortcuts and the global
+ * search all read this one list, so they agree with the sidebar.
+ */
+export function shellNav(mode: NavMode, session: boolean, operator: boolean): NavItem[] {
+  return [...navForMode(mode), ...(session ? PROJECT_NAV : []), ...(operator ? [ADMIN_NAV] : []), SETTINGS_NAV];
+}

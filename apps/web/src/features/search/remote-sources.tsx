@@ -3,7 +3,8 @@
  * the first query. Each source is one small component that renders nothing: it reads one list
  * and reports its candidates, so a slow or failed list never holds the others.
  *
- * - Runs, experiments and "Make your own" filter on the server (`name`, `name`, `q`).
+ * - Runs, experiments and "Make your own" filter on the server (`name`, `name`, `q`), which
+ *   takes 200, 200 and 120 characters: a request never has a longer text.
  * - Datasets, models, specs, dashboards, workflows and endpoints have no text filter: one page
  *   of 200 (the maximum), under the query keys of the list pages, and the palette filters it.
  * - Catalog: the About cards, filtered by the palette.
@@ -18,6 +19,7 @@ import { useEffect, useMemo } from "react";
 import { api, unwrap } from "@/api/client";
 import { fetchExperiments } from "@/api/experiments";
 import { qk, useDatasets, useModels, useProjectScope, useRuns, useSpecs } from "@/api/queries";
+import { MAX_LIBRARY_QUERY_CHARS, MAX_NAME_FILTER_CHARS } from "@/lib/list-query";
 import { sentenceCase as sentence, type Candidate, type RemoteGroupId, type SourceState } from "./kinds";
 
 /** The fields the search reads of each list item (the lists' own types are wider). */
@@ -122,7 +124,9 @@ const dashboardItems = (page: Page<DashboardRow>): Candidate[] =>
   page.items.map((d) => ({
     id: d.id,
     title: d.title || d.name,
-    secondary: [sentence(d.status), d.client_name].filter(Boolean).join(" · "),
+    // Two dashboards can have the same title (a preset gives the name of its model): the
+    // name, the status and the client tell them apart, as on the list page.
+    secondary: [d.title && d.title !== d.name ? d.name : null, sentence(d.status), d.client_name].filter(Boolean).join(" · "),
     href: `/dashboards/${d.id}`,
     at: d.updated_at,
     alt: d.name,
@@ -195,7 +199,7 @@ const runItems = (page: Page<RunRow>): Candidate[] =>
   page.items.map((r) => ({ id: r.id, title: r.name || r.id, secondary: `${sentence(r.kind)} · ${r.state} · ${r.id}`, href: `/runs/${r.id}`, at: r.created_at }));
 
 function Runs({ query, report }: { query: string; report: Report }) {
-  return useReport("runs", report, useRuns({ name: query, limit: SERVER_ROWS }, { live: false }), runItems);
+  return useReport("runs", report, useRuns({ name: query.slice(0, MAX_NAME_FILTER_CHARS), limit: SERVER_ROWS }, { live: false }), runItems);
 }
 
 /** The rows of the last query stay while the next one loads, but never another project's. */
@@ -215,9 +219,10 @@ const experimentItems = (page: Page<ExperimentRow>): Candidate[] =>
 
 function Experiments({ query, report }: { query: string; report: Report }) {
   const s = useProjectScope();
+  const name = query.slice(0, MAX_NAME_FILTER_CHARS);
   const q = useQuery({
-    queryKey: qk.experimentList(s.key, { name: query }),
-    queryFn: ({ signal }) => fetchExperiments({ name: query }, { headers: s.headers, signal }),
+    queryKey: qk.experimentList(s.key, { name }),
+    queryFn: ({ signal }) => fetchExperiments({ name }, { headers: s.headers, signal }),
     placeholderData: sameProject(s.key),
   });
   return useReport("experiments", report, q, experimentItems);
@@ -233,9 +238,12 @@ const libraryItems = (items: LibraryRow[]): Candidate[] =>
 
 function Library({ query, report }: { query: string; report: Report }) {
   const s = useProjectScope();
+  // The server takes 120 characters of text: it gets the start of a longer text, and the
+  // palette keeps only the rows that have every word.
+  const asked = query.slice(0, MAX_LIBRARY_QUERY_CHARS).trim();
   const q = useQuery({
-    queryKey: searchKeys.library(s.key, query),
-    queryFn: async ({ signal }) => (await unwrap(api.GET("/v1/library", { params: { query: { q: query, limit: SERVER_ROWS } }, headers: s.headers, signal }))).items,
+    queryKey: searchKeys.library(s.key, asked),
+    queryFn: async ({ signal }) => (await unwrap(api.GET("/v1/library", { params: { query: { q: asked, limit: SERVER_ROWS } }, headers: s.headers, signal }))).items,
     placeholderData: sameProject(s.key),
     enabled: s.key !== "-",
   });
