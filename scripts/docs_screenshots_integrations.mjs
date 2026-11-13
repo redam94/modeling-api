@@ -85,7 +85,7 @@ try {
   await page.getByTestId("saved-plot").first().getByRole("button", { name: "Create link" }).click();
   const embed = page.getByRole("dialog", { name: /Share “/ });
   await embed.getByLabel("Label (optional)").fill("Weekly review in Looker Studio");
-  await embed.getByLabel(/Sites that may frame it/).fill("https://lookerstudio.google.com");
+  await embed.getByLabel(/Sites that can frame it/).fill("https://lookerstudio.google.com");
   await embed.getByRole("button", { name: "Create link" }).click();
   await expect(page.getByRole("dialog", { name: "Copy the link now" })).toBeVisible();
   await shot("integrations-embed-link", page.getByRole("dialog", { name: "Copy the link now" }));
