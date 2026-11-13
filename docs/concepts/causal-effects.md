@@ -2,7 +2,7 @@
 description: How the platform measures the effect of a campaign, a launch or a test - actual values against a prediction of the values without the change - with the three causal designs, the impact bundle group, effects in the units of the data, and the path from a geo-lift test to a calibrated marketing mix model.
 ---
 
-# Measure the effect of a change <span class="mapi-badge">v0.13</span>
+# How the platform measures the effect of a change <span class="mapi-badge">v0.13</span>
 
 A causal model answers the question "what did this change add?". The change can be a
 campaign, a launch, a price change or a test in some markets. The model cannot observe the

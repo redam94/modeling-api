@@ -1,8 +1,3 @@
----
-search:
-  exclude: true
----
-
 # Provenance of the brand backdrops
 
 This file records the source of the hero backdrops, the corner textures and the tile glow in this folder.

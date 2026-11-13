@@ -1,4 +1,4 @@
-# Your first analysis in Guided mode <span class="mapi-badge">v0.4</span>
+# Your first MMM in Guided mode <span class="mapi-badge">v0.4</span>
 
 Guided mode takes you from a spreadsheet to a trustworthy answer. You do not write YAML, and
 you do not need to know statistics. You select what you want to learn. You answer some

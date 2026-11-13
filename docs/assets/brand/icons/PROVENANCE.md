@@ -1,8 +1,3 @@
----
-search:
-  exclude: true
----
-
 # Provenance of the tile icons
 
 This file records the source of the tile icons in this folder.

@@ -10,8 +10,11 @@
 (function () {
   "use strict";
 
-  /* The section label of a search result, from the first folder of its address.
-     A folder that is not listed here shows DEFAULT_SECTION. Keep this object valid JSON. */
+  /* The section label of a search result: the tab of the page. The first folder of the
+     address gives it; a folder that is not listed here shows DEFAULT_SECTION. A page that is
+     in another tab than its folder (guides/authentication/ is in Operate) comes from the
+     "sections" map that overrides/partials/search.html builds from the nav.
+     Keep this object valid JSON, and change mono_sections in overrides/main.html with it. */
   var SECTION_LABELS = {"getting-started": "Learn", "tutorials": "Learn", "concepts": "Learn", "guides": "Guides", "extend": "Extend", "reference": "Reference", "models": "Reference", "operations": "Operate"};
   var DEFAULT_SECTION = "Home";
 
@@ -50,7 +53,7 @@
     }
   }
 
-  function sectionOf(href, base) {
+  function sectionOf(href, base, pages) {
     var path;
     try {
       path = new URL(href, location.href).pathname;
@@ -58,7 +61,9 @@
       return DEFAULT_SECTION;
     }
     if (path.indexOf(base) === 0) path = path.slice(base.length);
-    var first = path.replace(/^\/+/, "").split("/")[0];
+    path = path.replace(/^\/+/, "");
+    if (pages && Object.prototype.hasOwnProperty.call(pages, path)) return String(pages[path]);
+    var first = path.split("/")[0];
     return Object.prototype.hasOwnProperty.call(SECTION_LABELS, first) ? SECTION_LABELS[first] : DEFAULT_SECTION;
   }
 
@@ -104,6 +109,7 @@
 
     var data = readJson("__mono_search") || {};
     var popular = Array.isArray(data.popular) ? data.popular : [];
+    var pageSections = data.sections && typeof data.sections === "object" ? data.sections : null;
     var base = basePath();
     var lastFocus = null;
     var wasOpen = false;
@@ -248,7 +254,7 @@
         if (teaser.textContent.trim()) article.insertBefore(teaser, title.nextSibling);
 
         if (index === 0) {
-          article.insertBefore(el("span", "mono-search__section", sectionOf(link.href, base)), article.firstChild);
+          article.insertBefore(el("span", "mono-search__section", sectionOf(link.href, base, pageSections)), article.firstChild);
         }
       });
     }

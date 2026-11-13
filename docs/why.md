@@ -34,6 +34,174 @@ production. Their analysis must be repeatable and defensible.
 | **Other tools need the model** | A Flask app for each model, a shared pickle, or a CSV file in an e-mail each Monday | **Endpoints** with aliases, history and rollback. Scoped tokens, generated snippets, signed webhooks and charts that you can embed ([Integrations](concepts/integrations.md)) |
 | **Many teams, untrusted code and data** | One shared server where all code can read all data | Tenants with row-level security and a new sandbox for each run. Outputs that the platform verifies against the checksums of the storage and signs. Quotas and a kill switch ([Security model](concepts/security.md)) |
 
+## Two ways in, one model
+
+<div class="mapi-personas" markdown>
+<div class="mapi-persona" markdown>
+
+### :material-compass-outline: Analysts
+
+<p class="mapi-promise">From an upload to a report and a scenario in minutes, with honest uncertainty.</p>
+
+- Select what you want to learn. Answer questions such as "which column is revenue?". The
+  platform suggests the answer and tells you why.
+- Tell what you already believe ("TV returns 1.5 to 4 per euro"), or enter a lift test.
+- Read a report in plain words. A **sanity scorecard** tells you if you can trust it.
+- Move the **what-if sliders**. Your browser gives the answers. The range stays honest when
+  some channels move at the same time. "Run exact" asks the full model.
+- Share a live chart, or put the model in a Google Sheet.
+- Measure the effect of a campaign or a geo-lift test with the *Effect of a campaign* and
+  *Geo-lift test* templates. Use the result as a lift test for your marketing mix.
+- If you are not sure which model to use, use **Help me choose**. It asks some questions and
+  explains its recommendations. Each option has an *About* card in plain words.
+
+Start with [Your first MMM in Guided mode](guides/guided-tutorial.md).
+
+</div>
+<div class="mapi-persona mapi-persona--expert" markdown>
+
+### :material-code-braces: Data scientists
+
+<p class="mapi-promise">Any PyMC, scikit-learn, JAX or forecasting model. The same preprocessing, exactly. Endpoints in one click.</p>
+
+- A PyMC model is one `build()` method. An sklearn model is one `estimator()`. Built-in
+  marketing-mix, forecasting, causal, demand, choice and classification models are ready to
+  use. So are 15 science models and three neural networks for tables and images.
+- Each run logs its **metrics, params, tags and images**. Log your own from model code, a
+  notebook or `mapi runs log-metric`. Filter, sort and compare 2 to 10 runs side by side,
+  and group them in **experiments**.
+- Steps **learn on the training data only**. At score time, the platform **replays** them
+  and does not fit them again. This applies to forecasts, new markets and counterfactuals.
+- Uncertainty is a primary part of each result: draws, quantiles or intervals. Each one has
+  the aggregations that are valid for it.
+- Promote a version to an **endpoint** through the scorecard gate. Copy a snippet for
+  Python, TypeScript, curl, R, Apps Script or a notebook.
+- Automate the statistics with **workflows** of tests, branches, searches, backtests and
+  governance checks. Posterior summaries, predictive checks, stacking weights and plots are
+  nodes too. Run them live from `mapi workflows run --watch` or `api.workflows`.
+
+Start with the [Quickstart](getting-started/quickstart.md). Then read the
+[Workflow cookbook](guides/workflow-cookbook.md), [Track metrics, params and tags](guides/tracking.md)
+and the [science tutorials](tutorials/pymc-challenges/index.md).
+
+</div>
+</div>
+
+The two groups edit the same `ModelSpec`. Each Guided screen has **View as YAML**. The
+changes of an expert come back to Guided mode with no loss.
+[When to use something else](#when-to-use-something-else) tells who the platform is not for.
+
+## How it works
+
+```mermaid
+flowchart LR
+    D["Your data<br/>CSV · Parquet · MFF ·<br/>Meridian · NetCDF · HDF5 ·<br/>images"] --> I["Sandboxed ingest<br/>checked, profiled,<br/>dims and roles"]
+    Q["Guided answers<br/>or a YAML spec"] --> V{{"Static checks<br/>before any compute"}}
+    I --> V
+    V --> F["Fit in a fresh sandbox<br/>preprocessing learned<br/>on train only"]
+    F --> B[("Signed bundle<br/>states · posterior ·<br/>scorecard · grids")]
+    F -.-> T["Run tracking<br/>metrics · params ·<br/>images · compare"]
+    W["Workflow<br/>tests → decisions →<br/>search → backtest"] -.-> F
+    B --> R["Report, explorers,<br/>what-if, budget plans"]
+    B --> G{{"Governance<br/>null tests · benchmarks ·<br/>second-person approval"}}
+    G --> E["Endpoint<br/>gated on the scorecard<br/>and the validation"]
+    E --> S["Sheets · BI embeds ·<br/>webhooks ·<br/>Python, TS, R"]
+```
+
+1. **Your data stays labelled.** The upload becomes an `xr.Dataset` with named dims, roles and
+   units. No later part of the process uses the position of the data.
+2. **Mistakes fail early.** Examples are a spec that leaks the holdout, a forecast past the
+   limit of the model, or a market that the model did not see. You get typed errors before
+   any compute.
+3. **The fit learns, and the score replays.** Each preprocessing step stores what it learned.
+   Thus a forecast or a new market goes through exactly the same transformations. Then the
+   result goes back into your units.
+4. **The platform checks results two times.** It compares the outputs with the checksums of
+   the storage, and it signs them. The scorecard checks convergence, holdout error and
+   plausibility.
+5. **Models must show that they are good.** A governance policy applies null tests and
+   benchmarks to each version and records the evidence. If you ask, it waits for a second
+   person. Endpoints can refuse all versions that are not validated.
+6. **Other tools connect to an endpoint, not to a file.** Promote a better model, and all
+   integrations use it. Roll back with one call.
+7. **Full analyses repeat automatically.** A workflow runs the tests, decisions, fits and
+   checks again each Monday, or when the data changes. It uses again each step whose inputs
+   did not change.
+8. **Each run keeps its record.** A run logs its metrics, params, tags and images while it
+   runs. You can search the runs, compare them side by side and group them in experiments.
+
+## The core idea: fit with preprocessing, score with the *same* preprocessing
+
+The same pipeline object runs at fit time and at score time. At fit time, each step
+**learns** its state from the training data. At score time, it **replays** that state. Steps
+that look back in time store a small tail for each group. Thus a forecast sees exactly the
+history that the model used for the fit.
+
+```mermaid
+flowchart LR
+    subgraph FIT["Fit (once)"]
+        direction LR
+        A["Daily spend & revenue<br/>local currency"] --> B["fx_convert<br/>(side table)"]
+        B --> C["resample<br/>daily → weekly"]
+        C --> S{{"split<br/>last 8 weeks"}}
+        S --> D["holidays<br/><i>pinned side table</i>"]
+        D --> M["model.fit<br/><i>keeps the fitted history<br/>for carry-over</i>"]
+    end
+    M --> BUN[("Bundle<br/>states · context tails · posterior<br/>hashes · no pickle")]
+    subgraph SCORE["Score (any time)"]
+        direction LR
+        F["Next quarter's plan<br/>or a new market"] --> G["same steps,<br/><b>replayed</b> state"]
+        G --> H["model.score"]
+        H --> I["inverse → weekly EUR<br/>summaries · your names"]
+    end
+    BUN --> G
+```
+
+=== "What you write"
+
+    ```yaml
+    pipeline:
+      - {id: to_eur, use: core.fx_convert@^1, with: {vars: [y, spend], table: fx, ...}}
+      - {id: weekly, use: core.resample@^1,   with: {dim: time, freq: W-SUN, how: sum}}
+      - {id: hols,   use: core.holidays@^1,   with: {table: holidays, along: time}}
+    model:
+      use: mmm.bayesian@^1                 # mmm-framework: scaling and carry-over inside
+      settings: {hierarchy: {pool_over: [geo]}, new_levels: hyperprior}
+      fit: {mode: evaluate_then_refit}
+    ```
+
+=== "What the platform does"
+
+    1. The platform checks the full spec **statically**. It checks names, dims, settings and
+       units at each stage. It also checks where the split occurs, and if a step can learn
+       from the holdout (`LEAKAGE_RISK`).
+    2. It fits each stateful step on the **training weeks only**, and then fits the model.
+       Then it scores the holdout **through the same path that a forecast uses** and records
+       the metrics.
+    3. It fits again on all weeks, so that forecasts start from the latest data. Then it
+       writes a bundle with each state, context tail and hash.
+
+=== "What you get back"
+
+    - Forecasts in **weekly EUR**, not in "model units". The model reports its own units. The
+      units stop at the weekly resample, because you cannot get daily values back from weekly
+      sums. The `output_space` (`model-owned`) and `units` attributes of the output tell this.
+    - A new market that comes from the fitted **hyperprior**. Its range is honestly wider than
+      the range of a known market.
+    - What-if deltas that share their noise with the baseline (common random numbers). Thus
+      the delta shows the change, not the sampling noise.
+
+This is the same model in plain Python, without a server. The test suite runs each snippet
+on this site:
+
+```python
+--8<-- "quickstart.py:fit"
+```
+
+```python
+--8<-- "quickstart.py:errors"
+```
+
 ## Compared with notebooks and an ad-hoc Flask app
 
 This is the most usual alternative. It is a good alternative for one model and one team.
@@ -179,8 +347,8 @@ learning) in a browser on a local dev stack, with real fits in the sandboxed run
 GPU path is not tested: the project has no GPU and no Google Cloud project to test it. On a
 laptop, a GPU run uses the CPU. We did the E18, E51 and E21 science tutorials of v0.9 in the
 web app with the real data of the notebooks. The v0.5 workflow, governance, mmm-framework,
-explorer and CLI journeys passed end to end against a live stack. The numbers on the
-[home page](index.md#measured-not-promised) come from those runs.
+explorer and CLI journeys passed end to end against a live stack. The numbers in
+[Measured, not promised](#measured-not-promised) come from those runs.
 
 Two items are still open. We test the cloud controls against fakes until they meet a real
 Google Cloud project. Also, the study with five non-technical testers did not run yet. See
@@ -188,3 +356,41 @@ Google Cloud project. Also, the study with five non-technical testers did not ru
 [What's new in 0.9](whats-new-0.9.md#what-is-not-in-09-yet),
 [M3.5 verification](operations/m35-verification.md), [M3 verification](operations/m3-verification.md)
 and the [roadmap](roadmap/index.md).
+
+## Measured, not promised
+
+The v0.9 values come from fits of the real data of the pymc-challenges notebooks. We got the
+first two values in the web app on a local dev stack, with the sandboxed runner
+([E18 tutorial](tutorials/pymc-challenges/e18-scottish-lip-cancer.md)):
+
+<div class="mapi-stats" markdown>
+<div class="mapi-stat"><strong>46 s</strong><span>the sci_spatial_ladder recipe on the 56 districts of Scotland: three spatial models, the comparison, the stacking weights, two refits with other priors and the report</span></div>
+<div class="mapi-stat"><strong>−153.0</strong><span>the elpd_loo of the BYM2 disease map in the web app. The notebook gives −152.7.</span></div>
+<div class="mapi-stat"><strong>129.9</strong><span>the elpd_loo of Pagel's lambda, the model that sci_phylo_signal selects for 186 primates. The notebook gives 130.</span></div>
+</div>
+
+We measured the values below on an 8-core laptop against the full stack. The fits were real
+fits in the sandboxed runner. The v0.5 journeys used the data and settings of [M3.5 verification](operations/m35-verification.md):
+
+<div class="mapi-stats" markdown>
+<div class="mapi-stat"><strong>37–40 s</strong><span>the canonical workflow: 19 nodes from unit-root tests to governance, through the orchestrator and the sandboxed runner</span></div>
+<div class="mapi-stat"><strong>p = 0.7–0.95</strong><span>an ARIMAX fitted on pure noise, compared with 19 fits on shuffled data. The validation fails. Promotion gives NOT_VALIDATED.</span></div>
+<div class="mapi-stat"><strong>0.1 %</strong><span>of the result that a model fitted on real signal gave to three fake noise drivers</span></div>
+<div class="mapi-stat"><strong>26 s</strong><span>a validation with the null tests: 19 fits on shuffled data plus 3 fake drivers</span></div>
+<div class="mapi-stat"><strong>10–16 s</strong><span>an mmm-framework budget plan with a 5-point efficient frontier, in the sandbox</span></div>
+</div>
+
+These runs found eight defects that unit, integration and mocked-browser tests did not find.
+We repaired each defect and added a regression test before the release. The v0.4 journey used
+the data of [M3 verification](operations/m3-verification.md):
+
+<div class="mapi-stats" markdown>
+<div class="mapi-stat"><strong>135 s</strong><span>from upload to report to scenario, done by a script. The fit used 79 s.</span></div>
+<div class="mapi-stat"><strong>0.08 %</strong><span>the difference between the instant slider and the exact model, for TV at half budget (−454,590 vs −454,241, exact sd 14,003)</span></div>
+<div class="mapi-stat"><strong>0.01 %</strong><span>the difference between "TV off" from the grid and an exact counterfactual run (−1,046,519 vs −1,046,414)</span></div>
+<div class="mapi-stat"><strong>76–81 %</strong><span>of each translated prior is in the 80% ROI range that the analyst gave</span></div>
+<div class="mapi-stat"><strong>0 objects</strong><span>stay in five buckets after a tenant deletion (285 before). The platform keeps only the audit log and the cost ledger.</span></div>
+</div>
+
+We did not measure these items yet: real testers, a real Google Cloud project and public
+workspaces with Docker isolation ([what remains](operations/m3-verification.md#what-remains-unverified)).

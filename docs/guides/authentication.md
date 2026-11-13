@@ -2,7 +2,7 @@
 description: Signing in to a multi-tenant modeling-api - the browser, the development identity provider, Google and Identity Platform, the CLI, and API tokens for programs.
 ---
 
-# Authentication <span class="mapi-badge">v0.3</span>
+# Sign in <span class="mapi-badge">v0.3</span>
 
 A v0.3 deployment answers `401 UNAUTHENTICATED` to all callers that it does not know. There
 are three ways in, one for each type of caller:

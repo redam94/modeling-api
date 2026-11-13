@@ -37,6 +37,7 @@ MKDOCS = ROOT / "mkdocs.yml"
 NAMESPACE_HOSTS = {"www.w3.org"}
 
 #: Theme features the site had before the retheme; the retheme must not drop one.
+#: (``search.suggest`` is gone on purpose: the Mono search dialog draws no inline suggestion.)
 KEPT_FEATURES = {
     "navigation.tabs",
     "navigation.tabs.sticky",
@@ -44,7 +45,6 @@ KEPT_FEATURES = {
     "navigation.indexes",
     "navigation.top",
     "navigation.footer",
-    "search.suggest",
     "search.highlight",
     "content.code.copy",
     "content.code.annotate",
@@ -155,6 +155,10 @@ def test_theme_uses_the_overrides_and_no_google_fonts() -> None:
     features = set(theme["features"])
     assert features >= KEPT_FEATURES, f"features dropped: {sorted(KEPT_FEATURES - features)}"
     assert "navigation.path" in features  # breadcrumbs
+    # the dialog has no element for the inline suggestion, so the worker must not compute one
+    assert "search.suggest" not in features
+    search = (OVERRIDES / "partials" / "search.html").read_text("utf-8")
+    assert "search-suggest" not in search
     # the light and dark palettes and their toggle stay
     assert [p["scheme"] for p in theme["palette"]] == ["default", "slate"]
     assert all("toggle" in p and "prefers-color-scheme" in p["media"] for p in theme["palette"])
@@ -222,10 +226,26 @@ def test_mermaid_bundle_is_pinned_and_local() -> None:
     assert hashlib.sha256(data).hexdigest() == vendor.BUNDLE_SHA256
     assert (vendor.DEST / "LICENSE.txt").read_text("utf-8").startswith("The MIT License")
     local = vendor.BUNDLE.relative_to(DOCS).as_posix()
+    # The bundle is 3.5 MB, so it is not in extra_javascript (that loads on each page).
+    # main.html loads it on a page that has a diagram, before Material's own script: mermaid
+    # must be defined when Material mounts the page, or Material fetches it from unpkg.
     scripts = _config()["extra_javascript"]
-    assert local in scripts, f"extra_javascript does not load {local}"
-    # mermaid must be defined before Material mounts the page, or Material fetches it from unpkg
-    assert not any("unpkg" in str(s) or "mermaid@" in str(s) for s in scripts)
+    assert not any("mermaid" in str(s) for s in scripts), scripts
+    main = (OVERRIDES / "main.html").read_text("utf-8")
+    assert "'class=\"mermaid\"' in page.content" in main
+    block = main.split("{% block scripts %}", 1)[1].split("{% endblock %}", 1)[0]
+    tag = f"<script src=\"{{{{ '{local}' | url }}}}\"></script>"
+    assert tag in block, f"main.html does not load {local}"
+    assert "{% if mono_has_diagram %}" in block
+    assert block.index(tag) < block.index("{{ super() }}"), "mermaid loads before the bundle"
+    # the diagrams that the pages have use the fence that makes class="mermaid"
+    fenced = [p for p in DOCS.rglob("*.md") if "```mermaid" in p.read_text("utf-8")]
+    assert len(fenced) >= 10
+    assert "class: mermaid" in MKDOCS.read_text("utf-8")
+    for path in _theme_files():
+        if path.suffix in {".html", ".js", ".css"}:
+            text = path.read_text("utf-8")
+            assert "unpkg" not in text and "mermaid@" not in text, path.name
 
 
 # -------------------------------------------------------------------------------- overrides

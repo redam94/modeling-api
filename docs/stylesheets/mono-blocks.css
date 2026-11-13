@@ -689,3 +689,110 @@ a.mono-tile:hover::before,
     display: none;
   }
 }
+
+/* ------------------------------------------------- home and landing pages (v0.21, T6) */
+/* Additions for docs/index.md and the section landing pages (guides/index.md,
+   reference/index.md). The blocks above do not change.
+
+     + mono-tiles--routes   a tile holds two or three .mono-more links; no link covers the
+                            tile, and the links stack at the bottom
+     + mono-tiles--4        four tiles in a row (three on a narrow desktop; with
+                            mono-tiles--compact, two on a phone)
+     + mono-tiles--compact  small tiles for a list of tasks: a 44px icon, a short title and
+                            one link or one line */
+
+.md-typeset .mono-tiles--routes > ul > li .mono-more::before {
+  content: none;
+}
+.md-typeset .mono-tiles--routes > ul > li:has(.mono-more):hover {
+  transform: none;
+}
+.md-typeset .mono-tiles--routes > ul > li > p:has(> .mono-more) ~ p:has(> .mono-more) {
+  margin-top: 0;
+  padding-top: 10px;
+}
+.md-typeset .mono-tiles--routes > ul > li:has(.mono-more:focus-visible) {
+  outline: none;
+}
+.md-typeset .mono-tiles--routes > ul > li .mono-more:focus-visible {
+  outline: 2px solid var(--mono-ink);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+.md-typeset .mono-tiles--routes > ul > li .mono-more:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.md-typeset .mono-tiles--4 > ul > li {
+  grid-column: span 3;
+}
+.md-typeset .mono-tiles--compact {
+  gap: 16px;
+  margin-top: clamp(28px, 4vw, 44px);
+}
+.md-typeset .mono-tiles--compact > ul > li {
+  min-height: 0;
+  padding: 26px 26px 24px;
+}
+.md-typeset .mono-tiles--compact > ul > li :is(h2, h3) {
+  font-size: 21px;
+  letter-spacing: -0.016em;
+  line-height: 1.2;
+}
+.md-typeset .mono-tiles--compact > ul > li p {
+  margin-top: 8px;
+  font-size: 15px;
+  line-height: 1.4;
+}
+.md-typeset .mono-tiles--compact > ul > li .mono-more {
+  font-size: 15px;
+}
+.md-typeset .mono-tiles--compact > ul > li > p:has(> .mono-more:only-child) {
+  padding-top: 12px;
+}
+.md-typeset .mono-tiles--compact .mono-icon {
+  width: 44px;
+  height: 44px;
+  margin: -4px 0 14px -4px;
+}
+@media screen and (max-width: 76.25em) {
+  .md-typeset .mono-tiles--4 > ul > li {
+    grid-column: span 4;
+  }
+}
+@media screen and (max-width: 53.75em) {
+  .md-typeset .mono-tiles--compact {
+    gap: 12px;
+  }
+  .md-typeset .mono-tiles--compact > ul > li:nth-child(n) {
+    padding: 20px 18px 18px;
+  }
+  /* the twelve task tiles stay two in a row on a phone; three tiles stack */
+  .md-typeset .mono-tiles--compact.mono-tiles--4 > ul > li:nth-child(n) {
+    grid-column: span 6;
+  }
+}
+/* the screenshots of the product tour: space above the row, and the link below it */
+.md-typeset .mono-band .mapi-shots {
+  margin: clamp(28px, 4vw, 44px) 0 0;
+}
+/* the captures have different heights: show the top of each in one frame */
+.md-typeset .mono-band .mapi-shots img.mapi-shot {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  object-position: top left;
+  background: #fff;
+}
+.md-typeset .mono-band .mapi-shots + .mono-actions {
+  margin-top: 28px;
+}
+/* a link in the label of a figure keeps the colour of the label and shows an underline */
+.md-typeset .mono-figures p:not(.mono-figure-num) a {
+  color: var(--mono-ink);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+  text-underline-offset: 3px;
+}
