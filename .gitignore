@@ -49,3 +49,4 @@ docs/reference/generated/
 
 # --- Local compose overrides (see compose.override.example.yml) ---
 compose.override.yml
+.local*
