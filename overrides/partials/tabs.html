@@ -1,0 +1,12 @@
+{#-
+  Mono theme: the top-level navigation, drawn by partials/header.html inside the header row.
+  Below Material's drawer breakpoint the CSS hides it and the drawer takes its place.
+-#}
+{% import "partials/tabs-item.html" as item with context %}
+<nav class="mono-tabs" aria-label="{{ lang.t('tabs') }}" data-md-component="tabs">
+  <ul class="mono-tabs__list">
+    {% for nav_item in nav.items %}
+      {{ item.render(nav_item) }}
+    {% endfor %}
+  </ul>
+</nav>

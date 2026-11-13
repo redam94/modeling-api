@@ -13,11 +13,12 @@ not_in_nav: |
 
 theme:
   name: material
+  # the Mono look: templates in overrides/, styles in docs/stylesheets/, scripts in docs/javascripts/
+  custom_dir: overrides
   logo: assets/logo.svg
   favicon: assets/favicon.svg
-  font:
-    text: Inter
-    code: JetBrains Mono
+  # no Google Fonts: Inter and JetBrains Mono are self-hosted in docs/assets/fonts/
+  font: false
   features:
     - navigation.tabs
     - navigation.tabs.sticky
@@ -25,6 +26,7 @@ theme:
     - navigation.indexes
     - navigation.top
     - navigation.footer
+    - navigation.path
     - search.suggest
     - search.highlight
     - content.code.copy
@@ -44,12 +46,38 @@ theme:
       toggle: {icon: material/weather-sunny, name: Switch to light mode}
 
 extra_css:
-  - stylesheets/extra.css
+  - stylesheets/mono.css
+  - stylesheets/mono-chrome.css
+  - stylesheets/mono-content.css
+  - stylesheets/mono-blocks.css
 
-# Material loads `mermaid@11` (a moving tag) from unpkg unless mermaid is already present;
-# pin an exact release instead.
+# Material loads `mermaid@11` (a moving tag) from unpkg unless mermaid is already present.
+# The pinned bundle is vendored instead (scripts/vendor_mermaid.py), so no page asks another host.
 extra_javascript:
-  - https://unpkg.com/mermaid@11.17.2/dist/mermaid.min.js
+  - javascripts/mono.js
+  - assets/vendor/mermaid/mermaid.min.js
+
+extra:
+  # The "Try" list in the search dialog when the box is empty. `url` is a site path.
+  search_popular:
+    - title: Your first Guided analysis
+      url: guides/guided-tutorial/
+      hint: Tutorial
+    - title: Install modeling-api
+      url: getting-started/
+      hint: Get started
+    - title: Build a client dashboard
+      url: guides/client-dashboards/
+      hint: Guide
+    - title: Share a dashboard safely
+      url: guides/sharing-dashboards-securely/
+      hint: Guide
+    - title: Write an extension
+      url: extend/
+      hint: Extend
+    - title: Error codes
+      url: reference/generated/error-codes/
+      hint: Reference
 
 hooks:
   - scripts/mkdocs_hooks.py

@@ -1,0 +1,38 @@
+{#-
+  Mono theme: the "page not found" page. Full-bleed, like home.html.
+-#}
+{% extends "main.html" %}
+
+{% block hero %}
+  <span class="mono-fullbleed" hidden></span>
+{% endblock %}
+
+{% block site_nav %}
+  {% if nav %}
+    <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+      <div class="md-sidebar__scrollwrap">
+        <div class="md-sidebar__inner">
+          {% include "partials/nav.html" %}
+        </div>
+      </div>
+    </div>
+  {% endif %}
+{% endblock %}
+
+{% block container %}
+  <div class="md-content mono-home" data-md-component="content">
+    <article class="md-content__inner md-typeset mono-home__body">
+      <section class="mono-band mono-band--hero mono-404">
+        <div class="mono-wrap mono-center">
+          <p class="mono-kicker">Error 404</p>
+          <h1 class="mono-display">Page not found.</h1>
+          <p class="mono-lead">This address does not point at a page.</p>
+          <div class="mono-actions">
+            <label class="md-button md-button--primary" for="__search" role="button" tabindex="0">Search the documentation</label>
+            <a class="mono-more" href="{{ config.extra.homepage | d(nav.homepage.url, true) | url }}">Go to the home page</a>
+          </div>
+        </div>
+      </section>
+    </article>
+  </div>
+{% endblock %}

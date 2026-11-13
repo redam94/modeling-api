@@ -1,0 +1,41 @@
+{#-
+  Mono theme: a full-bleed page, for the home page.
+
+  Select it in the front matter of a page:
+
+      ---
+      template: home.html
+      ---
+
+  The page content renders edge to edge: no sidebars, no breadcrumbs, no head band and no
+  width cap. Build the page from the .mono-band blocks (see docs/stylesheets/mono.css). The
+  navigation sidebar stays in the document, hidden, because it is the drawer on small
+  screens.
+-#}
+{% extends "main.html" %}
+
+{% block hero %}
+  <span class="mono-fullbleed" hidden></span>
+{% endblock %}
+
+{% block site_nav %}
+  {% if nav %}
+    <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+      <div class="md-sidebar__scrollwrap">
+        <div class="md-sidebar__inner">
+          {% include "partials/nav.html" %}
+        </div>
+      </div>
+    </div>
+  {% endif %}
+{% endblock %}
+
+{% block container %}
+  <div class="md-content mono-home" data-md-component="content">
+    <article class="md-content__inner md-typeset mono-home__body">
+      {% block content %}
+        {{ page.content }}
+      {% endblock %}
+    </article>
+  </div>
+{% endblock %}
