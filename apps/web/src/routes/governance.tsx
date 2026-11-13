@@ -46,7 +46,7 @@ function PolicyTable({ policies, editable }: { policies: GovernancePolicy[]; edi
             to="/governance/policies/$policyId"
             params={{ policyId: row.original.id }}
             search={row.original.scope === "tenant" ? { scope: "tenant" } : {}}
-            className="font-medium hover:underline"
+            className="link font-medium"
             onClick={(e) => e.stopPropagation()}
           >
             {row.original.name}
@@ -194,7 +194,7 @@ export function NewPolicyPage() {
   const allowed = s === "tenant" ? can(ws.grants, "create", "tenant_policy") : can(ws.grants, "create", "policy");
   return (
     <>
-      <PageHeader title={s === "tenant" ? "New tenant-wide policy" : "New project policy"} description="Select the checks and their limits. Then select who approves the model." />
+      <PageHeader crumbs={[{ label: "Governance", to: "/governance" }, { label: "New policy" }]} title={s === "tenant" ? "New tenant-wide policy" : "New project policy"} description="Select the checks and their limits. Then select who approves the model." />
       <PolicyEditor scope={s} policy={null} readOnly={!allowed} />
     </>
   );
@@ -212,6 +212,7 @@ export function PolicyPage() {
   return (
     <>
       <PageHeader
+        crumbs={[{ label: "Governance", to: "/governance" }, { label: policy.data.name }]}
         title={policy.data.name}
         description={policy.data.scope === "tenant" ? "A tenant-wide policy. All projects inherit it." : "A project policy."}
         meta={
@@ -246,7 +247,7 @@ export function ValidationsPage() {
         id: "model",
         header: "Model version",
         cell: ({ row }) => (
-          <Link to="/validations/$validationId" params={{ validationId: row.original.id }} className="hover:underline" onClick={(e) => e.stopPropagation()}>
+          <Link to="/validations/$validationId" params={{ validationId: row.original.id }} className="link" onClick={(e) => e.stopPropagation()}>
             <Mono>
               {shortId(row.original.model_id)} v{row.original.version}
             </Mono>
@@ -263,6 +264,7 @@ export function ValidationsPage() {
   return (
     <>
       <PageHeader
+        crumbs={[{ label: "Governance", to: "/governance" }, { label: awaiting ? "Review queue" : "Validations" }]}
         title={awaiting ? "Review queue" : "Validations"}
         description={
           awaiting

@@ -1,7 +1,9 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { createRootRouteWithContext, createRoute, createRouter, lazyRouteComponent, Link } from "@tanstack/react-router";
 
-import { EmptyState } from "@/components/common";
+import notFoundArt from "@/assets/brand/not-found.webp";
+import { BrandArt } from "@/components/brand/brand-art";
+import { Button } from "@/components/ui/button";
 import { AppShell } from "@/components/shell/app-shell";
 import { isNodePath } from "@/features/datasets/tree";
 import { validateRunsSearch, type RunsSearch } from "@/features/runs/run-search";
@@ -67,18 +69,20 @@ function catalogId(v: unknown): string | undefined {
   return typeof v === "string" && v.length <= 128 && /^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*$/.test(v) ? v : undefined;
 }
 
+/** No route matches: a block that is dark in both themes, with the not-found art behind the words. */
 function NotFound() {
   return (
-    <EmptyState
-      title="This page does not exist"
-      action={
-        <Link to="/" className="text-primary hover:underline">
-          Go to Home
-        </Link>
-      }
-    >
-      The link may be out of date, or the resource was removed.
-    </EmptyState>
+    <section className="band-dark relative isolate grid min-h-[min(60svh,30rem)] place-items-center overflow-hidden rounded-3xl px-6 py-16 text-center">
+      <BrandArt src={notFoundArt} width={960} height={540} blend={false} className="absolute inset-0 -z-10 size-full object-cover" />
+      <div className="grid justify-items-center gap-3">
+        <p className="kicker">Error 404</p>
+        <h1 className="display-title text-[clamp(2rem,5vw,3.5rem)] leading-[1.04]">This page does not exist</h1>
+        <p className="max-w-[40ch] text-base text-muted-foreground">The link may be out of date, or the resource was removed.</p>
+        <Button asChild className="mt-3">
+          <Link to="/">Go to Home</Link>
+        </Button>
+      </div>
+    </section>
   );
 }
 

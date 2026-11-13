@@ -13,7 +13,7 @@ export function LinkEnded({ reason = "ended" }: { reason?: "ended" | "incomplete
     <div className="grid gap-3" data-share="ended">
       <div className="flex items-center gap-2.5">
         <Link2Off className="size-5 text-muted-foreground" aria-hidden />
-        <h1 className="text-xl font-semibold tracking-tight">{reason === "ended" ? "The link has ended" : "Open the full link"}</h1>
+        <h1 className="display-title text-2xl">{reason === "ended" ? "The link has ended" : "Open the full link"}</h1>
       </div>
       <p className="text-base text-muted-foreground">{reason === "ended" ? LINK_ENDED_TEXT : LINK_INCOMPLETE_TEXT}</p>
     </div>
@@ -24,7 +24,7 @@ export function LinkEnded({ reason = "ended" }: { reason?: "ended" | "incomplete
 export function LinkProblem({ message, onRetry }: { message: string; onRetry?: (() => void) | undefined }) {
   return (
     <div className="grid gap-4" data-share="problem">
-      <h1 className="text-xl font-semibold tracking-tight">We could not open the dashboard</h1>
+      <h1 className="display-title text-2xl">We could not open the dashboard</h1>
       <InlineMessage tone="error">{message}</InlineMessage>
       {onRetry ? (
         <Button variant="secondary" className="w-fit" onClick={onRetry}>

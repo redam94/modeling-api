@@ -15,11 +15,13 @@ import {
   SegmentedControl,
   Tooltip,
 } from "@/components/ui/overlays";
+import { Logo, Wordmark } from "@/components/brand/logo";
 import { Kbd } from "@/components/ui/primitives";
-import { Logo, NoProjectScreen } from "@/features/auth/gate";
+import { NoProjectScreen } from "@/features/auth/gate";
 import { useWorkspace } from "@/features/auth/workspace";
 import { useEffectivePersona, useGuidedLock, useSetPersona } from "@/features/guided/persona";
 import { TenantStatusBanner } from "@/features/trust/tenant-banner";
+import { modKeyHint } from "@/hooks/platform";
 import { useHotkeys } from "@/hooks/use-hotkeys";
 import { useApplyTheme } from "@/hooks/use-theme";
 import { cn } from "@/lib/utils";
@@ -32,6 +34,7 @@ import {
   ADMIN_NAV,
   EXPERT_NAV,
   EXPERT_NAV_GROUPS,
+  GUIDED_MODE_NAV,
   GUIDED_MORE_NAV,
   GUIDED_PRIMARY_NAV,
   inGuidedMore,
@@ -74,13 +77,13 @@ function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
       aria-current={active ? "page" : undefined}
       data-tour={NAV_ANCHOR[item.to]}
       className={cn(
-        "focus-ring group relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-        // Studio: the active item is an ink block with its icon in lime.
-        active && "bg-block text-block-foreground hover:bg-block hover:text-block-foreground",
+        "focus-ring group relative flex min-h-9 items-center gap-3 rounded-full px-3 text-sm text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground",
+        // The active row is an ink-tint pill: ink text and icon, weight 600.
+        active && "bg-accent font-semibold text-foreground hover:bg-accent",
         collapsed && "justify-center px-0",
       )}
     >
-      <Icon className={cn("size-[18px] shrink-0", active && "stroke-highlight")} />
+      <Icon className="size-[18px] shrink-0" />
       {collapsed ? <span className="sr-only">{item.label}</span> : <span className="truncate">{item.label}</span>}
     </Link>
   );
@@ -102,8 +105,8 @@ function CompactNavLink({ item }: { item: NavItem }) {
       aria-current={active ? "page" : undefined}
       data-tour={NAV_ANCHOR[item.to]}
       className={cn(
-        "focus-ring shrink-0 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap text-muted-foreground hover:bg-muted hover:text-foreground",
-        active && "bg-block text-block-foreground hover:bg-block hover:text-block-foreground",
+        "focus-ring shrink-0 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+        active && "bg-accent font-semibold text-foreground hover:bg-accent",
       )}
     >
       {item.label}
@@ -111,10 +114,10 @@ function CompactNavLink({ item }: { item: NavItem }) {
   );
 }
 
-/** An eyebrow over a group of nav items (screen-reader only while the sidebar is collapsed). */
+/** A kicker over a group of nav items (screen-reader only while the sidebar is collapsed). */
 function GroupLabel({ children, collapsed, first = false, hidden = false }: { children: ReactNode; collapsed: boolean; first?: boolean; hidden?: boolean }) {
   return (
-    <p aria-hidden={hidden || undefined} className={cn("eyebrow px-3 pb-1", first ? "pt-0" : "pt-4", collapsed && "sr-only")}>
+    <p aria-hidden={hidden || undefined} className={cn("kicker px-3 pb-1", first ? "pt-0" : "pt-5", collapsed && "sr-only")}>
       {children}
     </p>
   );
@@ -146,8 +149,8 @@ function MoreButton({ open, onToggle, controls, collapsed, compact = false }: { 
       aria-controls={controls}
       onClick={onToggle}
       className={cn(
-        "focus-ring flex items-center gap-3 font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-        compact ? "shrink-0 rounded-full px-2.5 py-1 text-xs whitespace-nowrap" : "min-h-10 w-full rounded-lg px-3 text-sm",
+        "focus-ring flex items-center gap-3 text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground",
+        compact ? "shrink-0 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap" : "min-h-9 w-full rounded-full px-3 text-sm",
         collapsed && "justify-center px-0",
       )}
     >
@@ -185,7 +188,7 @@ function SidebarNav({ mode, collapsed }: { mode: "locked" | "guided" | "expert";
   }
   return EXPERT_NAV_GROUPS.map((group: NavGroup, i) => (
     <div key={group.label} role="group" aria-label={group.label} className="grid gap-0.5">
-      {/* the group's aria-label names it for screen readers; the eyebrow is for the eye */}
+      {/* the group's aria-label names it for screen readers; the kicker is for the eye */}
       <GroupLabel collapsed={collapsed} first={i === 0} hidden>
         {group.label}
       </GroupLabel>
@@ -205,7 +208,7 @@ function CompactNav({ mode, extra }: { mode: "locked" | "guided" | "expert"; ext
     <nav
       aria-label="Primary (compact)"
       data-tour="nav.primary"
-      className="flex flex-nowrap gap-1 overflow-x-auto overscroll-x-contain border-t px-3 py-1.5 [scrollbar-width:none] md:hidden [&::-webkit-scrollbar]:hidden"
+      className="flex flex-nowrap gap-1 overflow-x-auto overscroll-x-contain px-3 pb-1.5 [scrollbar-width:none] md:hidden [&::-webkit-scrollbar]:hidden"
     >
       {main.map((item) => (
         <CompactNavLink key={item.to} item={item} />
@@ -231,7 +234,7 @@ function HealthDot() {
   const label =
     status === "ok" ? "API connected" : status === "degraded" ? "API degraded" : status === "fail" ? "API unreachable" : "API status not known yet";
   return (
-    <Link to="/settings" className="flex items-center gap-2 rounded-md px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground" title={label}>
+    <Link to="/settings" className="focus-ring flex items-center gap-2 rounded-full px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground" title={label}>
       <span
         aria-hidden
         className={cn(
@@ -301,7 +304,7 @@ function SignedOutBanner() {
   const show = useAuth((s) => s.expired && s.dismissed);
   if (!show) return null;
   return (
-    <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-info/35 bg-info/8 px-4 py-2 text-sm md:px-6">
+    <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 bg-info/8 px-4 py-2 text-sm md:px-6">
       <LogIn className="size-4 text-info" aria-hidden />
       <span>You are signed out. The page does not change, but the app cannot load or save data.</span>
       <Button size="sm" variant="outline" className="h-7" onClick={() => signIn()}>
@@ -337,8 +340,11 @@ export function AppShell({ children }: { children?: ReactNode }) {
   }, [persona, pathname, searchStr, navigate]);
   const projectNav = ws.mode === "session" ? PROJECT_NAV : [];
   const adminNav = ws.operator ? [ADMIN_NAV] : [];
+  // A chord goes only where the sidebar goes: a Guided-locked member cannot jump by key to a
+  // page that the lock hides.
+  const modeNav = navMode === "locked" ? LOCKED_NAV : navMode === "guided" ? GUIDED_MODE_NAV : EXPERT_NAV;
   const chords = Object.fromEntries(
-    [...EXPERT_NAV, ...projectNav, ...adminNav, SETTINGS_NAV].map((item) => [`g ${item.chord}`, () => void navigate({ to: item.to })]),
+    [...modeNav, ...projectNav, ...adminNav, SETTINGS_NAV].map((item) => [`g ${item.chord}`, () => void navigate({ to: item.to })]),
   );
   useHotkeys({
     "mod+k": () => setPaletteOpen(true),
@@ -356,24 +362,18 @@ export function AppShell({ children }: { children?: ReactNode }) {
     <div className="flex min-h-svh">
       <a
         href="#main"
-        className="sr-only z-50 rounded-md bg-primary px-3 py-2 text-primary-foreground focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
+        className="sr-only z-50 rounded-full bg-primary px-4 py-2 text-primary-foreground focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
       >
         Skip to content
       </a>
       <aside
         className={cn(
-          "sticky top-0 hidden h-svh shrink-0 flex-col overflow-y-auto border-r bg-sidebar px-3 py-4 transition-[width] md:flex",
+          // On the page grey, with no divider: the white cards of the page are the edge.
+          "sticky top-0 hidden h-svh shrink-0 flex-col overflow-y-auto bg-sidebar px-3 pb-4 transition-[width] md:flex",
           collapsed ? "w-16" : "w-60",
         )}
       >
-        <div className={cn("flex items-center gap-2.5 px-2 pb-5", collapsed && "justify-center px-0")}>
-          <Logo />
-          {collapsed ? null : (
-            <span className="font-display text-lg leading-none font-bold tracking-[-0.02em]">
-              modeling<span className="text-muted-foreground">-api</span>
-            </span>
-          )}
-        </div>
+        <div className={cn("flex h-12 shrink-0 items-center px-3 pb-1", collapsed && "justify-center px-0")}>{collapsed ? <Logo /> : <Wordmark />}</div>
         <nav aria-label="Primary" data-tour="nav.primary" className="grid gap-0.5">
           <SidebarNav mode={navMode} collapsed={collapsed} />
           {projectNav.length ? (
@@ -400,7 +400,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
             size="sm"
             onClick={toggleSidebar}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className={cn("justify-start gap-3 rounded-lg px-3 text-muted-foreground", collapsed && "justify-center px-0")}
+            className={cn("h-9 justify-start gap-3 px-3 font-normal text-muted-foreground hover:bg-accent/60 [&_svg]:size-[18px]", collapsed && "justify-center px-0")}
           >
             {collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
             {collapsed ? null : "Collapse"}
@@ -408,23 +408,21 @@ export function AppShell({ children }: { children?: ReactNode }) {
         </div>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 border-b bg-card/90 backdrop-blur">
+        {/* 48px, frosted over the page grey, with a hairline under it */}
+        <header className="frost sticky top-0 z-20 border-b [--frost-surface:var(--background)]">
           <div className="flex h-12 items-center gap-3 px-4 md:px-6">
             <ProjectSwitcher />
-            <Button variant="ghost" size="icon-sm" onClick={() => setPaletteOpen(true)} aria-label="Jump to…" className="lg:hidden">
-              <Search />
-            </Button>
+            {/* One trigger: an icon on a narrow screen, the search pill with its key hint on a wide one. */}
             <button
               type="button"
               onClick={() => setPaletteOpen(true)}
-              className="focus-ring hidden h-8 w-56 items-center gap-2 rounded-lg border border-border-strong bg-card px-2.5 text-sm text-hint hover:border-hint hover:text-foreground lg:flex xl:w-72"
+              aria-label="Search"
+              aria-keyshortcuts="Control+K Meta+K /"
+              className="focus-ring flex size-8 shrink-0 items-center justify-center gap-2 rounded-full bg-accent text-sm text-muted-foreground transition-colors hover:text-foreground lg:w-52 lg:justify-start lg:px-3 xl:w-64"
             >
-              <Search className="size-4" />
-              Jump to…
-              <span className="ml-auto flex gap-0.5">
-                <Kbd>⌘</Kbd>
-                <Kbd>K</Kbd>
-              </span>
+              <Search className="size-4 shrink-0" />
+              <span className="max-lg:hidden">Search</span>
+              <Kbd className="ml-auto max-lg:hidden">{modKeyHint("K")}</Kbd>
             </button>
             <div className="ml-auto flex min-w-0 items-center gap-2">
               <HealthDot />
@@ -439,7 +437,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
           <SignedOutBanner />
           <TenantStatusBanner />
         </header>
-        <main id="main" className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">
+        <main id="main" className="min-w-0 flex-1 px-4 py-6 md:px-8 md:pt-6 md:pb-10">
           {children ?? (needsProject && !ws.current ? <NoProjectNotice /> : <Outlet key={scopeKey} />)}
         </main>
       </div>
@@ -458,12 +456,12 @@ export function AppShell({ children }: { children?: ReactNode }) {
 /** An operator without a project on a project page. */
 function NoProjectNotice() {
   return (
-    <div className="grid max-w-xl gap-2 rounded-xl border border-dashed border-border-strong bg-card p-8">
+    <div className="grid max-w-xl gap-2 rounded-3xl bg-card p-8">
       <h1 className="font-semibold">No project selected</h1>
       <p className="text-muted-foreground">
         You are not a member of a project. Thus, there is no project data to show. You can use the admin console without a project.
       </p>
-      <Link to="/admin" className="text-primary hover:underline">
+      <Link to="/admin" className="link w-fit">
         Open the admin console
       </Link>
     </div>

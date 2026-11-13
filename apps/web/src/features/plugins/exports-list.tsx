@@ -81,7 +81,7 @@ function RowList({ rows, uploader, label }: { rows: (ExportRow | DiffRow)[]; upl
       {rows.map((r) => (
         <li key={`${r.kind}:${r.id}:${"mark" in r ? r.mark : ""}`} className="grid gap-1 border-t py-3 first:border-t-0 first:pt-0" data-export={r.id}>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-display text-base leading-snug font-bold [overflow-wrap:anywhere]">{displayText(r.title)}</span>
+            <span className="font-display text-base leading-snug font-semibold [overflow-wrap:anywhere]">{displayText(r.title)}</span>
             {"mark" in r ? <span className={cn(CHIP, MARK[r.mark].cls)}>{MARK[r.mark].label}</span> : null}
           </div>
           <p className="font-mono text-xs text-muted-foreground [overflow-wrap:anywhere]">
@@ -106,7 +106,7 @@ export function ExportsList({ exports, uploader }: { exports: PluginExports | nu
   return (
     <section data-testid="plugin-exports" aria-labelledby="plugin-exports-title" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 rounded-2xl border bg-card p-5">
       <div className="grid gap-1">
-        <h3 id="plugin-exports-title" className="font-display text-lg leading-tight font-bold">
+        <h3 id="plugin-exports-title" className="font-display text-lg leading-tight font-semibold">
           What it adds
         </h3>
         <p className="text-sm text-muted-foreground">
@@ -141,7 +141,7 @@ export function ExportsDiff({
   if (loading || error) {
     return (
       <section data-testid="plugin-exports-diff" data-loading={loading || undefined} aria-labelledby="plugin-diff-title" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 rounded-2xl border bg-card p-5">
-        <h3 id="plugin-diff-title" className="font-display text-lg leading-tight font-bold">
+        <h3 id="plugin-diff-title" className="font-display text-lg leading-tight font-semibold">
           What changed
         </h3>
         {error ? <ErrorNotice error={error} title="The app could not load the last approved version to compare with" onRetry={onRetry} /> : <LoadingRows rows={3} />}
@@ -153,7 +153,7 @@ export function ExportsDiff({
   return (
     <section data-testid="plugin-exports-diff" aria-labelledby="plugin-diff-title" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 rounded-2xl border bg-card p-5">
       <div className="grid gap-1">
-        <h3 id="plugin-diff-title" className="font-display text-lg leading-tight font-bold">
+        <h3 id="plugin-diff-title" className="font-display text-lg leading-tight font-semibold">
           What changed
         </h3>
         <p className="text-sm text-muted-foreground">

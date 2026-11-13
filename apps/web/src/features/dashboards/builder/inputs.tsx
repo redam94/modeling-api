@@ -58,7 +58,7 @@ export function WorkflowPicker({ id, label, hint, value, onChange, error }: { id
           ))}
         </NativeSelect>
         {value && known ? (
-          <Link to="/workflows/$workflowId" params={{ workflowId: value }} search={{ tab: "automation" }} className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
+          <Link to="/workflows/$workflowId" params={{ workflowId: value }} search={{ tab: "automation" }} className="link inline-flex items-center gap-1 text-sm">
             <ExternalLink className="size-3.5" /> Schedules of the workflow
           </Link>
         ) : null}

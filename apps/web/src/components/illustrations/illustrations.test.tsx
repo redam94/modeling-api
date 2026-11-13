@@ -4,24 +4,8 @@ import { join } from "node:path";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { EmptyState } from "@/components/common";
+import { CatalogGlyph, glyphKind, glyphVariants, type GlyphKind } from ".";
 
-import {
-  CatalogGlyph,
-  EmptyDashboardsArt,
-  EmptyDatasetsArt,
-  EmptyLibraryArt,
-  EmptyModelsArt,
-  EmptyRunsArt,
-  EmptySearchArt,
-  EmptyWorkflowsArt,
-  glyphKind,
-  glyphVariants,
-  HeroArt,
-  type GlyphKind,
-} from ".";
-
-const ART = { EmptyDashboardsArt, EmptyDatasetsArt, EmptyLibraryArt, EmptyModelsArt, EmptyRunsArt, EmptySearchArt, EmptyWorkflowsArt, HeroArt };
 const KINDS: GlyphKind[] = ["model", "step", "plot", "workflow"];
 
 /** A short description of an element for failure messages (tag and attributes). */
@@ -57,37 +41,11 @@ function expectTokenColoursOnly(svg: SVGElement) {
 }
 
 describe("illustrations", () => {
-  it.each(Object.entries(ART))("%s is decorative by default and has no text, images or foreign content", (_name, Component) => {
-    const { container } = render(<Component />);
-    const svg = container.querySelector("svg")!;
-    expect(svg).toHaveAttribute("aria-hidden", "true");
-    expect(svg).not.toHaveAttribute("role");
-    expect(svg.querySelector("text, image, foreignObject, script, use, a")).toBeNull();
-    expect(svg.textContent).toBe("");
-    expectTokenColoursOnly(svg);
-  });
-
-  it.each(Object.entries(ART))("%s becomes one labelled image with a label", (_name, Component) => {
-    render(<Component label="A dashboard being laid out" />);
-    const img = screen.getByRole("img", { name: "A dashboard being laid out" });
-    expect(img).not.toHaveAttribute("aria-hidden");
-  });
-
-  it("assembles the hero once on request and draws it still otherwise", () => {
-    const { container, rerender } = render(<HeroArt />);
-    expect(container.querySelectorAll(".assemble-bar")).toHaveLength(4);
-    expect(container.querySelectorAll(".assemble-draw")).toHaveLength(1);
-    expect(container.querySelectorAll(".assemble-sun")).toHaveLength(1);
-    // The stagger counts rects with nth-of-type: the four bars are the first four rects.
-    expect(Array.from(container.querySelectorAll("rect")).slice(0, 4).every((r) => r.classList.contains("assemble-bar"))).toBe(true);
-    rerender(<HeroArt animate={false} />);
-    expect(container.querySelector("[class*=assemble]")).toBeNull();
-  });
-
   it("keeps the source free of hex colours and HTML injection", () => {
     const dir = join(process.cwd(), "src/components/illustrations");
     const files = readdirSync(dir).filter((f) => f.endsWith(".tsx") && !f.endsWith(".test.tsx"));
-    expect(files.length).toBeGreaterThanOrEqual(10);
+    // the larger art is raster now (components/brand): what stays here is the glyphs
+    expect(files.sort()).toEqual(["art.tsx", "catalog-glyph.tsx", "index.tsx"]);
     for (const f of files) {
       const text = readFileSync(join(dir, f), "utf8");
       expect([f, /#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(|oklch\(/.test(text)]).toEqual([f, false]);
@@ -119,7 +77,7 @@ describe("CatalogGlyph", () => {
       unmount();
       return tint;
     });
-    expect(tints).toEqual(["bg-accent", "bg-highlight-soft", "bg-attention-soft", "bg-muted"]);
+    expect(tints).toEqual(["bg-accent", "bg-highlight-soft", "bg-info/10", "bg-muted"]);
   });
 
   it("picks the same drawing for the same seed", () => {
@@ -149,48 +107,5 @@ describe("CatalogGlyph", () => {
       "workflow",
       "model",
     ]);
-  });
-});
-
-describe("EmptyState slots", () => {
-  it("keeps the plain text-only card when no slot is used", () => {
-    const { container } = render(
-      <EmptyState title="No runs yet" action={<button type="button">Start</button>}>
-        Fit a model to see it here.
-      </EmptyState>,
-    );
-    expect(tree(container.firstElementChild!)).toEqual({
-      tag: "div",
-      class: "flex flex-col items-start gap-2 rounded-xl border border-dashed border-border-strong bg-card p-8",
-      text: "",
-      children: [
-        { tag: "h3", class: "font-semibold", text: "No runs yet", children: [] },
-        { tag: "div", class: "max-w-[60ch] text-muted-foreground", text: "Fit a model to see it here.", children: [] },
-        { tag: "div", class: "pt-2", text: "", children: [{ tag: "button", class: null, text: "Start", children: [] }] },
-      ],
-    });
-  });
-
-  it("puts the primary action first and shows the art beside the words", () => {
-    render(
-      <EmptyState
-        title="Your first dashboard starts from a finished run."
-        illustration={<EmptyDashboardsArt />}
-        primaryAction={<button type="button">Build one</button>}
-        action={<button type="button">See an example</button>}
-      >
-        Pick any analysis.
-      </EmptyState>,
-    );
-    expect(screen.getByRole("heading", { name: "Your first dashboard starts from a finished run." })).toBeInTheDocument();
-    expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual(["Build one", "See an example"]);
-    const card = document.querySelector("[data-slot=empty-state]")!;
-    expect(card.querySelector("[data-slot=illustration]")).toHaveAttribute("aria-hidden", "true");
-  });
-
-  it("shows a primary action on the plain card too", () => {
-    render(<EmptyState title="Nothing here" primaryAction={<button type="button">Add</button>} />);
-    expect(screen.getByRole("button", { name: "Add" })).toBeInTheDocument();
-    expect(document.querySelector("[data-slot=empty-state]")).toBeNull();
   });
 });

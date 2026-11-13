@@ -35,7 +35,7 @@ exports[`layout 1 readout DOM > MMM: This week 1`] = `
         </p>
       </div>
       <button
-        class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-card text-primary ring-1 ring-primary ring-inset hover:bg-accent disabled:text-hint disabled:ring-border-strong h-10 px-5"
+        class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-secondary text-foreground hover:bg-border-strong disabled:text-hint h-10 px-5"
         data-slot="button"
         type="button"
       >
@@ -72,7 +72,7 @@ exports[`layout 1 readout DOM > MMM: This week 1`] = `
       <div
         aria-label="Dashboard sections"
         aria-orientation="horizontal"
-        class="inline-flex h-10 max-w-full items-center gap-8 overflow-x-auto overflow-y-hidden text-muted-foreground shadow-[inset_0_-1px_0_var(--color-border)] [scrollbar-width:thin] w-full"
+        class="flex h-10 w-full items-center gap-1 overflow-x-auto overflow-y-hidden text-muted-foreground [contain:inline-size] [scrollbar-width:none]"
         data-orientation="horizontal"
         role="tablist"
         style="outline: none;"
@@ -81,7 +81,7 @@ exports[`layout 1 readout DOM > MMM: This week 1`] = `
         <button
           aria-controls="radix-_r_0_-content-this_period"
           aria-selected="true"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="active"
@@ -95,7 +95,7 @@ exports[`layout 1 readout DOM > MMM: This week 1`] = `
         <button
           aria-controls="radix-_r_0_-content-trends"
           aria-selected="false"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="inactive"
@@ -109,7 +109,7 @@ exports[`layout 1 readout DOM > MMM: This week 1`] = `
         <button
           aria-controls="radix-_r_0_-content-history"
           aria-selected="false"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="inactive"
@@ -2330,7 +2330,7 @@ exports[`layout 1 readout DOM > MMM: history 1`] = `
         </p>
       </div>
       <button
-        class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-card text-primary ring-1 ring-primary ring-inset hover:bg-accent disabled:text-hint disabled:ring-border-strong h-10 px-5"
+        class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-secondary text-foreground hover:bg-border-strong disabled:text-hint h-10 px-5"
         data-slot="button"
         type="button"
       >
@@ -2367,7 +2367,7 @@ exports[`layout 1 readout DOM > MMM: history 1`] = `
       <div
         aria-label="Dashboard sections"
         aria-orientation="horizontal"
-        class="inline-flex h-10 max-w-full items-center gap-8 overflow-x-auto overflow-y-hidden text-muted-foreground shadow-[inset_0_-1px_0_var(--color-border)] [scrollbar-width:thin] w-full"
+        class="flex h-10 w-full items-center gap-1 overflow-x-auto overflow-y-hidden text-muted-foreground [contain:inline-size] [scrollbar-width:none]"
         data-orientation="horizontal"
         role="tablist"
         style="outline: none;"
@@ -2376,7 +2376,7 @@ exports[`layout 1 readout DOM > MMM: history 1`] = `
         <button
           aria-controls="radix-_r_15_-content-this_period"
           aria-selected="false"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="inactive"
@@ -2390,7 +2390,7 @@ exports[`layout 1 readout DOM > MMM: history 1`] = `
         <button
           aria-controls="radix-_r_15_-content-trends"
           aria-selected="false"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="inactive"
@@ -2404,7 +2404,7 @@ exports[`layout 1 readout DOM > MMM: history 1`] = `
         <button
           aria-controls="radix-_r_15_-content-scenarios"
           aria-selected="false"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="inactive"
@@ -2418,7 +2418,7 @@ exports[`layout 1 readout DOM > MMM: history 1`] = `
         <button
           aria-controls="radix-_r_15_-content-update"
           aria-selected="false"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="inactive"
@@ -2432,7 +2432,7 @@ exports[`layout 1 readout DOM > MMM: history 1`] = `
         <button
           aria-controls="radix-_r_15_-content-history"
           aria-selected="true"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="active"
@@ -3064,7 +3064,7 @@ exports[`layout 1 readout DOM > MMM: scenarios 1`] = `
         </p>
       </div>
       <button
-        class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-card text-primary ring-1 ring-primary ring-inset hover:bg-accent disabled:text-hint disabled:ring-border-strong h-10 px-5"
+        class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-secondary text-foreground hover:bg-border-strong disabled:text-hint h-10 px-5"
         data-slot="button"
         type="button"
       >
@@ -3101,7 +3101,7 @@ exports[`layout 1 readout DOM > MMM: scenarios 1`] = `
       <div
         aria-label="Dashboard sections"
         aria-orientation="horizontal"
-        class="inline-flex h-10 max-w-full items-center gap-8 overflow-x-auto overflow-y-hidden text-muted-foreground shadow-[inset_0_-1px_0_var(--color-border)] [scrollbar-width:thin] w-full"
+        class="flex h-10 w-full items-center gap-1 overflow-x-auto overflow-y-hidden text-muted-foreground [contain:inline-size] [scrollbar-width:none]"
         data-orientation="horizontal"
         role="tablist"
         style="outline: none;"
@@ -3110,7 +3110,7 @@ exports[`layout 1 readout DOM > MMM: scenarios 1`] = `
         <button
           aria-controls="radix-_r_h_-content-this_period"
           aria-selected="false"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="inactive"
@@ -3124,7 +3124,7 @@ exports[`layout 1 readout DOM > MMM: scenarios 1`] = `
         <button
           aria-controls="radix-_r_h_-content-trends"
           aria-selected="false"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="inactive"
@@ -3138,7 +3138,7 @@ exports[`layout 1 readout DOM > MMM: scenarios 1`] = `
         <button
           aria-controls="radix-_r_h_-content-scenarios"
           aria-selected="true"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="active"
@@ -3152,7 +3152,7 @@ exports[`layout 1 readout DOM > MMM: scenarios 1`] = `
         <button
           aria-controls="radix-_r_h_-content-update"
           aria-selected="false"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="inactive"
@@ -3166,7 +3166,7 @@ exports[`layout 1 readout DOM > MMM: scenarios 1`] = `
         <button
           aria-controls="radix-_r_h_-content-history"
           aria-selected="false"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="inactive"
@@ -3246,7 +3246,7 @@ exports[`layout 1 readout DOM > MMM: scenarios 1`] = `
                   class="max-w-full min-w-0 flex-none"
                 >
                   <button
-                    class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary hover:bg-accent hover:text-primary-hover disabled:text-hint h-8 px-2"
+                    class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-foreground hover:bg-accent disabled:text-hint h-8 px-2"
                     data-slot="button"
                     disabled=""
                     type="button"
@@ -3581,7 +3581,7 @@ exports[`layout 1 readout DOM > MMM: scenarios 1`] = `
                     Name of the plan (optional)
                   </label>
                   <input
-                    class="focus-ring w-full min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive h-10 py-1"
+                    class="focus-ring w-full min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive h-10 py-1"
                     data-slot="input"
                     id="_r_n_"
                     maxlength="80"
@@ -3593,14 +3593,14 @@ exports[`layout 1 readout DOM > MMM: scenarios 1`] = `
                   class="flex flex-wrap gap-2"
                 >
                   <button
-                    class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-card text-primary ring-1 ring-primary ring-inset hover:bg-accent disabled:text-hint disabled:ring-border-strong h-10 px-5"
+                    class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-secondary text-foreground hover:bg-border-strong disabled:text-hint h-10 px-5"
                     data-slot="button"
                     type="button"
                   >
                     Save scenario
                   </button>
                   <button
-                    class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active disabled:bg-grey-400 dark:disabled:opacity-50 h-10 px-5"
+                    class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active disabled:bg-grey-400 dark:disabled:opacity-50 h-10 px-5"
                     data-slot="button"
                     disabled=""
                     type="button"
@@ -3678,7 +3678,7 @@ exports[`layout 1 readout DOM > MMM: trends 1`] = `
         </p>
       </div>
       <button
-        class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-card text-primary ring-1 ring-primary ring-inset hover:bg-accent disabled:text-hint disabled:ring-border-strong h-10 px-5"
+        class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-secondary text-foreground hover:bg-border-strong disabled:text-hint h-10 px-5"
         data-slot="button"
         type="button"
       >
@@ -3715,7 +3715,7 @@ exports[`layout 1 readout DOM > MMM: trends 1`] = `
       <div
         aria-label="Dashboard sections"
         aria-orientation="horizontal"
-        class="inline-flex h-10 max-w-full items-center gap-8 overflow-x-auto overflow-y-hidden text-muted-foreground shadow-[inset_0_-1px_0_var(--color-border)] [scrollbar-width:thin] w-full"
+        class="flex h-10 w-full items-center gap-1 overflow-x-auto overflow-y-hidden text-muted-foreground [contain:inline-size] [scrollbar-width:none]"
         data-orientation="horizontal"
         role="tablist"
         style="outline: none;"
@@ -3724,7 +3724,7 @@ exports[`layout 1 readout DOM > MMM: trends 1`] = `
         <button
           aria-controls="radix-_r_7_-content-this_period"
           aria-selected="false"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="inactive"
@@ -3738,7 +3738,7 @@ exports[`layout 1 readout DOM > MMM: trends 1`] = `
         <button
           aria-controls="radix-_r_7_-content-trends"
           aria-selected="true"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="active"
@@ -3752,7 +3752,7 @@ exports[`layout 1 readout DOM > MMM: trends 1`] = `
         <button
           aria-controls="radix-_r_7_-content-scenarios"
           aria-selected="false"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="inactive"
@@ -3766,7 +3766,7 @@ exports[`layout 1 readout DOM > MMM: trends 1`] = `
         <button
           aria-controls="radix-_r_7_-content-update"
           aria-selected="false"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="inactive"
@@ -3780,7 +3780,7 @@ exports[`layout 1 readout DOM > MMM: trends 1`] = `
         <button
           aria-controls="radix-_r_7_-content-history"
           aria-selected="false"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="inactive"
@@ -3826,7 +3826,7 @@ exports[`layout 1 readout DOM > MMM: trends 1`] = `
             </p>
             <div
               aria-label="Show the last"
-              class="inline-flex h-8 max-w-full items-center gap-0.5 overflow-x-auto rounded-lg bg-border p-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              class="inline-flex h-8 max-w-full items-center gap-0.5 overflow-x-auto rounded-full bg-accent p-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               dir="ltr"
               role="radiogroup"
               style="outline: none;"
@@ -3834,7 +3834,7 @@ exports[`layout 1 readout DOM > MMM: trends 1`] = `
             >
               <button
                 aria-checked="true"
-                class="focus-ring inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs whitespace-nowrap font-medium text-muted-foreground transition-colors hover:text-foreground data-[state=on]:bg-card data-[state=on]:text-foreground data-[state=on]:shadow-xs [&_svg]:size-3.5"
+                class="focus-ring inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full px-3 text-xs whitespace-nowrap font-medium text-muted-foreground transition-colors hover:text-foreground data-[state=on]:bg-card data-[state=on]:text-foreground data-[state=on]:shadow-sm [&_svg]:size-3.5"
                 data-radix-collection-item=""
                 data-state="on"
                 role="radio"
@@ -3845,7 +3845,7 @@ exports[`layout 1 readout DOM > MMM: trends 1`] = `
               </button>
               <button
                 aria-checked="false"
-                class="focus-ring inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs whitespace-nowrap font-medium text-muted-foreground transition-colors hover:text-foreground data-[state=on]:bg-card data-[state=on]:text-foreground data-[state=on]:shadow-xs [&_svg]:size-3.5"
+                class="focus-ring inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full px-3 text-xs whitespace-nowrap font-medium text-muted-foreground transition-colors hover:text-foreground data-[state=on]:bg-card data-[state=on]:text-foreground data-[state=on]:shadow-sm [&_svg]:size-3.5"
                 data-radix-collection-item=""
                 data-state="off"
                 role="radio"
@@ -3856,7 +3856,7 @@ exports[`layout 1 readout DOM > MMM: trends 1`] = `
               </button>
               <button
                 aria-checked="false"
-                class="focus-ring inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs whitespace-nowrap font-medium text-muted-foreground transition-colors hover:text-foreground data-[state=on]:bg-card data-[state=on]:text-foreground data-[state=on]:shadow-xs [&_svg]:size-3.5"
+                class="focus-ring inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full px-3 text-xs whitespace-nowrap font-medium text-muted-foreground transition-colors hover:text-foreground data-[state=on]:bg-card data-[state=on]:text-foreground data-[state=on]:shadow-sm [&_svg]:size-3.5"
                 data-radix-collection-item=""
                 data-state="off"
                 role="radio"
@@ -4595,7 +4595,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
         </p>
       </div>
       <button
-        class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-card text-primary ring-1 ring-primary ring-inset hover:bg-accent disabled:text-hint disabled:ring-border-strong h-10 px-5"
+        class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-secondary text-foreground hover:bg-border-strong disabled:text-hint h-10 px-5"
         data-slot="button"
         type="button"
       >
@@ -4632,7 +4632,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
       <div
         aria-label="Dashboard sections"
         aria-orientation="horizontal"
-        class="inline-flex h-10 max-w-full items-center gap-8 overflow-x-auto overflow-y-hidden text-muted-foreground shadow-[inset_0_-1px_0_var(--color-border)] [scrollbar-width:thin] w-full"
+        class="flex h-10 w-full items-center gap-1 overflow-x-auto overflow-y-hidden text-muted-foreground [contain:inline-size] [scrollbar-width:none]"
         data-orientation="horizontal"
         role="tablist"
         style="outline: none;"
@@ -4641,7 +4641,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
         <button
           aria-controls="radix-_r_s_-content-this_period"
           aria-selected="false"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="inactive"
@@ -4655,7 +4655,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
         <button
           aria-controls="radix-_r_s_-content-trends"
           aria-selected="false"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="inactive"
@@ -4669,7 +4669,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
         <button
           aria-controls="radix-_r_s_-content-scenarios"
           aria-selected="false"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="inactive"
@@ -4683,7 +4683,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
         <button
           aria-controls="radix-_r_s_-content-update"
           aria-selected="true"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="active"
@@ -4697,7 +4697,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
         <button
           aria-controls="radix-_r_s_-content-history"
           aria-selected="false"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="inactive"
@@ -4823,7 +4823,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
                   class="max-w-full min-w-0 flex-none"
                 >
                   <button
-                    class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-card text-primary ring-1 ring-primary ring-inset hover:bg-accent disabled:text-hint disabled:ring-border-strong h-8 px-4"
+                    class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-secondary text-foreground hover:bg-border-strong disabled:text-hint h-8 px-4"
                     data-slot="button"
                     type="button"
                   >
@@ -4933,14 +4933,14 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
                       Rows with the column names first
                     </label>
                     <textarea
-                      class="focus-ring w-full min-w-0 rounded-lg border border-input bg-card px-3 transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive min-h-20 py-2 font-mono text-xs"
+                      class="focus-ring w-full min-w-0 rounded-md border border-input bg-card px-3 transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive min-h-20 py-2 font-mono text-xs"
                       data-slot="textarea"
                       id="_r_12_"
                       rows="5"
                     />
                     <div>
                       <button
-                        class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-card text-primary ring-1 ring-primary ring-inset hover:bg-accent disabled:text-hint disabled:ring-border-strong h-8 px-4"
+                        class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-secondary text-foreground hover:bg-border-strong disabled:text-hint h-8 px-4"
                         data-slot="button"
                         disabled=""
                         type="button"
@@ -5044,7 +5044,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
                           >
                             <input
                               aria-label="date, row 1"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="text"
                               type="text"
@@ -5056,7 +5056,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
                           >
                             <input
                               aria-label="revenue, row 1"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -5068,7 +5068,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
                           >
                             <input
                               aria-label="spend_tv, row 1"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -5080,7 +5080,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
                           >
                             <input
                               aria-label="spend_search, row 1"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -5092,7 +5092,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
                           >
                             <input
                               aria-label="spend_social, row 1"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -5104,7 +5104,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
                           >
                             <input
                               aria-label="spend_display, row 1"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -5116,7 +5116,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
                           >
                             <button
                               aria-label="Remove row 1"
-                              class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-surface-hover hover:text-foreground disabled:opacity-50 size-8"
+                              class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-surface-hover hover:text-foreground disabled:opacity-50 size-8"
                               data-slot="button"
                               type="button"
                             >
@@ -5166,7 +5166,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
                           >
                             <input
                               aria-label="date, row 2"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="text"
                               type="text"
@@ -5178,7 +5178,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
                           >
                             <input
                               aria-label="revenue, row 2"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -5190,7 +5190,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
                           >
                             <input
                               aria-label="spend_tv, row 2"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -5202,7 +5202,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
                           >
                             <input
                               aria-label="spend_search, row 2"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -5214,7 +5214,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
                           >
                             <input
                               aria-label="spend_social, row 2"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -5226,7 +5226,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
                           >
                             <input
                               aria-label="spend_display, row 2"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -5238,7 +5238,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
                           >
                             <button
                               aria-label="Remove row 2"
-                              class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-surface-hover hover:text-foreground disabled:opacity-50 size-8"
+                              class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-surface-hover hover:text-foreground disabled:opacity-50 size-8"
                               data-slot="button"
                               type="button"
                             >
@@ -5288,7 +5288,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
                           >
                             <input
                               aria-label="date, row 3"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="text"
                               type="text"
@@ -5300,7 +5300,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
                           >
                             <input
                               aria-label="revenue, row 3"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -5312,7 +5312,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
                           >
                             <input
                               aria-label="spend_tv, row 3"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -5324,7 +5324,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
                           >
                             <input
                               aria-label="spend_search, row 3"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -5336,7 +5336,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
                           >
                             <input
                               aria-label="spend_social, row 3"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -5348,7 +5348,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
                           >
                             <input
                               aria-label="spend_display, row 3"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -5360,7 +5360,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
                           >
                             <button
                               aria-label="Remove row 3"
-                              class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-surface-hover hover:text-foreground disabled:opacity-50 size-8"
+                              class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-surface-hover hover:text-foreground disabled:opacity-50 size-8"
                               data-slot="button"
                               type="button"
                             >
@@ -5410,7 +5410,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
                           >
                             <input
                               aria-label="date, row 4"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="text"
                               type="text"
@@ -5422,7 +5422,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
                           >
                             <input
                               aria-label="revenue, row 4"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -5434,7 +5434,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
                           >
                             <input
                               aria-label="spend_tv, row 4"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -5446,7 +5446,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
                           >
                             <input
                               aria-label="spend_search, row 4"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -5458,7 +5458,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
                           >
                             <input
                               aria-label="spend_social, row 4"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -5470,7 +5470,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
                           >
                             <input
                               aria-label="spend_display, row 4"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -5482,7 +5482,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
                           >
                             <button
                               aria-label="Remove row 4"
-                              class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-surface-hover hover:text-foreground disabled:opacity-50 size-8"
+                              class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-surface-hover hover:text-foreground disabled:opacity-50 size-8"
                               data-slot="button"
                               type="button"
                             >
@@ -5523,7 +5523,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
                   </div>
                   <div>
                     <button
-                      class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary hover:bg-accent hover:text-primary-hover disabled:text-hint h-8 px-2"
+                      class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-foreground hover:bg-accent disabled:text-hint h-8 px-2"
                       data-slot="button"
                       type="button"
                     >
@@ -5759,7 +5759,7 @@ exports[`layout 1 readout DOM > MMM: update 1`] = `
                   </div>
                   <div>
                     <button
-                      class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active disabled:bg-grey-400 dark:disabled:opacity-50 h-10 px-5"
+                      class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active disabled:bg-grey-400 dark:disabled:opacity-50 h-10 px-5"
                       data-slot="button"
                       disabled=""
                       type="button"
@@ -5832,7 +5832,7 @@ exports[`layout 1 readout DOM > forecast: history 1`] = `
         </p>
       </div>
       <button
-        class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-card text-primary ring-1 ring-primary ring-inset hover:bg-accent disabled:text-hint disabled:ring-border-strong h-10 px-5"
+        class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-secondary text-foreground hover:bg-border-strong disabled:text-hint h-10 px-5"
         data-slot="button"
         type="button"
       >
@@ -5869,7 +5869,7 @@ exports[`layout 1 readout DOM > forecast: history 1`] = `
       <div
         aria-label="Dashboard sections"
         aria-orientation="horizontal"
-        class="inline-flex h-10 max-w-full items-center gap-8 overflow-x-auto overflow-y-hidden text-muted-foreground shadow-[inset_0_-1px_0_var(--color-border)] [scrollbar-width:thin] w-full"
+        class="flex h-10 w-full items-center gap-1 overflow-x-auto overflow-y-hidden text-muted-foreground [contain:inline-size] [scrollbar-width:none]"
         data-orientation="horizontal"
         role="tablist"
         style="outline: none;"
@@ -5878,7 +5878,7 @@ exports[`layout 1 readout DOM > forecast: history 1`] = `
         <button
           aria-controls="radix-_r_1p_-content-this_period"
           aria-selected="false"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="inactive"
@@ -5892,7 +5892,7 @@ exports[`layout 1 readout DOM > forecast: history 1`] = `
         <button
           aria-controls="radix-_r_1p_-content-trends"
           aria-selected="false"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="inactive"
@@ -5906,7 +5906,7 @@ exports[`layout 1 readout DOM > forecast: history 1`] = `
         <button
           aria-controls="radix-_r_1p_-content-update"
           aria-selected="false"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="inactive"
@@ -5920,7 +5920,7 @@ exports[`layout 1 readout DOM > forecast: history 1`] = `
         <button
           aria-controls="radix-_r_1p_-content-history"
           aria-selected="true"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="active"
@@ -6302,7 +6302,7 @@ exports[`layout 1 readout DOM > forecast: this_period 1`] = `
         </p>
       </div>
       <button
-        class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-card text-primary ring-1 ring-primary ring-inset hover:bg-accent disabled:text-hint disabled:ring-border-strong h-10 px-5"
+        class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-secondary text-foreground hover:bg-border-strong disabled:text-hint h-10 px-5"
         data-slot="button"
         type="button"
       >
@@ -6339,7 +6339,7 @@ exports[`layout 1 readout DOM > forecast: this_period 1`] = `
       <div
         aria-label="Dashboard sections"
         aria-orientation="horizontal"
-        class="inline-flex h-10 max-w-full items-center gap-8 overflow-x-auto overflow-y-hidden text-muted-foreground shadow-[inset_0_-1px_0_var(--color-border)] [scrollbar-width:thin] w-full"
+        class="flex h-10 w-full items-center gap-1 overflow-x-auto overflow-y-hidden text-muted-foreground [contain:inline-size] [scrollbar-width:none]"
         data-orientation="horizontal"
         role="tablist"
         style="outline: none;"
@@ -6348,7 +6348,7 @@ exports[`layout 1 readout DOM > forecast: this_period 1`] = `
         <button
           aria-controls="radix-_r_1b_-content-this_period"
           aria-selected="true"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="active"
@@ -6362,7 +6362,7 @@ exports[`layout 1 readout DOM > forecast: this_period 1`] = `
         <button
           aria-controls="radix-_r_1b_-content-trends"
           aria-selected="false"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="inactive"
@@ -6376,7 +6376,7 @@ exports[`layout 1 readout DOM > forecast: this_period 1`] = `
         <button
           aria-controls="radix-_r_1b_-content-update"
           aria-selected="false"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="inactive"
@@ -6390,7 +6390,7 @@ exports[`layout 1 readout DOM > forecast: this_period 1`] = `
         <button
           aria-controls="radix-_r_1b_-content-history"
           aria-selected="false"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="inactive"
@@ -7386,7 +7386,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
         </p>
       </div>
       <button
-        class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-card text-primary ring-1 ring-primary ring-inset hover:bg-accent disabled:text-hint disabled:ring-border-strong h-10 px-5"
+        class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-secondary text-foreground hover:bg-border-strong disabled:text-hint h-10 px-5"
         data-slot="button"
         type="button"
       >
@@ -7423,7 +7423,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
       <div
         aria-label="Dashboard sections"
         aria-orientation="horizontal"
-        class="inline-flex h-10 max-w-full items-center gap-8 overflow-x-auto overflow-y-hidden text-muted-foreground shadow-[inset_0_-1px_0_var(--color-border)] [scrollbar-width:thin] w-full"
+        class="flex h-10 w-full items-center gap-1 overflow-x-auto overflow-y-hidden text-muted-foreground [contain:inline-size] [scrollbar-width:none]"
         data-orientation="horizontal"
         role="tablist"
         style="outline: none;"
@@ -7432,7 +7432,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
         <button
           aria-controls="radix-_r_1h_-content-this_period"
           aria-selected="false"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="inactive"
@@ -7446,7 +7446,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
         <button
           aria-controls="radix-_r_1h_-content-trends"
           aria-selected="false"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="inactive"
@@ -7460,7 +7460,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
         <button
           aria-controls="radix-_r_1h_-content-update"
           aria-selected="true"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="active"
@@ -7474,7 +7474,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
         <button
           aria-controls="radix-_r_1h_-content-history"
           aria-selected="false"
-          class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4"
+          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4"
           data-orientation="horizontal"
           data-radix-collection-item=""
           data-state="inactive"
@@ -7590,7 +7590,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                   class="max-w-full min-w-0 flex-none"
                 >
                   <button
-                    class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-card text-primary ring-1 ring-primary ring-inset hover:bg-accent disabled:text-hint disabled:ring-border-strong h-8 px-4"
+                    class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-secondary text-foreground hover:bg-border-strong disabled:text-hint h-8 px-4"
                     data-slot="button"
                     type="button"
                   >
@@ -7700,14 +7700,14 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                       Rows with the column names first
                     </label>
                     <textarea
-                      class="focus-ring w-full min-w-0 rounded-lg border border-input bg-card px-3 transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive min-h-20 py-2 font-mono text-xs"
+                      class="focus-ring w-full min-w-0 rounded-md border border-input bg-card px-3 transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive min-h-20 py-2 font-mono text-xs"
                       data-slot="textarea"
                       id="_r_1m_"
                       rows="5"
                     />
                     <div>
                       <button
-                        class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-card text-primary ring-1 ring-primary ring-inset hover:bg-accent disabled:text-hint disabled:ring-border-strong h-8 px-4"
+                        class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-secondary text-foreground hover:bg-border-strong disabled:text-hint h-8 px-4"
                         data-slot="button"
                         disabled=""
                         type="button"
@@ -7790,7 +7790,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                           >
                             <input
                               aria-label="month, row 1"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="text"
                               type="text"
@@ -7802,7 +7802,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                           >
                             <input
                               aria-label="sales, row 1"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -7814,7 +7814,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                           >
                             <input
                               aria-label="price, row 1"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -7826,7 +7826,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                           >
                             <button
                               aria-label="Remove row 1"
-                              class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-surface-hover hover:text-foreground disabled:opacity-50 size-8"
+                              class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-surface-hover hover:text-foreground disabled:opacity-50 size-8"
                               data-slot="button"
                               type="button"
                             >
@@ -7876,7 +7876,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                           >
                             <input
                               aria-label="month, row 2"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="text"
                               type="text"
@@ -7888,7 +7888,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                           >
                             <input
                               aria-label="sales, row 2"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -7900,7 +7900,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                           >
                             <input
                               aria-label="price, row 2"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -7912,7 +7912,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                           >
                             <button
                               aria-label="Remove row 2"
-                              class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-surface-hover hover:text-foreground disabled:opacity-50 size-8"
+                              class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-surface-hover hover:text-foreground disabled:opacity-50 size-8"
                               data-slot="button"
                               type="button"
                             >
@@ -7962,7 +7962,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                           >
                             <input
                               aria-label="month, row 3"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="text"
                               type="text"
@@ -7974,7 +7974,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                           >
                             <input
                               aria-label="sales, row 3"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -7986,7 +7986,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                           >
                             <input
                               aria-label="price, row 3"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -7998,7 +7998,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                           >
                             <button
                               aria-label="Remove row 3"
-                              class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-surface-hover hover:text-foreground disabled:opacity-50 size-8"
+                              class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-surface-hover hover:text-foreground disabled:opacity-50 size-8"
                               data-slot="button"
                               type="button"
                             >
@@ -8048,7 +8048,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                           >
                             <input
                               aria-label="month, row 4"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="text"
                               type="text"
@@ -8060,7 +8060,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                           >
                             <input
                               aria-label="sales, row 4"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -8072,7 +8072,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                           >
                             <input
                               aria-label="price, row 4"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -8084,7 +8084,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                           >
                             <button
                               aria-label="Remove row 4"
-                              class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-surface-hover hover:text-foreground disabled:opacity-50 size-8"
+                              class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-surface-hover hover:text-foreground disabled:opacity-50 size-8"
                               data-slot="button"
                               type="button"
                             >
@@ -8134,7 +8134,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                           >
                             <input
                               aria-label="month, row 5"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="text"
                               type="text"
@@ -8146,7 +8146,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                           >
                             <input
                               aria-label="sales, row 5"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -8158,7 +8158,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                           >
                             <input
                               aria-label="price, row 5"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -8170,7 +8170,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                           >
                             <button
                               aria-label="Remove row 5"
-                              class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-surface-hover hover:text-foreground disabled:opacity-50 size-8"
+                              class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-surface-hover hover:text-foreground disabled:opacity-50 size-8"
                               data-slot="button"
                               type="button"
                             >
@@ -8220,7 +8220,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                           >
                             <input
                               aria-label="month, row 6"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="text"
                               type="text"
@@ -8232,7 +8232,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                           >
                             <input
                               aria-label="sales, row 6"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -8244,7 +8244,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                           >
                             <input
                               aria-label="price, row 6"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -8256,7 +8256,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                           >
                             <button
                               aria-label="Remove row 6"
-                              class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-surface-hover hover:text-foreground disabled:opacity-50 size-8"
+                              class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-surface-hover hover:text-foreground disabled:opacity-50 size-8"
                               data-slot="button"
                               type="button"
                             >
@@ -8306,7 +8306,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                           >
                             <input
                               aria-label="month, row 7"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="text"
                               type="text"
@@ -8318,7 +8318,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                           >
                             <input
                               aria-label="sales, row 7"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -8330,7 +8330,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                           >
                             <input
                               aria-label="price, row 7"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -8342,7 +8342,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                           >
                             <button
                               aria-label="Remove row 7"
-                              class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-surface-hover hover:text-foreground disabled:opacity-50 size-8"
+                              class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-surface-hover hover:text-foreground disabled:opacity-50 size-8"
                               data-slot="button"
                               type="button"
                             >
@@ -8392,7 +8392,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                           >
                             <input
                               aria-label="month, row 8"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="text"
                               type="text"
@@ -8404,7 +8404,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                           >
                             <input
                               aria-label="sales, row 8"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -8416,7 +8416,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                           >
                             <input
                               aria-label="price, row 8"
-                              class="focus-ring min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
+                              class="focus-ring min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive py-1 h-8 w-32 tabular"
                               data-slot="input"
                               inputmode="decimal"
                               type="text"
@@ -8428,7 +8428,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                           >
                             <button
                               aria-label="Remove row 8"
-                              class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-surface-hover hover:text-foreground disabled:opacity-50 size-8"
+                              class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-surface-hover hover:text-foreground disabled:opacity-50 size-8"
                               data-slot="button"
                               type="button"
                             >
@@ -8469,7 +8469,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                   </div>
                   <div>
                     <button
-                      class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary hover:bg-accent hover:text-primary-hover disabled:text-hint h-8 px-2"
+                      class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-foreground hover:bg-accent disabled:text-hint h-8 px-2"
                       data-slot="button"
                       type="button"
                     >
@@ -8674,7 +8674,7 @@ exports[`layout 1 readout DOM > forecast: update 1`] = `
                 >
                   <div>
                     <button
-                      class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active disabled:bg-grey-400 dark:disabled:opacity-50 h-10 px-5"
+                      class="focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active disabled:bg-grey-400 dark:disabled:opacity-50 h-10 px-5"
                       data-slot="button"
                       disabled=""
                       type="button"

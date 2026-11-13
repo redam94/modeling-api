@@ -505,6 +505,17 @@
     @apply font-mono;
     letter-spacing: 0;
   }
+  /* A bare link in running text (a paragraph, a list item, a definition, a table cell): links
+     are ink like the text around them, so the underline is the cue. Zero specificity: any class
+     on the link wins. */
+  :where(p, li, dd, td) > a:where(:not([class])) {
+    text-decoration-line: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+  :where(p, li, dd, td) > a:where(:not([class])):hover {
+    text-decoration-color: var(--muted-foreground);
+  }
   .tabular,
   .num {
     font-variant-numeric: tabular-nums;
@@ -529,10 +540,23 @@
   }
 }
 
-/* The filter pill (Catalog filters): 1.5px border-strong on the card; pressed (a toggle-group
-   item that is on, or aria-pressed) = foreground fill. */
+/* A link in text: the colour of the text around it, with an underline as the cue. On hover the
+   underline goes quiet. Use it wherever a link is not a button, a nav row or a card. */
+@utility link {
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: currentColor;
+  transition: text-decoration-color 200ms var(--ease);
+  &:hover {
+    text-decoration-color: var(--muted-foreground);
+  }
+}
+
+/* The filter pill (Catalog filters): a hairline pill on the card; pressed (a toggle-group item
+   that is on, or aria-pressed) = ink fill. */
 @utility filter-pill {
-  @apply inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border-[1.5px] border-border-strong bg-card px-3.5 text-xs font-semibold whitespace-nowrap text-foreground transition-colors hover:border-primary [&_svg]:size-3.5;
+  @apply inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border border-border-strong bg-card px-3.5 text-xs font-semibold whitespace-nowrap text-foreground transition-colors hover:border-foreground [&_svg]:size-3.5;
   &[data-state="on"],
   &[aria-pressed="true"] {
     @apply border-foreground bg-foreground text-background;
@@ -621,31 +645,6 @@
     box-shadow: 0 0 0 18px transparent;
   }
 }
-@keyframes mapi-grow {
-  from {
-    transform: scaleY(0);
-  }
-  to {
-    transform: scaleY(1);
-  }
-}
-@keyframes mapi-draw {
-  from {
-    stroke-dashoffset: 520;
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-@keyframes mapi-rise {
-  from {
-    transform: scale(0);
-  }
-  to {
-    transform: scale(1);
-  }
-}
-
 /* A page title or a headline claim: the display face at 600, set tight. The size is the
    in-app title scale; a text size class on the same element wins. */
 @utility display-title {
@@ -657,33 +656,6 @@
     font-size: clamp(1.75rem, 3.6vw, 2.75rem);
     line-height: 1.06;
   }
-}
-
-/* The hero illustration "assembles" once per page load: bars grow from their base in a short
-   stagger, the response curve draws (give its path pathLength="520"), the sun rises.
-   Empty-state art stays static. */
-@utility assemble-bar {
-  transform-box: fill-box;
-  transform-origin: bottom;
-  animation: mapi-grow 700ms var(--ease) both;
-  &:nth-of-type(2) {
-    animation-delay: 90ms;
-  }
-  &:nth-of-type(3) {
-    animation-delay: 180ms;
-  }
-  &:nth-of-type(4) {
-    animation-delay: 270ms;
-  }
-}
-@utility assemble-draw {
-  stroke-dasharray: 520;
-  animation: mapi-draw 1100ms 300ms var(--ease) both;
-}
-@utility assemble-sun {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: mapi-rise 800ms 500ms var(--ease) both;
 }
 
 /* The element a tour step points at: a highlight ring inside an ink ring, and a beacon that

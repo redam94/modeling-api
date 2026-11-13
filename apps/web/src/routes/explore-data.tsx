@@ -5,7 +5,7 @@
  * tree dataset; each node has its own views.
  */
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Workflow } from "lucide-react";
+import { Workflow } from "lucide-react";
 
 import { useDataset, useDatasetVersion } from "@/api/queries";
 import { ErrorNotice, LoadingRows, Mono, PageHeader } from "@/components/common";
@@ -48,6 +48,11 @@ export function DataExplorerPage() {
   return (
     <div className="grid gap-6">
       <PageHeader
+        crumbs={[
+          { label: "Datasets", to: "/datasets" },
+          { label: dataset.data?.name ?? "Dataset", to: "/datasets/$datasetId", params: { datasetId }, search: { version: v } },
+          { label: `Explore v${v}` },
+        ]}
         title={
           <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             Explore {dataset.data?.name ?? "the data"}
@@ -63,11 +68,6 @@ export function DataExplorerPage() {
         }
         actions={
           <>
-            <Button asChild variant="ghost">
-              <Link to="/datasets/$datasetId" params={{ datasetId }} search={{ version: v }}>
-                <ArrowLeft /> Back to the dataset
-              </Link>
-            </Button>
             {dv.data?.status === "ready" && hasTimeDim(schema) && !tree ? (
               // M3.5: the readiness workflow (unit roots, differencing, order search, backtest, ARIMAX).
               <Button asChild variant="outline">

@@ -111,7 +111,7 @@ export function EndpointsSection() {
         header: "Endpoint",
         cell: ({ row }) => (
           <div className="grid min-w-0">
-            <Link to="/integrations/endpoints/$alias" params={{ alias: row.original.alias }} className="font-medium text-primary hover:underline">
+            <Link to="/integrations/endpoints/$alias" params={{ alias: row.original.alias }} className="link font-medium">
               {row.original.alias}
             </Link>
             <Mono className="truncate text-muted-foreground">{row.original.ref}</Mono>

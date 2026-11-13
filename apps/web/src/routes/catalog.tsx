@@ -141,7 +141,7 @@ export function CatalogPage() {
       <QueryView query={catalog}>
         {(c) => (
           <Tabs value={active} onValueChange={go}>
-            <TabsList className="max-w-full flex-wrap">
+            <TabsList className="h-auto min-h-10 flex-wrap">
               {yoursFirst ? yoursTrigger : null}
               <TabsTrigger value="browse">Browse</TabsTrigger>
               <TabsTrigger value="plots" data-tour="catalog.tab.plots">
@@ -149,7 +149,7 @@ export function CatalogPage() {
               </TabsTrigger>
               {yoursFirst ? null : yoursTrigger}
               <span aria-hidden className="mx-1 hidden h-5 w-px bg-border-strong sm:inline-block" />
-              <span aria-hidden className="hidden px-1 text-[10px] font-bold tracking-wide text-hint uppercase sm:inline">
+              <span aria-hidden className="hidden px-1 text-xs font-semibold text-hint sm:inline">
                 Technical view
               </span>
               <TabsTrigger value="models" title="Technical view: every model plugin, as a table">

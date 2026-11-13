@@ -1,6 +1,6 @@
 /**
  * The sample project card (v0.18 D20, D22): one card per sample state, on the Home hero (the
- * ink block, with the page's one lime action) or in the Guided strip (a plain card).
+ * dark block, with the page's one inverted ink action) or in the Guided strip (a plain card).
  *
  * - not made yet: "Make the sample project" (or, for a viewer, who can make it);
  * - being made: the stages and the fit's progress, with "keep exploring" reassurance;
@@ -22,22 +22,22 @@ import type { SampleInfo } from "./api";
 import { SampleProgress } from "./sample-progress";
 import { minutesWords, sampleView, useSampleActions, type SampleView } from "./use-samples";
 
-// ------------------------------------------------------------------------------ Studio buttons
+// ------------------------------------------------------------------------------ pill buttons
 
-/** A Studio pill (44 px; 36 px small). */
+/** A pill (44 px; 36 px small). */
 export const PILL =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold whitespace-nowrap transition-[background-color,box-shadow] disabled:pointer-events-none disabled:opacity-60 [&_svg]:size-4 [&_svg]:shrink-0";
 export const PILL_SM = "min-h-9 px-3.5 text-xs";
-/** Focus on the ink block: a lime outline (the indigo ring would vanish on ink). */
-export const BLOCK_FOCUS = "outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-highlight";
-/** The one lime call to action on a block. */
-export const LIME = cn(PILL, BLOCK_FOCUS, "bg-highlight text-highlight-foreground hover:shadow-[inset_0_0_0_2px_var(--highlight-foreground)]");
+/** Focus on the dark block: an outline in the block's own ink (the page ring would vanish there). */
+export const BLOCK_FOCUS = "outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-block-foreground";
+/** The one call to action on a dark block: the ink button, inverted. */
+export const BLOCK_CTA = cn(PILL, BLOCK_FOCUS, "bg-block-foreground text-block hover:bg-block-foreground/85");
 /** A secondary action on the block: an outline in the block's ink. */
 export const GHOST_ON_BLOCK = cn(PILL, BLOCK_FOCUS, "text-block-foreground shadow-[inset_0_0_0_1.5px_currentColor] hover:bg-block-raised");
 /** The primary action on a card. */
 export const PRIMARY = cn(PILL, "focus-ring bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active");
 /** A quiet action on a card. */
-export const QUIET = cn(PILL, "focus-ring bg-muted text-foreground hover:bg-surface-hover");
+export const QUIET = cn(PILL, "focus-ring bg-muted text-foreground hover:bg-border-strong");
 
 // ------------------------------------------------------------------------------ the card
 
@@ -58,7 +58,7 @@ export function SampleCard({ info, variant, secondary, className }: SampleCardPr
   if (view === "none") return null;
 
   const note = (children: ReactNode) => <p className={cn("text-xs leading-relaxed", hero ? "text-block-muted" : "text-muted-foreground")}>{children}</p>;
-  const main = hero ? LIME : PRIMARY;
+  const main = hero ? BLOCK_CTA : PRIMARY;
 
   let body: ReactNode;
   switch (view) {
@@ -115,7 +115,7 @@ export function SampleCard({ info, variant, secondary, className }: SampleCardPr
             {note(info.summary)}
             <button
               type="button"
-              className={cn("inline-flex items-center gap-1 text-xs underline-offset-4 hover:underline", hero ? cn(BLOCK_FOCUS, "text-block-muted hover:text-block-foreground") : "focus-ring text-muted-foreground hover:text-foreground")}
+              className={cn("link inline-flex items-center gap-1 text-xs", hero ? cn(BLOCK_FOCUS, "text-block-muted hover:text-block-foreground") : "focus-ring text-muted-foreground hover:text-foreground")}
               onClick={() => actions.setHidden(info, true)}
             >
               <EyeOff className="size-3.5" aria-hidden /> Hide it

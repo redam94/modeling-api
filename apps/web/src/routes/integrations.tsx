@@ -4,13 +4,13 @@
  * with static renders and embed links - plus an endpoint's and a webhook's own pages.
  */
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowUpCircle, ChevronLeft, KeyRound, RotateCcw, Trash2 } from "lucide-react";
+import { ArrowUpCircle, KeyRound, RotateCcw, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { can } from "@/api/access";
 import { useEndpoint, useEndpointHistory, useWebhook } from "@/api/integrations";
 import type { Endpoint, EndpointRevision } from "@/api/types";
-import { KeyValues, Mono, PageHeader, QueryView } from "@/components/common";
+import { KeyValues, Mono, PageHeader, QueryView, type Crumb } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/overlays";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, TBody, TD, TH, THead, TR, Table } from "@/components/ui/primitives";
@@ -64,12 +64,9 @@ export function IntegrationsPage() {
   );
 }
 
-function BackToHub({ tab }: { tab: HubTab }) {
-  return (
-    <Link to="/integrations" search={{ tab }} className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-      <ChevronLeft className="size-4" /> Integrations
-    </Link>
-  );
+/** The trail of a page under a tab of the hub. */
+function hubCrumbs(tab: HubTab, here: string): Crumb[] {
+  return [{ label: "Integrations", to: "/integrations" }, { label: TAB_LABEL[tab], to: "/integrations", search: { tab } }, { label: here }];
 }
 
 // ----------------------------------------------------------------------- endpoint
@@ -143,6 +140,7 @@ function EndpointView({ endpoint }: { endpoint: Endpoint }) {
   return (
     <>
       <PageHeader
+        crumbs={hubCrumbs("endpoints", endpoint.alias)}
         title={endpoint.alias}
         description={endpoint.description ?? undefined}
         meta={
@@ -187,7 +185,7 @@ function EndpointView({ endpoint }: { endpoint: Endpoint }) {
                 items={[
                   [
                     "Model version",
-                    <Link key="mv" to="/models/$modelId/versions/$version" params={{ modelId: endpoint.model_id, version: String(endpoint.model_ref.split("@v")[1] ?? "1") }} className="text-primary hover:underline">
+                    <Link key="mv" to="/models/$modelId/versions/$version" params={{ modelId: endpoint.model_id, version: String(endpoint.model_ref.split("@v")[1] ?? "1") }} className="link">
                       <Mono>{endpoint.model_ref}</Mono>
                     </Link>,
                   ],
@@ -234,7 +232,6 @@ export function EndpointPage() {
   const endpoint = useEndpoint(alias);
   return (
     <>
-      <BackToHub tab="endpoints" />
       <QueryView query={endpoint} errorTitle="The app could not load the endpoint">
         {(ep) => <EndpointView endpoint={ep} />}
       </QueryView>
@@ -253,11 +250,11 @@ export function WebhookPage() {
   const [deleting, setDeleting] = useState(false);
   return (
     <>
-      <BackToHub tab="webhooks" />
       <QueryView query={webhook} errorTitle="The app could not load the webhook">
         {(wh) => (
           <>
             <PageHeader
+              crumbs={hubCrumbs("webhooks", wh.description || "Webhook")}
               title={wh.description || "Webhook"}
               meta={
                 <>

@@ -12,7 +12,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, FileCheck2, Terminal, Upload } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
 
-import { CopyButton, EmptyState, ErrorNotice, PageHeader } from "@/components/common";
+import { CopyButton, EmptyState, ErrorNotice, PageHeader, type Crumb } from "@/components/common";
 import { InlineMessage } from "@/components/ods/inline-message";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/overlays";
@@ -56,7 +56,7 @@ const PHASE_VALUE: Record<UploadPhase, number> = { ticket: 0.1, sending: 0.5, co
 function Step({ n, title, children, done }: { n: number; title: string; children: React.ReactNode; done?: boolean }) {
   return (
     <section className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 rounded-2xl border bg-card p-5 sm:p-6" aria-labelledby={`upload-step-${n}`}>
-      <h2 id={`upload-step-${n}`} className="flex items-center gap-3 font-display text-xl leading-tight font-bold">
+      <h2 id={`upload-step-${n}`} className="flex items-center gap-3 font-display text-xl leading-tight font-semibold">
         <span aria-hidden className={cn("grid size-7 flex-none place-items-center rounded-full text-sm", done ? "bg-success/15 text-success" : "bg-accent text-accent-foreground")}>
           {done ? "✓" : n}
         </span>
@@ -142,7 +142,7 @@ function LiveResult({ pluginId, versionId }: { pluginId: string; versionId: stri
       <SbomSummary sbom={v.inspection?.sbom} />
       {!isChecking(v) ? (
         <div>
-          <Button className="h-auto min-h-11 rounded-full bg-highlight px-5 text-highlight-foreground hover:bg-highlight/85" asChild>
+          <Button className="h-auto min-h-11 px-5" asChild>
             <Link to="/plugins/$pluginId/versions/$versionId" params={{ pluginId, versionId }}>
               Open the version page <ArrowRight />
             </Link>
@@ -152,6 +152,8 @@ function LiveResult({ pluginId, versionId }: { pluginId: string; versionId: stri
     </div>
   );
 }
+
+const UPLOAD_CRUMBS: readonly Crumb[] = [{ label: "Catalog", to: "/catalog" }, { label: "Yours", to: "/catalog", search: { tab: "yours" } }, { label: "Upload your own code" }];
 
 export function UploadPage({ initialPlugin }: { initialPlugin?: string | undefined }) {
   const ws = useWorkspace();
@@ -182,7 +184,7 @@ export function UploadPage({ initialPlugin }: { initialPlugin?: string | undefin
   if (!flags.enabled || tier === "public") {
     return (
       <>
-        <PageHeader title="Upload your own code" />
+        <PageHeader crumbs={UPLOAD_CRUMBS} title="Upload your own code" />
         <EmptyState title={tier === "public" ? "Public workspaces can't upload code" : "Uploads are turned off here"}>
           {tier === "public"
             ? "Built-in models, the no-code tools in Make your own and declarative specs all work in this workspace. To upload Python, use an internal or verified workspace."
@@ -200,11 +202,7 @@ export function UploadPage({ initialPlugin }: { initialPlugin?: string | undefin
   return (
     <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6">
       <PageHeader
-        eyebrow={
-          <Link to="/catalog" search={{ tab: "yours" }} className="hover:underline">
-            Catalog › Yours
-          </Link>
-        }
+        crumbs={UPLOAD_CRUMBS}
         title="Upload your own code"
         description="Bring a Python package with your own models, prep steps, charts or workflow steps. We check the file, run its tests in a sandbox, and then you can use it right away. A reviewer approves it for the whole team."
       />

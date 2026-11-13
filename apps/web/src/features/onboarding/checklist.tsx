@@ -2,9 +2,9 @@
  * The first-run checklist (v0.18 D19, D22, I-3, I-8): eight small steps with a progress ring.
  * Steps tick themselves from onboarding events (the shell's tour host listens and PATCHes);
  * a completed step never comes back. The current step (the first one not done, or the one
- * the user opened) sits on the lime tint with its "go" action; the others open on a click.
+ * the user opened) sits on the highlight tint with its "go" action; the others open on a click.
  *
- * Studio look: a white card, the ring in the primary ink, done steps struck through with a
+ * The look: a white card, the ring in the primary ink, done steps struck through with a
  * tick that pops in (CSS keyframes; still under reduced motion). Copy is the relaxed voice.
  */
 import { Link } from "@tanstack/react-router";
@@ -69,7 +69,7 @@ export function Checklist({ state, sample, surface, onDismiss, className }: Chec
       <header className="flex items-center gap-4">
         <ProgressRing value={done} max={total} label="Your first steps" className={cn(done >= total && "motion-safe:animate-[mapi-pop_360ms_cubic-bezier(0.3,1.6,0.5,1)]")} />
         <div className="grid min-w-0 flex-1 gap-1">
-          <h2 id={titleId} className="text-xl leading-tight font-bold">
+          <h2 id={titleId} className="text-xl leading-tight font-semibold">
             Your first week here
           </h2>
           <p className="text-xs text-muted-foreground">{summaryWords(done, total)}</p>
@@ -131,7 +131,7 @@ function ChecklistItem({ step, done, current, onOpen, action }: { step: Checklis
             <span className="sr-only">{done ? ": done" : ": next up"}</span>
           </p>
         ) : (
-          <button type="button" onClick={onOpen} aria-describedby={descId} className="focus-ring w-fit rounded-sm text-left font-semibold hover:underline hover:underline-offset-4">
+          <button type="button" onClick={onOpen} aria-describedby={descId} className="link focus-ring w-fit rounded-sm text-left font-semibold">
             {copy.title}
             <span className="sr-only">: not done yet</span>
           </button>

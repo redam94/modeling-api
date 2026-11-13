@@ -24,16 +24,11 @@ export function phaseLabel(phase: string): string {
   return PHASE_LABEL[phase] ?? phase;
 }
 
-const CHAIN_COLORS = [
-  "bg-series-1",
-  "bg-series-2",
-  "bg-series-3",
-  "bg-series-4",
-  "bg-series-5",
-  "bg-series-6",
-  "bg-series-7",
-  "bg-series-8",
-];
+/**
+ * Chains are tints of one hue (the data blue): the label tells them apart, and red stays free
+ * for divergences.
+ */
+const CHAIN_COLORS = ["bg-chart-index", "bg-chart-index/80", "bg-chart-index/60", "bg-chart-index/45"];
 
 /** "0.12", "0.0031": two significant digits, no exponent for usual step sizes. */
 export function formatStepSize(v: number): string {

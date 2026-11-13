@@ -101,15 +101,14 @@ export function ModelValidations({ modelId, version }: { modelId: string; versio
   return (
     <div className="grid gap-5">
       <PageHeader
+        crumbs={[
+          { label: "Models", to: "/models" },
+          { label: model.data?.name ?? shortId(modelId), to: "/models/$modelId", params: { modelId } },
+          { label: `Version ${version}`, to: "/models/$modelId/versions/$version", params: { modelId, version: String(version) } },
+          { label: "Validation" },
+        ]}
         title={`Validation of ${model.data?.name ?? shortId(modelId)} v${version}`}
         description="Run the governance checks on this version. Then monitor its approval."
-        actions={
-          <Button variant="outline" asChild>
-            <Link to="/models/$modelId/versions/$version" params={{ modelId, version: String(version) }}>
-              Back to the model
-            </Link>
-          </Button>
-        }
       />
       <div className="grid gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <Card>

@@ -9,7 +9,7 @@
  * - offers the welcome dialog on a first visit (polite rules in `use-onboarding.ts`);
  * - ticks checklist steps from onboarding events and sends tour progress to the server.
  *
- * Motion: the coach-mark rises in with the Studio `coach-in` keyframes and the spotlight
+ * Motion: the coach-mark rises in with the `coach-in` keyframes and the spotlight
  * glides on the same curve (CSS only). The `motion` library's smallest set (`m` +
  * `domAnimation`) is about 70 KiB minified on its own, more than this chunk's whole 48 KiB
  * budget, so the tour host does not load it (plan D27 allows, never requires, it here).
@@ -48,11 +48,11 @@ import { WelcomeDialog, type WelcomeChoice } from "./welcome-dialog";
 
 // ------------------------------------------------------------------------------ styles
 
-const pill = "inline-flex min-h-10 items-center justify-center rounded-full px-4 text-sm font-semibold outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-highlight";
-const primary = cn(pill, "bg-highlight text-highlight-foreground hover:shadow-[inset_0_0_0_2px_var(--highlight-foreground)]");
+const pill = "inline-flex min-h-10 items-center justify-center rounded-full px-4 text-sm font-semibold outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-block-foreground";
+const primary = cn(pill, "bg-block-foreground text-block hover:bg-block-foreground/85");
 const ghost = cn(pill, "shadow-[inset_0_0_0_1.5px_currentColor] hover:bg-block-raised");
 const quiet =
-  "min-h-10 rounded-md px-1 text-xs text-block-muted underline underline-offset-4 outline-none hover:text-block-foreground focus-visible:outline-2 focus-visible:outline-highlight";
+  "min-h-10 rounded-md px-1 text-xs text-block-muted underline underline-offset-4 outline-none hover:text-block-foreground focus-visible:outline-2 focus-visible:outline-block-foreground";
 
 const INTERACTIVE = "button, a, input, textarea, select, [role='slider'], [role='tab'], [role='menuitem'], [contenteditable='true']";
 
@@ -389,7 +389,7 @@ interface CoachCardProps {
   children: ReactNode;
 }
 
-/** The Studio coach-mark: the ink block, a lime progress dot per step, one lime action. */
+/** The coach-mark: the dark block, a progress dot per step, one inverted ink action. */
 function CoachCard({ refs, ids, variant, reduced, tour, i, total, testId, title, body, note, children }: CoachCardProps) {
   const titleId = ids.title;
   const bodyId = ids.body;
@@ -409,18 +409,18 @@ function CoachCard({ refs, ids, variant, reduced, tour, i, total, testId, title,
       onFocus={(e) => e.stopPropagation()}
       data-tour-step={`${tour.id}:${i}`}
       className={cn(
-        // the lime ring keeps the card apart from an ink block it sits on or beside
+        // the highlight ring keeps the card apart from a dark block it sits on or beside
         "pointer-events-auto grid gap-3 bg-block p-5 text-block-foreground shadow-lg ring-2 ring-highlight",
-        // the Studio entrance (app.css keyframes; ends at its last frame under reduced motion)
+        // the entrance (app.css keyframes; ends at its last frame under reduced motion)
         !reduced && "animate-coach-in",
-        variant === "sheet" ? "rounded-t-3xl pb-[max(1.25rem,env(safe-area-inset-bottom))]" : "rounded-[20px]",
+        variant === "sheet" ? "rounded-t-3xl pb-[max(1.25rem,env(safe-area-inset-bottom))]" : "rounded-2xl",
         variant === "card" && "w-[min(380px,calc(100vw-32px))]",
       )}
     >
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-bold text-block-muted">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-block-muted">
         <span className="inline-flex gap-1" aria-hidden>
           {Array.from({ length: total }, (_, k) => (
-            <i key={k} className={cn("block h-1 w-[18px] rounded-full", k <= i ? "bg-highlight" : "bg-block-foreground/30")} />
+            <i key={k} className={cn("block h-1 w-[18px] rounded-full", k <= i ? "bg-block-foreground" : "bg-block-foreground/30")} />
           ))}
         </span>
         <span>

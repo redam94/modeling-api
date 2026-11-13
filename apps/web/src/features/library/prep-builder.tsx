@@ -31,7 +31,7 @@ import { useStepCatalog } from "./catalog";
 import { docKey, isStaleRevision, useLibraryItem, useLibraryValidation } from "./api";
 import { DatasetPicker, useDatasetColumns, type ColumnInfo } from "./data-source";
 import { API_VERSION, fillPrepSlots, identifier, moveItem, slotOfValue, slotsUsed, slotValue, specYaml, tidyDoc } from "./doc";
-import { BuilderSection, Chip, focusPointer, IssueLines, issueText, LIME, MetadataFields, PILL, ScopeChoice, ToggleChip, useDebounced } from "./ui";
+import { BuilderSection, Chip, focusPointer, IssueLines, issueText, MetadataFields, PILL, ScopeChoice, ToggleChip, useDebounced } from "./ui";
 import { LazyYamlTab as YamlTab } from "./yaml-tab-lazy";
 import { isPrepPresetDoc, MAX_SLOTS, slotName, splitUseRef, type Json, type JsonObject, type LibraryDoc, type LibraryScope, type PrepPresetDoc, type Slot, type StepCallDoc } from "./types";
 
@@ -122,7 +122,7 @@ function StepCard({
     <li className="rounded-2xl border bg-background p-4 sm:p-5" data-step={step.id || `#${index}`} aria-label={`Step ${index + 1}: ${title}`}>
       <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
-          <h3 className="text-lg leading-tight font-bold">
+          <h3 className="text-lg leading-tight font-semibold">
             <span className="mr-2 text-muted-foreground tabular">{index + 1}.</span>
             {title}
           </h3>
@@ -162,7 +162,7 @@ function StepCard({
           <ul className="flex flex-wrap gap-1.5">
             {slotted.map((k) => (
               <li key={k}>
-                <Chip tone="lime">
+                <Chip tone="highlight">
                   <span className="font-mono">{k}</span>: asked when used ({slots[slotOfValue(w[k]) ?? ""]?.label ?? slotOfValue(w[k])})
                 </Chip>
               </li>
@@ -429,7 +429,7 @@ export function PrepBuilder({ itemId, initial, onCreated }: PrepBuilderProps) {
           )}
           {issues?.length ? (
             <section aria-label="What the check found" className="rounded-2xl border bg-card p-4 [overflow-wrap:anywhere]">
-              <h2 className="mb-2 text-base font-bold">What the check found</h2>
+              <h2 className="mb-2 text-base font-semibold">What the check found</h2>
               <IssueList
                 issues={issues}
                 onSelect={(i) => {
@@ -445,7 +445,7 @@ export function PrepBuilder({ itemId, initial, onCreated }: PrepBuilderProps) {
 
         <aside aria-label="Your steps in words" className="grid content-start gap-5 rounded-3xl bg-block p-6 text-block-foreground lg:sticky lg:top-6">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-xl font-bold">Your steps</h2>
+            <h2 className="text-xl font-semibold">Your steps</h2>
             <Chip tone="block">
               {checking ? <Spinner className="size-3" /> : null}
               {checking ? "Checking…" : errors ? `${errors} ${errors === 1 ? "thing" : "things"} to fix` : "Looks good"}
@@ -469,7 +469,7 @@ export function PrepBuilder({ itemId, initial, onCreated }: PrepBuilderProps) {
           ) : (
             <p className="text-block-muted">Add a step to start.</p>
           )}
-          <Button className={cn(PILL, LIME, "w-full")} disabled={save.isPending || (!dirty && savedKey !== null)} onClick={() => void doSave()}>
+          <Button className={cn(PILL, "w-full")} disabled={save.isPending || (!dirty && savedKey !== null)} onClick={() => void doSave()}>
             {save.isPending ? <Spinner /> : <Save />}
             {savedKey !== null && !dirty ? "Saved" : savedKey !== null ? "Save a new version" : "Save preset"}
           </Button>

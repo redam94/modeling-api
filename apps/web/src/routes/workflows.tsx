@@ -5,11 +5,12 @@
  */
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Archive, GitBranchPlus, Play, Plus, Workflow as WorkflowIcon } from "lucide-react";
+import { Archive, GitBranchPlus, Play, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { can } from "@/api/access";
 import { ApiError } from "@/api/client";
+import { EmptyArt } from "@/components/brand/empty-art";
 import { EmptyState, ErrorNotice, LoadingRows, Mono, PageHeader, QueryView } from "@/components/common";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
@@ -46,7 +47,7 @@ const workflowColumns: ColumnDef<Workflow, unknown>[] = [
     accessorKey: "name",
     header: "Workflow",
     cell: ({ row }) => (
-      <Link to="/workflows/$workflowId" params={{ workflowId: row.original.id }} className="font-medium hover:underline" onClick={(e) => e.stopPropagation()}>
+      <Link to="/workflows/$workflowId" params={{ workflowId: row.original.id }} className="link font-medium" onClick={(e) => e.stopPropagation()}>
         {row.original.name}
       </Link>
     ),
@@ -100,7 +101,7 @@ export function WorkflowsPage() {
                 <DataTable label="Workflows" data={page.items} columns={workflowColumns} getRowId={(w) => w.id} onRowClick={(w) => void navigate({ to: "/workflows/$workflowId", params: { workflowId: w.id } })} />
               ) : (
                 <EmptyState
-                  icon={<WorkflowIcon />}
+                  illustration={<EmptyArt kind="workflows" />}
                   title="No workflows yet"
                   action={
                     <Button variant="outline" onClick={() => void navigate({ search: { tab: "templates" } })}>
@@ -178,7 +179,7 @@ export function NewWorkflowPage() {
   const { template, data } = newRoute.useSearch();
   return (
     <>
-      <PageHeader title={template ? "New workflow from a template" : "New workflow"} description={template ? "Give it a name. Then set its defaults and bind your data." : "Give it a name. Then add nodes from the palette."} />
+      <PageHeader crumbs={[{ label: "Workflows", to: "/workflows" }, { label: "New workflow" }]} title={template ? "New workflow from a template" : "New workflow"} description={template ? "Give it a name. Then set its defaults and bind your data." : "Give it a name. Then add nodes from the palette."} />
       {template ? <TemplateWizard templateId={template} initialData={data} /> : <BlankWorkflow />}
     </>
   );
@@ -188,7 +189,7 @@ export function RecipePage() {
   const { template, data } = recipeRoute.useSearch();
   return (
     <>
-      <PageHeader title="Run a recipe on your data" description="Select your data and click Run. The app explains each step while it runs." />
+      <PageHeader crumbs={[{ label: "Workflows", to: "/workflows" }, { label: "Run a recipe" }]} title="Run a recipe on your data" description="Select your data and click Run. The app explains each step while it runs." />
       {template ? <RecipeRunner templateId={template} initialData={data} /> : <RecipePicker />}
     </>
   );
@@ -205,7 +206,7 @@ function RunsTable({ runs }: { runs: WorkflowRun[] }) {
         accessorKey: "run_id",
         header: "Run",
         cell: ({ row }) => (
-          <Link to="/workflow-runs/$runId" params={{ runId: row.original.run_id }} className="hover:underline" onClick={(e) => e.stopPropagation()}>
+          <Link to="/workflow-runs/$runId" params={{ runId: row.original.run_id }} className="link" onClick={(e) => e.stopPropagation()}>
             <Mono>{shortId(row.original.run_id)}</Mono>
           </Link>
         ),
@@ -270,6 +271,7 @@ export function WorkflowPage() {
   return (
     <>
       <PageHeader
+        crumbs={[{ label: "Workflows", to: "/workflows" }, { label: w.name }]}
         title={w.name}
         description={w.description ?? undefined}
         meta={
@@ -318,7 +320,7 @@ export function WorkflowPage() {
           {search.rev && latest && search.rev !== latest ? (
             <p className="mb-3 text-sm text-muted-foreground">
               You see revision {search.rev}. When you save, the app makes revision {latest + 1} from it.{" "}
-              <Link to="/workflows/$workflowId" params={{ workflowId }} search={{ tab: "editor" }} className="text-primary hover:underline">
+              <Link to="/workflows/$workflowId" params={{ workflowId }} search={{ tab: "editor" }} className="link">
                 Open the latest
               </Link>
             </p>

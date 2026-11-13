@@ -245,7 +245,7 @@ function RefitSection({ dashboard }: { dashboard: Dashboard }) {
         wfName ? (
           <>
             Uploaders can ask you to refit the model with their numbers. Approving starts{" "}
-            <Link to="/workflows/$workflowId" params={{ workflowId: wfId ?? "" }} className="text-primary hover:underline">
+            <Link to="/workflows/$workflowId" params={{ workflowId: wfId ?? "" }} className="link">
               {wfName}
             </Link>{" "}
             as you. Nothing runs before you approve.
@@ -302,7 +302,7 @@ function RefitSection({ dashboard }: { dashboard: Dashboard }) {
                   ) : null}
                   {r.note ? <p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">Note: {r.note}</p> : null}
                   {r.workflow_run_id ? (
-                    <Link to="/workflow-runs/$runId" params={{ runId: r.workflow_run_id }} className="text-sm text-primary hover:underline">
+                    <Link to="/workflow-runs/$runId" params={{ runId: r.workflow_run_id }} className="link text-sm">
                       Open the refit run <Mono>{r.workflow_run_id}</Mono>
                     </Link>
                   ) : null}

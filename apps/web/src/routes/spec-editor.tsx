@@ -314,6 +314,7 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
   return (
     <>
       <PageHeader
+        crumbs={[{ label: "Build", to: "/build" }, { label: spec.data?.name ?? (specId ? "Spec" : "New spec") }]}
         title={spec.data?.name ?? (specId ? <Spinner /> : "New spec")}
         meta={
           <>

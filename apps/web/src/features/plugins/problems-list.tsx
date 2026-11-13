@@ -12,7 +12,7 @@ export function ProblemsList({ problems, title = "What to fix" }: { problems: re
   return (
     <section data-testid="plugin-problems" aria-labelledby="plugin-problems-title" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 rounded-2xl border border-destructive/30 bg-card p-5">
       <div className="grid gap-1">
-        <h3 id="plugin-problems-title" className="font-display text-lg leading-tight font-bold">
+        <h3 id="plugin-problems-title" className="font-display text-lg leading-tight font-semibold">
           {title}
         </h3>
         <p className="text-sm text-muted-foreground">

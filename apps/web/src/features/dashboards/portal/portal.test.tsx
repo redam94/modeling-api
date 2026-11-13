@@ -79,7 +79,7 @@ describe("client portal", () => {
     expect(within(list).getAllByRole("listitem")).toHaveLength(2);
     expect(within(list).getByText("Weekly media readout")).toBeInTheDocument();
     expect(screen.queryByRole("navigation")).toBeNull();
-    expect(screen.queryByRole("button", { name: /Jump to/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Search/ })).toBeNull();
     await userEvent.keyboard("{Meta>}k{/Meta}");
     expect(screen.queryByRole("dialog")).toBeNull();
     // The full app's routes were never asked for.

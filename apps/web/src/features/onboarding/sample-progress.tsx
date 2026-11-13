@@ -38,7 +38,7 @@ export function SampleProgress({ info, tone = "card", className }: { info: Pick<
         className={cn("relative h-2.5 w-full overflow-hidden rounded-full", onBlock ? "bg-block-raised" : "bg-muted")}
       >
         <div
-          className={cn("h-full rounded-full transition-[width] duration-600 ease-[cubic-bezier(0.2,0.8,0.2,1)]", onBlock ? "bg-highlight" : "bg-primary")}
+          className={cn("h-full rounded-full transition-[width] duration-600 ease-[cubic-bezier(0.2,0.8,0.2,1)]", onBlock ? "bg-block-foreground" : "bg-primary")}
           style={{ width: `${Math.max(4, pct)}%` }}
         />
       </div>
@@ -59,7 +59,7 @@ export function SampleProgress({ info, tone = "card", className }: { info: Pick<
                 aria-hidden
                 className={cn(
                   "size-2 rounded-full",
-                  done ? (onBlock ? "bg-highlight" : "bg-primary") : current ? (onBlock ? "bg-block-foreground" : "bg-foreground") : onBlock ? "bg-block-raised" : "bg-border-strong",
+                  done ? (onBlock ? "bg-block-foreground" : "bg-primary") : current ? (onBlock ? "bg-block-foreground" : "bg-foreground") : onBlock ? "bg-block-raised" : "bg-border-strong",
                 )}
               />
               {s.label}

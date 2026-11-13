@@ -58,7 +58,7 @@ export function HomePage() {
       <section aria-labelledby="active-heading" className="grid gap-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="grid gap-1.5">
-            <h2 id="active-heading" className="text-2xl leading-tight font-bold">
+            <h2 id="active-heading" className="text-2xl leading-tight font-semibold">
               {active.length ? `${active.length} run${active.length === 1 ? "" : "s"} in flight` : "Nothing running"}
             </h2>
             <p className="max-w-[60ch] text-muted-foreground">

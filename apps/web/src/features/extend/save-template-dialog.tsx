@@ -61,7 +61,7 @@ function Body({ document, title, onDone }: { document: JsonObject; title: string
           <Check aria-hidden className="size-5" /> Saved. Your team finds it in the gallery under "From your team".
         </p>
         <DialogFooter>
-          <LibraryLink search={{ tab: "workflows", item: savedId }} className="font-semibold text-primary hover:underline">
+          <LibraryLink search={{ tab: "workflows", item: savedId }} className="link font-semibold">
             Open it in Make your own
           </LibraryLink>
           <Button className={PILL} onClick={onDone}>
@@ -101,7 +101,7 @@ export function SaveTemplateDialog({ open, onOpenChange, document, title = "" }:
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent wide className="rounded-2xl">
-        <DialogTitle className="display text-xl font-bold">Save as a team template</DialogTitle>
+        <DialogTitle className="display text-xl font-semibold">Save as a team template</DialogTitle>
         <DialogDescription>Turn this workflow into a starting point. Your team picks it in the gallery and makes their own copy.</DialogDescription>
         {open ? <Body document={document} title={title} onDone={() => onOpenChange(false)} /> : null}
       </DialogContent>

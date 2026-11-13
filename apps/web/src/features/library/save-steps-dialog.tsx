@@ -86,7 +86,7 @@ function Body({ steps, onDone }: { steps: readonly StepCallDoc[]; onDone: () => 
           <Check className="size-5" /> Saved. It shows in Build under "Your prep presets".
         </p>
         <DialogFooter>
-          <LibraryLink search={{ tab: "prep", item: savedId }} className="font-semibold text-primary hover:underline">
+          <LibraryLink search={{ tab: "prep", item: savedId }} className="link font-semibold">
             Open it in Make your own
           </LibraryLink>
           <Button className={PILL} onClick={onDone}>
@@ -139,7 +139,7 @@ export function SaveStepsDialog({ open, onOpenChange, steps }: SaveStepsDialogPr
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent wide className="rounded-2xl">
-        <DialogTitle className="display text-xl font-bold">Save these steps as a prep preset</DialogTitle>
+        <DialogTitle className="display text-xl font-semibold">Save these steps as a prep preset</DialogTitle>
         <DialogDescription>Do them once, reuse them on any dataset. Your team finds the preset in Build.</DialogDescription>
         {open ? <Body steps={steps} onDone={() => onOpenChange(false)} /> : null}
       </DialogContent>

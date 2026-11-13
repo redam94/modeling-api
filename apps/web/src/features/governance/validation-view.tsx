@@ -267,10 +267,11 @@ export function ValidationView({ validationId }: { validationId: string }) {
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-5" data-testid="validation-view">
       <PageHeader
+        crumbs={[{ label: "Governance", to: "/governance" }, { label: "Validations", to: "/validations" }, { label: `${model.data?.name ?? "Model"} v${v.version}` }]}
         title={
           <span className="flex flex-wrap items-center gap-3">
             Validation of{" "}
-            <Link to="/models/$modelId/versions/$version" params={{ modelId: v.model_id, version: String(v.version) }} className="hover:underline">
+            <Link to="/models/$modelId/versions/$version" params={{ modelId: v.model_id, version: String(v.version) }} className="link">
               {model.data?.name ?? "model"} v{v.version}
             </Link>
             <ValidationBadge status={v.status} />
@@ -336,7 +337,7 @@ export function ValidationView({ validationId }: { validationId: string }) {
                 <>
                   {" "}
                   (run{" "}
-                  <Link to="/runs/$runId" params={{ runId: v.workflow_run_id }} className="text-primary hover:underline">
+                  <Link to="/runs/$runId" params={{ runId: v.workflow_run_id }} className="link">
                     {shortId(v.workflow_run_id)}
                   </Link>
                   )
@@ -384,7 +385,7 @@ export function ValidationView({ validationId }: { validationId: string }) {
                         return (
                           <li key={ref}>
                             {p ? (
-                              <Link to="/governance/policies/$policyId" params={{ policyId: id }} search={p.scope === "tenant" ? { scope: "tenant" } : {}} className="text-primary hover:underline">
+                              <Link to="/governance/policies/$policyId" params={{ policyId: id }} search={p.scope === "tenant" ? { scope: "tenant" } : {}} className="link">
                                 {p.name} v{version}
                               </Link>
                             ) : (

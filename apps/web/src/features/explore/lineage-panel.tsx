@@ -58,7 +58,7 @@ export function LineagePanel({ mv, expert }: { mv: ModelVersion; expert: boolean
           {run.isPending ? (
             <Skeleton className="h-5 w-48" />
           ) : run.data?.dataset_id ? (
-            <Link to="/datasets/$datasetId" params={{ datasetId: run.data.dataset_id }} className="text-primary hover:underline">
+            <Link to="/datasets/$datasetId" params={{ datasetId: run.data.dataset_id }} className="link">
               {datasetRef ?? run.data.dataset_id}
             </Link>
           ) : (
@@ -69,7 +69,7 @@ export function LineagePanel({ mv, expert }: { mv: ModelVersion; expert: boolean
         <Arrow />
         <Step icon={<FileCode2 />} title="Spec">
           {run.data?.spec_id ? (
-            <Link to="/build/$specId" params={{ specId: run.data.spec_id }} search={{ rev: run.data.spec_revision ?? undefined }} className="text-primary hover:underline">
+            <Link to="/build/$specId" params={{ specId: run.data.spec_id }} search={{ rev: run.data.spec_revision ?? undefined }} className="link">
               {spec.data?.ref ?? `${run.data.spec_id} r${run.data.spec_revision ?? "?"}`}
             </Link>
           ) : (
@@ -80,7 +80,7 @@ export function LineagePanel({ mv, expert }: { mv: ModelVersion; expert: boolean
         <Arrow />
         <Step icon={<Play />} title="Fit run">
           <span className="flex flex-wrap items-center gap-2">
-            <Link to="/runs/$runId" params={{ runId: mv.run_id }} className="text-primary hover:underline">
+            <Link to="/runs/$runId" params={{ runId: mv.run_id }} className="link">
               {shortId(mv.run_id)}
             </Link>
             {run.data ? <StateBadge state={run.data.state} /> : null}
@@ -94,11 +94,11 @@ export function LineagePanel({ mv, expert }: { mv: ModelVersion; expert: boolean
               <span className="flex flex-wrap items-center gap-2">
                 {parent.data?.kind === "workflow" ? (
                   // The workflow that fitted it: its run monitor (graph, decisions, outputs).
-                  <Link to="/workflow-runs/$runId" params={{ runId: run.data.parent_run_id }} className="text-primary hover:underline">
+                  <Link to="/workflow-runs/$runId" params={{ runId: run.data.parent_run_id }} className="link">
                     {shortId(run.data.parent_run_id)}
                   </Link>
                 ) : (
-                  <Link to="/runs/$runId" params={{ runId: run.data.parent_run_id }} className="text-primary hover:underline">
+                  <Link to="/runs/$runId" params={{ runId: run.data.parent_run_id }} className="link">
                     {shortId(run.data.parent_run_id)}
                   </Link>
                 )}

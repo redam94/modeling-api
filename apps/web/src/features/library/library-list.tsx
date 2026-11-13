@@ -38,13 +38,13 @@ function ItemCard({ item, onOpen, me }: { item: LibraryItem; onOpen: (item: Libr
       <div className="flex items-start gap-3">
         <CatalogGlyph kind={glyphKind(item.kind)} seed={item.id} size="sm" />
         <div className="min-w-0 flex-1">
-          <h3 className="text-lg leading-tight font-bold [overflow-wrap:anywhere]">{item.title}</h3>
+          <h3 className="text-lg leading-tight font-semibold [overflow-wrap:anywhere]">{item.title}</h3>
           <p className="font-mono text-xs text-muted-foreground [overflow-wrap:anywhere]">{item.name}</p>
         </div>
       </div>
       {item.summary ? <p className="text-muted-foreground [overflow-wrap:anywhere]">{item.summary}</p> : null}
       <div className="flex flex-wrap gap-1.5">
-        <Chip tone={item.scope === "tenant" ? "lime" : "plain"}>{item.scope === "tenant" ? "Whole tenant" : "This project"}</Chip>
+        <Chip tone={item.scope === "tenant" ? "highlight" : "plain"}>{item.scope === "tenant" ? "Whole tenant" : "This project"}</Chip>
         <Chip>v{item.latest_revision}</Chip>
         {item.created_by === "system" ? <Chip tone="attention">Sample</Chip> : null}
         {item.archived ? <Chip tone="warn">Archived</Chip> : null}

@@ -1,6 +1,6 @@
 /**
  * The state chip of an uploaded version (D20, I-8): the relaxed words of `STATE_LABEL` on the
- * run-state tones (coral `danger` for refusals), a live dot while the checks run, and "Only you
+ * run-state tones (red `danger` for refusals), a live dot while the checks run, and "Only you
  * can use this" beside a private version.
  */
 import { Lock } from "lucide-react";

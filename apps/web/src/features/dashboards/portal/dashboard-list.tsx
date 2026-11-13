@@ -34,15 +34,15 @@ function DashboardCard({ d, onOpen }: { d: DashboardSummary; onOpen: (id: string
           e.preventDefault();
           onOpen(d.id);
         }}
-        className="focus-ring group grid h-full gap-3 rounded-xl border bg-card p-5 transition-colors hover:border-primary hover:bg-surface-hover max-sm:p-4"
+        className="focus-ring group grid h-full gap-3 rounded-3xl bg-card p-7 transition-shadow hover:shadow-md max-sm:p-5"
         data-dashboard={d.id}
       >
         <div className="flex items-start justify-between gap-3">
           <div className="grid min-w-0 gap-1">
-            {d.client_name ? <span className="eyebrow">{d.client_name}</span> : null}
-            <span className="text-lg font-semibold text-foreground">{d.title}</span>
+            {d.client_name ? <span className="kicker">{d.client_name}</span> : null}
+            <span className="font-display text-xl font-semibold tracking-[-0.02em] text-foreground">{d.title}</span>
           </div>
-          <ArrowRight aria-hidden className="mt-1 size-4 flex-none text-hint group-hover:text-primary" />
+          <ArrowRight aria-hidden className="mt-1 size-4 flex-none text-hint transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <TagWord tone="neutral">{PERIOD_WORD[d.period_label ?? "week"]}</TagWord>
@@ -63,7 +63,7 @@ export function DashboardList({ onOpen }: { onOpen: (id: string) => void }) {
   return (
     <div className="grid gap-6">
       <header className="grid gap-2">
-        <h1 className="text-3xl font-semibold tracking-tight text-foreground">Your dashboards</h1>
+        <h1 className="display-title text-[clamp(1.75rem,3vw,2.25rem)] leading-[1.1]">Your dashboards</h1>
         <p className="max-w-[68ch] text-base text-muted-foreground">
           The dashboards that your analyst shares with you{ws.current ? ` in ${ws.current.project.name}` : ""}. Choose one to see the newest results.
         </p>

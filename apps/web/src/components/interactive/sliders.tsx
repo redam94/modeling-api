@@ -1,6 +1,6 @@
 /**
  * Sliders for what-ifs and beliefs (Guided explore and priors, the Home and Catalog playgrounds):
- * a single value and a low-high range, both Radix sliders with a labelled thumb. Studio look: a
+ * a single value and a low-high range, both Radix sliders with a labelled thumb. The look: a
  * pill track in the muted tint, the filled part in a series or primary colour, a card-coloured
  * thumb with a thick coloured ring. Signed-in surfaces only (never in share or client chunks).
  */

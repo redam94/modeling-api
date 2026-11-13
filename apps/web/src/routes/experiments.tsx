@@ -82,7 +82,7 @@ export function ExperimentsPage() {
                       <TR key={e.id}>
                         <TD>
                           <span className="flex flex-wrap items-center gap-2">
-                            <Link to="/experiments/$experimentId" params={{ experimentId: e.id }} className="font-medium hover:underline [overflow-wrap:anywhere]">
+                            <Link to="/experiments/$experimentId" params={{ experimentId: e.id }} className="link font-medium [overflow-wrap:anywhere]">
                               {e.name}
                             </Link>
                             {e.archived ? <Badge variant="secondary">archived</Badge> : null}
@@ -162,13 +162,11 @@ export function ExperimentPage() {
   return (
     <>
       <PageHeader
+        crumbs={[{ label: "Experiments", to: "/experiments" }, { label: e.name }]}
         title={<span className="[overflow-wrap:anywhere]">{e.name}</span>}
         description={e.description ? <span className="whitespace-pre-wrap [overflow-wrap:anywhere]">{e.description}</span> : undefined}
         meta={
           <>
-            <Link to="/experiments" className="hover:underline">
-              Experiments
-            </Link>
             <span>
               {e.run_count ?? 0} {(e.run_count ?? 0) === 1 ? "run" : "runs"}
             </span>

@@ -12,18 +12,19 @@ import { cn } from "@/lib/utils";
 // ----------------------------------------------------------------------- Badge
 
 export const badgeVariants = cva(
-  // A 24px ODS tag. The tint alphas are pinned by theme-contrast.test.ts (STATUS_BADGES).
-  "inline-flex h-6 items-center gap-1 rounded-sm border px-2 text-xs font-medium whitespace-nowrap [&_svg]:size-3",
+  // A 24px soft pill: a tint of its own text colour, no border (the outline variant has a
+  // hairline). The tint alphas are pinned by theme-contrast.test.ts (STATUS_BADGES).
+  "inline-flex h-6 items-center gap-1 rounded-full px-2.5 text-xs font-medium whitespace-nowrap [&_svg]:size-3",
   {
     variants: {
       variant: {
-        default: "border-transparent bg-primary text-primary-foreground",
-        secondary: "border-transparent bg-secondary text-secondary-foreground",
-        outline: "border-border text-foreground",
-        success: "border-success/30 bg-success/12 text-success",
-        warning: "border-warning/35 bg-warning/14 text-warning",
-        danger: "border-destructive/30 bg-destructive/12 text-destructive",
-        info: "border-info/30 bg-info/12 text-info",
+        default: "bg-primary text-primary-foreground",
+        secondary: "bg-secondary text-secondary-foreground",
+        outline: "border border-border-strong text-foreground",
+        success: "bg-success/12 text-success",
+        warning: "bg-warning/14 text-warning",
+        danger: "bg-destructive/12 text-destructive",
+        info: "bg-info/12 text-info",
       },
     },
     defaultVariants: { variant: "secondary" },
@@ -41,7 +42,7 @@ export function Badge({
 // ----------------------------------------------------------------------- Card
 
 /**
- * An ODS sheet: 12px corners, a hairline border, no shadow. The padding lives in CardHeader and
+ * A sheet: 18px corners, a hairline border, no shadow. The padding lives in CardHeader and
  * CardContent (20px, 16px on phones) so full-bleed children (tables) keep working.
  */
 export function Card({ className, ...props }: React.ComponentProps<"section">) {
@@ -73,7 +74,7 @@ export function CardContent({ className, ...props }: React.ComponentProps<"div">
 // ----------------------------------------------------------------------- Inputs
 
 const fieldBase =
-  "focus-ring w-full min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive";
+  "focus-ring w-full min-w-0 rounded-md border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive";
 
 /** Set by {@link Field} for the control whose id is `controlId`. */
 interface FieldState {
@@ -202,7 +203,7 @@ export function Kbd({ className, ...props }: React.ComponentProps<"kbd">) {
   return (
     <kbd
       className={cn(
-        "inline-flex h-5 min-w-5 items-center justify-center rounded border border-border bg-muted px-1 font-mono text-2xs text-muted-foreground",
+        "inline-flex h-5 min-w-5 items-center justify-center rounded-sm border border-border-strong px-1.5 font-sans text-2xs font-medium text-muted-foreground",
         className,
       )}
       {...props}
@@ -252,7 +253,7 @@ export function Table({ className, ...props }: React.ComponentProps<"table">) {
 }
 
 export function THead({ className, ...props }: React.ComponentProps<"thead">) {
-  return <thead className={cn("[&_tr]:border-b [&_tr]:border-border-strong [&_tr]:hover:bg-transparent", className)} {...props} />;
+  return <thead className={cn("[&_tr]:border-b [&_tr]:border-border [&_tr]:hover:bg-transparent", className)} {...props} />;
 }
 
 export function TBody({ className, ...props }: React.ComponentProps<"tbody">) {
@@ -260,13 +261,14 @@ export function TBody({ className, ...props }: React.ComponentProps<"tbody">) {
 }
 
 export function TR({ className, ...props }: React.ComponentProps<"tr">) {
-  return <tr className={cn("border-b border-border transition-colors hover:bg-surface-hover data-[state=selected]:bg-accent", className)} {...props} />;
+  // Row hairlines, no zebra. Hover is a half tint; a selected row is the full tint with the ink bar.
+  return <tr className={cn("border-b border-border transition-colors hover:bg-muted/50 data-[state=selected]:bg-accent data-[state=selected]:[&>td:first-child]:shadow-[inset_3px_0_0_var(--ring)]", className)} {...props} />;
 }
 
 export function TH({ className, ...props }: React.ComponentProps<"th">) {
   return (
     <th
-      className={cn("h-10 px-3 text-left align-middle text-sm font-semibold whitespace-nowrap text-foreground [&.num]:text-right", className)}
+      className={cn("h-10 px-3 text-left align-middle text-xs font-semibold whitespace-nowrap text-muted-foreground [&.num]:text-right", className)}
       {...props}
     />
   );

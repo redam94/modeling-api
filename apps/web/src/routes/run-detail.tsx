@@ -216,6 +216,7 @@ export function RunDetailPage() {
   return (
     <>
       <PageHeader
+        crumbs={[{ label: "Runs", to: "/runs" }, { label: name ?? shortId(r.id) }]}
         title={
           <span className="flex flex-wrap items-center gap-3">
             {name ? <span className="[overflow-wrap:anywhere]" data-testid="run-name">{name}</span> : <span className="capitalize">{r.kind}</span>}
@@ -317,7 +318,7 @@ export function RunDetailPage() {
                       [
                         "Spec",
                         r.spec_id ? (
-                          <Link key="s" to="/build/$specId" params={{ specId: r.spec_id }} search={{ rev: r.spec_revision ?? undefined }} className="hover:underline">
+                          <Link key="s" to="/build/$specId" params={{ specId: r.spec_id }} search={{ rev: r.spec_revision ?? undefined }} className="link">
                             <Mono>
                               {shortId(r.spec_id)} r{r.spec_revision}
                             </Mono>
@@ -328,8 +329,8 @@ export function RunDetailPage() {
                       ],
                       ["Experiment", <RunExperimentLink key="e" experimentId={r.experiment_id} />],
                       ["Model version", r.model_version_id ? <Mono key="m">{shortId(r.model_version_id)}</Mono> : "—"],
-                      ["Dataset", r.dataset_id ? <Link key="d" to="/datasets/$datasetId" params={{ datasetId: r.dataset_id }} className="hover:underline"><Mono>{shortId(r.dataset_id)}</Mono></Link> : "—"],
-                      ["Retry of", r.retry_of ? <Link key="r" to="/runs/$runId" params={{ runId: r.retry_of }} className="hover:underline"><Mono>{shortId(r.retry_of)}</Mono></Link> : "—"],
+                      ["Dataset", r.dataset_id ? <Link key="d" to="/datasets/$datasetId" params={{ datasetId: r.dataset_id }} className="link"><Mono>{shortId(r.dataset_id)}</Mono></Link> : "—"],
+                      ["Retry of", r.retry_of ? <Link key="r" to="/runs/$runId" params={{ runId: r.retry_of }} className="link"><Mono>{shortId(r.retry_of)}</Mono></Link> : "—"],
                       ["Spec hash", r.spec_hash ? <Mono key="h" title={r.spec_hash}>{shortId(r.spec_hash)}</Mono> : "—"],
                       ["Cost", <RunCostValue key="cost" run={r} />],
                     ]}

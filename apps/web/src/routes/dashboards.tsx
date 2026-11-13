@@ -4,12 +4,13 @@
  * publishing pins it as a revision that clients and share links see (plan §3.6.3).
  */
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
-import { Archive, LayoutDashboard, Plus, RotateCcw, Save, Send } from "lucide-react";
+import { Archive, Plus, RotateCcw, Save, Send } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { can } from "@/api/access";
 import { useProjectScope } from "@/api/queries";
 import type { Issue } from "@/api/types";
+import { EmptyArt } from "@/components/brand/empty-art";
 import { EmptyState, ErrorNotice, PageHeader, QueryView, Spinner } from "@/components/common";
 import { InlineMessage, TagWord, type TagTone } from "@/components/ods";
 import { Button } from "@/components/ui/button";
@@ -119,7 +120,7 @@ export function DashboardsPage() {
             </Card>
           ) : (
             <EmptyState
-              icon={<LayoutDashboard />}
+              illustration={<EmptyArt kind="dashboards" />}
               title={status === "archived" ? "No archived dashboards" : "This project has no dashboards"}
               action={canCreate && status !== "archived" ? <Button onClick={() => setCreating(true)}>New dashboard</Button> : null}
             >
@@ -148,7 +149,7 @@ function DashboardRow({ d }: { d: DashboardSummary }) {
   return (
     <TR data-dashboard={d.id}>
       <TD className="min-w-56">
-        <Link to="/dashboards/$dashboardId" params={{ dashboardId: d.id }} className="font-medium hover:underline [overflow-wrap:anywhere]">
+        <Link to="/dashboards/$dashboardId" params={{ dashboardId: d.id }} className="link font-medium [overflow-wrap:anywhere]">
           {d.title}
         </Link>
         <span className="block text-xs text-muted-foreground [overflow-wrap:anywhere]">
@@ -217,6 +218,7 @@ function Builder({ dashboard }: { dashboard: Dashboard }) {
   return (
     <>
       <PageHeader
+        crumbs={[{ label: "Dashboards", to: "/dashboards" }, { label: spec.title || dashboard.name }]}
         title={spec.title || dashboard.name}
         description={spec.client_name ? `For ${spec.client_name}` : undefined}
         meta={
@@ -225,9 +227,6 @@ function Builder({ dashboard }: { dashboard: Dashboard }) {
             {dashboard.published_revision ? <span>Revision {dashboard.published_revision.seq} published {relativeTime(dashboard.published_revision.created_at)}</span> : null}
             {dashboard.status === "published" && changedSincePublish && !draft.dirty ? <TagWord tone="info">Draft has changes to publish</TagWord> : null}
             {draft.dirty ? <TagWord tone="warning">Unsaved changes</TagWord> : null}
-            <Link to="/dashboards" className="text-primary hover:underline">
-              All dashboards
-            </Link>
           </>
         }
         actions={
@@ -282,7 +281,7 @@ function Builder({ dashboard }: { dashboard: Dashboard }) {
           </InlineMessage>
         ) : null}
         <Tabs value={open} onValueChange={(v) => setTab(v as DashboardTab)}>
-          <TabsList aria-label="Dashboard builder" className="w-full">
+          <TabsList aria-label="Dashboard builder">
             {DASHBOARD_TABS.map((t) => {
               const n = t === "setup" || t === "inputs" ? issues.filter((i) => tabOfIssue(i.pointer) === t).length : 0;
               return (

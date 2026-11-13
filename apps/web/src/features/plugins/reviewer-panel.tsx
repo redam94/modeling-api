@@ -17,7 +17,6 @@ import { InlineMessage } from "@/components/ods/inline-message";
 import { Button } from "@/components/ui/button";
 import { Field, Textarea } from "@/components/ui/primitives";
 import { useWorkspace } from "@/features/auth/workspace";
-import { cn } from "@/lib/utils";
 import { toast } from "@/stores/toast";
 
 import { isReauthRequired, isStateConflict, reauthHref, reviewRefusal, useDecide } from "./api";
@@ -111,7 +110,7 @@ export function ReviewerPanel({
   return (
     <section data-testid="plugin-reviewer-panel" aria-labelledby="plugin-review-title" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 [&>*]:min-w-0">
       <div className="grid gap-2 rounded-2xl border bg-card p-5">
-        <h2 id="plugin-review-title" className="font-display text-2xl leading-tight font-bold">
+        <h2 id="plugin-review-title" className="font-display text-2xl leading-tight font-semibold">
           Review this upload
         </h2>
         <p className="max-w-[68ch] text-sm text-muted-foreground">
@@ -143,7 +142,7 @@ export function ReviewerPanel({
 
       <div className="grid gap-4 rounded-2xl border-2 border-primary/30 bg-card p-5" aria-labelledby="plugin-decision-title">
         <div className="grid gap-1">
-          <h3 id="plugin-decision-title" className="font-display text-lg leading-tight font-bold">
+          <h3 id="plugin-decision-title" className="font-display text-lg leading-tight font-semibold">
             Your decision
           </h3>
           <p className="text-sm text-muted-foreground">
@@ -223,7 +222,7 @@ export function ReviewerPanel({
             data-testid="plugin-approve"
             disabled={Boolean(blocked) || decide.isPending}
             aria-describedby={blocked ? reasonId : undefined}
-            className={cn("h-auto min-h-11 rounded-full bg-highlight px-5 text-highlight-foreground hover:bg-highlight/85 active:bg-highlight disabled:bg-muted disabled:text-muted-foreground")}
+            className="h-auto min-h-11 px-5"
             onClick={() => send("approve")}
           >
             <CheckCircle2 /> Approve for the team

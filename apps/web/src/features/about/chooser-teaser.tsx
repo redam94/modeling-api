@@ -21,7 +21,7 @@ export function ChooserTeaser({ className, title = "Not sure where to start?" }:
           </h2>
           <p className="text-sm text-muted-foreground">Tell us what you want to do. Answer some plain questions. Then you get the applicable analyses and models, with the reasons.</p>
         </div>
-        <Link to="/choose" className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
+        <Link to="/choose" className="link inline-flex items-center gap-1 text-sm font-medium">
           Help me choose <ArrowRight aria-hidden className="size-3.5" />
         </Link>
       </div>

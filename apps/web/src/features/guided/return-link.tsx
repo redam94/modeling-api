@@ -9,7 +9,7 @@ export function GuidedReturnLink({ specId, document }: { specId: string | null; 
   const setPersona = useSetPersona();
   if (!specId || !guidedTemplateOf(document as Record<string, unknown> | null)) return null;
   return (
-    <Link to="/guided/$specId" params={{ specId }} onClick={() => setPersona("guided")} className="inline-flex items-center gap-1 font-medium text-primary hover:underline">
+    <Link to="/guided/$specId" params={{ specId }} onClick={() => setPersona("guided")} className="link inline-flex items-center gap-1 font-medium">
       <Sparkles className="size-3.5" aria-hidden /> Back to Guided mode
     </Link>
   );

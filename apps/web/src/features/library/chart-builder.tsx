@@ -30,7 +30,7 @@ import { useChartTypes } from "./catalog";
 import { docKey, isStaleRevision, useChartPreview, useLibraryItem, useLibraryValidation } from "./api";
 import { chartStarters, columnsOf, EMPTY_CHART, MARKS, simpleSpec, type DatasetColumns, type SimpleChart } from "./chart-starters";
 import { tidyDoc } from "./doc";
-import { BuilderSection, Chip, focusPointer, IssueLines, issueText, LIME, MetadataFields, PILL, PILL_SM, ScopeChoice, ToggleChip, useDebounced } from "./ui";
+import { BuilderSection, Chip, focusPointer, IssueLines, issueText, MetadataFields, PILL, PILL_SM, ScopeChoice, ToggleChip, useDebounced } from "./ui";
 import { LazyYamlTab as YamlTab } from "./yaml-tab-lazy";
 import { chartPreviewable, isChartTemplateDoc, PLOT_SPEC_MAX_BYTES, jsonBytes, splitUseRef, type ChartTemplateDoc, type JsonObject, type LibraryDoc, type LibraryScope } from "./types";
 
@@ -74,7 +74,7 @@ function ChartPreviewPanel({ doc: raw, enabled }: { doc: ChartTemplateDoc; enabl
   return (
     <section aria-label="Preview" className="grid gap-3 rounded-2xl border bg-card p-4" data-testid="chart-preview" data-tour="library.chart-preview">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-bold">Preview on example data</h2>
+        <h2 className="text-lg font-semibold">Preview on example data</h2>
         <span role="status" className="flex items-center gap-1.5 text-xs text-muted-foreground">
           {pending ? (
             <>
@@ -242,7 +242,7 @@ export function ChartBuilder({ itemId, initial, onCreated }: ChartBuilderProps) 
                           }}
                           className={cn("focus-ring grid gap-1 rounded-xl border-[1.5px] p-3 text-left transition-colors", on ? "border-primary bg-accent" : "border-transparent bg-background hover:border-border-strong")}
                         >
-                          <span className="display flex items-center gap-2 text-base font-bold">
+                          <span className="display flex items-center gap-2 text-base font-semibold">
                             <Wand2 aria-hidden className="size-4 text-attention" />
                             {s.label}
                           </span>
@@ -335,7 +335,7 @@ export function ChartBuilder({ itemId, initial, onCreated }: ChartBuilderProps) 
           )}
           {issues?.length ? (
             <section aria-label="What the check found" className="rounded-2xl border bg-card p-4 [overflow-wrap:anywhere]">
-              <h2 className="mb-2 text-base font-bold">What the check found</h2>
+              <h2 className="mb-2 text-base font-semibold">What the check found</h2>
               <IssueList
                 issues={issues}
                 onSelect={(i) => {
@@ -355,7 +355,7 @@ export function ChartBuilder({ itemId, initial, onCreated }: ChartBuilderProps) 
               <p className="display text-lg font-semibold [overflow-wrap:anywhere]">{doc.metadata.title.trim() || "Your chart"}</p>
               <Chip tone="block">{errors ? `${errors} ${errors === 1 ? "thing" : "things"} to fix` : "Looks good"}</Chip>
             </div>
-            <Button className={cn(PILL, LIME, "w-full")} disabled={save.isPending || (!dirty && savedKey !== null)} onClick={() => void doSave()}>
+            <Button className={cn(PILL, "w-full")} disabled={save.isPending || (!dirty && savedKey !== null)} onClick={() => void doSave()}>
               {save.isPending ? <Spinner /> : <Save />}
               {savedKey !== null && !dirty ? "Saved" : savedKey !== null ? "Save a new version" : "Save chart template"}
             </Button>

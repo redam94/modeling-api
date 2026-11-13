@@ -5,18 +5,9 @@
  */
 import type * as React from "react";
 
+import { Logo } from "@/components/brand/logo";
 import { dmy } from "@/components/ods/format";
 import { cn } from "@/lib/utils";
-
-function Mark({ className = "size-6" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={cn("shrink-0", className)} aria-hidden>
-      <rect x="2" y="4" width="20" height="4" rx="2" className="fill-primary/25" />
-      <rect x="5" y="10" width="14" height="4" rx="2" className="fill-primary/55" />
-      <rect x="9" y="16" width="6" height="4" rx="2" className="fill-primary" />
-    </svg>
-  );
-}
 
 /** "Shared view. The link ends on DD/MM/YYYY." (just "Shared view." without an end date). */
 export function footerText(endsAt: string | null | undefined): string {
@@ -36,14 +27,14 @@ export function ShareFrame({
 }) {
   return (
     <div className="flex min-h-svh flex-col bg-background text-foreground">
-      <header className="border-b bg-card">
-        <div className="mx-auto flex h-14 w-full max-w-7xl items-center gap-2.5 px-4 sm:px-6">
-          <Mark />
+      <header className="frost sticky top-0 z-20 border-b [--frost-surface:var(--background)]">
+        <div className="mx-auto flex h-12 w-full max-w-7xl items-center gap-2.5 px-4 sm:px-6">
+          <Logo />
           <span className="text-sm font-semibold tracking-tight">Shared dashboard</span>
         </div>
       </header>
       <main id="main" className={cn("mx-auto w-full flex-1 px-4 py-6 sm:px-6 sm:py-8", narrow ? "grid max-w-md place-items-start content-start" : "max-w-7xl")}>
-        {narrow ? <div className="grid w-full gap-5 rounded-xl border bg-card p-6 shadow-sm">{children}</div> : children}
+        {narrow ? <div className="grid w-full gap-5 rounded-3xl bg-card p-8 max-sm:p-6">{children}</div> : children}
       </main>
       {endsAt !== undefined ? (
         <footer className="border-t">

@@ -15,6 +15,7 @@ import type * as React from "react";
 
 import { useProjectScope } from "@/api/queries";
 
+import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -26,7 +27,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/overlays";
-import { Logo, useSignOut } from "@/features/auth/gate";
+import { useSignOut } from "@/features/auth/gate";
 import { useWorkspace, type ProjectChoice } from "@/features/auth/workspace";
 import { useScope } from "@/stores/scope";
 import { useUi, type ThemePreference } from "@/stores/ui";
@@ -139,7 +140,7 @@ function AccountMenu() {
         <button
           type="button"
           aria-label={`Account: ${user.name}`}
-          className="focus-ring grid size-8 shrink-0 place-items-center rounded-full bg-accent text-2xs font-semibold text-accent-foreground hover:bg-grey-300 dark:hover:bg-secondary"
+          className="focus-ring grid size-8 shrink-0 place-items-center rounded-full bg-accent text-2xs font-semibold text-accent-foreground transition-colors hover:bg-border-strong"
         >
           {initials(user.name)}
         </button>
@@ -162,21 +163,21 @@ export function ClientShell({ clientName, onHome, children }: { clientName: stri
   const dashboardId = usePortalDashboardId();
   return (
     <div className="flex min-h-svh flex-col bg-background">
-      <a href="#main" className="focus-ring sr-only rounded-md bg-card px-3 py-2 focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50">
+      <a href="#main" className="focus-ring sr-only rounded-full bg-card px-4 py-2 focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50">
         Skip to the content
       </a>
-      <header className="sticky top-0 z-20 border-b bg-card/90 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-[1440px] items-center gap-3 px-4 md:px-8">
+      <header className="frost sticky top-0 z-20 border-b [--frost-surface:var(--background)]">
+        <div className="mx-auto flex h-12 max-w-[1440px] items-center gap-3 px-4 md:px-8">
           <a
             href="/c"
             onClick={(e) => {
               e.preventDefault();
               onHome();
             }}
-            className="focus-ring flex min-w-0 items-center gap-2.5 rounded-md"
+            className="focus-ring flex min-w-0 items-center gap-2.5 rounded-sm"
           >
-            <Logo className="size-7" />
-            <span className="truncate text-base font-semibold text-foreground">{clientName ?? "Your dashboards"}</span>
+            <Logo />
+            <span className="truncate font-display text-[15px] font-semibold tracking-[-0.02em] text-foreground">{clientName ?? "Your dashboards"}</span>
           </a>
           <ProjectMenu onClientProject={onHome} />
           <div className="ml-auto flex items-center gap-2">

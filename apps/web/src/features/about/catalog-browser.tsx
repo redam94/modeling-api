@@ -3,7 +3,7 @@
  * analyses, workflow templates, workflow nodes and governance checks
  * (`GET /v1/catalog/abouts`), filterable by kind, difficulty and text.
  *
- * v0.18 (Studio, §3.4): a card grid with kind glyphs and "good for" / difficulty / runtime
+ * v0.18 (§3.4): a card grid with kind glyphs and "good for" / difficulty / runtime
  * chips. The marketing-mix model is featured on the page's one ink block, next to the what-if
  * playground on example data (WP-T5's `catalog-playground`, lazy).
  */
@@ -13,7 +13,8 @@ import { Link } from "@tanstack/react-router";
 
 import { useCatalog } from "@/api/queries";
 import { EmptyState, ErrorNotice, LoadingRows } from "@/components/common";
-import { CatalogGlyph, EmptySearchArt, glyphKind, HeroArt } from "@/components/illustrations";
+import { EmptyArt } from "@/components/brand/empty-art";
+import { CatalogGlyph, glyphKind } from "@/components/illustrations";
 import { Button } from "@/components/ui/button";
 import { Input, NativeSelect } from "@/components/ui/primitives";
 import { CatalogPlayground } from "@/features/onboarding/catalog-playground";
@@ -63,7 +64,7 @@ export function featuredAbout(items: readonly CatalogAbout[]): CatalogAbout | nu
 }
 
 const FILTER_PILL =
-  "focus-ring inline-flex min-h-10 items-center gap-1.5 rounded-full border-[1.5px] border-border-strong bg-card px-4 text-sm font-semibold transition-colors hover:border-primary aria-pressed:border-foreground aria-pressed:bg-foreground aria-pressed:text-background";
+  "focus-ring inline-flex min-h-10 items-center gap-1.5 rounded-full border border-border-strong bg-card px-4 text-sm font-semibold transition-colors hover:border-foreground aria-pressed:border-foreground aria-pressed:bg-foreground aria-pressed:text-background";
 
 /** The featured card: the one ink block of the page, with the playground beside it. */
 function FeaturedCard({ entry, onOpen }: { entry: CatalogAbout; onOpen: () => void }) {
@@ -95,7 +96,7 @@ function FeaturedCard({ entry, onOpen }: { entry: CatalogAbout; onOpen: () => vo
           <span className="font-mono text-xs text-block-muted">{entry.id}</span>
         </div>
         <div className="flex flex-wrap gap-2.5 pt-3 [&_[data-slot=button]]:h-auto [&_[data-slot=button]]:min-h-11 [&_[data-slot=button]]:rounded-full [&_[data-slot=button]]:px-5">
-          <span className="contents [&_[data-slot=button]]:bg-highlight [&_[data-slot=button]]:text-highlight-foreground [&_[data-slot=button]:hover]:shadow-[inset_0_0_0_2px_var(--highlight-foreground)]">
+          <span className="contents [&_[data-slot=button]]:bg-block-foreground [&_[data-slot=button]]:text-block [&_[data-slot=button]:hover]:bg-block-foreground/85">
             <StartButton kind="model" id={entry.id}>
               Use this model
             </StartButton>
@@ -104,7 +105,7 @@ function FeaturedCard({ entry, onOpen }: { entry: CatalogAbout; onOpen: () => vo
             Read the card
           </Button>
         </div>
-        <HeroArt animate={false} className="mt-auto hidden w-full max-w-[300px] pt-6 lg:block" />
+        <EmptyArt kind="models" onBlock className="mt-auto hidden size-[150px] lg:block" />
       </div>
       <div className="min-w-0 self-center">
         <CatalogPlayground />
@@ -172,7 +173,7 @@ export function CatalogBrowser({
             <option value="intermediate">Some experience</option>
             <option value="expert">For experts</option>
           </NativeSelect>
-          <Button asChild variant="ghost" className="ml-auto h-auto min-h-10 rounded-full bg-highlight-soft px-4 text-highlight-ink hover:bg-highlight hover:text-highlight-foreground">
+          <Button asChild variant="ghost" className="ml-auto h-auto min-h-10 bg-secondary px-4 text-foreground hover:bg-border-strong hover:text-foreground">
             <Link to="/choose">
               <Sparkles /> Help me choose
             </Link>
@@ -196,7 +197,7 @@ export function CatalogBrowser({
           ))}
         </ul>
       ) : showFeatured ? null : (
-        <EmptyState icon={<Search />} title="No item matches" illustration={<EmptySearchArt />}>
+        <EmptyState icon={<Search />} title="No item matches" illustration={<EmptyArt kind="search" />}>
           Nothing here yet for those words. Try a different word, or clear the filters.
         </EmptyState>
       )}

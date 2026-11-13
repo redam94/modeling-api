@@ -167,7 +167,7 @@ function SectionTabs({ open, children }: { open: string; children: React.ReactNo
   }, [open, measure]);
   return (
     <div className="relative min-w-0" data-tabs="sections" data-more-left={more.left || undefined} data-more-right={more.right || undefined}>
-      <TabsList ref={ref} aria-label="Dashboard sections" className="w-full gap-5 sm:gap-8" onScroll={measure}>
+      <TabsList ref={ref} aria-label="Dashboard sections" onScroll={measure}>
         {children}
       </TabsList>
       {more.left ? <span aria-hidden className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-background to-transparent" /> : null}

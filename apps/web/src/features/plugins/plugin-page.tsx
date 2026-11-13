@@ -28,11 +28,7 @@ export function PluginPage({ pluginId }: { pluginId: string }) {
   return (
     <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6">
       <PageHeader
-        eyebrow={
-          <Link to="/catalog" search={{ tab: "yours" }} className="hover:underline">
-            Catalog › Yours › Uploaded
-          </Link>
-        }
+        crumbs={[{ label: "Catalog", to: "/catalog" }, { label: "Yours", to: "/catalog", search: { tab: "yours" } }, { label: displayText(p.title) }]}
         title={<span className="[overflow-wrap:anywhere]">{displayText(p.title)}</span>}
         description={<span>Uploaded code in your workspace. Every version is checked on its own; the team uses a version only after a reviewer approves it.</span>}
         meta={
@@ -53,7 +49,7 @@ export function PluginPage({ pluginId }: { pluginId: string }) {
       />
       <DevBanner />
       <section aria-labelledby="plugin-versions-title" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3">
-        <h2 id="plugin-versions-title" className="text-xl font-bold">
+        <h2 id="plugin-versions-title" className="text-xl font-semibold">
           Versions <span className="text-xs font-semibold text-muted-foreground">{versions.data?.length ?? ""}</span>
         </h2>
         {versions.isPending ? (
@@ -70,7 +66,7 @@ export function PluginPage({ pluginId }: { pluginId: string }) {
                   <Link
                     to="/plugins/$pluginId/versions/$versionId"
                     params={{ pluginId: p.id, versionId: v.id }}
-                    className="w-fit font-display text-lg leading-snug font-bold [overflow-wrap:anywhere] hover:underline"
+                    className="link w-fit font-display text-lg leading-snug font-semibold [overflow-wrap:anywhere]"
                   >
                     {displayText(v.version)}
                   </Link>

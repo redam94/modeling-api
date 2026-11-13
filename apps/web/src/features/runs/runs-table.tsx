@@ -19,7 +19,7 @@ import { useExperiments, useRunPages } from "@/api/queries";
 import { runName, runTags } from "@/api/tracking";
 import type { Experiment, Run, RunKind, RunState } from "@/api/types";
 import { EmptyState, ErrorNotice, LoadingRows, Mono, StateBadge } from "@/components/common";
-import { EmptyRunsArt } from "@/components/illustrations";
+import { EmptyArt } from "@/components/brand/empty-art";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/overlays";
 import { Input, NativeSelect, Table, TBody, TD, TH, THead, TR } from "@/components/ui/primitives";
@@ -111,7 +111,7 @@ function ExperimentCell({ id, experiments }: { id: string | null | undefined; ex
   if (!id) return <span className="text-muted-foreground">—</span>;
   const exp = experiments.get(id);
   return (
-    <Link to="/experiments/$experimentId" params={{ experimentId: id }} className="inline-block max-w-48 truncate align-bottom hover:underline" title={exp?.name ?? id}>
+    <Link to="/experiments/$experimentId" params={{ experimentId: id }} className="link inline-block max-w-48 truncate align-bottom" title={exp?.name ?? id}>
       {exp ? exp.name : <Mono>{shortId(id)}</Mono>}
     </Link>
   );
@@ -237,7 +237,7 @@ export function RunsTable({
         (emptyState ?? (
           <EmptyState
             title="No runs yet"
-            illustration={<EmptyRunsArt />}
+            illustration={<EmptyArt kind="runs" />}
             primaryAction={
               <Button asChild className="rounded-full">
                 <Link to="/build">Fit a spec</Link>
@@ -351,7 +351,7 @@ function RunRow({
       <TD>
         {/* v0.11: the run's name (or its short id) and up to three tags. Both are untrusted text. */}
         <span className="grid max-w-80 min-w-32 gap-1">
-          <Link to="/runs/$runId" params={{ runId: run.id }} className="hover:underline">
+          <Link to="/runs/$runId" params={{ runId: run.id }} className="link">
             {name ? (
               <span className="font-medium [overflow-wrap:anywhere]" title={run.id}>
                 {name}

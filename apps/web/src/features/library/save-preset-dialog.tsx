@@ -47,7 +47,7 @@ function Body({ model, onDone }: { model: SavePresetDialogProps["model"]; onDone
           <Check className="size-5" /> Saved. Your team can use it from Build.
         </p>
         <DialogFooter>
-          <LibraryLink search={{ tab: "models", item: savedId }} className="font-semibold text-primary hover:underline">
+          <LibraryLink search={{ tab: "models", item: savedId }} className="link font-semibold">
             Open it in Make your own
           </LibraryLink>
           <Button className={PILL} onClick={onDone}>
@@ -98,7 +98,7 @@ export function SavePresetDialog({ open, onOpenChange, model }: SavePresetDialog
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent wide className="rounded-2xl">
-        <DialogTitle className="display text-xl font-bold">Save these settings as a preset</DialogTitle>
+        <DialogTitle className="display text-xl font-semibold">Save these settings as a preset</DialogTitle>
         <DialogDescription>Your team gets {model.use} with your settings, ready to use. Pick what they may change.</DialogDescription>
         {open ? <Body model={model} onDone={() => onOpenChange(false)} /> : null}
       </DialogContent>

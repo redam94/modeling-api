@@ -27,7 +27,7 @@ function Count({ n, word, testid }: { n: number; word: string; testid?: string }
   return (
     <div className="grid gap-0.5 rounded-xl bg-muted px-4 py-3" data-testid={testid}>
       <dt className="text-xs text-muted-foreground">{word}</dt>
-      <dd className="font-display text-xl font-bold tabular">{n.toLocaleString()}</dd>
+      <dd className="font-display text-xl font-semibold tabular">{n.toLocaleString()}</dd>
     </div>
   );
 }

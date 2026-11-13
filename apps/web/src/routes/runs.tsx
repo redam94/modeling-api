@@ -10,7 +10,7 @@ const route = getRouteApi("/runs");
 /**
  * The runs workspace (v0.14): every run of the project with tracked columns, filters, saved
  * views, and the selection that opens the compare page. The table's state is the URL search.
- * v0.18: the Studio list header (eyebrow, display title, lede); the table itself stays calm.
+ * The list header (kicker, title, description); the table itself stays calm.
  */
 export function RunsPage() {
   const search = route.useSearch();
