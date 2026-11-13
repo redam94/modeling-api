@@ -145,6 +145,7 @@ class LocalProcessExecutor:
         cancel_grace_s: float = 10.0,
         max_runtime_s: int = 24 * 3600,
         parent_env: Mapping[str, str] | None = None,
+        allow_untrusted: bool = False,
     ) -> None:
         if Profile(profile) is Profile.MULTI_TENANT:
             raise ExecutorRefused(
@@ -171,6 +172,10 @@ class LocalProcessExecutor:
         self._pending: dict[str, int] = {}
         """Events per nonce queued or handed out but not yet processed by the consumer."""
         self._consumers = 0
+        self._allow_untrusted = allow_untrusted
+        """v0.19 (D7): the development allowance (``MAPI_DEV_ALLOW_LOCAL_UNTRUSTED``) lets this
+        executor take uploaded code, with no sandbox; the settings refuse it outside local
+        development."""
 
     # ------------------------------------------------------------------ protocol
     def caps(self) -> ExecutorCaps:
@@ -184,6 +189,9 @@ class LocalProcessExecutor:
             classes=[ResourceClass.S, ResourceClass.M, ResourceClass.L, ResourceClass.GPU],
             max_tasks=1,
             checkpoint_storage=True,
+            # uploaded code needs a sandbox: never here, except with the dev-only allowance
+            runs_untrusted_code=self._allow_untrusted,
+            untrusted_dev_only=self._allow_untrusted,
         )
 
     def _environ(self, rs: RunSubmit, nonce: str) -> dict[str, str]:

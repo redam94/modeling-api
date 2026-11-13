@@ -5,12 +5,14 @@ import { useState } from "react";
 import { useCatalog } from "@/api/queries";
 import type { ModelCatalogEntry, StepCatalogEntry } from "@/api/types";
 import { JsonBlock, KeyValues, Mono, PageHeader, QueryView } from "@/components/common";
+import { AddYourOwn } from "@/components/extend/add-your-own";
 import { DataTable } from "@/components/data-table";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/overlays";
 import { Badge } from "@/components/ui/primitives";
 import { AboutCard } from "@/features/about/about-card";
 import { CatalogBrowser } from "@/features/about/catalog-browser";
 import { StartButton } from "@/features/about/chooser";
+import { YoursTab, useTeamCount } from "@/features/extend/yours-tab";
 import { GpuBadge } from "@/features/models/gpu-badge";
 import { PlotCatalogGrid } from "@/features/plots/plot-catalog";
 
@@ -100,37 +102,87 @@ function Detail({ selected, onClose }: { selected: Selected | null; onClose: () 
   );
 }
 
+type CatalogTab = "yours" | "browse" | "models" | "steps" | "plots";
+
+/**
+ * The tab to show: the URL's (`?tab=`), or "yours" when it was picked here. The router's
+ * search schema may not know "yours" yet, so the pick is also kept in the page state.
+ */
+export function activeCatalogTab(urlTab: string | undefined, pickedYours: boolean): CatalogTab {
+  if (urlTab === "yours" || (pickedYours && urlTab === undefined)) return "yours";
+  return urlTab === "models" || urlTab === "steps" || urlTab === "plots" ? urlTab : "browse";
+}
+
 export function CatalogPage() {
   const catalog = useCatalog();
-  const { tab, about } = route.useSearch();
+  const { tab, about, q, kind, difficulty } = route.useSearch();
   const navigate = useNavigate({ from: "/catalog" });
   const [selected, setSelected] = useState<Selected | null>(null);
+  const [pickedYours, setPickedYours] = useState(false);
+  const team = useTeamCount();
+  const active = activeCatalogTab(tab, pickedYours);
+  const go = (t: string) => {
+    setPickedYours(t === "yours");
+    void navigate({ search: { tab: t === "browse" ? undefined : (t as never) } });
+  };
+  const yoursFirst = team.count > 0;
+  const yoursTrigger = (
+    <TabsTrigger value="yours">
+      Yours {team.count ? <Badge variant="secondary">{team.count}</Badge> : null}
+    </TabsTrigger>
+  );
   return (
     <>
       <PageHeader
         title="Catalog"
-        description="This page tells you, in plain words, about all the items that you can select. These are models, preparation steps, splits, guided analyses, workflow templates, workflow nodes and governance checks. The page also shows the technical catalog of plugins and steps, and each plot with an example of what it looks like."
-        meta={catalog.data ? <Mono title={catalog.data.digest}>digest {catalog.data.digest.slice(0, 19)}</Mono> : null}
+        description="Every model you can fit, every preparation step, every chart, each with a card that says what it is good for. Plus whatever your team has added."
+        meta={catalog.data ? <Mono title={catalog.data.digest}>digest {catalog.data.digest.slice(0, 19)}</Mono> : undefined}
       />
       <QueryView query={catalog}>
         {(c) => (
-          <Tabs value={tab ?? "browse"} onValueChange={(t) => void navigate({ search: { tab: t === "browse" ? undefined : (t as "models" | "steps" | "plots") } })}>
-            <TabsList>
+          <Tabs value={active} onValueChange={go}>
+            <TabsList className="h-auto min-h-10 flex-wrap">
+              {yoursFirst ? yoursTrigger : null}
               <TabsTrigger value="browse">Browse</TabsTrigger>
-              <TabsTrigger value="models">Models <Badge variant="secondary">{c.models?.length ?? 0}</Badge></TabsTrigger>
-              <TabsTrigger value="steps">Steps <Badge variant="secondary">{c.steps?.length ?? 0}</Badge></TabsTrigger>
-              <TabsTrigger value="plots">Plots <Badge variant="secondary">{c.plots?.length ?? 0}</Badge></TabsTrigger>
+              <TabsTrigger value="plots" data-tour="catalog.tab.plots">
+                Chart types <Badge variant="secondary">{c.plots?.length ?? 0}</Badge>
+              </TabsTrigger>
+              {yoursFirst ? null : yoursTrigger}
+              <span aria-hidden className="mx-1 hidden h-5 w-px bg-border-strong sm:inline-block" />
+              <span aria-hidden className="hidden px-1 text-xs font-semibold text-hint sm:inline">
+                Technical view
+              </span>
+              <TabsTrigger value="models" title="Technical view: every model plugin, as a table">
+                Models <Badge variant="secondary">{c.models?.length ?? 0}</Badge>
+              </TabsTrigger>
+              <TabsTrigger value="steps" title="Technical view: every preparation step, as a table">
+                Steps <Badge variant="secondary">{c.steps?.length ?? 0}</Badge>
+              </TabsTrigger>
             </TabsList>
-            <TabsContent value="browse">
-              <CatalogBrowser selected={about ?? null} onSelect={(key) => void navigate({ search: { about: key ?? undefined }, replace: true })} />
+            <TabsContent value="yours" className="pt-4">
+              <YoursTab />
             </TabsContent>
-            <TabsContent value="models">
+            <TabsContent value="browse" className="grid gap-12 pt-4">
+              <CatalogBrowser
+                selected={about ?? null}
+                onSelect={(key) => void navigate({ search: (s) => ({ ...s, about: key ?? undefined }), replace: true })}
+                query={q ?? ""}
+                onQuery={(next) => void navigate({ search: (s) => ({ ...s, q: next || undefined }), replace: true })}
+                kind={kind}
+                difficulty={difficulty}
+                onFilters={(next) => void navigate({ search: (s) => ({ ...s, ...next }), replace: true })}
+                teamCount={team.count}
+                onShowTeam={() => go("yours")}
+              />
+              <AddYourOwn kind="any" />
+            </TabsContent>
+            <TabsContent value="models" className="pt-4">
               <DataTable label="Model plugins" data={c.models ?? []} columns={modelColumns} filterPlaceholder="Filter models" onRowClick={(entry) => setSelected({ kind: "model", entry })} />
             </TabsContent>
-            <TabsContent value="steps">
+            <TabsContent value="steps" className="pt-4">
               <DataTable label="Steps" data={c.steps ?? []} columns={stepColumns} filterPlaceholder="Filter steps" onRowClick={(entry) => setSelected({ kind: "step", entry })} />
             </TabsContent>
-            <TabsContent value="plots">
+            <TabsContent value="plots" className="pt-4">
               <PlotCatalogGrid plots={c.plots ?? []} />
             </TabsContent>
           </Tabs>

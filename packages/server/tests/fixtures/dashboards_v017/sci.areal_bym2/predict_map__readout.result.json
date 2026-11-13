@@ -1,0 +1,19 @@
+{
+ "aggregation_flagged": false,
+ "bundle_id": "f4ad1573a808235c8885a15509fc502e",
+ "groups": [
+  "/summary"
+ ],
+ "issues": [],
+ "kind": "expected",
+ "mode": "predict",
+ "names": "dataset",
+ "output_space": {
+  "cases": "raw"
+ },
+ "representation": "draws",
+ "retransform": {
+  "cases": "none"
+ },
+ "units": "original"
+}

@@ -1,0 +1,51 @@
+[project]
+name = "acme"
+version = "0.1.0"
+description = "modeling-api extensions: a model, a preprocessing step, a plot recipe, a workflow node and a workflow template"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "mapi-sdk>=0.16",
+  "numpy>=2.0",
+  "xarray>=2025.1",
+  "mapi-plots[recipes]>=0.16",
+  "altair>=5.4",
+  "pandas>=2.2",
+  "mapi-workflows[runtime]>=0.16",
+  "mapi-spec>=0.16",
+]
+
+[project.optional-dependencies]
+test = [
+  "mapi-sdk[testing]>=0.16",
+  "mapi-workflows[runtime]>=0.16",
+  "pytest>=8.3",
+]
+
+# The runner discovers extensions through these entry-point groups. Each entry point names
+# one module, so a broken model never hides your plots or workflow nodes.
+[project.entry-points."mapi.models"]
+acme = "acme.model:MODELS"
+
+[project.entry-points."mapi.steps"]
+acme = "acme.steps:STEPS"
+
+[project.entry-points."mapi.plots"]
+acme = "acme.plots:RECIPES"
+
+[project.entry-points."mapi.workflow_nodes"]
+acme = "acme.nodes:NODES"
+
+[project.entry-points."mapi.workflow_templates"]
+acme = "acme.templates:TEMPLATES"
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/acme"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["mapi_contract: mapi contract-kit checks"]

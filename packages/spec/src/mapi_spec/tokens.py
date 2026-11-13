@@ -17,6 +17,10 @@ response ever contains the hash or, after creation, the secret.
 A token acts **as its owner, narrowed by its scopes**: every request needs both the owner's
 project role (:func:`mapi_spec.tenancy.can`) and a scope that covers the action
 (:func:`scope_allows`). Tokens are bound to one project of one tenant.
+
+v0.20: a *dashboard read token* carries exactly one scope, ``dashboard:<dashboard_id>``
+(:func:`dashboard_scope`). It grants ``read`` on that one dashboard and nothing else, and the
+server accepts it only on the MCP endpoint (``mapi_spec.api.DASHBOARD_TOKEN_ROUTES``).
 """
 
 from __future__ import annotations
@@ -25,7 +29,7 @@ import hmac
 import re
 import secrets
 import zlib
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
@@ -44,6 +48,7 @@ from mapi_spec._dto import (
 )
 from mapi_spec._types import StrictModel
 from mapi_spec.errors import ErrorCode, MapiError
+from mapi_spec.storage import SEGMENT_RE
 
 __all__ = [
     "AUTHORIZATION_SCHEME",
@@ -52,6 +57,7 @@ __all__ = [
     "TOKEN_ALPHABET",
     "TOKEN_CHECKSUM_LEN",
     "TOKEN_ID_PREFIX",
+    "TOKEN_ID_RE",
     "TOKEN_NEVER",
     "TOKEN_PREFIX_LEN",
     "TOKEN_RE",
@@ -68,6 +74,8 @@ __all__ = [
     "TokenStatus",
     "bearer_token",
     "check_scope",
+    "dashboard_scope",
+    "dashboard_scope_target",
     "generate_token",
     "hash_token",
     "looks_like_token",
@@ -76,6 +84,7 @@ __all__ = [
     "redact_token",
     "scope_allows",
     "token_checksum",
+    "validate_scopes",
     "verify_token_hash",
 ]
 
@@ -86,6 +95,8 @@ TOKEN_PREFIX_LEN: Final = 8
 TOKEN_SECRET_LEN: Final = 32
 TOKEN_CHECKSUM_LEN: Final = 7
 TOKEN_ID_PREFIX: Final = "tok"
+TOKEN_ID_RE: Final = r"^tok_[0-9a-hjkmnp-tv-z]{26}$"
+"""A token id (``tok_`` and 26 lowercase Crockford base32 characters)."""
 AUTHORIZATION_SCHEME: Final = "Bearer"
 DEFAULT_TOKEN_TTL_DAYS: Final = 90
 MAX_TOKEN_TTL_DAYS: Final = 365
@@ -209,7 +220,8 @@ def verify_token_hash(token: str | ParsedToken, stored: str, pepper: bytes) -> b
 
 class ScopeName(StrEnum):
     """Scope families. ``score`` is always written with a target: ``score:<endpoint alias>``
-    or ``score:<model id>`` (``score:*``: every endpoint and model of the project)."""
+    or ``score:<model id>`` (``score:*``: every endpoint and model of the project).
+    ``dashboard`` is always written with a dashboard id: ``dashboard:<dashboard_id>``."""
 
     MODELS_READ = "models:read"
     RUNS_CREATE = "runs:create"
@@ -230,27 +242,68 @@ class ScopeName(StrEnum):
     """M3.5: manage the project's governance policies (policy-as-code)."""
     RUNS_WRITE = "runs:write"
     """v0.11: rename runs, edit notes and tags, log metrics and params to existing runs."""
+    DASHBOARD = "dashboard"
+    """v0.20: read one dashboard (``dashboard:<dashboard_id>``) over MCP; alone on its token."""
     ADMIN = "admin"
 
 
 _ENDPOINT_TARGET = re.compile(r"^(?:\*|[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)$")
-_FIXED_SCOPES = frozenset(s.value for s in ScopeName if s is not ScopeName.SCORE)
+_DASHBOARD_TARGET = re.compile(SEGMENT_RE)
+_TARGETED = frozenset({ScopeName.SCORE, ScopeName.DASHBOARD})
+_FIXED_SCOPES = frozenset(s.value for s in ScopeName if s not in _TARGETED)
 
 
 def parse_scope(value: str) -> tuple[ScopeName, str | None]:
-    """``"score:geo-mmm-prod"`` → ``(SCORE, "geo-mmm-prod")``; other scopes have no target.
+    """``"score:geo-mmm-prod"`` → ``(SCORE, "geo-mmm-prod")``; ``"dashboard:<id>"`` →
+    ``(DASHBOARD, "<id>")``; other scopes have no target.
 
-    ``score:*`` covers every endpoint of the token's project.
+    ``score:*`` covers every endpoint of the token's project. ``dashboard`` has no wildcard:
+    its target is one dashboard id.
     """
     if value in _FIXED_SCOPES:
         return ScopeName(value), None
     family, sep, target = value.partition(":")
     if family == ScopeName.SCORE.value and sep and _ENDPOINT_TARGET.fullmatch(target):
         return ScopeName.SCORE, target
+    if family == ScopeName.DASHBOARD.value and sep and _DASHBOARD_TARGET.fullmatch(target):
+        return ScopeName.DASHBOARD, target
     raise ValueError(
-        f"unknown scope {value[:80]!r}; expected one of "
-        f"{sorted(_FIXED_SCOPES)} or 'score:<endpoint alias>'"
+        f"unknown scope {value[:80]!r}; expected one of {sorted(_FIXED_SCOPES)}, "
+        "'score:<endpoint alias>' or 'dashboard:<dashboard id>'"
     )
+
+
+def dashboard_scope(dashboard_id: str) -> str:
+    """The scope of a read token for one dashboard: ``dashboard:<dashboard_id>``."""
+    scope = f"{ScopeName.DASHBOARD.value}:{dashboard_id}"
+    parse_scope(scope)  # ValueError for an id that is not a valid target
+    return scope
+
+
+def dashboard_scope_target(scopes: Sequence[str]) -> str | None:
+    """The dashboard id of a read token's scopes, or ``None`` for any other token.
+
+    A valid read token has exactly one scope (:func:`validate_scopes`); scopes that do not
+    parse are ignored here (they grant nothing).
+    """
+    for raw in scopes:
+        try:
+            name, target = parse_scope(raw)
+        except ValueError:
+            continue
+        if name is ScopeName.DASHBOARD:
+            return target
+    return None
+
+
+def validate_scopes(scopes: list[str]) -> list[str]:
+    """Pydantic validator for a token's scope list: unique, and a ``dashboard:`` scope is the
+    token's only scope (a read token can never also carry ``models:read`` or ``admin``)."""
+    if len(set(scopes)) != len(scopes):
+        raise ValueError("scopes must be unique")
+    if len(scopes) > 1 and any(s.startswith(f"{ScopeName.DASHBOARD.value}:") for s in scopes):
+        raise ValueError("a dashboard scope must be the only scope of its token")
+    return scopes
 
 
 def check_scope(value: str) -> str:
@@ -266,7 +319,8 @@ TokenScope = Annotated[
 ]
 """``models:read`` | ``runs:create`` | ``score:{endpoint}`` | ``plugins:publish`` |
 ``datasets:write`` | ``endpoints:promote`` | ``webhooks:manage`` | ``workflows:write`` |
-``workflows:run`` | ``models:validate`` | ``policies:manage`` | ``runs:write`` | ``admin``."""
+``workflows:run`` | ``models:validate`` | ``policies:manage`` | ``runs:write`` |
+``dashboard:{dashboard_id}`` (alone on its token) | ``admin``."""
 
 
 def scope_allows(
@@ -289,7 +343,7 @@ def scope_allows(
     =====================  =======================================================
     ``admin``              everything the owner's role allows
     ``models:read``        ``read`` on catalog, dataset, spec, run, model, endpoint,
-                           plot, usage, project
+                           plot, usage, project, workflow, policy, dashboard, library
     ``runs:create``        ``models:read`` + ``create``/``cancel`` run, ``run``
                            model, endpoint, plot
     ``score:<target>``     ``read`` + ``run`` on that endpoint and ``run`` (score)
@@ -308,6 +362,8 @@ def scope_allows(
     ``policies:manage``    ``read``/``create``/``update``/``delete`` policy
     ``runs:write``         ``models:read`` + ``update`` run (name, note, tags, metric
                            and param writes)
+    ``dashboard:<id>``     ``read`` on the dashboard with that id, nothing else
+                           (v0.20 read tokens; the server takes them on MCP only)
     =====================  =======================================================
 
     No scope covers :data:`TOKEN_NEVER`: minting tokens (a child token would escape its
@@ -330,6 +386,10 @@ def scope_allows(
             ):
                 return True
             continue
+        if name is ScopeName.DASHBOARD:
+            if (resource, action) in _DASHBOARD_GRANTS and resource_name == target:
+                return True
+            continue
         if (resource, action) in _SCOPE_GRANTS[name]:
             return True
     return False
@@ -338,6 +398,9 @@ def scope_allows(
 _SCORE_GRANTS = frozenset({("endpoint", "read"), ("endpoint", "run"), ("model", "run")})
 """What ``score:<target>`` covers on the endpoint or model named ``<target>``."""
 
+_DASHBOARD_GRANTS = frozenset({("dashboard", "read")})
+"""What ``dashboard:<target>`` covers on the dashboard whose id is ``<target>``."""
+
 TOKEN_NEVER: Final[frozenset[tuple[str, str]]] = frozenset(
     {
         ("token", "create"),
@@ -345,16 +408,20 @@ TOKEN_NEVER: Final[frozenset[tuple[str, str]]] = frozenset(
         ("model", "approve"),
         ("dashboard_grant", "create"),
         ("dashboard_share", "create"),
+        ("plugin", "approve"),
+        ("plugin", "delete"),
+        ("plugin_settings", "update"),
     }
 )
 """``(resource, action)`` pairs no token may do, whatever its scopes (even ``admin``):
 minting tokens, overriding an endpoint's promotion gate, approving a model validation
-(M3.5: a reviewer's decision) and granting a dashboard or minting a share link (v0.16: both
-hand access to people outside the token's audit trail)."""
+(M3.5: a reviewer's decision), granting a dashboard or minting a share link (v0.16: both
+hand access to people outside the token's audit trail), and approving or yanking uploaded
+code or changing who may upload it (v0.19: a person signed in to the web app decides)."""
 
 _READABLE = (
     "catalog", "dataset", "spec", "run", "model", "endpoint", "plot", "usage", "project",
-    "workflow", "policy", "dashboard",
+    "workflow", "policy", "dashboard", "library",
 )  # fmt: skip
 _READ = frozenset((r, "read") for r in _READABLE)
 _SCOPE_GRANTS: dict[ScopeName, frozenset[tuple[str, str]]] = {
@@ -371,8 +438,9 @@ _SCOPE_GRANTS: dict[ScopeName, frozenset[tuple[str, str]]] = {
     ScopeName.DATASETS_WRITE: frozenset(
         {("dataset", "read"), ("dataset", "create"), ("dataset", "update")}
     ),
+    # v0.19: push a wheel, read its state and ask for approval; never approve or yank
     ScopeName.PLUGINS_PUBLISH: frozenset(
-        {("plugin", "read"), ("plugin", "create"), ("plugin", "delete")}
+        {("plugin", "read"), ("plugin", "create"), ("plugin", "update")}
     ),
     ScopeName.ENDPOINTS_PROMOTE: frozenset(
         {
@@ -417,6 +485,7 @@ _SCOPE_GRANTS: dict[ScopeName, frozenset[tuple[str, str]]] = {
     ),
     ScopeName.ADMIN: frozenset(),
     ScopeName.SCORE: frozenset(),
+    ScopeName.DASHBOARD: frozenset(),
 }
 
 
@@ -436,15 +505,9 @@ class TokenStatus(StrEnum):
     REVOKED = "revoked"
 
 
-_TOKEN_ID = r"^tok_[0-9a-hjkmnp-tv-z]{26}$"
+_TOKEN_ID = TOKEN_ID_RE
 _PREFIX_FIELD = Field(..., pattern=_PREFIX_RE, examples=["7k2m9q4x"])
 _SCOPES_FIELD = Field(..., min_length=1, max_length=32)
-
-
-def _unique_scopes(scopes: list[str]) -> list[str]:
-    if len(set(scopes)) != len(scopes):
-        raise ValueError("scopes must be unique")
-    return scopes
 
 
 class TokenCreate(RequestModel):
@@ -455,7 +518,7 @@ class TokenCreate(RequestModel):
     """
 
     name: str = Field(..., min_length=1, max_length=100, pattern=r"^[^\x00-\x1f\x7f]+$")
-    scopes: Annotated[list[TokenScope], AfterValidator(_unique_scopes)] = _SCOPES_FIELD
+    scopes: Annotated[list[TokenScope], AfterValidator(validate_scopes)] = _SCOPES_FIELD
     expires_in_days: int = Field(DEFAULT_TOKEN_TTL_DAYS, ge=1, le=MAX_TOKEN_TTL_DAYS)
     rate_limit_per_minute: int | None = Field(None, ge=1, le=100_000)
     vcpu_seconds_budget: float | None = Field(None, gt=0)

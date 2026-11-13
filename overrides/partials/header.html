@@ -1,0 +1,52 @@
+{#-
+  Mono theme: the header row.
+
+  Brand on the left, the top-level tabs as centred pill links, then the tools: the search
+  pill, the palette toggle and, on small screens, the menu button.
+
+  The hooks that Material's JavaScript needs stay: data-md-component="header" and "logo",
+  the labels for="__search" and for="__drawer", and the palette form. The search dialog
+  itself is included by main.html, after this header.
+-#}
+<header class="md-header mono-header" data-md-component="header">
+  <nav class="md-header__inner md-grid mono-header__inner" aria-label="{{ lang.t('header') }}">
+    <a href="{{ config.extra.homepage | d(nav.homepage.url, true) | url }}" class="md-header__button md-logo mono-brand" aria-label="{{ config.site_name }}" data-md-component="logo">
+      {% include "partials/logo.html" %}
+      <span class="mono-brand__name">{{ config.site_name }}</span>
+    </a>
+    {% if "navigation.tabs" in features %}
+      {% include "partials/tabs.html" %}
+    {% endif %}
+    <div class="mono-header__tools">
+      {% if "material/search" in config.plugins %}
+        {% set search = config.plugins["material/search"] | attr("config") %}
+        {% if search.enabled %}
+          <label class="mono-search-btn" for="__search" role="button" tabindex="0" aria-label="Search the documentation" aria-keyshortcuts="/ Control+K Meta+K" data-mono-search-open>
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4.5 4.5"/></svg>
+            <span class="mono-search-btn__text">Search</span>
+            <kbd class="mono-search-btn__kbd" data-mono-kbd>Ctrl K</kbd>
+          </label>
+        {% endif %}
+      {% endif %}
+      {% if config.theme.palette %}
+        {% if not config.theme.palette is mapping %}
+          {% include "partials/palette.html" %}
+        {% endif %}
+      {% endif %}
+      {% if not config.theme.palette is mapping %}
+        {% include "partials/javascripts/palette.html" %}
+      {% endif %}
+      {% if config.extra.alternate %}
+        {% include "partials/alternate.html" %}
+      {% endif %}
+      <label class="md-header__button mono-menu-btn" for="__drawer" role="button" tabindex="0" aria-label="Menu">
+        <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M2 6h14M2 12h14"/></svg>
+      </label>
+    </div>
+    {% if config.repo_url %}
+      <div class="md-header__source">
+        {% include "partials/source.html" %}
+      </div>
+    {% endif %}
+  </nav>
+</header>

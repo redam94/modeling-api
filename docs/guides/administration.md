@@ -9,7 +9,7 @@ manage the deployment. It tells who can do what, and how the platform limits com
 charges for it. It also tells what to do when a problem occurs. For the concepts, see
 [Tenancy and authentication](../concepts/tenancy-and-auth.md) and
 [Quotas and cost](../concepts/quotas-and-cost.md). For sign-in, see
-[Authentication](authentication.md).
+[Sign in](authentication.md).
 
 There are three administrative jobs, and the platform keeps them separate:
 
@@ -29,7 +29,7 @@ operator). It also signs in as `analyst@dev.local`, who becomes the admin of the
 ```
 
 On a real deployment, each person runs `mapi login` instead (see
-[Authentication](authentication.md#the-command-line)). Operator commands always need a
+[Sign in](authentication.md#the-command-line)). Operator commands always need a
 sign-in. An API token never has operator powers, also when its owner is an operator.
 
 ## Tenants
@@ -190,6 +190,11 @@ The platform shows the secret **one time** only. The server stores only an HMAC 
 if you lose a token, you revoke and replace it. You cannot get it back. A revocation has an
 effect on the next request.
 
+A **read token** is a different kind of token. It reads one dashboard over MCP only, has
+the scope `dashboard:<dashboard_id>` and does not show on the Tokens page. People make
+read tokens on the dashboard
+([Connect a chat tool with MCP](connect-a-chat-tool-with-mcp.md)).
+
 ### Scopes
 
 Scopes can only make a token more limited. A token can never do more than the role of its
@@ -264,12 +269,13 @@ The amounts are an estimate of compute cost at list prices. They are not an invo
 
 ## Kill switches
 
-Two platform-wide switches stop compute quickly. The platform audits both, and both need a
-reason:
+These platform-wide switches stop compute or the dashboard chat quickly. The platform audits
+each change, and each change needs a reason:
 
 | Switch | Effect |
 |---|---|
 | **Uploaded code** (`untrusted_execution_enabled`) | Off: the platform does not accept or lease runs of plugin code that a tenant uploaded. Built-in models continue to work. |
+| **Dashboard chat** (`chat_enabled`) | Off: no chat question reaches a model, on all dashboards ([Ask about your dashboard](ask-about-your-dashboard.md#for-operators)). MCP continues to work. |
 | **Global spend cap** | When the spend of the platform in the current UTC day or month gets to the cap, no new compute starts. Only `internal` tenants can still start compute. |
 
 ```bash
@@ -344,7 +350,7 @@ filter by tenant, project, actor, action, result and time.
 
 ## Where next
 
-- [Authentication](authentication.md): browser sign-in, the development IdP, Identity
+- [Sign in](authentication.md): browser sign-in, the development IdP, Identity
   Platform, API tokens and the CLI.
 - [Permissions](../reference/generated/permissions.md): the generated matrices.
 - [CLI reference](../reference/generated/cli-reference.md#mapi-admin): all `mapi admin` and

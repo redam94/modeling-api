@@ -14,6 +14,11 @@ time shifts, recovery on simulated data, ...) and the policy store.
   (``services["governance"].resolver``): the control plane resolves the policies in force
   for the model's family before it starts the node. Without a resolver no policy applies,
   and the node says so.
+
+Uploaded code (v0.19) may not export check runners: an entry point of this group from a
+mounted overlay (the path rule of :func:`mapi_sdk.registry.plugin_entry_points`) is never
+loaded and gives a ``load_error`` diagnostic ("uploaded governance checks are not
+supported"), so an upload can never decide whether a model is validated.
 """
 
 from __future__ import annotations
@@ -24,6 +29,8 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Final, Protocol
 
+from mapi_sdk.registry import EntryPointOrigin, UploadOverlay, plugin_entry_points
+from mapi_spec.catalog import CatalogDiagnostic, DiagnosticCode
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.governance import (
     GOVERNANCE_CHECKS,
@@ -95,20 +102,106 @@ class GovernanceServices:
     """Also use the installed check runners (``mapi.governance_checks``); ``runners`` win."""
 
 
-def load_check_runners() -> dict[str, CheckRunner]:
-    """Check runners exported by installed distributions (``mapi.governance_checks``)."""
+_CHECK_LOAD_ERROR: Final = (
+    "The governance check entry point could not be loaded. Its checks are not available."
+)
+_CHECK_INVALID: Final = (
+    "The governance check entry point exports something that is not a check runner. It is "
+    "not available."
+)
+_CHECK_COLLISION: Final = (
+    "Another entry point already has a runner for this check. The first one is kept."
+)
+_CHECK_UPLOADED: Final = "Uploaded governance checks are not supported. The entry point is ignored."
+
+
+def _check_diagnostic(
+    ep: importlib.metadata.EntryPoint,
+    code: DiagnosticCode,
+    message: str,
+    *,
+    id_: str | None = None,
+    untrusted: str | None = None,
+    distribution: str | None = None,
+) -> CatalogDiagnostic:
+    dist = distribution or getattr(getattr(ep, "dist", None), "name", None)
+    return CatalogDiagnostic(
+        code=code,
+        group=CHECK_ENTRY_POINT_GROUP,
+        entry_point=ep.name[:128],
+        distribution=dist[:128] if dist else None,
+        id=id_[:128] if id_ else None,
+        message=message,
+        untrusted_text=untrusted[:500] if untrusted else None,
+    )
+
+
+def load_check_runners(
+    *,
+    diagnostics: list[CatalogDiagnostic] | None = None,
+    overlays: Sequence[UploadOverlay] | None = None,
+    only: str | None = None,
+) -> dict[str, CheckRunner]:
+    """Check runners exported by installed distributions (``mapi.governance_checks``).
+
+    What cannot be used (an entry point that fails to load, an export that is not a mapping
+    of check ids to callables, a second runner for a check) is skipped as before and, v0.18,
+    appended to ``diagnostics`` when given (the runner's catalog export reports them).
+
+    v0.19: an entry point from a mounted upload (``overlays``, default: the process's) is
+    never loaded; it gives a ``load_error`` diagnostic. ``only`` keeps the entry points of
+    one origin (a PEP 503 distribution name or ``upload:<pvid>``)."""
     out: dict[str, CheckRunner] = {}
-    for ep in importlib.metadata.entry_points(group=CHECK_ENTRY_POINT_GROUP):
+    diags: list[CatalogDiagnostic] = [] if diagnostics is None else diagnostics
+    for found in plugin_entry_points(CHECK_ENTRY_POINT_GROUP, overlays):
+        if only is not None and found.origin != only:
+            continue
+        ep = found.entry_point
+        if found.overlay is not None:
+            diags.append(_uploaded(found))
+            continue
         try:
             obj = ep.load()
             mapping = obj() if callable(obj) and not isinstance(obj, Mapping) else obj
-        except Exception:
+        except Exception as exc:  # report and keep going: one bad plugin
+            diags.append(
+                _check_diagnostic(
+                    ep, "load_error", _CHECK_LOAD_ERROR, untrusted=f"{type(exc).__name__}: {exc}"
+                )
+            )
             continue
-        if isinstance(mapping, Mapping):
-            for k, v in mapping.items():
-                if isinstance(k, str) and callable(v) and k not in out:
-                    out[k] = v
+        if not isinstance(mapping, Mapping):
+            diags.append(
+                _check_diagnostic(
+                    ep,
+                    "load_error",
+                    _CHECK_INVALID,
+                    untrusted=f"exported {type(mapping).__name__}, not a mapping",
+                )
+            )
+            continue
+        for k, v in mapping.items():
+            if not isinstance(k, str) or not callable(v):
+                diags.append(
+                    _check_diagnostic(
+                        ep, "load_error", _CHECK_INVALID, untrusted=f"{k!r} -> {type(v).__name__}"
+                    )
+                )
+            elif k in out:
+                diags.append(_check_diagnostic(ep, "id_collision", _CHECK_COLLISION, id_=k))
+            else:
+                out[k] = v
     return out
+
+
+def _uploaded(found: EntryPointOrigin) -> CatalogDiagnostic:
+    return _check_diagnostic(
+        found.entry_point,
+        "load_error",
+        _CHECK_UPLOADED,
+        untrusted=found.entry_point.value,
+        distribution=found.distribution,
+    )
 
 
 def _services(ctx: NodeContext) -> GovernanceServices:

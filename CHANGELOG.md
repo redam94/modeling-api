@@ -5,6 +5,478 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+### One look, and a search that finds your work (v0.21)
+
+The web app and the documentation site have one look: monochrome controls, colour for data,
+in light and dark. The command palette of the web app is now a search that finds pages,
+actions, your items by name, ids and documentation pages. The documentation has six tabs, a
+new home page and a tuned search. The API, the database and the stored documents do not
+change.
+
+#### Added
+- Web app, search: one overlay (`Cmd/Ctrl+K` or `/`, or **Search** in the top bar) with the
+  groups **Recent**, **Go to**, a group for each kind of item (datasets, models, specs,
+  runs, experiments, dashboards, workflows, endpoints, the catalog and Make your own),
+  **Actions** and **Docs**. With text, the actions come after the pages and the items, and
+  an item shows only when its name has each word of the text. Each group shows at most 5 results and **See all in**, which opens the
+  list page with `?q=`. A pasted id with one of 12 prefixes (`run_`, `ds_`, `spc_`, `mdl_`,
+  `dsh_`, `exp_`, `wf_`, `val_`, `pol_`, `whk_`, `plg_`, `lib_`) opens its page.
+- The search follows the navigation mode and the role: it offers no page, group, id or
+  recent item that the sidebar hides. The client portal and the share page have no search.
+- Recent items of the search: the last 8 for each project, in the browser
+  (`mapi.search.recent`), with **Clear recent items**. The list has the items opened from
+  the search and the pages visited. Sign-out removes it.
+- A search index of the documentation for the app (`scripts/gen_docs_search_index.py` writes
+  `apps/web/src/features/search/docs-index.gen.json`, at most 120 KB). `make web-check`
+  fails when the file is not current. The group **Docs** needs `VITE_DOCS_URL`.
+- Web app, lists: one toolbar on the list pages (Datasets, Build, Runs, Models,
+  Experiments, Workflows, Dashboards, Integrations, Catalog and Make your own) with a search
+  field and the filters of the page. The text is in the address (`?q=`), and a line counts
+  the results. The Runs page keeps `name=` in its address and reads `?q=` as the name too.
+- Web app, navigation: breadcrumbs on each detail page (`PageHeader` takes `crumbs`), and a
+  **Help** group in the account menu with **Read the docs** (needs `VITE_DOCS_URL`),
+  **Keyboard shortcuts** and the tours.
+- Generated line art, committed with its provenance (model, prompt, request id and date):
+  11 backdrops and 28 tile icons for the docs (`docs/assets/brand/`), and the sign-in,
+  Start here, not-found and empty-list images of the app (`apps/web/src/assets/brand/`).
+  The app has a favicon.
+- Docs, theme: templates in `overrides/`, four stylesheets (`docs/stylesheets/mono*.css`),
+  one script (`docs/javascripts/mono.js`) and building blocks for pages (bands, tiles,
+  steps, link rows, figures). The theme has a light and a dark scheme.
+- Docs, navigation: a home page with a path for each role and links to tasks, landing pages
+  for the guides (`guides/index.md`) and the reference (`reference/index.md`), and
+  breadcrumbs on each page.
+- Docs, search: `/` and `Cmd/Ctrl+K` open it, a **Try** list shows for an empty field
+  (`extra.search_popular`), each result names its section, and `scripts/mkdocs_hooks.py`
+  sets the rank of each page from its path. Version badges are not in result titles. The
+  changelog and the old upload roadmap are not in the index.
+- `scripts/vendor_mermaid.py` (mermaid 11.17.2, with a pinned SHA-256).
+- Docs: "What's new in 0.21" and "The docs theme" (for contributors).
+- Tests: `test_docs_theme.py`, `test_docs_nav.py`, `test_docs_search_index.py` and
+  `test_docs_v021.py`. `make docs-test` runs them.
+
+#### Changed
+- The chart palette: each swatch of `mapi_plots.palette` (`mapi-plots`, Apache-2.0) has new
+  light and dark values. The names of the swatches and the functions do not change. The
+  plot sandbox and the series colours of the app (`--series-1` to `--series-8`) use the same
+  new values. A plot that a model version stored before this release keeps its old colour
+  values in the stored document. The plot sandbox draws each old fixed recipe colour as the
+  new colour of the same role, in the two themes (`apps/plot-sandbox/src/legacy-palette.ts`),
+  so a new fit is not necessary.
+- The tokens of the web app (`apps/web/src/app.css`) have new values in the two themes. The
+  ramps `brand-*`, `lime-*` and `coral-*` are removed. The ramps are now `grey-*`, `blue-*`,
+  `orange-*`, `green-*` and `red-*`.
+- The Bricolage Grotesque font and its package
+  (`@fontsource-variable/bricolage-grotesque`) are removed. Text uses the system font, with
+  Inter and JetBrains Mono (self-hosted) where the system has none.
+- The docs site loads no file from another host. Inter and JetBrains Mono (`docs/assets/fonts/`,
+  OFL-1.1) and mermaid (`docs/assets/vendor/mermaid/`, MIT) are vendored. Before, the fonts
+  came from Google Fonts and mermaid came from unpkg. A page loads mermaid only when it has
+  a diagram.
+- The docs have six tabs (Home, Learn, Guides, Extend, Reference, Operate), not ten. No page
+  moved and no address changed.
+- Nine docs page titles changed. The address of each page is the same, but the anchor of
+  the title is new:
+  "Getting started" is "Get started: install and first steps",
+  "Your first analysis in Guided mode" is "Your first MMM in Guided mode",
+  "Marketing-mix models" is "Marketing-mix models (MMM)",
+  "Share dashboards securely" is "Share dashboards securely with a share link",
+  "Authentication" is "Sign in",
+  "Authentication and tenant isolation" is "Set up sign-in and tenant isolation",
+  "Upload your own code" is "Upload your own code: models, steps and plots",
+  "Workflows" (concept) is "How workflows work", and
+  "Measure the effect of a change" (concept) is "How the platform measures the effect of a
+  change".
+- The docs search separator also splits at `_`, at a `.` that is not before a digit and at
+  punctuation. Thus `share link` finds `share_link`. The inline suggestion
+  (`search.suggest`) is removed.
+- The label of the command palette, "Jump to…", is now "Search". The dialog and its field
+  have the accessible name "Search". The shortcuts dialog shows `Ctrl` on Windows and Linux.
+- The `g` shortcuts go only to pages that the sidebar shows. Before, a member of a project
+  that is locked to Guided mode could open a hidden page with a shortcut or from the
+  command palette.
+- The SVG illustration components `HeroArt` and the seven `Empty…Art` components are removed
+  from `components/illustrations`. The generated images replace them. `CatalogGlyph` stays.
+- The back links of the detail pages are removed. The breadcrumbs replace them.
+- `docs/stylesheets/extra.css` is removed. The four `mono*.css` files replace it.
+- The home page of the docs is short. Its long sections moved to "Why modeling-api?".
+
+#### Known gaps
+- The app has no search endpoint on the server. For datasets, models, specs, dashboards,
+  workflows and endpoints, the search reads the first 200 items of each kind in the project
+  and does not search the names of the items after these.
+- **See all in** and the search field of a list show an item only when the item has each
+  word of the text.
+- The recent items of the search (the items opened from the search and the pages visited)
+  stay in one browser until sign-out.
+- **Read the docs** and the group **Docs** show only when the build of the app has
+  `VITE_DOCS_URL`. No build that comes with the platform sets it: not the `mapi/web` image,
+  not `make dev` and not the mock build.
+- 25 screenshots in the docs show the look of earlier versions: 13 science screenshots
+  (`science-*.png`), 5 of the 8 screenshots of release 0.15 (`whats-new-015-*.png`) and the
+  7 screenshots in `docs/assets/first-model/`. All other screenshots show the new look. In
+  the dark scheme of the docs, a screenshot of the light theme shows as a light panel.
+- The pictures of the plot recipes catalog (`docs/assets/plots/`) have the new fixed
+  colours. Their series keep the default colours of the renderer.
+- The account chooser of the development IdP and the HTML page of an evidence pack are not
+  themed.
+- The OpenAPI explorer (Redoc) stays light in the dark scheme of the docs.
+- The new look was checked in Chromium only. Safari and Firefox were not checked. Some
+  small refinements of the docs need `:has()`. Without it the pages still read correctly.
+- The tabs of the docs move into the menu below 1220 px, not below 980 px.
+- Headings that come from an included file are not in the docs index of the app.
+- The fonts and mermaid of the docs site are not in `THIRD-PARTY-NOTICES.md`, because that
+  file comes from the lock files. Each has its licence text beside it.
+
+### Ask about your dashboard (v0.20)
+
+Readers can ask an AI assistant about the numbers on a dashboard. The assistant reads the
+dashboard with the read-only dashboard tools and answers with the numbers that it found.
+Chat tools and agents can use the same tools over MCP with a dashboard read token or a share
+link. The chat is off on each dashboard until an editor turns it on.
+
+#### Added
+- Dashboard chat: `GET`/`POST /v1/dashboards/{dashboard_id}/chat` (team members and client
+  users, web sign-in only) and `GET`/`POST /v1/shared/chat` (share sessions). The API server
+  runs the chat. It calls the Gemini Developer API (`gemini-3.1-flash-lite`, REST through
+  `httpx`, no Google SDK) with the 14 tools of `DASHBOARD_TOOLS`, at most 6 tool calls for
+  each question, and answers in one message (no stream).
+- Chat settings for each dashboard (`dashboard_chat_settings`, `GET`/`PUT
+  .../chat/settings` with `If-Match`): on or off, the readers (team members, client users,
+  share links; links are off by default), kept conversations, and daily token limits for
+  the dashboard (200,000) and for each share link (50,000). A change makes no new revision.
+- Kept conversations (opt-in, 30 days, `MAPI_CHAT_TRANSCRIPT_TTL_DAYS`): editors list, read
+  and delete them under `.../chat/transcripts`. Housekeeping deletes expired turns each hour.
+  The workspace export contains them, except turns from share links. Tenant deletion
+  deletes them.
+- Usage rows (`dashboard_chat_usage`): one for each question, with token counts, the tool
+  calls and a cost estimate from a pinned price table (`MAPI_CHAT_PRICE_*`). No text.
+- Protection of the answers: a fixed system instruction with no workspace text, signed
+  chat history (`CHAT_HISTORY_INVALID`), a check of the credential before each model call and
+  each tool call, removal of links, images, HTML and control characters from answers, and the
+  notice `unverified_numbers` for numbers that are not in a tool result.
+- Tool results are shortened to a byte budget (`mapi_spec.tool_results.cap_tool_result`):
+  24 KiB for the chat, 64 KiB for MCP.
+- MCP: `POST /v1/mcp` (stateless streamable HTTP, JSON answers; `initialize`, `ping`,
+  `tools/list`, `tools/call`; revisions `2025-11-25` and `2025-06-18`) and the
+  pure protocol core `mapi_spec.mcp`. No MCP SDK.
+- The package `mapi-mcp` (version 0.16.0, Apache-2.0): a stdio bridge to `POST /v1/mcp`. It
+  reads its credential from the environment or from `~/.config/mapi/mcp.json` (mode 0600
+  only), refuses command-line arguments and removes secrets from its log.
+- Dashboard read tokens: the scope `dashboard:<dashboard_id>`, made with a web sign-in
+  under `/v1/dashboards/{dashboard_id}/read-tokens` (client users too), at most 90 days and
+  5 active tokens for each person and dashboard (`READ_TOKEN_LIMIT`). They work only on
+  `POST /v1/mcp` and see published readouts only. Access to the dashboard is checked on each
+  request.
+- The web app: **Ask about this dashboard** on the readout page, the client portal and the
+  share page (a lazy `chat-panel` chunk, a renderer that makes React elements only), the
+  **Chat** section and **Kept conversations** in the builder, and **Connect a chat tool**
+  (make, list and revoke read tokens; copy a stdio or HTTP configuration).
+- Error codes `CHAT_DISABLED`, `CHAT_UNAVAILABLE`, `CHAT_BUDGET_EXHAUSTED`,
+  `CHAT_HISTORY_INVALID` and `READ_TOKEN_LIMIT`; audit actions `dashboard.chat_settings`,
+  `dashboard.chat_transcript_delete`, `dashboard.read_token_create` and
+  `dashboard.read_token_revoke`.
+- The kill switch `chat_enabled` (`PUT /v1/admin/kill-switches`, or "Dashboard chat" in
+  Admin console › Kill switches) stops all chats. MCP continues.
+- A query string on `/v1/mcp` (for example a misplaced `?token=mapi_…`) is written as
+  `?REDACTED` in the access log and in request spans.
+- Settings: `MAPI_CHAT_PROVIDER` (`off`, `gemini` or `fake`), `MAPI_GEMINI_API_KEY`,
+  `MAPI_GEMINI_ENDPOINT`, `MAPI_CHAT_*`, `MAPI_MCP_ENABLED`, `MAPI_MCP_ALLOWED_ORIGINS`,
+  `MAPI_MCP_RATE_PER_MINUTE`, `MAPI_DASHBOARD_READ_TOKEN_MAX_DAYS` and
+  `MAPI_DASHBOARD_READ_TOKENS_PER_USER`. The fake model makes no network call. The server
+  does not start with it in the multi-tenant profile, with `cloudrun-jobs`, with `gcs` or on
+  Cloud Run.
+- Terraform: the `chat` variable and the `gemini-api-key` secret (written with a
+  write-only argument, read by the API service only).
+- Docs: "Ask about your dashboard", "Connect a chat tool with MCP" and "What's new in 0.20".
+- Migration `0024_dashboard_chat`.
+
+#### Changed
+- The budget of the `share-app` chunk is 292 KiB (was 288 KiB), for the chat button and the
+  lazy import of the chat panel.
+- The generic token routes (`/v1/tokens`) do not list or make dashboard read tokens. A
+  dashboard read token on any route other than `POST /v1/mcp` gets `403 FORBIDDEN`.
+- Share sessions: an internal check of a session can skip the request counters, so that
+  the checks before each step of a chat do not use the limits of the link.
+
+#### Known gaps
+- No real Gemini call was made. The adapter is tested with recorded answers built from the
+  API reference. Do a check with a real key before you turn on the chat for clients.
+- No real MCP desktop client was tested. The secret injection on Cloud Run is validated by
+  Terraform only.
+- The chat works only for workspaces with the data residency `us` by default (the Gemini
+  Developer API is a global endpoint). Regional endpoints are not available.
+
+### Upload your own code (v0.19)
+
+Tenant admins, and editors that a tenant admin confirmed, can upload pure-Python wheels with
+models, preprocessing steps, plot recipes, workflow nodes and workflow templates. The
+platform checks each wheel in the runner sandbox and runs the contract kits. The uploader
+can use a version that passed the checks. A second tenant admin approves it before the
+workspace can use it. The control plane never opens or imports an upload. The public tier
+cannot upload.
+
+#### Added
+- Uploaded plugins (`mapi_spec.plugins`): namespaces `t_<tenant code>_<short name>`
+  (`upload_namespace`, `is_uploaded_id`), the version states (`uploaded` to `approved`,
+  `rejected`, `yanked`, `purged`), the inspect and describe results, overlay pins and the
+  DTOs. `mapi_spec.text_safety` normalizes all text from uploads.
+- Routes: `/v1/plugins` (claim, list, versions, upload tickets, `:complete`,
+  `:request-approval`, `:approve`, `:reject`, `:yank`, `/usage`, `/examples/{plot_id}`) and
+  `/v1/tenants/{tenant_id}/plugin-settings` and `/plugin-uploaders`.
+- Run kinds `plugin_inspect` (reads the wheel as an archive and imports nothing) and
+  `plugin_describe` (mounts the wheel, exports its catalog entries and runs the kits). Both
+  are untrusted runs.
+- Overlay mounting: a run that uses an uploaded id gets pins in `runs.overlays` and
+  `untrusted_code = true`. The supervisor makes sure that the sha256 is correct before it
+  extracts the wheel read-only. `Lineage.overlays` and `BundleManifest.overlay_hashes` record
+  the files that a model version used.
+- The catalog of each tenant: the base catalog plus the approved uploads of the tenant and
+  the private uploads of the caller (`ETag` for each tenant and user).
+- Review: approval by a second tenant admin with a web sign-in from the last 15 minutes; no
+  approval by the uploader or by a membership that the uploader made in the last 7 days; the
+  decision repeats the digests that the reviewer saw. Confirmed uploaders
+  (`user_verifications`) and a private-use setting for each tenant.
+- Error codes `PLUGIN_REFUSED`, `PLUGIN_NAMESPACE_TAKEN`, `PLUGIN_VERSION_EXISTS`,
+  `PLUGIN_STATE_CONFLICT`, `PLUGIN_UNAVAILABLE`, `UPLOADED_CODE_NOT_SHAREABLE`,
+  `UNTRUSTED_PLACEMENT_UNAVAILABLE` and `REAUTH_REQUIRED`; the run event
+  `DEV_MODE_ISOLATION`; eight audit actions (`plugin.claim`, `plugin.approve` and others);
+  six webhook events `plugin.version.*`.
+- The `plugins` bucket (`BucketPurpose.PLUGINS`, Terraform and the local GCS shim).
+- Housekeeping sweeps: ticket expiry, purge after 30 days, and a rekit when the base image
+  digest changes.
+- CLI: `mapi plugin init NAME --upload`, `mapi plugin push`, `mapi plugin status` and
+  `mapi plugin yank`. The token scope `plugins:publish` can push and ask for approval.
+- The web app: the upload page (`/plugins/new`), the plugin and version pages with the
+  reviewer panel, "Uploaded" in Catalog › Yours, the "Uploaded code" card in Settings ›
+  Workspace and the "Uploaded code" badge on run pages.
+- `make plugin-push` and `make security-uploads`; the hostile-upload corpus
+  (`security/plugin-uploads`, `tests/security`).
+- Docs: "Upload your own code", "Review uploaded code", "Uploaded code" for operators, the
+  uploaded plugins section of the extension points reference and "What's new in 0.19".
+- Settings: `MAPI_PLUGINS_ENABLED`, `MAPI_DEV_ALLOW_LOCAL_UNTRUSTED`, the limits
+  `MAPI_PLUGIN_*` and `GET /v1/me` fields `plugins_enabled` and `dev_untrusted_code`.
+- Migration `0022_plugins`.
+
+#### Changed
+- Executors report `runs_untrusted_code`. Uploaded code runs only on `docker`,
+  `docker-gvisor` and `cloudrun-jobs`. In the multi-tenant profile it also needs gVisor (or
+  stronger) isolation with egress and DNS enforced.
+- `local-process` runs uploaded code only with `MAPI_DEV_ALLOW_LOCAL_UNTRUSTED=1`. The server
+  does not start with this flag in the multi-tenant profile, with `cloudrun-jobs`, with the
+  `gcs` object store or on Cloud Run.
+- Share links, client portals, embeds and picture panels refuse each result that used
+  uploaded code of any kind (`UPLOADED_CODE_NOT_SHAREABLE`), not only uploaded models.
+  A client's dashboard list leaves out a granted dashboard that uploaded code made.
+- The worker sets `RLIMIT_NOFILE` and `RLIMIT_FSIZE`, and `RLIMIT_NPROC` only where the user
+  id is private to the run.
+- The catalog routes (`/v1/catalog`, `/v1/catalog/*`, `/v1/workflow-templates`,
+  `/v1/catalog/workflow-nodes`) return the catalog of the tenant of the project in
+  `X-Mapi-Project`.
+- `make security-suite` uses the `mapi/base-bayes` image of this version.
+- "Coming in 0.19: upload" (`docs/extend/upload-roadmap.md`) is now a pointer to
+  "Upload your own code".
+
+#### Known gaps
+- The isolation of uploaded code on `docker-gvisor` and Cloud Run is not verified (no gVisor
+  on the development computers). The `metadata_token` probe on Cloud Run, the `plugins`
+  bucket IAM in a real project and real GCS write-once behaviour are not verified. Do the
+  cloud gates in `docs/operations/uploaded-code.md` before verified-tier tenants upload
+  code on a hosted deployment.
+- Uploads target the default base image only. No dependencies outside that image, no native
+  code and no source archives.
+- A workspace with one tenant admin, and a single-tenant deployment, can use uploads
+  privately only.
+
+### Make it yours (v0.18)
+
+You can now add your own models, preprocessing steps, charts and workflows. Analysts make
+them in the app with no code (Make your own). Developers write them as Python plugins and run
+them on a stack that they operate. New users learn the app with tours, a checklist, a sample
+project and playgrounds. The app has a bolder look (Studio). Nothing in this release accepts
+code from a tenant: plugin upload is planned for v0.19.
+
+#### Added
+- The library (`mapi_spec.library`): four kinds of items that every analyst can make, as JSON
+  documents with revisions, in a project or (tenant admins) in the tenant. A model recipe
+  (`ModelRecipe`) is a declarative model or a preset over a catalog model. A prep preset
+  (`PrepPreset`) is a list of steps with `$slot:` placeholders. A chart template
+  (`ChartTemplate`) restyles the data of a platform plot. A team workflow template
+  (`WorkflowTemplate`) is a validated workflow document. Pure code compiles each item; what
+  it makes carries a `mapi.library/*` label. Routes: `/v1/library`, `:validate`, `:use`,
+  `:promote`, `:archive`, `charts:preview`.
+- `tabular.declarative_glm@1.0.0`: the trusted built-in model that declarative model recipes
+  compile to (ten families, priors from a closed list with signs, varying slopes, up to three
+  crossed group intercepts, two-way interactions).
+- The web app: Make your own (`/library`) with builders for each kind and a YAML tab; Catalog
+  as a card grid with a "Yours" tab (From your team, Installed by your team, Problems); "Add
+  your own" panels; "Your charts" on run and model pages; "Save as team template" in the
+  workflow editor; "From your team" in the Build palette.
+- Developer track: `mapi plugin init NAME --kind model|step|recipe|node|template`,
+  `mapi plugin validate` and `mapi plugin doctor`. New public contract kits:
+  `mapi_plots.testing.check_recipe`, `mapi_workflows.kit.check_node` and `check_template`.
+- Plugin workflow nodes (`NodeExport` in `mapi.workflow_nodes`) and plugin workflow templates
+  (`mapi.workflow_templates`) reach the editor palette and the gallery.
+- Catalog diagnostics (`Catalog.diagnostics`, `GET /v1/catalog/diagnostics`) and `provider`
+  on catalog entries. JSON Schema safety (`mapi_spec.schema_safety`) for every settings and
+  parameter schema.
+- `make plugin-new`, `plugin-dev`, `plugin-undev`, `plugin-doctor`, `plugin-image` and
+  `catalog-refresh`; `images/extend/Dockerfile` for a custom runner image; the operator route
+  `POST /v1/admin/catalog:describe`; `MAPI_EXTENSIONS_LOCK_PATH`.
+- Onboarding: a welcome card, seven tours (`?tour=<id>`), a first-steps checklist stored per
+  user (`/v1/tenants/{t}/me/onboarding`), a one-click sample project for each tenant
+  (`/v1/tenants/{t}/samples`) and playgrounds (a what-if slider on example data; "Try it" for
+  plot recipes with `POST /v1/catalog/plots/{id}/{version}:preview`).
+- Plot recipes publish `settings_schema`, `tags` and `pack_label` in the catalog.
+- Docs: the Extend section, the tutorial "Your first extensions", "Start here", the generated
+  extension points reference and "What's new in 0.18".
+- Settings: `MAPI_SAMPLES_ENABLED`, `MAPI_SAMPLE_MAX_ATTEMPTS`, `MAPI_PLOT_PREVIEW_ENABLED`,
+  `MAPI_PLOT_PREVIEW_PER_MINUTE`, `MAPI_PLOT_PREVIEW_PER_DAY`, `MAPI_PLOT_PREVIEW_WAIT_S` and
+  the library limits (`MAPI_LIBRARY_*`).
+
+#### Changed
+- **Breaking for plugin authors:** a third-party plugin can no longer register ids in the
+  built-in namespaces (`core`, `mmm`, `ml`, `sklearn`, `ts`, `tabular`, `choice`, `causal`,
+  `sci`, `dl`, `net`, `toy`, `demo`, `examples`) or in the platform namespaces (`mapi`,
+  `platform`, `builtin`, `team`, `library`, `lib`, `plugin`, `t`, `tenant`, `t_*`,
+  `tenant_*`). The loader refuses them with the diagnostic `namespace_reserved`.
+- The look: the Studio palette, a display font, illustrations and motion in signed-in pages.
+  The plot palette follows the new tokens. Share links and client portals use the new colours.
+- Navigation in Guided mode puts less-used items behind "More". Expert mode groups the items.
+- The digest of a source checkout also hashes the plugins in `.local/extra-plugins.txt`, and
+  an extended image folds its `extensions.lock` into the digest.
+- A legacy `{id: fn}` export of `mapi.workflow_nodes` still works, with a `deprecated`
+  diagnostic.
+
+#### Known gaps
+- Under the Docker and Cloud Run executors, the describe run uses the default runner image
+  only. A custom image must be the default image as well as the image of its namespace.
+- Live recipe previews take about 10 seconds on a local stack and are off by default with
+  the Cloud Run executor.
+
+### Client dashboards for any model type (v0.17)
+
+Client dashboards now work for any model type, not only for marketing-mix models. Each
+model family gets a preset: forecast, regression, classifier, effect of a change, map,
+image model or the media planner. Analysts can add, remove and move the panels. Clients
+always see a clean readout. Clients can try a case, send actuals and see the accuracy that
+fits the model, and score a file of new cases. The v0.16 dashboards move to the new layout
+by themselves.
+
+#### Added
+- Layout 2 dashboards (`mapi_spec.dashboard_v2.DashboardSpecV2`, `layout_version: 2`): a
+  `preset`, a `subject` and up to 24 panels (`kpi`, `chart`, `table`, `note`, `recipe` and,
+  for the media planner, `mmm`). `parse_dashboard_spec` reads both layouts. The layout 1
+  spec and the hashes of stored revisions do not change.
+- Presets for each model family (`mapi_spec.dashboard_presets`): `mmm_planner`, `forecast`,
+  `regression`, `classifier`, `causal_impact`, `field_map`, `image` and `generic`.
+  `GET /v1/dashboards:presets` suggests the presets that fit a model version or an endpoint,
+  with plain reasons and blocked inputs, and compiles a starting draft.
+- A source catalog of the model version (`GET /v1/dashboards/{id}/sources`): the real output
+  names and dims, fit metrics, scorecard checks, plots and inputs. Panels are checked
+  against it at validate and again when a readout is built. A missing source makes one
+  `unavailable` panel, never a failed readout.
+- Predictive ranges: outcome panels show where one new result will probably be (scored as
+  `predictive`). Sums over a dim come from the draws. A sum of point values is marked
+  approximate. A sum of quantiles is refused. The server never adds interval bounds.
+- Try a case (scenario rows): `POST /v1/dashboards/{id}/predictions` and
+  `POST /v1/shared/predictions`, up to 20 rows. The server checks each value against the
+  published revision and refuses (never clips) a value out of range, with a pointer. The
+  result is a private `prediction` readout. `POST …/readouts/{seq}:keep` keeps a tried case
+  for the review of an editor.
+- Actuals tracking for each family (`mapi_spec.dashboard_metrics`, pure Python, equal to
+  `mapi_sdk.metrics.compute_metrics` within 1e-9): errors (MAE, RMSE, MAPE, WAPE, sMAPE, bias,
+  R², band hit rate), classification (accuracy, AUC, Brier, log score, calibration,
+  confusion; the analyst sets the threshold) and the updated effect of a causal impact
+  model. Actuals match by period or by case (`match: "row"`, up to 5000 rows). The accuracy
+  history uses only published readouts.
+- Batch scoring: `GET …/batch/template`, `POST /v1/dashboards/{id}/batch` and
+  `POST /v1/shared/batch` (up to 5000 rows). The result is a private `batch` readout with a
+  summary. `GET …/readouts/{seq}/predictions.csv` makes the predictions CSV on demand: only
+  for the person or link that sent the file, and editors; formula cells escaped; charged as
+  egress; audited (`DASHBOARD_BATCH_DOWNLOAD`); `410 DASHBOARD_DOWNLOAD_GONE` after it expires.
+- Pictures: a `recipe` panel that the page cannot draw shows the fit-time plot of the model
+  version as a PNG, made one time at publish (a maximum of 4 for each revision) and served
+  from the same origin (`GET …/assets/{asset_id}`, `GET /v1/shared/assets/{asset_id}`).
+- The automatic upgrade: one pass when the worker starts, under a Postgres advisory lock
+  (`MAPI_DASHBOARD_AUTO_UPGRADE`, default on). Each layout 1 dashboard gets a layout 2
+  published revision on the same model version and run-as owner, audited as
+  `DASHBOARD_UPGRADED`, and a new baseline. Drafts move too. A dashboard that cannot move
+  keeps layout 1 with `problem: "upgrade_needs_review"`. `POST /v1/dashboards/{id}:upgrade`
+  lets an editor finish it.
+- Clients see a one-time note on a moved dashboard: "This dashboard has a new layout. The
+  numbers come from the same model."
+- Limits for scored files: `limits.batch_runs_per_day` (default 3),
+  `MAPI_SHARE_BATCH_PER_DAY` (2), `MAPI_CLIENT_BATCH_PER_DAY` (4) and
+  `MAPI_BATCH_ROWS_PER_DAY` (20 000). The setting `MAPI_DASHBOARD_LAYOUT1_CREATE` (off)
+  accepts new layout 1 specs.
+- Six more read-only tools: `list_panels`, `get_panel`, `get_accuracy`, `list_inputs`,
+  `get_prediction` and `get_batch_summary`. `compare_readouts` also gives `panel_deltas`. The
+  v0.16 tools keep their names and arguments.
+- `OutputDecl.meaning` and `classes_dim` (optional) in plugin manifests, set by the
+  classifier, choice, causal and HMM models.
+- Migration `0020_any_model_dashboards`: the readout kinds `prediction` and `batch`, the
+  triggers `scenario_rows` and `batch`, the share inputs `scenario_rows` and `batch`, a
+  snapshot cap of 400 000 bytes and the table `dashboard_assets` (row-level security).
+- Web app: the layout 2 readout (Overview, Try a case, Check accuracy, Score a file and
+  History) with SVG and canvas charts that load no plot library on client and share pages,
+  the new-dashboard dialog with presets, the panels editor and the upgrade banner.
+- Python client: `presets()`, `sources()`, `upgrade()`, `predict()`, `keep_readout()`,
+  `batch_template()`, `score_batch()`, `download_predictions()` and `asset()` on
+  `client.dashboards` (sync and async), and the share-link inputs on `open_share()`.
+- Docs: "What's new in 0.17", and the concept page, the analyst guide and the client guide
+  for any model type.
+
+#### Changed
+- New dashboards are layout 2. A new layout 1 spec is refused with
+  `DASHBOARD_LAYOUT_RETIRED`.
+- Moved marketing-mix dashboards show predictive ranges, which are wider than the v0.16
+  ranges of the average. The middle values do not change. Old readouts keep the layout 1
+  renderer in History.
+- On layout 2 dashboards that are not a media planner, `/grid`, `/whatif:evaluate`,
+  `/scenarios`, `get_channel` and `evaluate_whatif` answer `DASHBOARD_INPUT_DISABLED`.
+- Layout 1 readouts also use a `point` centre when a model gives only point values.
+- Layout 2 snapshots hold up to 384 KiB and 1040 series points. Layout 1 snapshots keep
+  256 KiB and 520 points.
+
+#### Fixed
+- The API allows the `If-Match` header across origins. Before, the browser preflight
+  failed, so the builder could not save a draft, publish or use `:upgrade` when the web app
+  and the API had different origins (also in v0.16).
+- A kept case that an editor publishes stays in the history: the client Overview, the
+  `get_latest_readout` tool and the "readout before" of a key number use only `baseline`,
+  `refresh`, `scenario` and `actuals` readouts.
+- A scored file asks the model only for `batch.outputs` (and the subject), and the size
+  check counts only those outputs. A file of `max_rows` rows over a few levels of another
+  dim is no longer refused because of outputs that the file does not show.
+- Validate gives an error for a number input whose default is off its step grid, and for a
+  `batch.id_column` or row-match `actuals.id_column` that is not a dim of the model. The
+  builder seeds number inputs with a round step and a default on it, offers the model's
+  dims as case id columns, and shows "Scoring a file is not available" instead of an error
+  on a dashboard published before this check.
+- The accuracy history draws one point for each upload, also for two uploads on the same
+  day. The history titles that the server dates in UTC ("Published on …") show the
+  viewer's day. An upload made by somebody else is "Numbers sent", not "Your numbers".
+- An upgraded media planner no longer notes "This readout has no values of … to compare"
+  under the comparison it shows.
+- An upload whose readout fails is hidden (its open refit request fails too). Only the
+  person who sent it sees it, marked "Did not finish", and `:publish` refuses it (`409`).
+- A key number that picks one case shows its change from the readout before only when that
+  readout picked the same case from the same inputs. A history with one point is a sentence
+  until a second upload. Yes/no codes (`0`/`1`, `false`/`true`) show as "No"/"Yes".
+- After a keyboard **Remove** in the panels editor, the focus moves to the next panel's
+  Remove button. The builder no longer asks for the response grid of a version that wrote
+  none (a 404 in the console).
+
+#### Known gaps
+- Clients and share links cannot score image files. Analysts score image collections in
+  the app.
+- Pictures are only fit-time plots of the model version. Score runs draw native charts.
+- Synthetic-control and difference-in-differences models update their effect only after a
+  refit.
+- Not tested: real GCS, Cloud Run cold starts for prediction and batch runs, the Docker
+  images, GPU image models, and the client copy for each family with human testers.
+
 ## [0.16.0] — Client dashboards and a new look — 2026-10-21
 
 You can now show model results to your clients. An analyst makes a dashboard from a fitted

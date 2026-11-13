@@ -584,13 +584,17 @@ def test_dataset_version_layout_fields() -> None:
 
 def test_m4_endpoints_and_access() -> None:
     assert ALL_ENDPOINTS == ENDPOINTS
-    # the v0.11, v0.14, v0.15 and v0.16 rows follow the M4 rows
+    # the v0.11, v0.14, v0.15, v0.16, v0.17 and v0.18 rows follow the M4 rows
     m4_end = (
         len(ENDPOINTS)
         - len(api.V011_ENDPOINTS)
         - len(api.V014_ENDPOINTS)
         - len(api.V015_ENDPOINTS)
         - len(api.V016_ENDPOINTS)
+        - len(api.V017_ENDPOINTS)
+        - len(api.V018_ENDPOINTS)
+        - len(api.V019_ENDPOINTS)
+        - len(api.V020_ENDPOINTS)
     )
     assert ENDPOINTS[m4_end - len(M4_ENDPOINTS) : m4_end] == M4_ENDPOINTS
     by_op = {e.operation_id: e for e in M4_ENDPOINTS}

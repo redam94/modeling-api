@@ -1,11 +1,15 @@
-# The five buckets of plan §8.6. One resource for all of them, so the invariants every bucket
-# must satisfy (uniform access, public access prevention, no versioning) are written once.
+# The buckets of plan §8.6 (plugins added in v0.19). One resource for all of them, so the
+# invariants every bucket must satisfy (uniform access, public access prevention, no
+# versioning) are written once.
 #
 #   quarantine  raw uploads (signed PUT from browsers)        deleted after 7 days
 #   bootstrap   RunSpec objects keyed by a 256-bit nonce      exec SA get+delete, no list; 1 day
 #   runs        per-attempt scratch, written via signed URLs  deleted after runs_ttl_days
 #   bundles     verified, write-once model bundles            exec SA has NO access; retention lock
 #   data        content-addressed dataset versions            exec SA has NO access
+#   plugins     inspected uploaded wheels (v0.19)             exec SA has NO access (signed GETs
+#                                                             only); NO retention lock: refused
+#                                                             and withdrawn versions are purged
 
 locals {
   # Soft delete keeps deleted objects restorable. For bootstrap that would defeat the
@@ -41,6 +45,15 @@ locals {
       soft_delete_seconds = 604800
       retention_days      = null
       cors_methods        = ["GET", "HEAD"]
+    }
+    # Objects are written once by the orchestrator (server-side copy from quarantine after
+    # inspect) and deleted by the purge sweep; no browser ever reads them (no CORS). No soft
+    # delete: a purged upload must really be gone.
+    plugins = {
+      delete_after_days   = null
+      soft_delete_seconds = 0
+      retention_days      = null
+      cors_methods        = []
     }
   }
 

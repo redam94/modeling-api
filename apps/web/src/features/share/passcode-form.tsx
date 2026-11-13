@@ -54,7 +54,7 @@ export function PasscodeForm({ busy, error, locked = false, onSubmit }: Passcode
       <div className="grid gap-2">
         <div className="flex items-center gap-2.5">
           <KeyRound className="size-5 text-muted-foreground" aria-hidden />
-          <h1 className="text-xl font-semibold tracking-tight">Type the passcode</h1>
+          <h1 className="display-title text-2xl">Type the passcode</h1>
         </div>
         <p className="text-base text-muted-foreground">The person who sent you this link protected it with a passcode. They sent the passcode to you separately.</p>
       </div>

@@ -23,7 +23,7 @@ The contracts are in `mapi_spec.tenancy` and `mapi_spec.tokens`. The endpoints a
     `MAPI_PROFILE=single-tenant` keeps the old behaviour without credentials. The
     [Administration guide](../guides/administration.md) gives the practical side of this page:
     who does what, with screenshots and a tested walkthrough.
-    [Authentication](../guides/authentication.md) tells how to sign in.
+    [Sign in](../guides/authentication.md) tells how to sign in.
 
 ## Tenants and projects
 
@@ -295,7 +295,7 @@ sequenceDiagram
     B->>A: GET /auth/callback (with the login cookie)
     A->>I: exchange code + PKCE verifier
     I-->>A: ID token
-    A->>A: check issuer, audience, nonce, expiry; map (issuer, subject) to usr_…
+    A->>A: check issuer, audience, nonce, expiry, then map (issuer, subject) to usr_…
     A-->>B: 302 /runs + __Host-mapi_session (HttpOnly, Secure, SameSite=Strict)
     B->>A: fetch /v1/... (cookie sent same-site only)
 ```

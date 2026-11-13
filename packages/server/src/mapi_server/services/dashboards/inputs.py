@@ -22,6 +22,10 @@ placement and audit as for the owner), labelled with the readout. Cost guardrail
 per dashboard and day (``limits.exact_runs_per_day``), per share link and hour, per client
 user and hour - all counted from the readouts that spent a run, no new counter - and a
 result cache that answers a repeated plan or upload with the earlier result.
+
+v0.17: a layout 2 revision dispatches its actuals and template to :mod:`.actuals_v2` and its
+queued baselines and refreshes to :func:`.cases.submit_baseline_v2`; the media planner inputs
+here (grid, what-ifs, scenarios) answer ``DASHBOARD_INPUT_DISABLED`` for it.
 """
 
 from __future__ import annotations
@@ -70,11 +74,17 @@ from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.errors import NotFoundError, ProblemWithHeaders
 from mapi_server.services.audit import write_audit
-from mapi_server.services.dashboards.access import DashboardContext, revision_spec
+from mapi_server.services.dashboards.access import (
+    AnySpec,
+    DashboardContext,
+    any_revision_spec,
+    revision_spec,
+)
 from mapi_server.services.dashboards.crud import read_grid
 from mapi_server.services.dashboards.readouts import (
     Actor,
     _lock_dashboard,
+    fail_readout,
     new_readout,
     readout_labels,
     scenario_snapshot,
@@ -87,10 +97,11 @@ from mapi_server.services.endpoints import (
     store_inline_inputs,
 )
 from mapi_server.services.runs import now
-from mapi_server.services.sharing import ran_uploaded_code
+from mapi_server.services.sharing import refused_on_dashboards
 from mapi_server.services.submit import fit_dataset_ref, submit_model_run
 
 __all__ = [
+    "RUN_LIMIT_HOUR_MESSAGE",
     "RUN_LIMIT_MESSAGE",
     "actuals_template",
     "clear_grid_cache",
@@ -105,6 +116,9 @@ __all__ = [
 
 RUN_LIMIT_MESSAGE: Final = (
     "You reached today's limit for new results. Try again tomorrow or ask your analyst."
+)
+RUN_LIMIT_HOUR_MESSAGE: Final = (
+    "You reached this hour's limit for new results. Try again later or ask your analyst."
 )
 _GRID_CACHE_MAX: Final = 64
 _GRID_CACHE: dict[str, tuple[float, DashboardGrid]] = {}
@@ -128,7 +142,43 @@ async def _parts(
     mv = await session.get(m.ModelVersion, rev.model_version_id)
     if mv is None:  # pragma: no cover - versions are never deleted under a revision
         raise NotFoundError("model version", rev.model_version_id)
-    return dash, rev, revision_spec(rev), mv
+    return dash, rev, _planner_spec(rev), mv
+
+
+def _planner_spec(rev: m.DashboardRevision) -> DashboardSpec:
+    """The layout 1 media planner spec of a revision: the spec itself on layout 1, the v1
+    shape of the planner part of an ``mmm_planner`` layout 2 spec (its channels, what-ifs and
+    tiles, as ``readouts._planner_snapshot`` builds it), else ``DASHBOARD_INPUT_DISABLED``."""
+    spec = any_revision_spec(rev)
+    if isinstance(spec, DashboardSpec):
+        return spec
+    if spec.mmm is None:
+        return revision_spec(rev)  # raises DASHBOARD_INPUT_DISABLED
+    from mapi_spec.dashboard_v2 import kpi_of_subject
+
+    return DashboardSpec.model_construct(
+        title=spec.title,
+        client_name=spec.client_name,
+        summary=spec.summary,
+        period_label=spec.period_label,  # type: ignore[arg-type]  # text only
+        source=spec.source,
+        kpi=kpi_of_subject(spec.subject),
+        channels=list(spec.mmm.channels),
+        tiles=list(spec.mmm.tiles),
+        whatif=spec.mmm.whatif,
+        actuals=spec.actuals,
+        refresh=spec.refresh,
+        limits=spec.limits,
+        show_technical=spec.show_technical,
+        note=spec.note,
+    )
+
+
+async def _is_v2(session: AsyncSession, dctx: DashboardContext) -> bool:
+    """Is the caller's published revision a layout 2 spec (v0.17: its inputs dispatch to
+    :mod:`.cases` and :mod:`.actuals_v2`)?"""
+    rev = await session.get(m.DashboardRevision, dctx.revision_id)
+    return rev is not None and not isinstance(any_revision_spec(rev), DashboardSpec)
 
 
 def _disabled(what: str) -> MapiError:
@@ -140,7 +190,7 @@ def _disabled(what: str) -> MapiError:
 def _refuse_unsafe(mv: m.ModelVersion) -> None:
     if mv.status != "ready":
         raise MapiError(f"model version {mv.id} is not ready", code=ErrorCode.NOT_READY)
-    if ran_uploaded_code(mv):
+    if refused_on_dashboards(mv):
         raise MapiError(
             "the model version ran uploaded plugin code; dashboards do not run it",
             code=ErrorCode.CAPABILITY_UNSUPPORTED,
@@ -272,14 +322,14 @@ async def _count(session: AsyncSession, *where: Any) -> tuple[int, datetime | No
 def _limit(oldest: datetime | None, window: timedelta) -> ProblemWithHeaders:
     wait = (oldest + window - now()).total_seconds() if oldest is not None else 60.0
     return ProblemWithHeaders(
-        RUN_LIMIT_MESSAGE,
+        RUN_LIMIT_MESSAGE if window >= timedelta(days=1) else RUN_LIMIT_HOUR_MESSAGE,
         code=ErrorCode.DASHBOARD_RUN_LIMIT,
         headers={"Retry-After": str(max(1, int(wait + 0.999)))},
     )
 
 
 async def _limits_check(
-    ctx: ServerContext, session: AsyncSession, dash: m.Dashboard, spec: DashboardSpec,
+    ctx: ServerContext, session: AsyncSession, dash: m.Dashboard, spec: AnySpec,
     actor: Actor,
 ) -> None:  # fmt: skip
     """``DASHBOARD_RUN_LIMIT`` (429, ``Retry-After``) over a cap of plan D14.
@@ -294,6 +344,19 @@ async def _limits_check(
         m.DashboardReadout.dashboard_id == dash.id,
         m.DashboardReadout.created_at > at - day,
     )
+    # v0.17: picture renders of layout 2 panels spend runs of the same daily cap
+    pictures, first_picture = (
+        await session.execute(
+            select(func.count(), func.min(m.DashboardAsset.created_at)).where(
+                m.DashboardAsset.dashboard_id == dash.id,
+                m.DashboardAsset.created_at > at - day,
+                m.DashboardAsset.run_id.is_not(None),
+            )
+        )
+    ).one()
+    n += int(pictures)
+    if first_picture is not None and (oldest is None or first_picture < oldest):
+        oldest = first_picture
     if n >= spec.limits.exact_runs_per_day:
         raise _limit(oldest, day)
     hour = timedelta(hours=1)
@@ -353,9 +416,13 @@ async def _copy_for(
     src: m.DashboardReadout,
     actor: Actor,
     visibility: str,
+    *,
+    title: str,
 ) -> m.DashboardReadout:
     """A cache hit for another actor: the same result in a row of the caller's own (no
-    ``cache_key``: it spent no run)."""
+    ``cache_key``: it spent no run). ``title`` is the caller's own (their label or the
+    default text): the cache key never covers the label, so the source row's title (another
+    person's private words) is never copied."""
     from mapi_spec.dashboards import ReadoutSnapshot
 
     snap = ReadoutSnapshot.model_validate(src.snapshot) if src.snapshot else None
@@ -367,7 +434,7 @@ async def _copy_for(
         trigger=src.trigger,  # type: ignore[arg-type]
         visibility=visibility,  # type: ignore[arg-type]
         actor=actor,
-        title=src.title,
+        title=title,
         status="ready",
         model_version_id=src.model_version_id,
         model_ref=src.model_ref,
@@ -503,14 +570,21 @@ async def submit_queued(ctx: ServerContext, session: AsyncSession, row: m.Dashbo
         if mv is None:
             raise NotFoundError("model version", row.model_version_id)
         _refuse_unsafe(mv)
+        rev = await session.get(m.DashboardRevision, row.revision_id)
+        spec = any_revision_spec(rev) if rev is not None else None
+        if spec is not None and not isinstance(spec, DashboardSpec):  # layout 2 (v0.17, D17)
+            from mapi_server.services.dashboards.cases import submit_baseline_v2
+
+            await submit_baseline_v2(ctx, session, row, dash, spec, mv)
+            return
         octx = await owner_context(ctx, session, dash)
         async with session.begin_nested():
             data = await fit_dataset_ref(session, mv)
             request = baseline_request(row.model_ref, data, _representation(mv))
             await _submit(session, octx, row, request)
     except MapiError as exc:
-        row.status = "failed"
-        row.problem = exc.to_problem().model_dump(mode="json", exclude_none=True)
+        problem = exc.to_problem().model_dump(mode="json", exclude_none=True)
+        await fail_readout(session, row, problem)
         await session.flush()
 
 
@@ -557,7 +631,7 @@ async def save_scenario(
     if hit is not None:
         if hit.actor_kind == actor.kind and hit.actor_id == actor.id:
             return hit
-        return await _copy_for(ctx, session, dash, rev, hit, actor, "private")
+        return await _copy_for(ctx, session, dash, rev, hit, actor, "private", title=title)
     octx = await owner_context(ctx, session, dash)  # before the lock (it may pause)
     await _lock_dashboard(session, dash.id)  # count-and-insert under the row lock
     await _limits_check(ctx, session, dash, spec, actor)
@@ -617,6 +691,10 @@ async def actuals_template(
     example CSV (``DASHBOARD_INPUT_DISABLED`` without uploads or an input contract)."""
     if not dctx.inputs.actuals:
         raise _disabled("uploading numbers")
+    if await _is_v2(session, dctx):
+        from mapi_server.services.dashboards.actuals_v2 import actuals_template_v2
+
+        return await actuals_template_v2(ctx, session, dctx)
     _, _, spec, mv = await _parts(session, dctx)
     _refuse_unsafe(mv)
     try:
@@ -706,6 +784,10 @@ async def submit_actuals(
         raise _disabled("uploading numbers")
     if body.request_refit and not dctx.inputs.refit_requests:
         raise _disabled("asking for a refit")
+    if await _is_v2(session, dctx):
+        from mapi_server.services.dashboards.actuals_v2 import submit_actuals_v2
+
+        return await submit_actuals_v2(ctx, session, dctx, body)
     dash, rev, spec, mv = await _parts(session, dctx)
     _refuse_unsafe(mv)
     if dash.live_inputs == "paused":
@@ -747,7 +829,7 @@ async def submit_actuals(
         row = (
             hit
             if hit.actor_kind == actor.kind and hit.actor_id == actor.id
-            else await _copy_for(ctx, session, dash, rev, hit, actor, visibility)
+            else await _copy_for(ctx, session, dash, rev, hit, actor, visibility, title=title)
         )
     else:
         octx = await owner_context(ctx, session, dash)  # before the lock (it may pause)
@@ -829,7 +911,7 @@ async def refresh(
         raise paused_error()
     rev = await session.get(m.DashboardRevision, dashboard.published_revision_id)
     assert rev is not None
-    spec = revision_spec(rev)
+    spec = any_revision_spec(rev)  # either layout (v0.17)
     await _lock_dashboard(session, dashboard.id)  # debounce, count and insert serialised
     since = now() - timedelta(seconds=ctx.settings.dashboard_refresh_debounce_s)
     recent = (

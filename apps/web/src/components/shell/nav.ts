@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   Sparkles,
   Users,
+  WandSparkles,
   Workflow,
   type LucideIcon,
 } from "lucide-react";
@@ -88,26 +89,46 @@ export const RECIPES_NAV: NavItem = {
   description: "Ready-made analyses that check your data, fit a model and explain each step",
 };
 
-/** Expert navigation; Guided stays one click away (opening it switches the mode). */
-export const EXPERT_NAV: NavItem[] = [
-  { to: "/", label: "Home", icon: Home, chord: "h", description: "Recent activity and the health of the project" },
-  GUIDED_NAV,
-  { to: "/datasets", label: "Datasets", icon: Database, chord: "d", description: "Upload, map and examine data" },
-  { to: "/build", label: "Build", icon: FileCode2, chord: "b", description: "Write and validate model specs" },
-  { to: "/runs", label: "Runs", icon: Activity, chord: "r", description: "Fits, dry-runs, ingests and scores" },
-  // v0.14: named groups of runs to compare.
-  { to: "/experiments", label: "Experiments", icon: FlaskConical, chord: "e", description: "Named groups of runs to compare" },
-  { to: "/models", label: "Models", icon: Boxes, chord: "m", description: "Examine fitted model versions" },
-  { to: "/score", label: "Score", icon: Gauge, chord: "s", description: "Forecasts, scenarios and counterfactuals" },
-  // M3.5: automated analyses and the governance that validates models.
-  WORKFLOWS_NAV,
-  { to: "/governance", label: "Governance", icon: BadgeCheck, chord: "v", description: "Policies, validations and approvals" },
-  INTEGRATIONS_NAV,
-  // v0.16: client dashboards.
-  { to: "/dashboards", label: "Dashboards", icon: LayoutDashboard, chord: "k", description: "Readouts for clients, with access and share links" },
-  { to: "/catalog", label: "Catalog", icon: Library, chord: "c", description: "About cards for all models, steps, checks and templates" },
-  CHOOSE_NAV,
+/** v0.18 (D1, D23): "Make your own", the team's no-code models, prep presets, chart styles and workflow templates. */
+export const LIBRARY_NAV: NavItem = {
+  to: "/library",
+  label: "Make your own",
+  icon: WandSparkles,
+  chord: "y",
+  description: "Your team's own model recipes, prep presets, chart templates and workflow templates",
+};
+
+const HOME_NAV: NavItem = { to: "/", label: "Home", icon: Home, chord: "h", description: "Start here, recent activity and the health of the project" };
+const DATASETS_NAV: NavItem = { to: "/datasets", label: "Datasets", icon: Database, chord: "d", description: "Upload, map and examine data" };
+const BUILD_NAV: NavItem = { to: "/build", label: "Build", icon: FileCode2, chord: "b", description: "Write and validate model specs" };
+const RUNS_NAV: NavItem = { to: "/runs", label: "Runs", icon: Activity, chord: "r", description: "Fits, dry-runs, ingests and scores" };
+// v0.14: named groups of runs to compare.
+const EXPERIMENTS_NAV: NavItem = { to: "/experiments", label: "Experiments", icon: FlaskConical, chord: "e", description: "Named groups of runs to compare" };
+const MODELS_NAV: NavItem = { to: "/models", label: "Models", icon: Boxes, chord: "m", description: "Examine fitted model versions" };
+const SCORE_NAV: NavItem = { to: "/score", label: "Score", icon: Gauge, chord: "s", description: "Forecasts, scenarios and counterfactuals" };
+// M3.5: the governance that validates models.
+const GOVERNANCE_NAV: NavItem = { to: "/governance", label: "Governance", icon: BadgeCheck, chord: "v", description: "Policies, validations and approvals" };
+// v0.16: client dashboards.
+const DASHBOARDS_NAV: NavItem = { to: "/dashboards", label: "Dashboards", icon: LayoutDashboard, chord: "k", description: "Readouts for clients, with access and share links" };
+const CATALOG_NAV: NavItem = { to: "/catalog", label: "Catalog", icon: Library, chord: "c", description: "About cards for all models, steps, checks and templates" };
+
+export interface NavGroup {
+  label: string;
+  items: NavItem[];
+}
+
+/**
+ * Expert navigation in three labelled groups (v0.18 D23); Guided stays one click away
+ * (opening it switches the mode). Labels and chords are unchanged from v0.17.
+ */
+export const EXPERT_NAV_GROUPS: NavGroup[] = [
+  { label: "Work", items: [HOME_NAV, GUIDED_NAV, DATASETS_NAV, BUILD_NAV, RUNS_NAV, EXPERIMENTS_NAV, MODELS_NAV, SCORE_NAV] },
+  { label: "Automate & share", items: [WORKFLOWS_NAV, GOVERNANCE_NAV, INTEGRATIONS_NAV, DASHBOARDS_NAV] },
+  { label: "Learn", items: [CATALOG_NAV, LIBRARY_NAV, CHOOSE_NAV] },
 ];
+
+/** Expert navigation as one list (the command palette, chords and the phone nav). */
+export const EXPERT_NAV: NavItem[] = EXPERT_NAV_GROUPS.flatMap((g) => g.items);
 
 export const SETTINGS_NAV: NavItem = {
   to: "/settings",
@@ -118,10 +139,39 @@ export const SETTINGS_NAV: NavItem = {
 };
 
 /**
- * Guided mode's navigation: Guided, Help me choose and the recipes first, then the Expert areas
- * (without Expert Home).
+ * Guided mode's navigation (v0.18 D23): seven items an analyst needs first (Guided, Help me
+ * choose and the recipes, then dashboards, data, models and Make your own)…
  */
-export const GUIDED_MODE_NAV: NavItem[] = [GUIDED_NAV, CHOOSE_NAV, RECIPES_NAV, ...EXPERT_NAV.filter((item) => item.to !== "/" && item !== GUIDED_NAV && item !== CHOOSE_NAV && item !== WORKFLOWS_NAV)];
+export const GUIDED_PRIMARY_NAV: NavItem[] = [GUIDED_NAV, CHOOSE_NAV, RECIPES_NAV, DASHBOARDS_NAV, DATASETS_NAV, MODELS_NAV, LIBRARY_NAV];
+
+/** …and the other Expert areas (without Expert Home) behind "More". */
+export const GUIDED_MORE_NAV: NavItem[] = EXPERT_NAV.filter((item) => item !== HOME_NAV && item !== WORKFLOWS_NAV && !GUIDED_PRIMARY_NAV.includes(item));
+
+/** Guided mode's navigation as one list: the seven, then "More". */
+export const GUIDED_MODE_NAV: NavItem[] = [...GUIDED_PRIMARY_NAV, ...GUIDED_MORE_NAV];
+
+/** Is `pathname` one of the pages behind Guided mode's "More"? (It then opens by itself.) */
+export function inGuidedMore(pathname: string): boolean {
+  return GUIDED_MORE_NAV.some((item) => pathname === item.to || pathname.startsWith(`${item.to}/`));
+}
+
 
 /** A Guided-locked project (members below admin): the Guided screens and the Integrations hub. */
 export const LOCKED_NAV: NavItem[] = [GUIDED_NAV, CHOOSE_NAV, RECIPES_NAV, INTEGRATIONS_NAV];
+
+/** Which navigation the sidebar shows: Expert, Guided, or a Guided-locked project below admin. */
+export type NavMode = "expert" | "guided" | "locked";
+
+/** The nav list of `mode` (v0.21): the sidebar's entries, which the global search also offers. */
+export function navForMode(mode: NavMode): NavItem[] {
+  return mode === "locked" ? LOCKED_NAV : mode === "guided" ? GUIDED_MODE_NAV : EXPERT_NAV;
+}
+
+/**
+ * All the pages the shell leads to now: the nav of `mode`, then Project (a signed-in session),
+ * Admin (an operator) and Settings. The "g" shortcuts, the list of shortcuts and the global
+ * search all read this one list, so they agree with the sidebar.
+ */
+export function shellNav(mode: NavMode, session: boolean, operator: boolean): NavItem[] {
+  return [...navForMode(mode), ...(session ? PROJECT_NAV : []), ...(operator ? [ADMIN_NAV] : []), SETTINGS_NAV];
+}

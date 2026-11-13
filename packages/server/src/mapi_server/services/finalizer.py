@@ -15,6 +15,16 @@
 
 Transient storage errors propagate so the job is retried; after
 ``finalize_max_attempts`` the run fails as ``infra``. Every step is idempotent.
+
+v0.19 (D10): the uploaded code a run mounted is the control plane's ``runs.overlays``. The
+supervisor's ``overlay_hashes`` (what it verified and mounted) must equal those pins' sha256
+(order-insensitive), else ``FAILED(integrity)``; a model version's ``Lineage.overlays`` and
+its bundle manifest's ``overlay_hashes`` come from ``runs.overlays``, never from the runner.
+The two plugin check kinds (``plugin_inspect``, ``plugin_describe``) hand their size-capped
+JSON to :mod:`mapi_server.services.plugins.finalize`, which is also told about every other
+way such a run ends (integrity failure, too many finalize attempts): a version never stays
+``inspecting``/``describing`` after its run is over. A ``plugin_describe`` never writes the
+platform-wide ``catalogs`` table.
 """
 
 from __future__ import annotations
@@ -104,7 +114,7 @@ from mapi_server.observability.tracing import run_span
 from mapi_server.services.optimize import parse_optimize_result
 from mapi_server.services.prior_translations import parse_prior_translation
 from mapi_server.services.runs import append_event, apply_transition, now
-from mapi_server.services.runspec import EMPTY_CATALOG_DIGEST, MANIFEST_MAX_BYTES
+from mapi_server.services.runspec import EMPTY_CATALOG_DIGEST, MANIFEST_MAX_BYTES, run_pins
 from mapi_server.storage import list_all
 
 __all__ = [
@@ -214,6 +224,7 @@ class Finalizer:
                         ErrorCode.INFRA_ERROR, "finalization kept failing; giving up"
                     ),
                 )
+                await self._plugin_run_ended(session, run)
                 obs_metrics.record_finalize_outcome(run.kind, "infra")
                 return RunState.FAILED
             att = await session.get(m.RunAttempt, (run_id, attempt))
@@ -288,6 +299,7 @@ class Finalizer:
             raise IntegrityError("manifest.json changed after the 'complete' event")
         if complete.status != manifest.status:
             raise IntegrityError("manifest status does not match the 'complete' event")
+        self._check_overlays(run, manifest)
         for name, ref in run.inputs.items():
             digest = manifest.inputs.get(name)
             if digest is None or digest.generation != int(ref["generation"]):
@@ -311,6 +323,35 @@ class Finalizer:
             objects=result.verified,
             partial=manifest.status == "partial",
         )
+
+    @staticmethod
+    def _check_overlays(run: m.Run, manifest: OutputManifest) -> None:
+        """D10: the overlays the supervisor verified and mounted are exactly the run's pins."""
+        try:
+            pins = run_pins(run)
+        except MapiError as exc:
+            raise IntegrityError(exc.detail) from None
+        expected = sorted(p.sha256 for p in pins)
+        claimed = sorted(str(h) for h in manifest.overlay_hashes)
+        if claimed != expected:
+            raise IntegrityError(
+                "the uploaded code the run mounted does not match the code the platform "
+                "pinned for it",
+                pointer="/overlay_hashes",
+            )
+        if manifest.overlay_hash is not None and manifest.overlay_hash not in expected:
+            raise IntegrityError(
+                "manifest overlay_hash names uploaded code the platform did not pin",
+                pointer="/overlay_hash",
+            )
+
+    async def _plugin_run_ended(self, session: AsyncSession, run: m.Run) -> None:
+        """A plugin check run ended without a result: end its version's check too."""
+        if run.kind not in (RunKind.PLUGIN_INSPECT.value, RunKind.PLUGIN_DESCRIBE.value):
+            return
+        from mapi_server.services.plugins.finalize import plugin_run_ended
+
+        await plugin_run_ended(session, self.ctx, run)
 
     async def _integrity_failure(self, run: m.Run, exc: IntegrityError) -> RunState | None:
         log.error(
@@ -345,6 +386,7 @@ class Finalizer:
             await append_event(
                 session, row, type=RunEventType.ERROR, payload=payload.model_dump(mode="json")
             )
+            await self._plugin_run_ended(session, row)
         return RunState.FAILED
 
     # ------------------------------------------------------------------ per kind
@@ -364,7 +406,31 @@ class Finalizer:
             return await self._governance(v)
         if kind is RunKind.INSPECT:
             return await self._inspect(v)
+        if kind is RunKind.PLUGIN_INSPECT or kind is RunKind.PLUGIN_DESCRIBE:
+            return await self._plugin_check(v)
         return await self._outputs_only(v)
+
+    # ................................................................... plugin checks
+    async def _plugin_check(self, v: _Verified) -> RunState | None:
+        """v0.19: a plugin check run's result is data about an upload. A bad result fails
+        the version's check (``inspect_failed``/``kit_failed``), not the run: the run did
+        what it was asked to. The describe result goes to ``plugin_describes`` only."""
+        from mapi_server.services.plugins.finalize import (
+            finalize_plugin_describe,
+            finalize_plugin_inspect,
+        )
+
+        handler = (
+            finalize_plugin_inspect
+            if v.run.kind == RunKind.PLUGIN_INSPECT.value
+            else finalize_plugin_describe
+        )
+        objects = dict(v.objects)
+
+        async def apply(session: AsyncSession, row: m.Run) -> None:
+            await handler(session, self.ctx, row, objects)
+
+        return await self._commit(v, apply)
 
     # ....................................................................... governance
     async def _governance(self, v: _Verified) -> RunState | None:
@@ -585,7 +651,8 @@ class Finalizer:
             data_hash=data_hash,
             catalog_digest=v.manifest.catalog_digest,
             base_image=v.manifest.base_image,
-            overlay_hash=v.manifest.overlay_hash,
+            # D10: the control plane's pins, never the runner's word (checked equal above)
+            overlay_hashes=[p.sha256 for p in run_pins(run)],
             objects=objects,
             source_manifest_crc32c=v.manifest_meta.crc32c,
             signed_at=now(),
@@ -732,7 +799,8 @@ class Finalizer:
             dataset_sha=signed.data_hash,
             plugin=resolved.model.resolved if resolved else None,
             base_image=signed.base_image,
-            overlay_hash=signed.overlay_hash,
+            overlay_hash=None,  # deprecated: Lineage.overlays names the uploaded code
+            overlays=run_pins(run),
             catalog_digest=signed.catalog_digest,
             seed=fit.get("seed") if isinstance(fit.get("seed"), int) else None,
             engine=fit.get("engine") if isinstance(fit.get("engine"), str) else None,

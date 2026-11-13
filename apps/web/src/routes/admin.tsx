@@ -723,6 +723,7 @@ function KillSwitchesTab() {
     <QueryView query={switches}>
       {(ks) => {
         const enabled = ks.untrusted_execution_enabled ?? true;
+        const chatOn = ks.chat_enabled ?? true;
         const capMicros = ks.global_spend_cap_micros ?? null;
         const currency = ks.spend_cap_currency ?? "USD";
         const capValue = Number(cap);
@@ -786,6 +787,34 @@ function KillSwitchesTab() {
                     <ShieldOff /> Cancel runs of uploaded code
                   </Button>
                 </CardContent>
+              </Card>
+              <Card className={cn(!chatOn && "border-destructive/40")} data-testid="ks-chat">
+                <CardHeader>
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      Dashboard chat
+                      <Badge variant={chatOn ? "success" : "danger"}>{chatOn ? "on" : "off"}</Badge>
+                    </CardTitle>
+                    <CardDescription>Questions about dashboards that go to the chat model, on all dashboards. MCP continues to work.</CardDescription>
+                  </div>
+                  <Switch
+                    checked={chatOn}
+                    aria-label="Allow dashboard chat"
+                    onCheckedChange={(on) =>
+                      setPending(
+                        on
+                          ? { title: "Turn dashboard chat on again?", description: "Dashboards that have chat turned on can answer questions again.", body: { chat_enabled: true }, danger: false }
+                          : {
+                              title: "Turn off dashboard chat?",
+                              description: "No chat question reaches a model, on all dashboards of all tenants, until you turn it on again. MCP continues to work.",
+                              body: { chat_enabled: false },
+                              danger: true,
+                              confirmWord: "OFF",
+                            },
+                      )
+                    }
+                  />
+                </CardHeader>
               </Card>
               <Card>
                 <CardHeader>

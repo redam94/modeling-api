@@ -1,0 +1,11 @@
+{
+  "_source": "Built from the generateContent API reference representations (ai.google.dev/api/generate-content, docs/api-errors) recorded in plans/v020-probe.md (c); no API call was made.",
+  "_note": "Operator problem (billing).",
+  "status": 400,
+  "body": {
+    "error": {
+      "code": "failed_precondition",
+      "message": "Billing is disabled for this project. SECRET-ECHO-PRECOND"
+    }
+  }
+}

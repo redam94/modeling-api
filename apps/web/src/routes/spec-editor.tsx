@@ -1,9 +1,10 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
-import { Blocks, CheckCircle2, Code2, FlaskConical, GitCompare, History, Play, Plus, Save, ShieldCheck, XCircle } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { BookmarkPlus, Blocks, CheckCircle2, Code2, FlaskConical, GitCompare, History, Play, Plus, Save, ShieldCheck, XCircle } from "lucide-react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { parse as parseYaml } from "yaml";
 
+import { can } from "@/api/access";
 import { ApiError, errorMessage, newIdempotencyKey } from "@/api/client";
 import {
   useCreateRevision,
@@ -27,6 +28,7 @@ import { Badge, Input, NativeSelect } from "@/components/ui/primitives";
 import { useAbout } from "@/features/about/api";
 import { SpecAboutPanel } from "@/features/about/spec-about";
 import { specStarterFor } from "@/features/about/spec-starter";
+import { useGrants } from "@/features/auth/workspace";
 import { DiffView } from "@/features/editor/diff-view";
 import { InsertPanel } from "@/features/editor/insert-panel";
 import { buildPipeline } from "@/features/editor/pipeline";
@@ -37,6 +39,7 @@ import { useHintSources, useSchemaHints } from "@/features/editor/use-spec-hints
 import { YamlEditor, type YamlEditorHandle } from "@/features/editor/yaml-editor";
 import { GuidedReturnLink } from "@/features/guided/return-link";
 import { VisualBuilder } from "@/features/spec-builder/visual-builder";
+import { useRecordRecent } from "@/features/search/use-record-recent";
 import { env } from "@/env";
 import { useDebounced } from "@/hooks/use-debounced";
 import { relativeTime, shortId } from "@/lib/format";
@@ -44,6 +47,23 @@ import { locateIssues, YamlLocator } from "@/lib/yaml-diagnostics";
 import { toast } from "@/stores/toast";
 
 const existingRoute = getRouteApi("/build/$specId");
+
+// v0.18 D4: "Save as preset" keeps the model block as a team model recipe (library code loads
+// only when someone opens the dialog).
+const SavePresetDialog = lazy(() => import("@/features/library/save-preset-dialog").then((m) => ({ default: m.SavePresetDialog })));
+
+type PresetModel = { use: string; settings?: Record<string, never> | null };
+
+/** The spec's `model` block when it names a model (`use`), for "Save as preset". */
+export function presetModelOf(document: unknown): PresetModel | null {
+  if (typeof document !== "object" || document === null || Array.isArray(document)) return null;
+  const model = (document as Record<string, unknown>).model;
+  if (typeof model !== "object" || model === null || Array.isArray(model)) return null;
+  const m = model as Record<string, unknown>;
+  if (typeof m.use !== "string" || !m.use.trim()) return null;
+  const settings = typeof m.settings === "object" && m.settings !== null && !Array.isArray(m.settings) ? (m.settings as Record<string, never>) : null;
+  return { use: m.use.trim(), settings };
+}
 
 type EditorView = "yaml" | "visual";
 const VIEW_KEY = "mapi.spec-editor.view";
@@ -125,6 +145,7 @@ export function SpecEditorPage() {
 function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: string | null; revision: number | undefined; starter?: string }) {
   const navigate = useNavigate();
   const spec = useSpec(specId ?? undefined);
+  useRecordRecent(spec.data ? { group: "specs", title: spec.data.name, secondary: `Revision ${spec.data.latest_revision} · ${spec.data.id}`, href: `/build/${spec.data.id}` } : null);
   const revisions = useSpecRevisions(specId ?? undefined);
   const selectedRev = revision ?? spec.data?.latest_revision;
   const loaded = useSpecRevision(specId ?? undefined, selectedRev);
@@ -194,6 +215,9 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
     }
   }, [text]);
   const pipeline = useMemo(() => buildPipeline(document, validation.response), [document, validation.response]);
+  const presetModel = useMemo(() => presetModelOf(document), [document]);
+  const mayShare = can(useGrants(), "create", "library");
+  const [presetOpen, setPresetOpen] = useState(false);
   // Completions and the Insert panel: the schema enriched with this tenant's catalog and data.
   const hints = useHintSources(document, validation.response?.stages);
   useSchemaHints(`${env.apiBase}/v1/schemas/modelspec.json`, schema.data, hints.shape, hints.sources);
@@ -292,6 +316,7 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
   return (
     <>
       <PageHeader
+        crumbs={[{ label: "Build", to: "/build" }, { label: spec.data?.name ?? (specId ? "Spec" : "New spec") }]}
         title={spec.data?.name ?? (specId ? <Spinner /> : "New spec")}
         meta={
           <>
@@ -325,6 +350,11 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
             <Button variant="outline" onClick={openInsert} disabled={compare !== null || view !== "yaml"} title="Find models, steps, datasets and columns to insert">
               <Plus /> Insert
             </Button>
+            {mayShare && presetModel ? (
+              <Button variant="outline" onClick={() => setPresetOpen(true)} title="Keep this model and its settings as a preset your team can reuse">
+                <BookmarkPlus /> Save as preset
+              </Button>
+            ) : null}
             <Button variant="outline" onClick={validateNow} title="Validate now (⌘Enter)">
               <ShieldCheck /> Validate
             </Button>
@@ -488,6 +518,11 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
           </Tabs>
         </aside>
       </div>
+      {presetOpen && presetModel ? (
+        <Suspense fallback={null}>
+          <SavePresetDialog open={presetOpen} onOpenChange={setPresetOpen} model={presetModel} />
+        </Suspense>
+      ) : null}
     </>
   );
 }

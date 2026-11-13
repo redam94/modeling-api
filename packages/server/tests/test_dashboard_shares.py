@@ -23,7 +23,7 @@ from mapi_server.services.runs import now
 from mapi_server.settings import Profile, Settings
 from mapi_spec.dashboards import DASHBOARD_SHARE_TOKEN_RE, SHARE_SESSION_HEADER, SHARE_SESSION_RE
 from sqlalchemy import select, update
-from test_dashboards_crud import create_published, dashboard_kit, dashboard_spec
+from test_dashboards_crud import LAYOUT1, create_published, dashboard_kit, dashboard_spec
 
 pytestmark = pytest.mark.integration
 
@@ -32,7 +32,9 @@ WEB = "http://127.0.0.1:5173"
 
 @pytest.fixture
 def settings(settings: Settings) -> Settings:
-    return settings.model_copy(update={"profile": Profile.MULTI_TENANT, "web_origin": WEB})
+    return settings.model_copy(
+        update={"profile": Profile.MULTI_TENANT, "web_origin": WEB, **LAYOUT1}
+    )
 
 
 @pytest.fixture

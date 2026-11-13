@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "weekly-sales": {
+      "command": "mapi-mcp",
+      "env": {
+        "MAPI_API_URL": "https://api.example.com",
+        "MAPI_DASHBOARD_TOKEN": "<your read token>"
+      }
+    }
+  }
+}

@@ -19,6 +19,13 @@ format, the condition language and the validation. The
 [node reference](../reference/workflow-nodes.md) lists all nodes with their About cards,
 ports, parameters and result fields.
 
+!!! tip "New in v0.18: your own templates and nodes"
+    Save a workflow that works as a [team template](../extend/workflow-templates.md) (editor
+    menu › **Save as team template**); the gallery lists it under "From your team". Developers
+    can add [workflow nodes](../extend/develop/workflow-nodes.md) and
+    [workflow templates](../extend/develop/workflow-templates.md) in a plugin; they show in
+    the editor palette and in the gallery under "Installed".
+
 | You want to | Go to |
 |---|---|
 | Run an analysis that is ready to use | [Start from the gallery](#start-from-the-gallery) |

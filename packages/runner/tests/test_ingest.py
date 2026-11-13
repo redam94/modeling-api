@@ -368,3 +368,20 @@ def test_the_profile_of_8_bit_pixels_counts_levels_and_the_preview_has_no_pixels
     plain = ds.copy(deep=True)
     plain["pixels"].attrs = {}
     assert preview(plain, 10)["total_rows"] == px.size
+
+
+def test_the_preview_orders_dims_the_same_way_however_the_dataset_was_built() -> None:
+    """B9 (live): ``ds.dims`` follows construction order, so identical data built twice
+    gave two previews (and a content-addressed ``preview.json`` that did not match)."""
+    import xarray as xr
+
+    grid = np.arange(24.0).reshape(2, 3, 4)
+    a = xr.Dataset({"y": (("row", "quarter", "col"), grid)})
+    b = xr.Dataset({"y": (("quarter", "col", "row"), grid.transpose(1, 2, 0))})
+    assert list(a.dims) != list(b.dims)
+    order = ["quarter", "row", "col"]
+    pa, pb = preview(a, 10, order), preview(b, 10, order)
+    assert pa == pb
+    assert [c["name"] for c in pa["columns"]] == ["quarter", "row", "col", "y"]
+    # dims the schema does not list follow by name
+    assert [c["name"] for c in preview(b, 10)["columns"]] == ["col", "quarter", "row", "y"]

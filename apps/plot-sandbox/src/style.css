@@ -1,17 +1,17 @@
 :root {
   color-scheme: light;
-  --text: #121619;
-  --muted: #4d5358;
+  --text: #1d1d1f;
+  --muted: #68686d;
   --tip-bg: #ffffff;
-  --tip-border: #e7eaee;
+  --tip-border: #e8e8ed;
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --text: #f4f5f7;
-  --muted: #a2a9b0;
-  --tip-bg: #232a36;
-  --tip-border: #2c3440;
+  --text: #f5f5f7;
+  --muted: #a1a1a6;
+  --tip-bg: #1d1d1f;
+  --tip-border: #424245;
 }
 
 html,
@@ -20,7 +20,18 @@ body {
   padding: 0;
   background: transparent;
   color: var(--text);
-  font: 13px/1.4 "Inter Variable", Inter, ui-sans-serif, system-ui, sans-serif;
+  font:
+    13px/1.4 -apple-system,
+    BlinkMacSystemFont,
+    "SF Pro Text",
+    "Inter Variable",
+    Inter,
+    "Segoe UI",
+    "Helvetica Neue",
+    Helvetica,
+    Arial,
+    sans-serif;
+  letter-spacing: -0.011em;
 }
 
 #plot {
@@ -48,12 +59,12 @@ body[data-standalone="true"] #plot::before {
   max-width: 320px;
   padding: 6px 8px;
   border: 1px solid var(--tip-border);
-  border-radius: 6px;
+  border-radius: 10px;
   background: var(--tip-bg);
   color: var(--text);
   font-size: 12px;
   pointer-events: none;
-  box-shadow: 0 4px 12px rgb(52 58 63 / 0.12);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.08);
 }
 
 .mapi-tooltip-row {
@@ -75,12 +86,12 @@ body[data-standalone="true"] #plot::before {
 
 :root {
   --page-bg: #ffffff;
-  --error: #c20021;
+  --error: #c00f2c;
 }
 
 :root[data-theme="dark"] {
-  --page-bg: #121619;
-  --error: #ff8597;
+  --page-bg: #000000;
+  --error: #ff6b6b;
 }
 
 body.embed {

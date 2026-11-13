@@ -173,7 +173,8 @@ async def session_caller(
     async with ctx.db.session() as s:
         row = await s.get(m.User, user.id)
         assert row is not None
-        value, sess = await create_session(s, row)
+        # a person who just signed in at the IdP (auth_time: recent-sign-in checks pass)
+        value, sess = await create_session(s, row, auth_time=now())
         token = sess.csrf_token
     headers: dict[str, str] = {}
     if csrf:

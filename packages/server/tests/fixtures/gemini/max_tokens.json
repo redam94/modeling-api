@@ -1,0 +1,30 @@
+{
+  "_source": "Built from the generateContent API reference representations (ai.google.dev/api/generate-content, docs/api-errors) recorded in plans/v020-probe.md (c); no API call was made.",
+  "_note": "The answer was cut at maxOutputTokens: the partial text is returned.",
+  "status": 200,
+  "body": {
+    "candidates": [
+      {
+        "content": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "Readout 12 has six tiles. The first tile shows"
+            }
+          ]
+        },
+        "finishReason": "MAX_TOKENS",
+        "index": 0
+      }
+    ],
+    "usageMetadata": {
+      "promptTokenCount": 1900,
+      "cachedContentTokenCount": 512,
+      "candidatesTokenCount": 1024,
+      "thoughtsTokenCount": 10,
+      "totalTokenCount": 2934
+    },
+    "modelVersion": "gemini-3.1-flash-lite",
+    "responseId": "resp-max_tokens"
+  }
+}

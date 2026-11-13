@@ -7,6 +7,11 @@ owner narrowed by its scopes and can
 never do more than the owner's role at the time of use. Only ``HMAC(pepper, token)`` is
 stored. Acting on other members' tokens (``all=true``, revoking theirs) needs ``manage`` on
 ``token`` (project admins).
+
+v0.20: dashboard read tokens (scope ``dashboard:<id>``) are not managed here. They are
+minted, listed and revoked under ``/v1/dashboards/{dashboard_id}/read-tokens``
+(:mod:`mapi_server.api.dashboard_read_tokens`); these routes refuse a ``dashboard:`` scope
+and do not show those tokens (``404``).
 """
 
 from __future__ import annotations
@@ -18,8 +23,9 @@ from fastapi import APIRouter, Path, Query, Response, status
 from fastapi.responses import JSONResponse
 from mapi_spec.api import ApiToken, Page, TokenCreate, TokenCreated, new_id
 from mapi_spec.audit import AuditAction
+from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.tenancy import Action, PrincipalKind, ResourceKind
-from mapi_spec.tokens import TokenStatus, generate_token, hash_token
+from mapi_spec.tokens import TokenStatus, dashboard_scope_target, generate_token, hash_token
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -74,7 +80,9 @@ async def list_tokens(
     """The caller's tokens in the project, newest first (``all=true``: everyone's)."""
     sc = ctx.scope
     stmt = select(m.ApiToken).where(
-        m.ApiToken.tenant_id == sc.tenant_id, m.ApiToken.project_id == sc.project_id
+        m.ApiToken.tenant_id == sc.tenant_id,
+        m.ApiToken.project_id == sc.project_id,
+        m.ApiToken.dashboard_id.is_(None),
     )
     if all_:
         auth.require(Action.MANAGE, ResourceKind.TOKEN)
@@ -109,6 +117,12 @@ async def list_tokens(
 )
 async def create_token(ctx: Ctx, auth: Auth, session: Session, body: TokenCreate) -> JSONResponse:
     """Mint a token in the selected project; ``secret`` is returned now and never again."""
+    if dashboard_scope_target(body.scopes) is not None:
+        raise MapiError(
+            "dashboard read tokens are made under /v1/dashboards/{dashboard_id}/read-tokens",
+            code=ErrorCode.SCHEMA_INVALID,
+            pointer="/scopes",
+        )
     sc = ctx.scope
     owner_id, owner_kind = _owner(auth)
     ts = now()
@@ -170,7 +184,11 @@ async def _token(
 ) -> m.ApiToken:
     sc = ctx.scope
     row = await session.get(m.ApiToken, token_id, with_for_update=lock)
-    if row is None or (row.tenant_id, row.project_id) != (sc.tenant_id, sc.project_id):
+    if (
+        row is None
+        or (row.tenant_id, row.project_id) != (sc.tenant_id, sc.project_id)
+        or row.dashboard_id is not None  # a dashboard read token: managed on its dashboard
+    ):
         raise NotFoundError("token", token_id)
     if row.owner_id != _owner(auth)[0] and not auth.allows(Action.MANAGE, ResourceKind.TOKEN):
         raise NotFoundError("token", token_id)

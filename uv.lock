@@ -22,6 +22,7 @@ members = [
     "mapi-conformance",
     "mapi-gcs-shim",
     "mapi-jax",
+    "mapi-mcp",
     "mapi-plots",
     "mapi-plugin-causal",
     "mapi-plugin-mmm",
@@ -2500,6 +2501,21 @@ requires-dist = [
 ]
 
 [[package]]
+name = "mapi-mcp"
+version = "0.16.0"
+source = { editable = "packages/mcp" }
+dependencies = [
+    { name = "httpx" },
+    { name = "mapi-spec" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "mapi-spec", editable = "packages/spec" },
+]
+
+[[package]]
 name = "mapi-plots"
 version = "0.16.0"
 source = { editable = "packages/plots-core" }
@@ -3432,6 +3448,7 @@ dependencies = [
     { name = "mapi-conformance" },
     { name = "mapi-gcs-shim" },
     { name = "mapi-jax" },
+    { name = "mapi-mcp" },
     { name = "mapi-plots", extra = ["recipes"] },
     { name = "mapi-plugin-causal" },
     { name = "mapi-plugin-mmm" },
@@ -3479,6 +3496,7 @@ requires-dist = [
     { name = "mapi-conformance", editable = "conformance" },
     { name = "mapi-gcs-shim", editable = "packages/gcs-shim" },
     { name = "mapi-jax", editable = "packages/sdk-jax" },
+    { name = "mapi-mcp", editable = "packages/mcp" },
     { name = "mapi-plots", extras = ["recipes"], editable = "packages/plots-core" },
     { name = "mapi-plugin-causal", editable = "plugins/causal" },
     { name = "mapi-plugin-mmm", editable = "plugins/mmm" },

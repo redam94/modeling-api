@@ -270,8 +270,14 @@ def test_blob_query_and_missing() -> None:
 
 
 def test_v015_endpoints_and_access() -> None:
-    # the v0.16 rows follow the v0.15 rows
-    v016 = len(api.V016_ENDPOINTS)
+    # the v0.16, v0.17 and v0.18 rows follow the v0.15 rows
+    v016 = (
+        len(api.V016_ENDPOINTS)
+        + len(api.V017_ENDPOINTS)
+        + len(api.V018_ENDPOINTS)
+        + len(api.V019_ENDPOINTS)
+        + len(api.V020_ENDPOINTS)
+    )
     assert api.ENDPOINTS[-len(V015_ENDPOINTS) - v016 : -v016] == V015_ENDPOINTS
     by_op = {e.operation_id: e for e in V015_ENDPOINTS}
     assert set(by_op) == {"get_upload", "renew_upload", "find_missing_images"}

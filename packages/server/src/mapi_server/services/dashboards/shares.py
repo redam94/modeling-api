@@ -15,6 +15,11 @@ tenant not active), the per-link limit, then (sessions: the session version; exc
 lock and the passcode) and a re-check in a session pinned to the link's tenant. Revoking a
 link bumps its ``session_version``, so its sessions fail on their next request.
 
+v0.19 (plan D16): a dashboard whose published revision, or any readout it shows, was made
+with uploaded code is never shared: making the link answers ``403
+UPLOADED_CODE_NOT_SHAREABLE``, and so do opening it and every later read with its session
+(:func:`_published`), so a refresh that adds such a readout ends the link's use at once.
+
 Passcodes (optional, 8-128 characters) are stored as
 ``scrypt$14$8$1$<salt>$<hash>`` of ``HMAC(pepper, passcode)`` and compared in constant time.
 After ``share_passcode_max_failures`` wrong ones the link is locked for ``share_lockout_s``
@@ -59,14 +64,15 @@ from mapi_server.services.audit import write_audit, write_failure_audit
 from mapi_server.services.dashboards.access import (
     DashboardContext,
     actuals_mode,
+    any_revision_spec,
     client_dashboard,
     effective_inputs,
     load_dashboard,
     load_revision,
-    revision_spec,
 )
 from mapi_server.services.quotas import count_requests
 from mapi_server.services.runs import now
+from mapi_server.services.sharing import require_shareable
 
 __all__ = [
     "PASSCODE_SCHEME",
@@ -162,6 +168,7 @@ async def create_share(
         raise MapiError(
             "publish the dashboard before you share it", code=ErrorCode.DASHBOARD_NOT_PUBLISHED
         )
+    await require_shareable(session, dashboard=row)
     if body.allowed_inputs and not _may_run(ctx):
         raise MapiError(
             "a share link with what-ifs or uploads needs the runner role: its results run as "
@@ -321,9 +328,10 @@ async def _ip_limit(ctx: ServerContext, client_ip: str | None, at: datetime) -> 
         await _limit(s, f"shareip:{who[:32]}", settings.share_ip_rate_per_minute, at)
 
 
-async def _lookup(ctx: ServerContext, at: datetime, **where: str) -> _Found:
+async def _lookup(ctx: ServerContext, at: datetime, *, count: bool = True, **where: str) -> _Found:
     """Find a live link as the gateway role (``404`` unknown, ``410`` ended), then count it
-    against the per-link limit."""
+    against the per-link limit (not when ``count`` is false: a re-check inside a request that
+    was counted already)."""
     cols = (
         m.DashboardShare.id,
         m.DashboardShare.tenant_id,
@@ -348,7 +356,7 @@ async def _lookup(ctx: ServerContext, at: datetime, **where: str) -> _Found:
         tenant = await s.get(m.Tenant, tenant_id)
         if tenant is None or tenant.status != TenantStatus.ACTIVE.value:
             raise _expired()
-        if ctx.settings.rate_limits_enabled:
+        if count and ctx.settings.rate_limits_enabled:
             await _limit(s, f"share:{share_id}", ctx.settings.share_rate_per_minute, at)
     return _Found(share_id, tenant_id, project_id, dashboard_id, expires_at, int(version))
 
@@ -389,12 +397,16 @@ def _session_claims(ctx: ServerContext, header: str | None, at: datetime) -> tup
 async def _published(
     session: AsyncSession, dashboard_id: str
 ) -> tuple[m.Dashboard, m.DashboardRevision]:
+    """The published dashboard and revision a link shows (``410`` once unpublished), checked
+    again on every exchange and read: ``403 UPLOADED_CODE_NOT_SHAREABLE`` as soon as any of
+    it was made with uploaded code (D16)."""
     row = await session.get(m.Dashboard, dashboard_id)
     if row is None or row.status != "published":
         raise _expired()
     rev = await load_revision(session, row)
     if rev is None:
         raise _expired()
+    await require_shareable(session, dashboard=row)
     return row, rev
 
 
@@ -405,7 +417,7 @@ async def _context(
     row: m.Dashboard,
     rev: m.DashboardRevision,
 ) -> DashboardContext:
-    spec = revision_spec(rev)
+    spec = any_revision_spec(rev)
     mode = await actuals_mode(session, ctx, rev.model_version_id) if spec.actuals.enabled else None
     return DashboardContext(
         tenant_id=row.tenant_id,
@@ -533,22 +545,27 @@ async def open_session(
 
 
 async def resolve_session(
-    ctx: ServerContext, header: str | None, client_ip: str | None
+    ctx: ServerContext, header: str | None, client_ip: str | None, *, count: bool = True
 ) -> DashboardContext:
     """The dashboard context of a share session (``X-Mapi-Share``), checked again on every
     request: ``401`` for a missing, forged, expired or superseded session, ``410`` once the
-    link is revoked or expired, its tenant is not active or the dashboard is unpublished."""
-    return (await resolve_shared(ctx, header, client_ip)).context
+    link is revoked or expired, its tenant is not active or the dashboard is unpublished.
+
+    ``count=False`` (v0.20, plan D9) skips the per-address and per-link request limits and
+    keeps every other check: the chat loop re-checks the session before each model and tool
+    call of one request, and only the request's first check counts."""
+    return (await resolve_shared(ctx, header, client_ip, count=count)).context
 
 
 async def resolve_shared(
-    ctx: ServerContext, header: str | None, client_ip: str | None
+    ctx: ServerContext, header: str | None, client_ip: str | None, *, count: bool = True
 ) -> SharedView:
     """:func:`resolve_session` with the link's expiry (``ClientDashboard.ends_at``)."""
     at = now()
-    await _ip_limit(ctx, client_ip, at)
+    if count:
+        await _ip_limit(ctx, client_ip, at)
     share_id, version = _session_claims(ctx, header, at)
-    found = await _lookup(ctx, at, share_id=share_id)
+    found = await _lookup(ctx, at, count=count, share_id=share_id)
     if found.session_version != version:
         raise unauthenticated("the share session has ended; open the link again")
     async with ctx.db.tenant_session(found.tenant_id) as session:

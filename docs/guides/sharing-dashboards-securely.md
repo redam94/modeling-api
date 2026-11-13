@@ -2,7 +2,7 @@
 description: Share a client dashboard with persons who have no account - make, send and revoke share links, add a passcode and allow inputs, and how the platform protects the token, the session and your compute.
 ---
 
-# Share dashboards securely <span class="mapi-badge">v0.16</span>
+# Share dashboards securely with a share link <span class="mapi-badge">v0.16</span>
 
 A **share link** lets a person without an account read one published dashboard. This page
 tells how to make a link, and how the platform protects it. For client users who sign in,
@@ -91,6 +91,16 @@ expiry and the number of views.
 
 The audit log records each link that is made or revoked (`dashboard.share_create`,
 `dashboard.share_revoke`) and each wrong passcode (`dashboard.share_unlock_failed`).
+
+## Chat and MCP on a link
+
+The chat of a dashboard is off for share links, also when it is on for team members and
+clients. If you turn it on for links, all persons who use the same link share one daily
+limit, and the assistant can show the cases and scored files that were made with the link
+([Share links and privacy](ask-about-your-dashboard.md#share-links-and-privacy)). A person
+with the link and its passcode can also connect a chat tool
+([Connect a chat tool with MCP](connect-a-chat-tool-with-mcp.md#with-a-share-link)). A
+revoked link stops both at the next request.
 
 ## With the API
 

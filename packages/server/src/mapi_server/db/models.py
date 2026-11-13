@@ -19,6 +19,7 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     ForeignKeyConstraint,
+    Identity,
     Index,
     Integer,
     MetaData,
@@ -41,6 +42,10 @@ __all__ = [
     "Catalog",
     "CostLedgerEntry",
     "Dashboard",
+    "DashboardAsset",
+    "DashboardChatSettings",
+    "DashboardChatTranscript",
+    "DashboardChatUsage",
     "DashboardGrant",
     "DashboardReadout",
     "DashboardRefitRequest",
@@ -55,14 +60,22 @@ __all__ = [
     "Experiment",
     "GovernancePolicyRow",
     "IdempotencyKey",
+    "LibraryItem",
+    "LibraryItemRevision",
     "LoginTransactionRow",
     "Membership",
     "Model",
     "ModelValidation",
     "ModelVersion",
+    "OnboardingProgress",
     "PlatformSetting",
     "Plot",
     "PlotEmbed",
+    "Plugin",
+    "PluginApproval",
+    "PluginDescribe",
+    "PluginUpload",
+    "PluginVersion",
     "Project",
     "QuotaPolicy",
     "RateCounter",
@@ -84,9 +97,12 @@ __all__ = [
     "Tenant",
     "TenantDeletion",
     "TenantExport",
+    "TenantPluginSettings",
+    "TenantSample",
     "TenantVerification",
     "Upload",
     "User",
+    "UserVerification",
     "ValidationApproval",
     "WebSession",
     "Webhook",
@@ -161,6 +177,25 @@ TENANT_TABLES: tuple[str, ...] = (
     "dashboard_readouts",
     "dashboard_shares",
     "dashboard_refit_requests",
+    # v0.17 layout 2 dashboards (0020_any_model_dashboards)
+    "dashboard_assets",
+    # v0.18 library, onboarding and samples (0021_v018_library_onboarding)
+    "library_items",
+    "library_item_revisions",
+    "onboarding_progress",
+    "tenant_samples",
+    # v0.19 uploaded code (0022_plugins)
+    "tenant_plugin_settings",
+    "user_verifications",
+    "plugins",
+    "plugin_uploads",
+    "plugin_versions",
+    "plugin_describes",
+    "plugin_approvals",
+    # v0.20 dashboard chat (0024_dashboard_chat)
+    "dashboard_chat_settings",
+    "dashboard_chat_transcripts",
+    "dashboard_chat_usage",
 )
 """Tables with row-level security on ``tenant_id = current_setting('app.tenant_id')``
 (``tenants`` itself is isolated on ``id``). New tenant tables must be added here and get
@@ -203,6 +238,15 @@ class Base(DeclarativeBase):
 
 def _now() -> Any:
     return func.now()
+
+
+def _in(values: tuple[str, ...]) -> str:
+    return ",".join(f"'{v}'" for v in values)
+
+
+PROJECT_KINDS: tuple[str, ...] = ("standard", "sample", "sample_retired")
+"""``projects.kind`` (0021): a tenant's sample project (:mod:`mapi_spec.samples`) is
+``sample`` while installed and ``sample_retired`` once a tenant admin retires it."""
 
 
 class _Scoped:
@@ -249,8 +293,13 @@ class Project(Base):
     created_at: Mapped[datetime] = mapped_column(server_default=_now())
     # M3 persona lock (0007_guided): non-admins see and write Guided specs only
     guided_locked: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    # v0.18 (0021): a tenant's sample project is ``sample`` until a tenant admin retires it
+    kind: Mapped[str] = mapped_column(String(16), default="standard", server_default="standard")
 
-    __table_args__ = (CheckConstraint("project_id = id", name="project_id_is_id"),)
+    __table_args__ = (
+        CheckConstraint("project_id = id", name="project_id_is_id"),
+        CheckConstraint(f"kind in ({_in(PROJECT_KINDS)})", name="kind"),
+    )
 
 
 class User(Base):
@@ -324,7 +373,11 @@ class Membership(Base):
 
 
 class ApiToken(Base):
-    """An API token. Only ``secret_hash`` (HMAC-SHA256 under the server pepper) is stored."""
+    """An API token. Only ``secret_hash`` (HMAC-SHA256 under the server pepper) is stored.
+
+    ``dashboard_id`` (0024) is set only on a dashboard read token (scope
+    ``dashboard:<dashboard_id>``, the token's only scope): it counts the active tokens per
+    owner and dashboard and the token goes with its dashboard."""
 
     __tablename__ = "api_tokens"
 
@@ -344,6 +397,9 @@ class ApiToken(Base):
     expires_at: Mapped[datetime] = mapped_column()
     last_used_at: Mapped[datetime | None] = mapped_column()
     revoked_at: Mapped[datetime | None] = mapped_column()
+    dashboard_id: Mapped[str | None] = mapped_column(
+        String(64), ForeignKey("dashboards.id", ondelete="CASCADE")
+    )
 
     __table_args__ = (
         ForeignKeyConstraint(
@@ -353,6 +409,7 @@ class ApiToken(Base):
         ),
         CheckConstraint("budget_period in ('day','month')", name="budget_period"),
         Index("ix_api_tokens_owner", "tenant_id", "project_id", "owner_id"),
+        Index("ix_api_tokens_dashboard", "tenant_id", "dashboard_id", "owner_id"),
     )
 
 
@@ -369,6 +426,9 @@ class WebSession(Base):
     expires_at: Mapped[datetime] = mapped_column()
     ip_hash: Mapped[str | None] = mapped_column(String(64))
     user_agent_hash: Mapped[str | None] = mapped_column(String(64))
+    auth_time: Mapped[datetime | None] = mapped_column()
+    """v0.19: the ID token's ``auth_time`` (when the person last authenticated at the IdP);
+    approving uploaded code needs it recent (``created_at`` is only when the row was made)."""
 
     __table_args__ = (Index("ix_web_sessions_user", "user_id"),)
 
@@ -385,6 +445,8 @@ class LoginTransactionRow(Base):
     code_verifier: Mapped[str] = mapped_column(String(128))
     return_to: Mapped[str] = mapped_column(String(2048))
     created_at: Mapped[datetime] = mapped_column()
+    reauth: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    """v0.19: the IdP was asked to authenticate the person again (``max_age=0``)."""
 
 
 # ====================================================================== datasets
@@ -556,6 +618,9 @@ class Run(_Scoped, Base):
     untrusted_code: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default=text("false")
     )
+    # v0.19 (0022): the overlay pins this run mounts (``mapi_spec.plugins.OverlayPin`` JSON),
+    # the control plane's truth for lineage; a run with pins is always untrusted
+    overlays: Mapped[list[Any]] = mapped_column(default=list, server_default=text("'[]'"))
     estimate: Mapped[dict[str, Any] | None] = mapped_column(JSONB)  # CostEstimate at submit
     name: Mapped[str | None] = mapped_column(String(200))  # v0.11: PATCH /v1/runs/{id}
     note: Mapped[str | None] = mapped_column(Text)
@@ -574,8 +639,23 @@ class Run(_Scoped, Base):
         Index("ix_runs_spec", "spec_id"),
         Index("ix_runs_tenant_state", "tenant_id", "state"),
         Index("ix_runs_experiment", "tenant_id", "project_id", "experiment_id", "id"),
+        # v0.18 (0021): the recipe playground's cached previews (one render run per key)
+        Index(
+            "ix_runs_preview_key",
+            text("(labels ->> 'mapi.preview')"),
+            postgresql_where=text("kind = 'render'"),
+        ),
+        # v0.19 (0022): usage counts and security yanks find the runs pinned to a version
+        Index(
+            "ix_runs_overlays",
+            "overlays",
+            postgresql_using="gin",
+            postgresql_ops={"overlays": "jsonb_path_ops"},
+        ),
         CheckConstraint("priority in ('interactive','batch')", name="priority"),
         CheckConstraint("task_count >= 1", name="task_count"),
+        CheckConstraint("jsonb_typeof(overlays) = 'array'", name="overlays_array"),
+        CheckConstraint("overlays = '[]'::jsonb OR untrusted_code", name="overlays_untrusted"),
     )
 
 
@@ -1765,8 +1845,11 @@ class ValidationApproval(_Scoped, Base):
 
 DASHBOARD_SPEC_MAX_BYTES = 65_536
 """``mapi_spec.dashboards.MAX_SPEC_BYTES``: the cap on ``draft_spec`` / ``spec`` as text."""
-DASHBOARD_SNAPSHOT_MAX_BYTES = 300_000
-"""The database's cap on a readout snapshot as text (the contract's own cap is lower)."""
+DASHBOARD_SNAPSHOT_MAX_BYTES = 400_000
+"""The database's cap on a readout snapshot as text (0020; was 300 000 in 0018). The
+contract's own caps are lower: 262 144 bytes for layout 1, 393 216 for layout 2."""
+DASHBOARD_ASSET_MAX_BYTES = 524_288
+"""The cap on a dashboard asset (a picture PNG) in object storage."""
 
 
 class Dashboard(_Scoped, Base):
@@ -1905,9 +1988,13 @@ class DashboardReadout(_Scoped, Base):
     __table_args__ = (
         _scope_fk(),
         CheckConstraint("seq >= 1", name="seq"),
-        CheckConstraint("kind in ('baseline','refresh','scenario','actuals')", name="kind"),
         CheckConstraint(
-            "trigger in ('publish','manual','whatif','actuals','workflow','endpoint')",
+            "kind in ('baseline','refresh','scenario','actuals','prediction','batch')",
+            name="kind",
+        ),
+        CheckConstraint(
+            "trigger in ('publish','manual','whatif','actuals','workflow','endpoint',"
+            "'scenario_rows','batch')",
             name="trigger",
         ),
         CheckConstraint(
@@ -1971,7 +2058,8 @@ class DashboardShare(_Scoped, Base):
         _scope_fk(),
         CheckConstraint("session_version >= 1", name="session_version"),
         CheckConstraint(
-            "allowed_inputs <@ ARRAY['whatif','actuals']::text[]", name="allowed_inputs"
+            "allowed_inputs <@ ARRAY['whatif','actuals','scenario_rows','batch']::text[]",
+            name="allowed_inputs",
         ),
         Index("ix_dashboard_shares_dashboard", "tenant_id", "project_id", "dashboard_id"),
     )
@@ -2019,4 +2107,677 @@ class DashboardRefitRequest(_Scoped, Base):
             unique=True,
             postgresql_where=text("status = 'open'"),
         ),
+    )
+
+
+class DashboardAsset(_Scoped, Base):
+    """A picture of a published revision (0020): a model-version plot (``plot_id``, its
+    platform ``recipe``) that a render run (``run_id``) turned into a PNG of at most
+    :data:`DASHBOARD_ASSET_MAX_BYTES`. ``queued`` until the run finishes, then ``ready``
+    (``bucket``/``name``/``generation`` point at the object; rows never hold the bytes) or
+    ``failed`` (``problem``). One asset per revision and plot. The request path may insert,
+    read and update assets, never delete them; they go with their dashboard or revision."""
+
+    __tablename__ = "dashboard_assets"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    dashboard_id: Mapped[str] = mapped_column(ForeignKey("dashboards.id", ondelete="CASCADE"))
+    revision_id: Mapped[str] = mapped_column(
+        ForeignKey("dashboard_revisions.id", ondelete="CASCADE")
+    )
+    plot_id: Mapped[str] = mapped_column(String(128))
+    recipe: Mapped[str | None] = mapped_column(String(128))
+    content_type: Mapped[str] = mapped_column(
+        String(32), default="image/png", server_default="image/png"
+    )
+    status: Mapped[str] = mapped_column(String(16), default="queued", server_default="queued")
+    run_id: Mapped[str | None] = mapped_column(String(64))
+    bucket: Mapped[str | None] = mapped_column(String(128))
+    name: Mapped[str | None] = mapped_column(String(1024))
+    generation: Mapped[int | None] = mapped_column(BigInteger)
+    bytes: Mapped[int | None] = mapped_column(Integer)
+    width: Mapped[int | None] = mapped_column(Integer)
+    height: Mapped[int | None] = mapped_column(Integer)
+    problem: Mapped[str | None] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    ready_at: Mapped[datetime | None] = mapped_column()
+
+    __table_args__ = (
+        _scope_fk(),
+        UniqueConstraint("revision_id", "plot_id"),
+        CheckConstraint("content_type = 'image/png'", name="content_type"),
+        CheckConstraint("status in ('queued','ready','failed')", name="status"),
+        CheckConstraint(
+            f"bytes IS NULL OR (bytes >= 1 AND bytes <= {DASHBOARD_ASSET_MAX_BYTES})",
+            name="bytes",
+        ),
+        CheckConstraint(
+            "status <> 'ready' OR (bucket IS NOT NULL AND name IS NOT NULL "
+            "AND generation IS NOT NULL AND bytes IS NOT NULL)",
+            name="ready_object",
+        ),
+        Index("ix_dashboard_assets_dashboard", "tenant_id", "dashboard_id"),
+        Index("ix_dashboard_assets_queued", "run_id", postgresql_where=text("status = 'queued'")),
+    )
+
+
+# ============================================================ library, onboarding, samples (v0.18)
+
+LIBRARY_KINDS: tuple[str, ...] = (
+    "model_recipe",
+    "prep_preset",
+    "chart_template",
+    "workflow_template",
+)
+"""``mapi_spec.library.LibraryKind``."""
+LIBRARY_REVISION_MAX_BYTES = 300_000
+"""The database's cap on a revision's ``document`` as text. The contract's own cap
+(``mapi_spec.library.LIBRARY_DOC_MAX_BYTES``, 262 144 bytes of compact JSON) is lower."""
+ONBOARDING_STATE_MAX_BYTES = 8192
+"""``mapi_spec.onboarding.MAX_ONBOARDING_BYTES``: the cap on ``onboarding_progress.state``."""
+SAMPLE_STATES: tuple[str, ...] = (
+    "provisioning", "ingesting", "fitting", "ready", "failed", "retired"
+)  # fmt: skip
+"""``mapi_spec.samples.SampleState``."""
+
+
+class LibraryItem(Base):
+    """A library item (:class:`mapi_spec.library.LibraryItem`): an analyst-authored model
+    recipe, prep preset, chart template or workflow template, as JSON documents in immutable
+    :class:`LibraryItemRevision` rows. ``project_id`` is NULL exactly for ``tenant`` scope
+    (every project of the tenant may read it). Names are unique per tenant, project scope
+    and kind. Items are archived, never deleted by the request path."""
+
+    __tablename__ = "library_items"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), ForeignKey("tenants.id", ondelete="CASCADE"))
+    project_id: Mapped[str | None] = mapped_column(String(64))
+    scope: Mapped[str] = mapped_column(String(16))
+    kind: Mapped[str] = mapped_column(String(32))
+    name: Mapped[str] = mapped_column(String(64))
+    title: Mapped[str] = mapped_column(String(120))
+    summary: Mapped[str] = mapped_column(String(300), default="", server_default="")
+    tags: Mapped[list[Any]] = mapped_column(default=list, server_default=text("'[]'"))
+    latest_revision: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    archived: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    created_by: Mapped[str] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        CheckConstraint("scope in ('project','tenant')", name="scope"),
+        CheckConstraint("(scope = 'tenant') = (project_id IS NULL)", name="scope_project"),
+        CheckConstraint(f"kind in ({_in(LIBRARY_KINDS)})", name="kind"),
+        CheckConstraint("latest_revision >= 1", name="latest_revision"),
+        CheckConstraint("jsonb_typeof(tags) = 'array'", name="tags_array"),
+        ForeignKeyConstraint(
+            ["tenant_id", "project_id"],
+            ["projects.tenant_id", "projects.id"],
+            ondelete="CASCADE",
+        ),
+        # the target of the revisions' tenant-pinned foreign key
+        UniqueConstraint("tenant_id", "id"),
+        Index(
+            "uq_library_items_name",
+            "tenant_id",
+            text("coalesce(project_id, '')"),
+            "kind",
+            "name",
+            unique=True,
+        ),
+        Index("ix_library_items_scope", "tenant_id", "project_id", "kind"),
+    )
+
+
+class LibraryItemRevision(Base):
+    """One immutable revision of a library item (:class:`mapi_spec.library.LibraryRevision`):
+    the document as written, its hash, whether it compiled against the catalog of the time
+    (``catalog_digest``), the issues and the compiled output. The foreign key carries the
+    tenant, so a revision can only belong to an item of its own tenant."""
+
+    __tablename__ = "library_item_revisions"
+
+    item_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    revision: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64))
+    project_id: Mapped[str | None] = mapped_column(String(64))
+    document: Mapped[dict[str, Any]] = mapped_column()
+    compiled: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    doc_hash: Mapped[str] = mapped_column(String(71))
+    valid: Mapped[bool] = mapped_column(Boolean)
+    issues: Mapped[list[Any]] = mapped_column(default=list, server_default=text("'[]'"))
+    catalog_digest: Mapped[str | None] = mapped_column(String(71))
+    message: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[str] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "item_id"],
+            ["library_items.tenant_id", "library_items.id"],
+            ondelete="CASCADE",
+        ),
+        CheckConstraint("revision >= 1", name="revision"),
+        CheckConstraint(
+            f"octet_length(document::text) <= {LIBRARY_REVISION_MAX_BYTES}", name="document_size"
+        ),
+    )
+
+
+class OnboardingProgress(Base):
+    """One member's onboarding progress in one tenant (:class:`mapi_spec.onboarding
+    .OnboardingState` as ``state``; ``version`` backs the ETag). UX state, not a security
+    control; a reset rewrites the row rather than deleting it."""
+
+    __tablename__ = "onboarding_progress"
+
+    tenant_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("tenants.id", ondelete="CASCADE"), primary_key=True
+    )
+    principal_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    state: Mapped[dict[str, Any]] = mapped_column(default=dict, server_default=text("'{}'"))
+    version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    updated_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        CheckConstraint("jsonb_typeof(state) = 'object'", name="state_object"),
+        CheckConstraint(
+            f"pg_column_size(state) <= {ONBOARDING_STATE_MAX_BYTES}", name="state_size"
+        ),
+        CheckConstraint("version >= 0", name="version"),
+    )
+
+
+class TenantSample(Base):
+    """A sample project installed in a tenant (:mod:`mapi_spec.samples`): one row per tenant
+    and sample, advanced by the sample loop from ``provisioning`` through ``ingesting`` and
+    ``fitting`` to ``ready`` (or ``failed``, retried at most a few times). ``project_id`` is
+    set once the sample's project exists. Retired by a tenant admin, never deleted by the
+    request path."""
+
+    __tablename__ = "tenant_samples"
+
+    tenant_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("tenants.id", ondelete="CASCADE"), primary_key=True
+    )
+    sample_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    project_id: Mapped[str | None] = mapped_column(String(64))
+    state: Mapped[str] = mapped_column(
+        String(16), default="provisioning", server_default="provisioning"
+    )
+    dataset_id: Mapped[str | None] = mapped_column(String(64))
+    dataset_version: Mapped[int | None] = mapped_column(Integer)
+    spec_id: Mapped[str | None] = mapped_column(String(64))
+    run_id: Mapped[str | None] = mapped_column(String(64))
+    model_id: Mapped[str | None] = mapped_column(String(64))
+    model_version: Mapped[int | None] = mapped_column(Integer)
+    problem: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    created_by: Mapped[str] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "project_id"],
+            ["projects.tenant_id", "projects.id"],
+            ondelete="CASCADE",
+        ),
+        CheckConstraint(f"state in ({_in(SAMPLE_STATES)})", name="state"),
+        CheckConstraint("attempts >= 0", name="attempts"),
+        Index(
+            "ix_tenant_samples_pending",
+            "state",
+            postgresql_where=text("state in ('provisioning','ingesting','fitting')"),
+        ),
+    )
+
+
+# ================================================================== uploaded code (v0.19)
+
+TENANT_CODE_RE = "^[a-z2-7]{6}$"
+"""``mapi_spec.plugins.TENANT_CODE_RE``."""
+PLUGIN_SHORT_RE = "^[a-z][a-z0-9]{1,15}$"
+"""``mapi_spec.plugins.PLUGIN_SHORT_RE``."""
+UPLOAD_NAMESPACE_RE = "^t_[a-z2-7]{6}_[a-z][a-z0-9]{1,15}$"
+"""``mapi_spec.plugins.UPLOAD_NAMESPACE_RE`` (without its capture groups)."""
+SHA256_RE = "^sha256:[0-9a-f]{64}$"
+"""``mapi_spec._dto.Sha256``."""
+WHEEL_FILENAME_RE = r"^[A-Za-z0-9._-]+\.whl$"
+"""``mapi_spec.plugins.PluginUploadTicketRequest.filename``."""
+USER_VERIFICATION_METHODS: tuple[str, ...] = ("admin_attested", "provider")
+"""``mapi_spec.plugins.VerifiedUploader.method``."""
+PLUGIN_UPLOAD_STATES: tuple[str, ...] = ("pending", "completed", "expired")
+"""The states of an upload ticket (``plugin_uploads.state``)."""
+PLUGIN_VERSION_STATES: tuple[str, ...] = (
+    "uploaded",
+    "inspecting",
+    "inspect_failed",
+    "describing",
+    "kit_failed",
+    "kit_passed",
+    "awaiting_approval",
+    "approved",
+    "rejected",
+    "yanked",
+    "purged",
+)
+"""``mapi_spec.plugins.PluginVersionState``."""
+PLUGIN_VERSION_SCOPES: tuple[str, ...] = ("private", "tenant", "none")
+"""``mapi_spec.plugins.PluginVersionSummary.scope``."""
+PLUGIN_YANK_REASONS: tuple[str, ...] = ("withdrawn", "security", "superseded", "rekit_failed")
+"""``mapi_spec.plugins.YankReason``."""
+PLUGIN_DECISIONS: tuple[str, ...] = ("approve", "reject")
+"""``mapi_spec.plugins.PluginDecisionRecord.decision``."""
+PLUGIN_UPLOAD_MAX_BYTES = 20_971_520
+"""``mapi_spec.plugins.ArchiveLimits.max_bytes``: the cap on one uploaded wheel."""
+PLUGIN_INSPECTION_MAX_BYTES = 1_100_000
+"""The database's cap on ``plugin_versions.inspection`` as text. The contract's own cap
+(``mapi_spec.plugins.INSPECTION_MAX_BYTES``, 1 MiB) is lower."""
+PLUGIN_EXPORTS_MAX_BYTES = 2_200_000
+"""The database's cap on ``plugin_describes.exports`` as text. The contract's own cap on the
+whole describe result (``mapi_spec.plugins.DESCRIBE_MAX_BYTES``, 2 MiB) is lower."""
+
+
+class TenantPluginSettings(Base):
+    """A tenant's uploaded-code settings (:class:`mapi_spec.plugins.PluginSettings`), created
+    on the tenant's first plugin claim. ``tenant_code`` is the platform-assigned code in every
+    uploaded namespace of the tenant (``t_<code>_<short>``), unique across tenants (a
+    collision on insert is retried with a new code). ``private_use`` lets an uploader use
+    their own kit-passed version before approval."""
+
+    __tablename__ = "tenant_plugin_settings"
+
+    tenant_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("tenants.id", ondelete="CASCADE"), primary_key=True
+    )
+    tenant_code: Mapped[str] = mapped_column(String(6), unique=True)
+    private_use: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    updated_by: Mapped[str | None] = mapped_column(String(64))
+    updated_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (CheckConstraint(f"tenant_code ~ '{TENANT_CODE_RE}'", name="tenant_code"),)
+
+
+class UserVerification(Base):
+    """A tenant admin's attestation that a member may upload code
+    (:class:`mapi_spec.plugins.VerifiedUploader`). Nobody attests themselves. A revocation
+    sets ``revoked_at``/``revoked_by`` and keeps the row; attesting again clears them."""
+
+    __tablename__ = "user_verifications"
+
+    tenant_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("tenants.id", ondelete="CASCADE"), primary_key=True
+    )
+    user_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    method: Mapped[str] = mapped_column(String(16))
+    verified_by: Mapped[str] = mapped_column(String(64))
+    verified_at: Mapped[datetime] = mapped_column(server_default=_now())
+    revoked_at: Mapped[datetime | None] = mapped_column()
+    revoked_by: Mapped[str | None] = mapped_column(String(64))
+
+    __table_args__ = (
+        CheckConstraint(f"method in ({_in(USER_VERIFICATION_METHODS)})", name="method"),
+        CheckConstraint("verified_by <> user_id", name="not_self"),
+        CheckConstraint("(revoked_at IS NULL) = (revoked_by IS NULL)", name="revoked"),
+    )
+
+
+class Plugin(Base):
+    """A claimed plugin (:class:`mapi_spec.plugins.Plugin`): its uploaded namespace
+    ``t_<code>_<short>`` (unique on the platform; the namespace ends with the short name) and
+    its short name (unique per tenant). Plugins are tenant-wide, not project-scoped."""
+
+    __tablename__ = "plugins"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), ForeignKey("tenants.id", ondelete="CASCADE"))
+    namespace: Mapped[str] = mapped_column(String(40), unique=True)
+    short_name: Mapped[str] = mapped_column(String(16))
+    title: Mapped[str] = mapped_column(String(120))
+    created_by: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        CheckConstraint(f"namespace ~ '{UPLOAD_NAMESPACE_RE}'", name="namespace"),
+        CheckConstraint(f"short_name ~ '{PLUGIN_SHORT_RE}'", name="short_name"),
+        CheckConstraint("split_part(namespace, '_', 3) = short_name", name="namespace_short"),
+        UniqueConstraint("tenant_id", "short_name"),
+        # the target of the uploads' and versions' tenant-pinned foreign keys
+        UniqueConstraint("tenant_id", "id"),
+    )
+
+
+class PluginUpload(Base):
+    """An upload ticket (:class:`mapi_spec.plugins.PluginUploadTicket`): one wheel posted to
+    the quarantine bucket at exactly ``object_key``. ``pending`` until ``:complete``
+    (``completed``) or the ticket sweep (``expired``)."""
+
+    __tablename__ = "plugin_uploads"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64))
+    plugin_id: Mapped[str] = mapped_column(String(32))
+    project_id: Mapped[str] = mapped_column(String(64))
+    created_by: Mapped[str] = mapped_column(String(64))
+    filename: Mapped[str] = mapped_column(String(255))
+    declared_size: Mapped[int] = mapped_column(BigInteger)
+    object_key: Mapped[str] = mapped_column(String(512))
+    state: Mapped[str] = mapped_column(String(16), default="pending", server_default="pending")
+    expires_at: Mapped[datetime] = mapped_column()
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "plugin_id"], ["plugins.tenant_id", "plugins.id"], ondelete="CASCADE"
+        ),
+        CheckConstraint(f"state in ({_in(PLUGIN_UPLOAD_STATES)})", name="state"),
+        CheckConstraint(f"filename ~ '{WHEEL_FILENAME_RE}'", name="filename"),
+        CheckConstraint(
+            f"declared_size >= 1 AND declared_size <= {PLUGIN_UPLOAD_MAX_BYTES}",
+            name="declared_size",
+        ),
+        Index("ix_plugin_uploads_expiry", "state", "expires_at"),
+    )
+
+
+class PluginVersion(Base):
+    """One uploaded wheel of a plugin (:class:`mapi_spec.plugins.PluginVersion`).
+
+    ``state`` follows ``mapi_spec.plugins.PLUGIN_TRANSITIONS`` and is written only by
+    ``services.plugins.store.set_state``; ``scope`` is who may mount it (``tenant`` only
+    while ``approved``). ``upload_sha256`` is the hash of the bytes as uploaded; the overlay
+    copy in the ``plugins`` bucket (``overlay_key``/``overlay_generation``, set together)
+    has the same hash. ``yanked_at`` and ``yank_reason`` are set together, and
+    ``purged_at`` is set exactly when the state is ``purged`` (the row stays; only the
+    object goes). ``(id, upload_sha256)`` is unique so an approval pins the bytes it saw."""
+
+    __tablename__ = "plugin_versions"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64))
+    plugin_id: Mapped[str] = mapped_column(String(32))
+    version: Mapped[str] = mapped_column(String(64))
+    state: Mapped[str] = mapped_column(String(24), default="uploaded", server_default="uploaded")
+    scope: Mapped[str] = mapped_column(String(8), default="none", server_default="none")
+    project_id: Mapped[str] = mapped_column(String(64))  # billing project of pipeline runs
+    uploaded_by: Mapped[str] = mapped_column(String(64))
+    uploaded_at: Mapped[datetime] = mapped_column(server_default=_now())
+    upload_sha256: Mapped[str] = mapped_column(String(71))
+    size_bytes: Mapped[int] = mapped_column(BigInteger)
+    quarantine_key: Mapped[str] = mapped_column(String(512))
+    quarantine_generation: Mapped[int] = mapped_column(BigInteger)
+    overlay_key: Mapped[str | None] = mapped_column(String(512))
+    overlay_generation: Mapped[int | None] = mapped_column(BigInteger)
+    inspect_run_id: Mapped[str | None] = mapped_column(String(64))
+    inspection: Mapped[dict[str, Any] | None] = mapped_column(JSONB)  # PluginInspection
+    sbom: Mapped[dict[str, Any] | None] = mapped_column(JSONB)  # PluginSbom
+    problem: Mapped[dict[str, Any] | None] = mapped_column(JSONB)  # Problem
+    requested_by: Mapped[str | None] = mapped_column(String(64))
+    requested_at: Mapped[datetime | None] = mapped_column()
+    decided_at: Mapped[datetime | None] = mapped_column()
+    yanked_at: Mapped[datetime | None] = mapped_column()
+    yanked_by: Mapped[str | None] = mapped_column(String(64))
+    yank_reason: Mapped[str | None] = mapped_column(String(16))
+    yank_note: Mapped[str | None] = mapped_column(Text)
+    purge_after: Mapped[datetime | None] = mapped_column()
+    purged_at: Mapped[datetime | None] = mapped_column()
+    updated_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "plugin_id"], ["plugins.tenant_id", "plugins.id"], ondelete="CASCADE"
+        ),
+        CheckConstraint(f"state in ({_in(PLUGIN_VERSION_STATES)})", name="state"),
+        CheckConstraint(f"scope in ({_in(PLUGIN_VERSION_SCOPES)})", name="scope"),
+        CheckConstraint("scope <> 'tenant' OR state = 'approved'", name="tenant_scope"),
+        CheckConstraint(f"upload_sha256 ~ '{SHA256_RE}'", name="upload_sha256"),
+        CheckConstraint(
+            f"size_bytes >= 1 AND size_bytes <= {PLUGIN_UPLOAD_MAX_BYTES}", name="size_bytes"
+        ),
+        CheckConstraint(
+            "(overlay_key IS NULL) = (overlay_generation IS NULL)", name="overlay_object"
+        ),
+        CheckConstraint(
+            f"octet_length(inspection::text) <= {PLUGIN_INSPECTION_MAX_BYTES}",
+            name="inspection_size",
+        ),
+        CheckConstraint(
+            f"yank_reason IS NULL OR yank_reason in ({_in(PLUGIN_YANK_REASONS)})",
+            name="yank_reason",
+        ),
+        CheckConstraint("(yanked_at IS NULL) = (yank_reason IS NULL)", name="yanked"),
+        CheckConstraint("(state = 'purged') = (purged_at IS NOT NULL)", name="purged"),
+        UniqueConstraint("plugin_id", "version"),
+        # the targets of the approvals' sha-pinned and the describes' tenant-pinned keys
+        UniqueConstraint("id", "upload_sha256"),
+        UniqueConstraint("tenant_id", "id"),
+        Index("ix_plugin_versions_state", "tenant_id", "state"),
+        Index(
+            "ix_plugin_versions_purge",
+            "purge_after",
+            postgresql_where=text("purged_at IS NULL"),
+        ),
+    )
+
+
+class PluginDescribe(Base):
+    """The control-plane-checked describe result of a version for one base image digest
+    (:class:`mapi_spec.plugins.PluginDescribe`): its exports (``PluginExports``), their
+    ``describe_digest``, the sanitized recipe examples, the kit report and the issues of
+    ``check_describe``. The tenant catalog view reads these rows; describe output never
+    reaches the platform-wide ``catalogs`` table."""
+
+    __tablename__ = "plugin_describes"
+
+    version_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    base_image_digest: Mapped[str] = mapped_column(String(71), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64))
+    run_id: Mapped[str] = mapped_column(String(64))
+    describe_digest: Mapped[str] = mapped_column(String(71))
+    exports: Mapped[dict[str, Any]] = mapped_column()
+    plot_examples: Mapped[dict[str, Any]] = mapped_column(default=dict, server_default=text("'{}'"))
+    kit: Mapped[dict[str, Any]] = mapped_column()
+    issues: Mapped[list[Any]] = mapped_column(default=list, server_default=text("'[]'"))
+    ok: Mapped[bool] = mapped_column(Boolean)
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "version_id"],
+            ["plugin_versions.tenant_id", "plugin_versions.id"],
+            ondelete="CASCADE",
+        ),
+        CheckConstraint(
+            f"octet_length(exports::text) <= {PLUGIN_EXPORTS_MAX_BYTES}", name="exports_size"
+        ),
+        CheckConstraint(f"base_image_digest ~ '{SHA256_RE}'", name="base_image_digest"),
+        CheckConstraint(f"describe_digest ~ '{SHA256_RE}'", name="describe_digest"),
+    )
+
+
+class PluginApproval(Base):
+    """One approve/reject decision on a version (:class:`mapi_spec.plugins
+    .PluginDecisionRecord`), append-only. It names the bytes (``overlay_sha256``, a composite
+    foreign key into the version), the exports (``describe_digest``) and the base image it
+    saw. The approver is never the uploader; a rejection always has a note."""
+
+    __tablename__ = "plugin_approvals"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), ForeignKey("tenants.id", ondelete="CASCADE"))
+    version_id: Mapped[str] = mapped_column(String(32))
+    overlay_sha256: Mapped[str] = mapped_column(String(71))
+    describe_digest: Mapped[str] = mapped_column(String(71))
+    base_image_digest: Mapped[str] = mapped_column(String(71))
+    decision: Mapped[str] = mapped_column(String(8))
+    approver_id: Mapped[str] = mapped_column(String(64))
+    uploader_id: Mapped[str] = mapped_column(String(64))
+    note: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["version_id", "overlay_sha256"],
+            ["plugin_versions.id", "plugin_versions.upload_sha256"],
+            ondelete="CASCADE",
+        ),
+        CheckConstraint(f"decision in ({_in(PLUGIN_DECISIONS)})", name="decision"),
+        CheckConstraint("approver_id <> uploader_id", name="not_self"),
+        CheckConstraint("decision <> 'reject' OR note IS NOT NULL", name="reject_note"),
+        Index("ix_plugin_approvals_version", "version_id", "created_at"),
+    )
+
+
+# ====================================================================== dashboard chat (v0.20)
+
+CHAT_PRINCIPAL_KINDS: tuple[str, ...] = ("member", "client", "share")
+"""``mapi_spec.chat.ChatTranscriptSummary.principal_kind``: who asked."""
+CHAT_ROLES: tuple[str, ...] = ("user", "assistant")
+"""``mapi_spec.chat.ChatRole``."""
+CHAT_USAGE_OUTCOMES: tuple[str, ...] = ("ok", "budget", "error", "refused")
+"""How a chat turn ended, for ``dashboard_chat_usage.outcome``."""
+CHAT_TEXT_MAX_CHARS = 4000
+"""``mapi_spec.chat.CHAT_MAX_REPLY_CHARS``: the cap on one stored turn's text."""
+CHAT_MAX_TURN_INDEX = 63
+"""The highest ``turn_index`` of a kept conversation (``ChatTranscriptTurn.index``)."""
+CHAT_MAX_TOOL_CALLS = 6
+"""``mapi_spec.chat.CHAT_MAX_TOOL_CALLS``: function calls in one turn."""
+CHAT_MAX_TOKENS_PER_DAY = 5_000_000
+"""``mapi_spec.chat.CHAT_MAX_TOKENS_PER_DAY``."""
+CHAT_MAX_SHARE_TOKENS_PER_DAY = 1_000_000
+"""``mapi_spec.chat.CHAT_MAX_SHARE_TOKENS_PER_DAY``."""
+CHAT_TOOL_CALLS_MAX_BYTES = 4096
+"""The cap on a stored turn's ``tool_calls`` (names and ok flags only) as text."""
+CONVERSATION_ID_RE = "^cnv_[0-9a-z]{26}$"
+"""``mapi_spec.chat.CONVERSATION_ID_RE``."""
+
+
+class DashboardChatSettings(_Scoped, Base):
+    """Whether a dashboard's chat is on, for which audiences, whether it keeps transcripts
+    and its daily token budgets (:class:`mapi_spec.chat.ChatSettingsView`). No row means the
+    defaults (chat off). Kept apart from the spec, so a toggle never makes a revision or
+    changes a ``spec_hash``; ``version`` backs the ETag. The row goes with its dashboard."""
+
+    __tablename__ = "dashboard_chat_settings"
+
+    tenant_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    dashboard_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("dashboards.id", ondelete="CASCADE"), primary_key=True
+    )
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    aud_members: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    aud_clients: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    aud_share: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    keep_transcripts: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    tokens_per_day: Mapped[int] = mapped_column(Integer, default=200_000, server_default="200000")
+    share_tokens_per_day: Mapped[int] = mapped_column(
+        Integer, default=50_000, server_default="50000"
+    )
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    updated_by: Mapped[str | None] = mapped_column(String(64))
+    updated_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        _scope_fk(),
+        CheckConstraint(
+            f"tokens_per_day >= 0 AND tokens_per_day <= {CHAT_MAX_TOKENS_PER_DAY}",
+            name="tokens_per_day",
+        ),
+        CheckConstraint(
+            "share_tokens_per_day >= 0 AND share_tokens_per_day <= "
+            f"{CHAT_MAX_SHARE_TOKENS_PER_DAY}",
+            name="share_tokens_per_day",
+        ),
+        CheckConstraint("version >= 1", name="version"),
+    )
+
+
+class DashboardChatTranscript(_Scoped, Base):
+    """One turn of a kept chat conversation (only when the dashboard's settings keep
+    transcripts): the user's or the assistant's text and, for an assistant turn, the names
+    and outcomes of the tools it called (never their arguments or results). Rows expire
+    (``expires_at``, 30 days) and the housekeeping loop purges them; they go with their
+    dashboard. Never copied to logs, spans, webhooks or audit."""
+
+    __tablename__ = "dashboard_chat_transcripts"
+
+    id: Mapped[str] = mapped_column(String(30), primary_key=True)
+    dashboard_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("dashboards.id", ondelete="CASCADE")
+    )
+    conversation_id: Mapped[str] = mapped_column(String(30))
+    principal_kind: Mapped[str] = mapped_column(String(8))
+    principal_id: Mapped[str] = mapped_column(String(64))
+    turn_index: Mapped[int] = mapped_column(Integer)
+    role: Mapped[str] = mapped_column(String(9))
+    tool_calls: Mapped[list[Any]] = mapped_column(default=list, server_default=text("'[]'"))
+    ok: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    # declared after the columns above: the attribute shadows ``sqlalchemy.text`` in this body
+    text: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    expires_at: Mapped[datetime] = mapped_column()
+
+    __table_args__ = (
+        _scope_fk(),
+        UniqueConstraint(
+            "tenant_id", "conversation_id", "turn_index", name="uq_dashboard_chat_transcripts_turn"
+        ),
+        CheckConstraint(f"conversation_id ~ '{CONVERSATION_ID_RE}'", name="conversation_id"),
+        CheckConstraint(f"principal_kind in ({_in(CHAT_PRINCIPAL_KINDS)})", name="principal_kind"),
+        CheckConstraint(
+            f"turn_index >= 0 AND turn_index <= {CHAT_MAX_TURN_INDEX}", name="turn_index"
+        ),
+        CheckConstraint(f"role in ({_in(CHAT_ROLES)})", name="role"),
+        CheckConstraint(f"char_length(text) <= {CHAT_TEXT_MAX_CHARS}", name="text_length"),
+        CheckConstraint("jsonb_typeof(tool_calls) = 'array'", name="tool_calls_array"),
+        CheckConstraint(
+            f"octet_length(tool_calls::text) <= {CHAT_TOOL_CALLS_MAX_BYTES}",
+            name="tool_calls_size",
+        ),
+        Index("ix_dashboard_chat_transcripts_dashboard", "tenant_id", "dashboard_id", "created_at"),
+        Index("ix_dashboard_chat_transcripts_expiry", "expires_at"),
+    )
+
+
+class DashboardChatUsage(_Scoped, Base):
+    """One row per chat turn: the model, the tokens it used (thoughts included in the
+    budgets), the tool calls, the estimated cost under ``price_version`` and how the turn
+    ended. Never holds prompt or answer text. Chat cost is kept here, not in ``cost_ledger``
+    (which is per run attempt); the daily budgets are rate counters."""
+
+    __tablename__ = "dashboard_chat_usage"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    dashboard_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("dashboards.id", ondelete="CASCADE")
+    )
+    principal_kind: Mapped[str] = mapped_column(String(8))
+    principal_id: Mapped[str] = mapped_column(String(64))
+    share_id: Mapped[str | None] = mapped_column(String(64))
+    model: Mapped[str] = mapped_column(String(64))
+    input_tokens: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    output_tokens: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    thought_tokens: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    tool_calls: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    est_micros: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
+    price_version: Mapped[str] = mapped_column(String(64))
+    outcome: Mapped[str] = mapped_column(String(16))
+    at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        _scope_fk(),
+        CheckConstraint(f"principal_kind in ({_in(CHAT_PRINCIPAL_KINDS)})", name="principal_kind"),
+        CheckConstraint("(principal_kind = 'share') = (share_id IS NOT NULL)", name="share_id"),
+        CheckConstraint(
+            "input_tokens >= 0 AND output_tokens >= 0 AND thought_tokens >= 0", name="tokens"
+        ),
+        CheckConstraint(
+            f"tool_calls >= 0 AND tool_calls <= {CHAT_MAX_TOOL_CALLS}", name="tool_calls"
+        ),
+        CheckConstraint("est_micros >= 0", name="est_micros"),
+        CheckConstraint(f"outcome in ({_in(CHAT_USAGE_OUTCOMES)})", name="outcome"),
+        Index("ix_dashboard_chat_usage_dashboard", "tenant_id", "dashboard_id", "at"),
     )

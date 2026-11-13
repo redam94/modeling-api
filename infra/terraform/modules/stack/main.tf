@@ -74,6 +74,7 @@ module "control" {
   domains            = var.domains
   security_policy    = var.security_policy
   oidc_client_secret = var.oidc_client_secret
+  gemini_api_key     = var.gemini_api_key
 
   network                  = lookup(var.control, "network", {})
   database                 = lookup(var.control, "database", {})
@@ -91,6 +92,7 @@ module "control" {
   events_args              = lookup(var.control, "events_args", ["api", "--host", "0.0.0.0", "--port", "8080"])
   cloud_armor              = lookup(var.control, "cloud_armor", {})
   log_retention_days       = lookup(var.control, "log_retention_days", 30)
+  chat                     = lookup(var.control, "chat", {})
 
   depends_on = [google_project_service.this]
 }

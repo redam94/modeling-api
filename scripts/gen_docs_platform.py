@@ -69,6 +69,7 @@ RESOURCE_LABELS: dict[str, str] = {
     "endpoint": "Endpoints and aliases",
     "plot": "Saved plots and renders",
     "plugin": "Plugins",
+    "plugin_settings": "Uploaded-code settings and confirmed uploaders of the tenant",
     "usage": "Cost and quota use of a project",
     "billing": "Cost and quota use of the whole tenant",
     "audit": "The tenant's audit log",
@@ -88,6 +89,9 @@ RESOURCE_LABELS: dict[str, str] = {
     "dashboard": "Client dashboards, their revisions, inputs and readouts",
     "dashboard_grant": "Which client users see a dashboard",
     "dashboard_share": "Share links of a dashboard",
+    # v0.18
+    "library": "A project's library: model recipes, prep presets, chart and workflow templates",
+    "tenant_library": "Tenant-wide library items, readable from every project of the tenant",
 }
 
 ACTION_NOTES: dict[tuple[str, str], str] = {
@@ -105,6 +109,9 @@ ACTION_NOTES: dict[tuple[str, str], str] = {
     ("model", "validate"): "submit, resubmit or cancel a governance validation",
     ("model", "approve"): "needs the reviewer capability; never the submitter, never a token",
     ("model", "update"): "deprecate a validated version",
+    ("catalog", "update"): "refresh the catalog (`POST /v1/admin/catalog:describe`)",
+    ("library", "delete"): "archive an item",
+    ("tenant_library", "delete"): "archive an item",
 }
 
 
@@ -162,13 +169,14 @@ def roles_matrix() -> str:
 
 
 def _scope_columns() -> tuple[str, ...]:
-    """Every scope family but ``admin`` (which covers everything); ``score`` as ``score:*``."""
+    """Every scope family but ``admin`` (which covers everything) and ``dashboard`` (a
+    dashboard read token, described in the text); ``score`` as ``score:*``."""
     from mapi_spec.tokens import ScopeName
 
     return tuple(
         "score:*" if s is ScopeName.SCORE else s.value
         for s in ScopeName
-        if s is not ScopeName.ADMIN
+        if s not in (ScopeName.ADMIN, ScopeName.DASHBOARD)
     )
 
 
@@ -306,7 +314,9 @@ def permissions_page() -> str:
         + "\n## Token scopes\n\n"
         + "A token acts as its owner, narrowed by its scopes: both the owner's role and a "
         + "scope must allow an action. `admin` covers everything the owner's role allows; "
-        + "`score:<alias>` covers one endpoint (`score:*` every endpoint of the project).\n\n"
+        + "`score:<alias>` covers one endpoint (`score:*` every endpoint of the project). "
+        + "`dashboard:<id>` is the scope of a dashboard read token: it reads that one "
+        + "dashboard through MCP and nothing else.\n\n"
         + scopes_matrix()
         + "\n## Trust tiers\n\n"
         + trust_tiers()

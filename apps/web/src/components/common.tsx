@@ -1,7 +1,7 @@
 /** Shared building blocks used across pages. */
 import type { UseQueryResult } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle, Check, Clock, Copy, Gauge, Loader2, Lock, LogIn, PauseCircle, RefreshCw } from "lucide-react";
+import { AlertTriangle, Check, ChevronRight, Clock, Copy, Gauge, Loader2, Lock, LogIn, PauseCircle, RefreshCw } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { ApiError, errorMessage } from "@/api/client";
@@ -18,22 +18,78 @@ import { Skeleton } from "./ui/primitives";
 
 // ----------------------------------------------------------------------- page chrome
 
+/** One step of a breadcrumb trail. The last one is the page itself and needs no `to`. */
+export interface Crumb {
+  label: ReactNode;
+  /** A route path (`/models/$modelId`, with `params`) or a full path. */
+  to?: string;
+  params?: Record<string, string>;
+  search?: Record<string, unknown>;
+}
+
+/** Where this page is: the pages above it as links, then the page itself. */
+export function Breadcrumbs({ crumbs }: { crumbs: readonly Crumb[] }) {
+  return (
+    <nav aria-label="Breadcrumb" className="mb-2">
+      <ol className="kicker flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+        {crumbs.map((c, i) => (
+          <li key={i} className="flex min-w-0 items-center gap-1.5">
+            {i ? <ChevronRight aria-hidden className="size-3.5 shrink-0 opacity-60" /> : null}
+            {i === crumbs.length - 1 ? (
+              <span aria-current="page" className="max-w-[40ch] truncate text-foreground">
+                {c.label}
+              </span>
+            ) : c.to ? (
+              // The trail takes any route: the typed `to` of a literal link is not needed here.
+              // `exact`: the router marks a link to a page above the open page as the current
+              // page (aria-current). Only the last item of the trail is the current page.
+              <Link
+                to={c.to as never}
+                params={c.params as never}
+                search={c.search as never}
+                activeOptions={{ exact: true }}
+                className="max-w-[32ch] truncate rounded-sm transition-colors hover:text-foreground"
+              >
+                {c.label}
+              </Link>
+            ) : (
+              <span className="max-w-[32ch] truncate">{c.label}</span>
+            )}
+          </li>
+        ))}
+      </ol>
+    </nav>
+  );
+}
+
+/**
+ * The one header of a page: an optional breadcrumb trail (detail and nested pages) or kicker
+ * (list pages), the title, a description, a meta row and the actions.
+ */
 export function PageHeader({
   title,
   description,
   actions,
   meta,
+  eyebrow,
+  crumbs,
 }: {
   title: ReactNode;
   description?: ReactNode;
   actions?: ReactNode;
   meta?: ReactNode;
+  /** A small label above the title (the kicker of a list page). */
+  eyebrow?: ReactNode;
+  /** The breadcrumb trail above the title; the last item is this page. It replaces `eyebrow`. */
+  crumbs?: readonly Crumb[] | undefined;
 }) {
   return (
     <header className="flex min-w-0 flex-wrap items-end justify-between gap-x-6 gap-y-3 pb-6">
       <div className="min-w-0">
-        <h1 className="text-[26px] leading-tight font-semibold tracking-[-0.015em] text-balance">{title}</h1>
-        {description ? <p className="mt-1.5 max-w-[68ch] text-muted-foreground">{description}</p> : null}
+        {crumbs?.length ? <Breadcrumbs crumbs={crumbs} /> : eyebrow ? <p className="kicker mb-2">{eyebrow}</p> : null}
+        {/* the in-app title scale: the hero sizes are for landing and empty states only */}
+        <h1 className="display-title text-[clamp(1.75rem,3vw,2.25rem)] leading-[1.1]">{title}</h1>
+        {description ? <p className="mt-2 max-w-[68ch] text-base text-muted-foreground">{description}</p> : null}
         {meta ? <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">{meta}</div> : null}
       </div>
       {actions ? <div className="flex max-w-full min-w-0 flex-wrap items-center gap-2">{actions}</div> : null}
@@ -41,25 +97,60 @@ export function PageHeader({
   );
 }
 
+/**
+ * What a list or page shows before it has anything in it: a block without a border, with 28px
+ * corners, on the opposite surface (the card colour on the page, the page colour inside a card).
+ * Without `illustration` it holds an icon, the title, the text and the actions. With one (a glyph
+ * from `components/brand/empty-art`, passed in so this module never imports the art) the glyph
+ * comes first and the title is set larger. `primaryAction` comes first in the action row, before
+ * `action`.
+ */
 export function EmptyState({
   icon,
   title,
   children,
   action,
+  primaryAction,
+  illustration,
   className,
 }: {
   icon?: ReactNode;
   title: string;
   children?: ReactNode;
   action?: ReactNode;
+  /** The main call to action (a filled button); `action` then holds the quieter ones. */
+  primaryAction?: ReactNode;
+  /** Decorative art (`aria-hidden`), shown above the words. */
+  illustration?: ReactNode;
   className?: string;
 }) {
+  const actions =
+    primaryAction || action ? (
+      <div className={cn("flex flex-wrap items-center gap-2", illustration ? "pt-3" : "pt-2")}>
+        {primaryAction}
+        {action}
+      </div>
+    ) : null;
+  if (illustration) {
+    return (
+      <div
+        data-slot="empty-state"
+        className={cn("grid justify-items-start gap-3 rounded-3xl bg-card p-[clamp(1.75rem,4vw,3rem)] in-data-[slot=card]:bg-background", className)}
+      >
+        <div className="-mt-2 -ml-3 min-w-0">{illustration}</div>
+        {icon ? <div className="text-muted-foreground [&_svg]:size-5">{icon}</div> : null}
+        <h3 className="display-title text-[clamp(1.5rem,3vw,2rem)] leading-[1.1]">{title}</h3>
+        {children ? <div className="max-w-[52ch] text-base text-muted-foreground">{children}</div> : null}
+        {actions}
+      </div>
+    );
+  }
   return (
-    <div className={cn("flex flex-col items-start gap-2 rounded-xl border border-dashed border-border-strong bg-card p-8", className)}>
+    <div className={cn("flex flex-col items-start gap-2 rounded-3xl bg-card p-8 in-data-[slot=card]:bg-background", className)}>
       {icon ? <div className="text-muted-foreground [&_svg]:size-5">{icon}</div> : null}
       <h3 className="font-semibold">{title}</h3>
       {children ? <div className="max-w-[60ch] text-muted-foreground">{children}</div> : null}
-      {action ? <div className="pt-2">{action}</div> : null}
+      {primaryAction ? actions : action ? <div className="pt-2">{action}</div> : null}
     </div>
   );
 }
@@ -74,7 +165,7 @@ export function StateBadge({ state, className }: { state: RunState; className?: 
       title={meta.description}
       data-state={state}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap",
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap",
         TONE_CLASSES[meta.tone],
         className,
       )}
@@ -99,7 +190,7 @@ export function UntrustedText({ text, className, maxHeight = "16rem" }: { text: 
   return (
     <pre
       className={cn(
-        "overflow-auto rounded-md border bg-muted/60 p-3 font-mono text-xs leading-5 whitespace-pre-wrap text-foreground/90",
+        "overflow-auto rounded-lg bg-muted/60 p-3 font-mono text-xs leading-5 whitespace-pre-wrap text-foreground/90",
         className,
       )}
       style={{ maxHeight }}
@@ -378,7 +469,7 @@ export function JsonBlock({ value, className, maxHeight = "28rem" }: { value: un
   }
   return (
     <pre
-      className={cn("overflow-auto rounded-md border bg-muted/50 p-3 font-mono text-xs leading-5", className)}
+      className={cn("overflow-auto rounded-lg bg-muted/50 p-3 font-mono text-xs leading-5", className)}
       style={{ maxHeight }}
     >
       {text}

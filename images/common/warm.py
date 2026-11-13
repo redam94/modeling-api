@@ -5,6 +5,10 @@
    ``mapi.*`` entry points (``mapi_sdk.default_registry()``) and writes the static catalog
    JSON the control plane validates specs against, plus its ``sha256:`` digest
    (``mapi_spec.run.catalog_digest``). Plan §7: "catalog JSON is generated at image build".
+   v0.18: the same export as a ``describe`` run (``mapi_runner.catalog_export.full_catalog``),
+   so plugin workflow nodes, plugin workflow templates and load diagnostics are included.
+   ``--fail-on-diagnostics`` (the extend image) fails the build when anything an installed
+   distribution exports could not be loaded.
 2. **Compile-cache warm-up.** When PyMC is installed, compiles the log-density and gradient of
    a small model with the C backend, so the common PyTensor ops are already in the baked
    ``base_compiledir`` when a run starts (plan §8.5: the compiledir and ``NUMBA_CACHE_DIR``
@@ -14,7 +18,7 @@ Writes, under ``--out`` (default ``/opt/mapi``)::
 
     catalog.json      the Catalog (sorted keys)
     catalog.digest    sha256:<hex>
-    warm.json         what was warmed, library versions and timings
+    warm.json         what was warmed, library versions, extensions and timings
 
 Any failure exits non-zero so the image build fails: an image whose catalog cannot be
 exported is unusable.
@@ -70,11 +74,12 @@ _VERSIONED = (
 )
 
 
-def export_catalog(out: Path) -> dict[str, Any]:
+def export_catalog(out: Path, *, fail_on_diagnostics: bool = False) -> dict[str, Any]:
+    from mapi_runner.catalog_export import extension_versions, full_catalog
     from mapi_sdk import default_registry
     from mapi_spec.run import catalog_digest
 
-    catalog = default_registry().catalog()
+    catalog = full_catalog(default_registry())
     if not catalog.steps:
         raise RuntimeError("no steps registered: is mapi-steps installed in this image?")
     if not catalog.models:
@@ -83,12 +88,35 @@ def export_catalog(out: Path) -> dict[str, Any]:
     (out / "catalog.json").write_text(payload + "\n", encoding="utf-8")
     digest = catalog_digest(catalog)
     (out / "catalog.digest").write_text(digest + "\n", encoding="utf-8")
-    return {
+    summary: dict[str, Any] = {
         "digest": digest,
         "steps": len(catalog.steps),
         "models": sorted(m.id for m in catalog.models),
         "plots": len(catalog.plots),
     }
+    # v0.18 extras: only reported when present, so a built-in image's warm.json is unchanged
+    extras: dict[str, Any] = {
+        "workflow_nodes": sorted(n.id for n in catalog.workflow_nodes),
+        "workflow_templates": sorted(t.id for t in catalog.workflow_templates),
+        "extensions": extension_versions(catalog),
+        "diagnostics": [
+            {k: v for k, v in d.model_dump(mode="json").items() if v is not None}
+            for d in catalog.diagnostics
+        ],
+    }
+    summary.update({k: v for k, v in extras.items() if v})
+    if fail_on_diagnostics and catalog.diagnostics:
+        for d in catalog.diagnostics:
+            print(
+                f"catalog diagnostic: {d.code} {d.group} {d.distribution or '-'} "
+                f"{d.id or d.entry_point or '-'}: {d.message} {d.untrusted_text or ''}",
+                file=sys.stderr,
+            )
+        raise RuntimeError(
+            f"{len(catalog.diagnostics)} catalog diagnostic(s): an installed extension "
+            "could not be loaded (run `mapi plugin validate` on it)"
+        )
+    return summary
 
 
 def warm_pytensor() -> dict[str, Any]:
@@ -142,10 +170,15 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--out", type=Path, default=Path("/opt/mapi"))
     parser.add_argument("--image", default=os.environ.get("MAPI_IMAGE_NAME", "unknown"))
+    parser.add_argument(
+        "--fail-on-diagnostics",
+        action="store_true",
+        help="fail when the catalog has diagnostics (an extension could not be loaded)",
+    )
     args = parser.parse_args(argv)
     args.out.mkdir(parents=True, exist_ok=True)
     report: dict[str, Any] = {"image": args.image, "python": sys.version.split()[0]}
-    report["catalog"] = export_catalog(args.out)
+    report["catalog"] = export_catalog(args.out, fail_on_diagnostics=args.fail_on_diagnostics)
     if importlib.util.find_spec("pymc") is not None:
         report["pytensor"] = warm_pytensor()
         if not report["pytensor"]["cxx"]:

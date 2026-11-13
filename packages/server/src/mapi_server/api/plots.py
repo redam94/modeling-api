@@ -7,6 +7,11 @@ tokenised read-only link for platform-recipe plots. ``GET /v1/embeds/{embed_toke
 public: no credential is read (cookies and ``Authorization`` are dropped before routing, see
 :class:`EmbedCorsMiddleware`), only the plot-sandbox origin may read it from a browser, and
 it is rate limited per link and per client address.
+
+v0.19 (plan D16): a plot made with uploaded code (its model version's lineage records
+overlays, or its recipe is in an uploaded namespace) is never embedded: creating the link
+and viewing an existing one answer ``403 UPLOADED_CODE_NOT_SHAREABLE``. Signed-in renders
+stay allowed (a render converts a stored plot document; no recipe code runs).
 """
 
 from __future__ import annotations
@@ -86,7 +91,12 @@ EmbedToken = Annotated[str, Path(min_length=1, max_length=128)]
 _DECLS = {e.operation_id: e for e in ALL_ENDPOINTS}
 _EXTRA_ERRORS: Final[dict[str, tuple[ErrorCode, ...]]] = {
     "render_plot": (ErrorCode.INTEGRITY_FAILURE,),
-    "create_plot_embed": (ErrorCode.PLOT_UNSAFE, ErrorCode.INTEGRITY_FAILURE),
+    "create_plot_embed": (
+        ErrorCode.PLOT_UNSAFE,
+        ErrorCode.INTEGRITY_FAILURE,
+        ErrorCode.UPLOADED_CODE_NOT_SHAREABLE,
+    ),
+    "get_embed": (ErrorCode.UPLOADED_CODE_NOT_SHAREABLE,),
     "create_saved_plot": (ErrorCode.INTEGRITY_FAILURE,),
 }
 _PROBLEM = {"application/problem+json": {"schema": {"$ref": "#/components/schemas/Problem"}}}
@@ -295,7 +305,8 @@ async def create_plot_embed(
 ) -> PlotEmbedCreated:
     """Mint a read-only link (the token is in the response once; only its HMAC is stored).
     Only plots a model version drew with a platform recipe can be embedded
-    (``EMBED_NOT_ALLOWED`` for plugin- and user-authored plots). When the caller may start
+    (``EMBED_NOT_ALLOWED`` for plugin- and user-authored plots;
+    ``UPLOADED_CODE_NOT_SHAREABLE`` for a plot made with uploaded code). When the caller may start
     render runs, a PNG of the plot is rendered in the sandbox as the embed page's fallback.
     Audited."""
     embed, token = await create_embed(session, ctx, plot_id, body)
@@ -357,9 +368,10 @@ EMBED_RESPONSE_HEADERS: Final = {
 )
 async def get_embed(ctx: Ctx, auth: Auth, embed_token: EmbedToken) -> JSONResponse:
     """Public: the embedded plot with every dataset inline (``410 LINK_EXPIRED`` once
-    expired or revoked, ``404`` for an unknown token, ``429`` past the per-link or
-    per-address rate). Cookies and ``Authorization`` are ignored; browsers may read it only
-    from the plot-sandbox origin (CORS), which renders it under its own CSP."""
+    expired or revoked, ``404`` for an unknown token, ``403 UPLOADED_CODE_NOT_SHAREABLE``
+    for a plot made with uploaded code, ``429`` past the per-link or per-address rate).
+    Cookies and ``Authorization`` are ignored; browsers may read it only from the
+    plot-sandbox origin (CORS), which renders it under its own CSP."""
     view = await embed_view(ctx, embed_token, auth.client_ip)
     # no browser or shared cache may answer for the server: a revoked link must stop
     # rendering at once, on the next load (the API's own reuse is MAPI_EMBED_CACHE_S)

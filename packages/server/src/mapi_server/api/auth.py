@@ -19,7 +19,8 @@ from __future__ import annotations
 import hmac
 import logging
 import re
-from typing import Annotated
+from datetime import datetime, timedelta
+from typing import Annotated, Final
 
 import httpx
 from fastapi import APIRouter, Query, Request, status
@@ -57,6 +58,8 @@ log = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 _ERROR_RE = re.compile(r"^[A-Za-z0-9_.\-]{1,64}$")
+_AUTH_TIME_SKEW: Final = timedelta(seconds=60)
+"""Clock skew allowed between the IdP's ``auth_time`` and the start of a re-authentication."""
 
 
 def _ctx(request: Request) -> ServerContext:
@@ -111,12 +114,15 @@ async def _login_failed(ctx: ServerContext, request: Request, reason: str) -> JS
 async def auth_login(
     request: Request,
     return_to: Annotated[str | None, Query(max_length=2048)] = None,
+    reauth: Annotated[bool, Query()] = False,
 ) -> Response:
-    """Start sign-in: Authorization Code + PKCE (S256) + nonce, state kept server-side."""
+    """Start sign-in: Authorization Code + PKCE (S256) + nonce, state kept server-side.
+    ``reauth=1`` (v0.19) asks the identity provider to authenticate the person again
+    (``max_age=0``, ``prompt=login``), as approving uploaded code needs."""
     ctx = _ctx(request)
     if ctx.oidc is None:
         raise MapiError("sign-in is not configured on this server", code=ErrorCode.NOT_FOUND)
-    tx = LoginTransaction.start(now=now(), return_to=return_to)
+    tx = LoginTransaction.start(now=now(), return_to=return_to, reauth=reauth)
     url = await ctx.oidc.authorize_url(tx)
     async with ctx.db.session() as s:
         value = await save_login(s, tx)
@@ -135,6 +141,7 @@ async def _start_session(
     issuer: str,
     ip: str | None,
     ua: str | None,
+    auth_time: datetime | None = None,
 ) -> tuple[str, str]:
     """A new session for a signed-in user, audited: ``(cookie value, CSRF token)``."""
     key = ctx.secrets.audit_key
@@ -143,6 +150,7 @@ async def _start_session(
         user,
         ip_hash=client_fingerprint(ip, key),
         user_agent_hash=client_fingerprint(ua, key),
+        auth_time=auth_time,
     )
     await write_audit(
         ctx.db,
@@ -210,13 +218,21 @@ async def auth_callback(
         return await _login_failed(
             ctx, request, f"identity provider unreachable: {type(exc).__name__}"
         )
+    # v0.19: a sign-in asked to authenticate again must come back with a fresh auth_time
+    # (a silent SSO round trip proves nothing about who is at the keyboard)
+    if tx.reauth and (ident.auth_time is None or ident.auth_time < tx.created_at - _AUTH_TIME_SKEW):
+        return await _login_failed(
+            ctx, request, "the identity provider did not authenticate the person again"
+        )
     ip, ua = _client(request)
     try:
         async with ctx.db.session() as s:
             user = await claim_or_create_user(
                 s, ident, operator_emails=settings.effective_operator_emails()
             )
-            cookie_value, csrf = await _start_session(ctx, s, user, ident.issuer, ip, ua)
+            cookie_value, csrf = await _start_session(
+                ctx, s, user, ident.issuer, ip, ua, auth_time=ident.auth_time
+            )
     except AccountDisabled as exc:
         return await _login_failed(ctx, request, f"the account {exc} is disabled")
     # return_to is a path (safe_return_to); it belongs to the web app, which may be served

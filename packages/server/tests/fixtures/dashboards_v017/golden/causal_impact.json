@@ -1,0 +1,4066 @@
+{
+ "actuals": {
+  "against": "forecast_predictive",
+  "expected": {
+   "actual_total": 416.741,
+   "cf_total": {
+    "mean": 406.890525179,
+    "quantiles": {
+     "0.05": 393.510383976,
+     "0.25": 402.751492929,
+     "0.5": 407.827430931,
+     "0.75": 412.058730396,
+     "0.95": 416.567847486
+    },
+    "sd": 7.55369124852,
+    "units": "units"
+   },
+   "effect_high": 23.23061602399997,
+   "effect_low": 0.17315251399998033,
+   "effect_relative": 0.024209152613387935,
+   "effect_total": 9.850474820999978,
+   "n_periods": 4,
+   "naive_effect_high_from_summed_bounds": 23.036226426548012,
+   "naive_effect_low_from_summed_bounds": -3.876091040060885
+  },
+  "inputs": {
+   "coords": {
+    "time": {
+     "data": [
+      "2024-03-25",
+      "2024-04-01",
+      "2024-04-08",
+      "2024-04-15"
+     ],
+     "dims": [
+      "time"
+     ]
+    }
+   },
+   "data_vars": {
+    "y": {
+     "data": [
+      102.644,
+      104.939,
+      109.2,
+      99.958
+     ],
+     "dims": [
+      "time"
+     ]
+    }
+   }
+  },
+  "kpi_column": "y",
+  "match": "time",
+  "names": {
+   "week": "time"
+  },
+  "table": {
+   "columns": [
+    "week",
+    "actual"
+   ],
+   "rows": [
+    [
+     "2024-03-25",
+     102.644
+    ],
+    [
+     "2024-04-01",
+     104.939
+    ],
+    [
+     "2024-04-08",
+     109.2
+    ],
+    [
+     "2024-04-15",
+     99.958
+    ]
+   ]
+  }
+ },
+ "capabilities": {
+  "checkpointable": true,
+  "contribution_scale": "none",
+  "decision": false,
+  "deterministic_given_seed": false,
+  "evidence": false,
+  "fast_score": false,
+  "identified_quantities": [],
+  "inference": "mcmc",
+  "loo_invalid_reason": "the Kalman likelihood is a sum over the whole series; steps depend on each other, so pointwise leave-one-out is not defined",
+  "loo_valid": false,
+  "owns": [
+   "scaling"
+  ],
+  "recommend": false,
+  "representation": "draws",
+  "score_modes": [
+   "forecast",
+   "predict"
+  ]
+ },
+ "case": "causal_impact",
+ "derived_from": [
+  "causal.impact/forecast_4__predictive.forecast.json",
+  "causal.impact/forecast_4__predictive.result.json",
+  "causal.impact/forecast_4__predictive.summary.json",
+  "causal.impact/forecast_4__readout.forecast.json",
+  "causal.impact/forecast_4__readout.result.json",
+  "causal.impact/forecast_4__readout.summary.json",
+  "causal.impact/predict_over_data__predictive.result.json",
+  "causal.impact/predict_over_data__predictive.summary.json",
+  "causal.impact/predict_over_data__readout.result.json",
+  "causal.impact/predict_over_data__readout.summary.json",
+  "causal.impact/probe.json"
+ ],
+ "facts": {
+  "aggregates": {
+   "forecast.forecast_total": {
+    "kind": "expected",
+    "kpi": "y_hat",
+    "mean": 406.707076727,
+    "quantiles": {
+     "0.05": 397.452422544,
+     "0.25": 404.216110136,
+     "0.5": 407.934949029,
+     "0.75": 409.820291484,
+     "0.95": 412.415695211
+    },
+    "sd": 4.6863327257,
+    "units": "units"
+   },
+   "forecast_predictive.forecast_total": {
+    "kind": "predictive",
+    "kpi": "y_hat",
+    "mean": 406.890525179,
+    "quantiles": {
+     "0.05": 393.510383976,
+     "0.25": 402.751492929,
+     "0.5": 407.827430931,
+     "0.75": 412.058730396,
+     "0.95": 416.567847486
+    },
+    "sd": 7.55369124852,
+    "units": "units"
+   }
+  },
+  "predictive": {
+   "forecast_predictive.y_hat": {
+    "expected_width": 3.3939144706957656,
+    "predictive_width": 6.728079366652221,
+    "widens": true
+   },
+   "predictive.effect": {
+    "expected_width": 1.3226856610028268,
+    "predictive_width": 5.068656556170517,
+    "widens": true
+   },
+   "predictive.y_hat": {
+    "expected_width": 1.3226856610028268,
+    "predictive_width": 5.068656556170517,
+    "widens": true
+   }
+  },
+  "scalar_fit_metrics": {
+   "effect_average": 9.118309146715042,
+   "effect_relative": 0.08939822510333449,
+   "effect_total": 109.4197097605805,
+   "effect_total_p05": 92.20257482417854,
+   "effect_total_p95": 133.24811809201748,
+   "effect_total_sd": 12.689612291078562,
+   "one_step_coverage_90": 0.9423076923076923,
+   "one_step_rmse": 1.2833629005733678,
+   "p_effect_positive": 1.0,
+   "pre_mape": 0.011160321501603232,
+   "pre_rmse": 1.3007388572555187,
+   "sigma_level": 0.24699402477346996,
+   "sigma_obs": 1.2384294467905517
+  },
+  "tables": {
+   "baseline": {
+    "effect": {
+     "band": [
+      "hdi_90_lower",
+      "hdi_90_upper"
+     ],
+     "centre": "mean",
+     "dims": [
+      "week"
+     ],
+     "mean_band_width": 1.3226856610028268,
+     "n_rows": 64,
+     "sum_centre": 106.45013114372482,
+     "sum_high": 149.50660928872813,
+     "sum_low": 64.85472698454721,
+     "time_dim": "week"
+    },
+    "y_hat": {
+     "band": [
+      "hdi_90_lower",
+      "hdi_90_upper"
+     ],
+     "centre": "mean",
+     "dims": [
+      "week"
+     ],
+     "mean_band_width": 1.3226856610028268,
+     "n_rows": 64,
+     "sum_centre": 6077.021873585695,
+     "sum_high": 6118.617277744873,
+     "sum_low": 6033.965395440692,
+     "time_dim": "week"
+    }
+   },
+   "forecast": {
+    "y_hat": {
+     "band": [
+      "hdi_90_lower",
+      "hdi_90_upper"
+     ],
+     "centre": "mean",
+     "dims": [
+      "week"
+     ],
+     "mean_band_width": 3.3939144706957656,
+     "n_rows": 4,
+     "sum_centre": 406.70707672677423,
+     "sum_high": 413.6227285289839,
+     "sum_low": 400.04707064620084,
+     "time_dim": "week"
+    }
+   },
+   "forecast_predictive": {
+    "y_hat": {
+     "band": [
+      "hdi_90_lower",
+      "hdi_90_upper"
+     ],
+     "centre": "mean",
+     "dims": [
+      "week"
+     ],
+     "mean_band_width": 6.728079366652221,
+     "n_rows": 4,
+     "sum_centre": 406.8905251785001,
+     "sum_high": 420.61709104006087,
+     "sum_low": 393.704773573452,
+     "time_dim": "week"
+    }
+   },
+   "predictive": {
+    "effect": {
+     "band": [
+      "hdi_90_lower",
+      "hdi_90_upper"
+     ],
+     "centre": "mean",
+     "dims": [
+      "week"
+     ],
+     "mean_band_width": 5.068656556170517,
+     "n_rows": 64,
+     "sum_centre": 106.24466793701514,
+     "sum_high": 269.9259981297652,
+     "sum_low": -54.468021465147814,
+     "time_dim": "week"
+    },
+    "y_hat": {
+     "band": [
+      "hdi_90_lower",
+      "hdi_90_upper"
+     ],
+     "centre": "mean",
+     "dims": [
+      "week"
+     ],
+     "mean_band_width": 5.068656556170517,
+     "n_rows": 64,
+     "sum_centre": 6077.2273367924045,
+     "sum_high": 6237.9400261945675,
+     "sum_low": 5913.546006599655,
+     "time_dim": "week"
+    }
+   }
+  }
+ },
+ "fit_metrics": [
+  {
+   "attempt": 1,
+   "count": 3,
+   "first_ts": "2026-10-21T09:47:46.502172-04:00",
+   "key": "divergences",
+   "labels": {
+    "chain": "0"
+   },
+   "last": 0.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:47:46.784172-04:00",
+   "max": 0.0,
+   "min": 0.0
+  },
+  {
+   "attempt": 1,
+   "count": 3,
+   "first_ts": "2026-10-21T09:47:46.502172-04:00",
+   "key": "divergences",
+   "labels": {
+    "chain": "1"
+   },
+   "last": 1.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:47:46.784172-04:00",
+   "max": 1.0,
+   "min": 0.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.847172-04:00",
+   "key": "effect_average",
+   "labels": {},
+   "last": 9.118309146715042,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:46.847172-04:00",
+   "max": 9.118309146715042,
+   "min": 9.118309146715042
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.847172-04:00",
+   "key": "effect_relative",
+   "labels": {},
+   "last": 0.08939822510333449,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:46.847172-04:00",
+   "max": 0.08939822510333449,
+   "min": 0.08939822510333449
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.847172-04:00",
+   "key": "effect_total",
+   "labels": {},
+   "last": 109.4197097605805,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:46.847172-04:00",
+   "max": 109.4197097605805,
+   "min": 109.4197097605805
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.847172-04:00",
+   "key": "effect_total_p05",
+   "labels": {},
+   "last": 92.20257482417854,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:46.847172-04:00",
+   "max": 92.20257482417854,
+   "min": 92.20257482417854
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.847172-04:00",
+   "key": "effect_total_p95",
+   "labels": {},
+   "last": 133.24811809201748,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:46.847172-04:00",
+   "max": 133.24811809201748,
+   "min": 133.24811809201748
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.847172-04:00",
+   "key": "effect_total_sd",
+   "labels": {},
+   "last": 12.689612291078562,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:46.847172-04:00",
+   "max": 12.689612291078562,
+   "min": 12.689612291078562
+  },
+  {
+   "attempt": 1,
+   "count": 3,
+   "first_ts": "2026-10-21T09:47:46.502172-04:00",
+   "key": "num_steps",
+   "labels": {
+    "chain": "0"
+   },
+   "last": 7.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:47:46.784172-04:00",
+   "max": 15.0,
+   "min": 7.0
+  },
+  {
+   "attempt": 1,
+   "count": 3,
+   "first_ts": "2026-10-21T09:47:46.502172-04:00",
+   "key": "num_steps",
+   "labels": {
+    "chain": "1"
+   },
+   "last": 3.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:47:46.784172-04:00",
+   "max": 7.0,
+   "min": 3.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.850172-04:00",
+   "key": "one_step_coverage_90",
+   "labels": {},
+   "last": 0.9423076923076923,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:46.850172-04:00",
+   "max": 0.9423076923076923,
+   "min": 0.9423076923076923
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.850172-04:00",
+   "key": "one_step_rmse",
+   "labels": {},
+   "last": 1.2833629005733678,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:46.850172-04:00",
+   "max": 1.2833629005733678,
+   "min": 1.2833629005733678
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.847172-04:00",
+   "key": "p_effect_positive",
+   "labels": {},
+   "last": 1.0,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:46.847172-04:00",
+   "max": 1.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.847172-04:00",
+   "key": "pre_mape",
+   "labels": {},
+   "last": 0.011160321501603232,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:46.847172-04:00",
+   "max": 0.011160321501603232,
+   "min": 0.011160321501603232
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.847172-04:00",
+   "key": "pre_rmse",
+   "labels": {},
+   "last": 1.3007388572555187,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:46.847172-04:00",
+   "max": 1.3007388572555187,
+   "min": 1.3007388572555187
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.850172-04:00",
+   "key": "sigma_level",
+   "labels": {},
+   "last": 0.24699402477346996,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:46.850172-04:00",
+   "max": 0.24699402477346996,
+   "min": 0.24699402477346996
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.850172-04:00",
+   "key": "sigma_obs",
+   "labels": {},
+   "last": 1.2384294467905517,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:46.850172-04:00",
+   "max": 1.2384294467905517,
+   "min": 1.2384294467905517
+  },
+  {
+   "attempt": 1,
+   "count": 3,
+   "first_ts": "2026-10-21T09:47:46.502172-04:00",
+   "key": "step_size",
+   "labels": {
+    "chain": "0"
+   },
+   "last": 0.5275989818912205,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:47:46.784172-04:00",
+   "max": 0.5768362768960499,
+   "min": 0.3718582626088438
+  },
+  {
+   "attempt": 1,
+   "count": 3,
+   "first_ts": "2026-10-21T09:47:46.502172-04:00",
+   "key": "step_size",
+   "labels": {
+    "chain": "1"
+   },
+   "last": 0.5394781568357188,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:47:46.784172-04:00",
+   "max": 0.6843562793185254,
+   "min": 0.5394781568357188
+  }
+ ],
+ "format": "mapi.test.dashboard-material/v1",
+ "input_contract": {
+  "input_table": {
+   "columns": [
+    {
+     "description": "The period (yyyy-MM-dd)",
+     "dims": [],
+     "freq": "W-MON",
+     "name": "time",
+     "role": "coord"
+    },
+    {
+     "description": "Leave empty. This model forecasts from the end of its fitted history",
+     "dims": [
+      "time"
+     ],
+     "freq": null,
+     "name": "y",
+     "role": "target"
+    },
+    {
+     "description": "An input",
+     "dims": [
+      "time"
+     ],
+     "freq": null,
+     "name": "control_a",
+     "role": "input"
+    },
+    {
+     "description": "An input",
+     "dims": [
+      "time"
+     ],
+     "freq": null,
+     "name": "control_b",
+     "role": "input"
+    }
+   ],
+   "conditions_on_actuals": false,
+   "horizon_dim": "time",
+   "rows": [
+    [
+     "2024-03-25",
+     null,
+     null,
+     null
+    ],
+    [
+     "2024-04-01",
+     null,
+     null,
+     null
+    ]
+   ]
+  },
+  "max_inline_bytes": 5242880,
+  "model_ref": "model://default/v017-causal-impact-eb77fe-model@v1",
+  "snapshot": {
+   "conditions_on_actuals": false,
+   "fit_coords": {
+    "time": {
+     "contiguous": true,
+     "end": "2024-03-18T00:00:00",
+     "freq": "W-MON",
+     "kind": "time",
+     "size": 64,
+     "start": "2023-01-02T00:00:00",
+     "step": null,
+     "values": null
+    }
+   },
+   "future_required": [],
+   "horizon_dim": "time",
+   "input_schema": {
+    "dims": {
+     "time": {
+      "description": null,
+      "freq": "W-MON",
+      "kind": "time",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "extend"
+     }
+    },
+    "layout": "dense",
+    "ragged": [],
+    "vars": {
+     "control_a": {
+      "bounds": null,
+      "description": null,
+      "dims": [
+       "time"
+      ],
+      "dtype": "float64",
+      "future_required": false,
+      "index_of": null,
+      "missing": "forbid",
+      "missing_sentinel": null,
+      "role": "covariate",
+      "units": null
+     },
+     "control_b": {
+      "bounds": null,
+      "description": null,
+      "dims": [
+       "time"
+      ],
+      "dtype": "float64",
+      "future_required": false,
+      "index_of": null,
+      "missing": "forbid",
+      "missing_sentinel": null,
+      "role": "covariate",
+      "units": null
+     },
+     "y": {
+      "bounds": null,
+      "description": null,
+      "dims": [
+       "time"
+      ],
+      "dtype": "float64",
+      "future_required": false,
+      "index_of": null,
+      "missing": "allow",
+      "missing_sentinel": null,
+      "role": "target",
+      "units": "units"
+     }
+    }
+   },
+   "inputs_stage": "raw",
+   "representation": "draws",
+   "schema_hash": "sha256:1739db5a8d8d5d5337ddbd01a3d9e9fa0776936b9a34527c9a2517ef63fd49f2",
+   "score_modes": [
+    "forecast",
+    "predict"
+   ]
+  }
+ },
+ "manifest": {
+  "about": {
+   "assumptions": [
+    "Without the change, the series continues as the model of the period before it predicts",
+    "The change did not touch the control series"
+   ],
+   "avoid_when": [
+    "The change also changed the control series",
+    "Other events occurred at the same time as the change",
+    "You have fewer than about 10 periods before the change",
+    "You have the same series for many markets (use the synthetic control)"
+   ],
+   "data_needs": [
+    "One number over time at a regular frequency, before and after the change",
+    "The start date of the change, and an end date if it stopped",
+    "Optional control series for the full period"
+   ],
+   "difficulty": "intermediate",
+   "example": "A TV campaign from 1 March added 4,200 sales in 8 weeks (range 2,900 to 5,500).",
+   "expert_notes": "CausalImpact (Brodersen et al. 2015) on the ts.bsts core: a Bayesian structural time series with the controls as static regressors is fitted on the pre-period only. The counterfactual is the one-step-ahead prediction in the pre-period and a predictive forecast from the terminal state after the start (common random numbers). The effect is actual minus counterfactual, per draw; the cumulative effect sums the post cells. Interrupted time series is the case without controls.",
+   "fits": {
+    "data_shape": [
+     "one_series",
+     "several_series"
+    ],
+    "frequency": [
+     "daily",
+     "weekly",
+     "monthly"
+    ],
+    "goal": [
+     "measure_impact"
+    ],
+    "uncertainty": [
+     "essential",
+     "nice"
+    ]
+   },
+   "outputs": [
+    "Actual values and the values without the change, with a range",
+    "The effect in each period and the total effect",
+    "The probability that the effect is more than zero",
+    "A chart of the fit before the change"
+   ],
+   "references": [
+    {
+     "title": "Brodersen et al. (2015), Inferring causal impact using Bayesian structural time-series models, Annals of Applied Statistics",
+     "url": "https://doi.org/10.1214/14-AOAS788"
+    }
+   ],
+   "related": [
+    "ts.bsts",
+    "causal.synthetic_control",
+    "causal.did"
+   ],
+   "summary_plain": "Measures the effect of a campaign, a launch or a change on one series. It compares the actual values with the values that the model predicts without the change.",
+   "title": "Effect of a campaign on one series",
+   "typical_runtime": "minutes",
+   "use_when": [
+    "A campaign, a launch or a price change started on a known date",
+    "You have other series that the change did not touch (for example the sales in other countries, or searches for the category)",
+    "You want the effect with a range, for each period and in total"
+   ]
+  },
+  "capabilities": {
+   "checkpointable": true,
+   "deterministic_given_seed": false,
+   "inference": "mcmc",
+   "loo_invalid_reason": "the Kalman likelihood is a sum over the whole series; steps depend on each other, so pointwise leave-one-out is not defined",
+   "loo_valid": false,
+   "owns": [
+    "scaling"
+   ],
+   "representation": "draws",
+   "score_modes": [
+    "forecast",
+    "predict"
+   ]
+  },
+  "description": "CausalImpact / interrupted time series: a Bayesian structural time series fitted on the periods before an intervention, with control series as regressors, predicts the series without the intervention; the effect is actual minus that counterfactual.",
+  "id": "causal.impact",
+  "outputs": {
+   "effect": {
+    "description": "The effect of the intervention: y minus what y would be without it",
+    "dims": [
+     "time"
+    ],
+    "units_of": "y"
+   },
+   "y_hat": {
+    "description": "What y would be without the intervention",
+    "dims": [
+     "time"
+    ],
+    "units_of": "y"
+   }
+  },
+  "plots": [
+   "causal.impact",
+   "causal.pre_fit",
+   "core.decomposition",
+   "core.convergence",
+   "core.posterior_forest"
+  ],
+  "schema_template": {
+   "params": {
+    "controls": {
+     "default": [],
+     "type": "string_list"
+    }
+   },
+   "template": {
+    "dims": {
+     "time": {
+      "kind": "time",
+      "policy": "extend"
+     }
+    },
+    "vars": {
+     "y": {
+      "dims": [
+       "time"
+      ],
+      "dtype": "float64",
+      "missing": "allow",
+      "role": "target"
+     },
+     "{*controls as x}": {
+      "dims": [
+       "time"
+      ],
+      "dtype": "float64",
+      "future_required": true,
+      "role": "covariate"
+     }
+    }
+   }
+  },
+  "settings_schema": {
+   "$defs": {
+    "SeasonSettings": {
+     "additionalProperties": false,
+     "description": "One seasonal pattern.",
+     "properties": {
+      "harmonics": {
+       "anyOf": [
+        {
+         "maximum": 50,
+         "minimum": 1,
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Number of sine/cosine pairs. Empty: one effect per season (needs a whole-number period of at most 24)",
+       "title": "Harmonics"
+      },
+      "period": {
+       "description": "Length of the cycle in periods of the time dim (12 for monthly data with a yearly cycle, 52.18 for weekly data, 7 for daily data)",
+       "exclusiveMinimum": 1,
+       "maximum": 1000,
+       "title": "Period",
+       "type": "number"
+      },
+      "sigma": {
+       "default": 0.05,
+       "description": "Half-normal scale of the seasonal changes (standardised)",
+       "exclusiveMinimum": 0,
+       "maximum": 5,
+       "title": "Sigma",
+       "type": "number"
+      },
+      "stochastic": {
+       "default": false,
+       "description": "Let the seasonal pattern change over time",
+       "title": "Stochastic",
+       "type": "boolean"
+      }
+     },
+     "required": [
+      "period"
+     ],
+     "title": "SeasonSettings",
+     "type": "object"
+    }
+   },
+   "additionalProperties": false,
+   "description": "Settings of ``causal.impact``: the BSTS structure, the window and the controls.",
+   "properties": {
+    "controls": {
+     "description": "Control series that the intervention did not affect (other regions, competitors, search interest); their values are needed for every period",
+     "items": {
+      "type": "string"
+     },
+     "maxItems": 32,
+     "title": "Controls",
+     "type": "array",
+     "x-ui-level": "basic"
+    },
+    "initial_sd": {
+     "default": 1.0,
+     "description": "Prior sd of the initial states and seasonal effects",
+     "exclusiveMinimum": 0,
+     "maximum": 10,
+     "title": "Initial Sd",
+     "type": "number"
+    },
+    "intervention_end": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Last period of the intervention (inclusive); empty: until the end of the data",
+     "title": "Intervention End"
+    },
+    "intervention_start": {
+     "description": "First period of the intervention: an ISO date (YYYY-MM-DD) or a period number",
+     "pattern": "^(\\d{4}-\\d{2}-\\d{2}|-?\\d+)$",
+     "title": "Intervention Start",
+     "type": "string"
+    },
+    "level_sigma": {
+     "default": 0.1,
+     "description": "Half-normal scale of level changes",
+     "exclusiveMinimum": 0,
+     "maximum": 5,
+     "title": "Level Sigma",
+     "type": "number"
+    },
+    "obs_sigma": {
+     "default": 0.5,
+     "description": "Half-normal scale of the noise",
+     "exclusiveMinimum": 0,
+     "maximum": 10,
+     "title": "Obs Sigma",
+     "type": "number"
+    },
+    "regression_prior": {
+     "default": "normal",
+     "description": "normal: every driver has an effect; horseshoe: most drivers have none",
+     "enum": [
+      "normal",
+      "horseshoe"
+     ],
+     "title": "Regression Prior",
+     "type": "string"
+    },
+    "regression_sigma": {
+     "default": 1.0,
+     "description": "Prior scale of the driver effects (standardised)",
+     "exclusiveMinimum": 0,
+     "maximum": 10,
+     "title": "Regression Sigma",
+     "type": "number"
+    },
+    "seasonality": {
+     "description": "Seasonal patterns (at most three)",
+     "items": {
+      "$ref": "#/$defs/SeasonSettings"
+     },
+     "maxItems": 3,
+     "title": "Seasonality",
+     "type": "array",
+     "x-ui-level": "basic"
+    },
+    "slope_sigma": {
+     "default": 0.02,
+     "description": "Half-normal scale of slope changes",
+     "exclusiveMinimum": 0,
+     "maximum": 5,
+     "title": "Slope Sigma",
+     "type": "number"
+    },
+    "trend": {
+     "default": "local_linear",
+     "description": "level: a level that wanders; local_linear: a level and a slope that both wander; smooth: a slope that wanders slowly (a smooth trend)",
+     "enum": [
+      "level",
+      "local_linear",
+      "smooth"
+     ],
+     "title": "Trend",
+     "type": "string",
+     "x-ui-level": "basic"
+    }
+   },
+   "required": [
+    "intervention_start"
+   ],
+   "title": "ImpactSettings",
+   "type": "object"
+  },
+  "version": "1.0.0"
+ },
+ "note": "fit metrics hold effect_total{,_sd,_p05,_p95}; ModelVersion.metrics is {}",
+ "plugin": "causal.impact",
+ "preset": "causal_impact",
+ "primary_output": "effect",
+ "refusals": [],
+ "representation": "draws",
+ "scorecard": {
+  "items": [
+   {
+    "category": "convergence",
+    "check": "convergence.rhat",
+    "code": "RHAT",
+    "docs_anchor": "check-convergence-rhat",
+    "message_expert": "max rank-normalised split r-hat 1.041 for 'initial_trend' (threshold 1.01)",
+    "message_plain": "The chains agree, but not fully (R-hat 1.04).",
+    "metric": "r_hat_max",
+    "status": "warn",
+    "suggested_action": "Increase the tuning steps and the draws, or make the model simpler.",
+    "threshold": 1.01,
+    "title": "Chains agree",
+    "value": 1.0412246704582349
+   },
+   {
+    "category": "convergence",
+    "check": "convergence.ess",
+    "code": "ESS",
+    "docs_anchor": "check-convergence-ess",
+    "message_expert": "min bulk ESS 67 for 'sigma_trend' (threshold 200)",
+    "message_plain": "There are only 67 independent draws. The results are not stable.",
+    "metric": "ess_bulk_min",
+    "status": "fail",
+    "suggested_action": "Increase the number of draws.",
+    "threshold": 100.0,
+    "title": "Enough independent draws",
+    "value": 66.70224251242786
+   },
+   {
+    "category": "convergence",
+    "check": "convergence.divergences",
+    "code": "DIVERGENCES",
+    "docs_anchor": "check-convergence-divergences",
+    "message_expert": "1 divergent transitions in 200 draws",
+    "message_plain": "The sampler had problems in a small part of the draws (0.5%).",
+    "metric": "divergence_rate",
+    "status": "warn",
+    "suggested_action": "Increase target_accept, or use priors that give more information.",
+    "threshold": 0.0,
+    "title": "The sampler had no problems",
+    "value": 0.005
+   },
+   {
+    "category": "data",
+    "check": "data.missing",
+    "code": "DATA_MISSING",
+    "docs_anchor": "check-data-missing",
+    "message_expert": "0 of 192 values missing",
+    "message_plain": "Only 0% of the values are missing.",
+    "metric": "missing_fraction",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 0.05,
+    "title": "Few missing values",
+    "value": 0.0
+   },
+   {
+    "category": "data",
+    "check": "data.history",
+    "code": "DATA_HISTORY",
+    "docs_anchor": "check-data-history",
+    "message_expert": "64 periods at W-MON (52 per year) along 'time' at the model stage",
+    "message_plain": "There are only 1.2 years of history. The seasonal effects are not certain.",
+    "metric": "history_years",
+    "status": "warn",
+    "suggested_action": "If you have more history, add it.",
+    "threshold": 2.0,
+    "title": "Enough history",
+    "value": 1.2307692307692308
+   }
+  ],
+  "overall": "fail",
+  "skipped": {
+   "data.spend_variation": "the dataset has no spend variable along time",
+   "holdout.coverage_90": "the spec does not evaluate it (evaluate.metrics) or has no holdout split",
+   "holdout.hit_rate": "only models of a categorical target (choice models) report a hit rate. Evaluate accuracy_lift on one of these models",
+   "holdout.mape": "the spec does not evaluate it (evaluate.metrics) or has no holdout split",
+   "plausibility.baseline_share": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.negative_roi": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.prior_overlap": "the fit kept no prior draws (set fit.prior_predictive or fit.keep.prior)",
+   "plausibility.roi_absurd": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.share_outlier": "the model has no response curves (outputs.derived: response_curves)"
+  }
+ },
+ "scores": {
+  "baseline": {
+   "counterfactual": null,
+   "fields": null,
+   "forecast": null,
+   "horizon": null,
+   "inline": false,
+   "mode": "predict",
+   "output": {
+    "summary": [
+     "mean",
+     "hdi_90"
+    ]
+   },
+   "probe_case": "predict_over_data__readout",
+   "result": {
+    "aggregation_flagged": false,
+    "bundle_id": "23d4b60b62c075b575a0512ca4e5f4ca",
+    "groups": [
+     "/summary"
+    ],
+    "issues": [],
+    "kind": "expected",
+    "mode": "predict",
+    "names": "dataset",
+    "output_space": {
+     "effect": "raw",
+     "y_hat": "raw"
+    },
+    "representation": "draws",
+    "retransform": {
+     "effect": "none",
+     "y_hat": "none"
+    },
+    "units": "original"
+   },
+   "summary": {
+    "tables": [
+     {
+      "columns": [
+       "week",
+       "mean",
+       "hdi_90_lower",
+       "hdi_90_upper"
+      ],
+      "dims": [
+       "week"
+      ],
+      "rows": [
+       [
+        "2023-01-02",
+        0.2963329620137813,
+        -5.350378924251203,
+        6.094327195659304
+       ],
+       [
+        "2023-01-09",
+        -0.8852165204763142,
+        -1.246777336157166,
+        -0.3452670888828635
+       ],
+       [
+        "2023-01-16",
+        -0.16245961095779662,
+        -0.48033855455520325,
+        0.13615403251756675
+       ],
+       [
+        "2023-01-23",
+        -1.4330779067174368,
+        -1.6094086272139805,
+        -1.1832176944286061
+       ],
+       [
+        "2023-01-30",
+        -0.2020572436546125,
+        -0.42879291549191123,
+        -0.004018313932476758
+       ],
+       [
+        "2023-02-06",
+        1.8452774673859063,
+        1.5648331990711881,
+        2.194131779913519
+       ],
+       [
+        "2023-02-13",
+        0.04620254397439069,
+        -0.2967222270604424,
+        0.32623961220865283
+       ],
+       [
+        "2023-02-20",
+        2.4503639816690552,
+        2.054244744872193,
+        2.984590289031331
+       ],
+       [
+        "2023-02-27",
+        -0.9988866465146461,
+        -1.5695750921923945,
+        -0.3518871010905258
+       ],
+       [
+        "2023-03-06",
+        0.5450808384390836,
+        0.20499367746856478,
+        0.8497603884473364
+       ],
+       [
+        "2023-03-13",
+        -0.544085299481931,
+        -0.915845579789746,
+        -0.2101523008423385
+       ],
+       [
+        "2023-03-20",
+        0.2028875991816053,
+        0.03662510600763369,
+        0.40870736665102925
+       ],
+       [
+        "2023-03-27",
+        -0.43470975297909736,
+        -0.6187637504120858,
+        -0.2761871611469502
+       ],
+       [
+        "2023-04-03",
+        -0.5823051358421918,
+        -0.879304221478975,
+        -0.26435759658747315
+       ],
+       [
+        "2023-04-10",
+        -0.6845905407915095,
+        -1.0596683740264154,
+        -0.2541794592360702
+       ],
+       [
+        "2023-04-17",
+        3.583076194200248,
+        2.92410126109435,
+        4.118576507328214
+       ],
+       [
+        "2023-04-24",
+        -0.17309243703126476,
+        -1.042825267703634,
+        0.6786320204526817
+       ],
+       [
+        "2023-05-01",
+        -2.0907819484619607,
+        -2.777992672416815,
+        -1.493875217235896
+       ],
+       [
+        "2023-05-08",
+        -0.29050337265710496,
+        -0.8459894540836075,
+        0.22436088134908516
+       ],
+       [
+        "2023-05-15",
+        0.7821207723934854,
+        0.35215368722074913,
+        1.151340699828225
+       ],
+       [
+        "2023-05-22",
+        -0.3668434250237162,
+        -0.7826006699411181,
+        0.12072403982098479
+       ],
+       [
+        "2023-05-29",
+        1.4254017506039804,
+        1.1027623480829618,
+        1.6816267373885125
+       ],
+       [
+        "2023-06-05",
+        0.7148670162668421,
+        0.31508970488978605,
+        1.229196648278375
+       ],
+       [
+        "2023-06-12",
+        -1.0194246923827113,
+        -1.464212787963831,
+        -0.5323224285693868
+       ],
+       [
+        "2023-06-19",
+        -0.9713043437565517,
+        -1.160027483611458,
+        -0.6572851634334427
+       ],
+       [
+        "2023-06-26",
+        -1.268333263056922,
+        -1.623873748255491,
+        -0.907265346086831
+       ],
+       [
+        "2023-07-03",
+        -0.8259224119581745,
+        -1.2414740429838957,
+        -0.31452215775038894
+       ],
+       [
+        "2023-07-10",
+        -1.5982839503704138,
+        -2.0399064400113502,
+        -0.9771671514336617
+       ],
+       [
+        "2023-07-17",
+        1.5987469326031691,
+        1.0296556692324828,
+        2.4071418735331918
+       ],
+       [
+        "2023-07-24",
+        1.6813018885497235,
+        1.3034771378332408,
+        2.145659008060534
+       ],
+       [
+        "2023-07-31",
+        -1.3392766948954702,
+        -1.9516204034411828,
+        -0.8641981079302923
+       ],
+       [
+        "2023-08-07",
+        -1.110262035166773,
+        -1.4794466578151173,
+        -0.548331578852796
+       ],
+       [
+        "2023-08-14",
+        -1.3499701258943477,
+        -1.790588825489749,
+        -0.7826212519412508
+       ],
+       [
+        "2023-08-21",
+        -0.3447167142138594,
+        -1.0829645939117114,
+        0.33028388296212086
+       ],
+       [
+        "2023-08-28",
+        -2.3499091572038053,
+        -2.9152634978152037,
+        -1.713587783916168
+       ],
+       [
+        "2023-09-04",
+        0.046406347083272126,
+        -0.8919346639935242,
+        0.8755408894507752
+       ],
+       [
+        "2023-09-11",
+        2.3918319971457134,
+        1.7350677601115052,
+        3.2178591286476177
+       ],
+       [
+        "2023-09-18",
+        0.38147882618242546,
+        -0.23046138679283956,
+        0.8696067298922117
+       ],
+       [
+        "2023-09-25",
+        1.5963327907296676,
+        1.1041353237479257,
+        2.000441060126988
+       ],
+       [
+        "2023-10-02",
+        -0.2093925778535064,
+        -0.8294754733981051,
+        0.394414034780894
+       ],
+       [
+        "2023-10-09",
+        2.046828507959175,
+        1.6476315106902462,
+        2.428907543795276
+       ],
+       [
+        "2023-10-16",
+        0.14885606732817463,
+        -0.6619606054139382,
+        0.7848706762051592
+       ],
+       [
+        "2023-10-23",
+        -0.7403444490379744,
+        -1.2476060420742243,
+        -0.15255261622651517
+       ],
+       [
+        "2023-10-30",
+        2.2242850094351136,
+        1.8830503995059331,
+        2.6837978659135473
+       ],
+       [
+        "2023-11-06",
+        -1.143437611039954,
+        -1.857031515925243,
+        -0.41618050378606597
+       ],
+       [
+        "2023-11-13",
+        -2.0282170924017593,
+        -2.517222010090748,
+        -1.5113737770148532
+       ],
+       [
+        "2023-11-20",
+        -0.2874668753268672,
+        -0.9315879705267065,
+        0.14361511257725113
+       ],
+       [
+        "2023-11-27",
+        -0.543660875022103,
+        -1.071909265264523,
+        -0.06148600264729964
+       ],
+       [
+        "2023-12-04",
+        0.3479417944526481,
+        -0.20542571559306566,
+        1.0733090753034418
+       ],
+       [
+        "2023-12-11",
+        -1.7869183409971134,
+        -2.3534266820984726,
+        -1.1024874404539418
+       ],
+       [
+        "2023-12-18",
+        0.04773280004435677,
+        -0.7028229684588325,
+        0.8717034980008407
+       ],
+       [
+        "2023-12-25",
+        0.12308430557149876,
+        -0.6116072575818094,
+        0.8117831904765183
+       ],
+       [
+        "2024-01-01",
+        8.483193052278967,
+        7.797586874807109,
+        9.145717583926555
+       ],
+       [
+        "2024-01-08",
+        9.344052209490517,
+        8.564431091608895,
+        10.148862630202913
+       ],
+       [
+        "2024-01-15",
+        7.920116183461114,
+        7.139917353142707,
+        8.694095597171653
+       ],
+       [
+        "2024-01-22",
+        11.375320686163223,
+        10.704654954422722,
+        12.088990143581313
+       ],
+       [
+        "2024-01-29",
+        8.296783132510406,
+        7.574000074598345,
+        9.037670125809896
+       ],
+       [
+        "2024-02-05",
+        8.720702375451252,
+        7.997002542805163,
+        9.57808844968362
+       ],
+       [
+        "2024-02-12",
+        8.112853630262551,
+        7.224818177165162,
+        9.035849473976128
+       ],
+       [
+        "2024-02-19",
+        9.203066420449018,
+        8.31612099185891,
+        10.140863405938362
+       ],
+       [
+        "2024-02-26",
+        9.45979594546397,
+        8.474077639727554,
+        10.413384025603307
+       ],
+       [
+        "2024-03-04",
+        10.303710921460175,
+        9.168441369179703,
+        11.440457763086144
+       ],
+       [
+        "2024-03-11",
+        8.937363351940395,
+        7.429578732553509,
+        10.399615369536349
+       ],
+       [
+        "2024-03-18",
+        9.532185892747812,
+        7.973109358134394,
+        11.070236195036799
+       ]
+      ],
+      "time_dim": "week",
+      "variable": "effect"
+     },
+     {
+      "columns": [
+       "week",
+       "mean",
+       "hdi_90_lower",
+       "hdi_90_upper"
+      ],
+      "dims": [
+       "week"
+      ],
+      "rows": [
+       [
+        "2023-01-02",
+        97.39825709247714,
+        91.60026285883163,
+        103.04496897874213
+       ],
+       [
+        "2023-01-09",
+        97.26866536714046,
+        96.728715935547,
+        97.6302261828213
+       ],
+       [
+        "2023-01-16",
+        97.77176550971122,
+        97.47315186623587,
+        98.08964445330864
+       ],
+       [
+        "2023-01-23",
+        98.5414292528628,
+        98.29156904057396,
+        98.71775997335934
+       ],
+       [
+        "2023-01-30",
+        98.6129543654322,
+        98.41491543571007,
+        98.8396900372695
+       ],
+       [
+        "2023-02-06",
+        98.86473406666028,
+        98.51587975413267,
+        99.145178334975
+       ],
+       [
+        "2023-02-13",
+        101.1396199991561,
+        100.85958293092182,
+        101.48254477019091
+       ],
+       [
+        "2023-02-20",
+        101.3361648976944,
+        100.80193859033213,
+        101.73228413449127
+       ],
+       [
+        "2023-02-27",
+        101.24760781454592,
+        100.6006082691218,
+        101.81829626022368
+       ],
+       [
+        "2023-03-06",
+        100.62371626812865,
+        100.3190367181204,
+        100.96380342909917
+       ],
+       [
+        "2023-03-13",
+        100.27979584415476,
+        99.94586284551518,
+        100.65155612446259
+       ],
+       [
+        "2023-03-20",
+        100.84952993649691,
+        100.64371016902749,
+        101.01579242967088
+       ],
+       [
+        "2023-03-27",
+        99.28630742081842,
+        99.12778482898626,
+        99.4703614182514
+       ],
+       [
+        "2023-04-03",
+        98.4593057178886,
+        98.1413581786339,
+        98.7563048035254
+       ],
+       [
+        "2023-04-10",
+        97.02215588973876,
+        96.59174480818332,
+        97.39723372297367
+       ],
+       [
+        "2023-04-17",
+        95.52285865458325,
+        94.98735834145529,
+        96.18183358768916
+       ],
+       [
+        "2023-04-24",
+        94.82120749399266,
+        93.9694830365087,
+        95.69094032466502
+       ],
+       [
+        "2023-05-01",
+        94.22758942457098,
+        93.63068269334491,
+        94.91480014852583
+       ],
+       [
+        "2023-05-08",
+        93.67082349870961,
+        93.15595924470341,
+        94.2263095801361
+       ],
+       [
+        "2023-05-15",
+        94.14566132017299,
+        93.77644139273825,
+        94.57562840534573
+       ],
+       [
+        "2023-05-22",
+        93.21520970769195,
+        92.72764224284725,
+        93.63096695260936
+       ],
+       [
+        "2023-05-29",
+        93.97738105979974,
+        93.7211560730152,
+        94.30002046232075
+       ],
+       [
+        "2023-06-05",
+        92.99718610325192,
+        92.48285647124038,
+        93.39696341462897
+       ],
+       [
+        "2023-06-12",
+        93.26436884767976,
+        92.77726658386645,
+        93.7091569432609
+       ],
+       [
+        "2023-06-19",
+        92.71561951446284,
+        92.40160033413973,
+        92.90434265431774
+       ],
+       [
+        "2023-06-26",
+        91.61080894406706,
+        91.24974102709697,
+        91.96634942926563
+       ],
+       [
+        "2023-07-03",
+        90.40687465937376,
+        89.89547440516596,
+        90.82242629039946
+       ],
+       [
+        "2023-07-10",
+        89.5609477386568,
+        88.93983093972005,
+        90.00257022829774
+       ],
+       [
+        "2023-07-17",
+        88.54656342292748,
+        87.73816848199746,
+        89.11565468629817
+       ],
+       [
+        "2023-07-24",
+        88.29368746462656,
+        87.82933034511575,
+        88.67151221534304
+       ],
+       [
+        "2023-07-31",
+        87.00905689237179,
+        86.5339783054066,
+        87.6214006009175
+       ],
+       [
+        "2023-08-07",
+        85.68486379369169,
+        85.1229333373777,
+        86.05404841634002
+       ],
+       [
+        "2023-08-14",
+        85.34680345392864,
+        84.77945457997555,
+        85.78742215352405
+       ],
+       [
+        "2023-08-21",
+        85.69529264460954,
+        85.02029204743357,
+        86.4335405243074
+       ],
+       [
+        "2023-08-28",
+        85.64144766020127,
+        85.00512628691364,
+        86.20680200081267
+       ],
+       [
+        "2023-09-04",
+        85.01210201898077,
+        84.18296747661327,
+        85.95044303005757
+       ],
+       [
+        "2023-09-11",
+        85.1369968567224,
+        84.3109697252205,
+        85.79376109375661
+       ],
+       [
+        "2023-09-18",
+        85.15958394320067,
+        84.67145603949088,
+        85.77152415617593
+       ],
+       [
+        "2023-09-25",
+        85.6447099218434,
+        85.24060165244609,
+        86.13690738882515
+       ],
+       [
+        "2023-10-02",
+        87.42084867765082,
+        86.81704206501644,
+        88.04093157319544
+       ],
+       [
+        "2023-10-09",
+        86.0326726065927,
+        85.6505935707566,
+        86.43186960386163
+       ],
+       [
+        "2023-10-16",
+        87.93889640517067,
+        87.30288179629368,
+        88.74971307791277
+       ],
+       [
+        "2023-10-23",
+        89.02426442768683,
+        88.43647259487537,
+        89.53152602072308
+       ],
+       [
+        "2023-10-30",
+        89.96444792752565,
+        89.50493507104721,
+        90.30568253745483
+       ],
+       [
+        "2023-11-06",
+        91.11077631376182,
+        90.38351920650794,
+        91.82437021864712
+       ],
+       [
+        "2023-11-13",
+        91.41154952446067,
+        90.89470620907375,
+        91.90055444214964
+       ],
+       [
+        "2023-11-20",
+        92.90823444311191,
+        92.47715245520779,
+        93.55235553831174
+       ],
+       [
+        "2023-11-27",
+        94.47597425645512,
+        93.99379938408032,
+        95.00422264669754
+       ],
+       [
+        "2023-12-04",
+        96.82264068990396,
+        96.09727340905316,
+        97.37600819994967
+       ],
+       [
+        "2023-12-11",
+        98.73635569641087,
+        98.05192479586768,
+        99.30286403751221
+       ],
+       [
+        "2023-12-18",
+        99.70323069138483,
+        98.87925999342835,
+        100.45378645988802
+       ],
+       [
+        "2023-12-25",
+        100.17948656116667,
+        99.49078767626165,
+        100.91417812431997
+       ],
+       [
+        "2024-01-01",
+        101.19507921275512,
+        100.53255468110754,
+        101.88068539022699
+       ],
+       [
+        "2024-01-08",
+        102.54951383581556,
+        101.74470341510316,
+        103.32913495369718
+       ],
+       [
+        "2024-01-15",
+        102.3387881345713,
+        101.56480872086074,
+        103.11898696488969
+       ],
+       [
+        "2024-01-22",
+        102.46918955490193,
+        101.75552009748384,
+        103.13985528664243
+       ],
+       [
+        "2024-01-29",
+        103.09431980807116,
+        102.35343281477165,
+        103.8171028659832
+       ],
+       [
+        "2024-02-05",
+        103.54315756627511,
+        102.68577149204273,
+        104.26685739892119
+       ],
+       [
+        "2024-02-12",
+        102.48869540390024,
+        101.56569956018666,
+        103.37673085699763
+       ],
+       [
+        "2024-02-19",
+        102.37574351311734,
+        101.43794652762799,
+        103.26268894170744
+       ],
+       [
+        "2024-02-26",
+        101.96930292034092,
+        101.0157148402016,
+        102.95502122607735
+       ],
+       [
+        "2024-03-04",
+        100.83416089543393,
+        99.69741405380796,
+        101.9694304477144
+       ],
+       [
+        "2024-03-11",
+        101.3880241097893,
+        99.92577209219334,
+        102.89580872917618
+       ],
+       [
+        "2024-03-18",
+        101.03686592641672,
+        99.49881562412776,
+        102.59594246103016
+       ]
+      ],
+      "time_dim": "week",
+      "variable": "y_hat"
+     }
+    ],
+    "truncated": false
+   },
+   "trimmed": null
+  },
+  "forecast": {
+   "counterfactual": null,
+   "fields": null,
+   "forecast": {
+    "dim": "week",
+    "fan": {
+     "coords": [
+      "2023-01-02",
+      "2023-01-09",
+      "2023-01-16",
+      "2023-01-23",
+      "2023-01-30",
+      "2023-02-06",
+      "2023-02-13",
+      "2023-02-20",
+      "2023-02-27",
+      "2023-03-06",
+      "2023-03-13",
+      "2023-03-20",
+      "2023-03-27",
+      "2023-04-03",
+      "2023-04-10",
+      "2023-04-17",
+      "2023-04-24",
+      "2023-05-01",
+      "2023-05-08",
+      "2023-05-15",
+      "2023-05-22",
+      "2023-05-29",
+      "2023-06-05",
+      "2023-06-12",
+      "2023-06-19",
+      "2023-06-26",
+      "2023-07-03",
+      "2023-07-10",
+      "2023-07-17",
+      "2023-07-24",
+      "2023-07-31",
+      "2023-08-07",
+      "2023-08-14",
+      "2023-08-21",
+      "2023-08-28",
+      "2023-09-04",
+      "2023-09-11",
+      "2023-09-18",
+      "2023-09-25",
+      "2023-10-02",
+      "2023-10-09",
+      "2023-10-16",
+      "2023-10-23",
+      "2023-10-30",
+      "2023-11-06",
+      "2023-11-13",
+      "2023-11-20",
+      "2023-11-27",
+      "2023-12-04",
+      "2023-12-11",
+      "2023-12-18",
+      "2023-12-25",
+      "2024-01-01",
+      "2024-01-08",
+      "2024-01-15",
+      "2024-01-22",
+      "2024-01-29",
+      "2024-02-05",
+      "2024-02-12",
+      "2024-02-19",
+      "2024-02-26",
+      "2024-03-04",
+      "2024-03-11",
+      "2024-03-18",
+      "2024-03-25",
+      "2024-04-01",
+      "2024-04-08",
+      "2024-04-15"
+     ],
+     "dim": "week",
+     "observed": [
+      97.6945900545,
+      96.3834488467,
+      97.6093058988,
+      97.1083513461,
+      98.4108971218,
+      100.710011534,
+      101.185822543,
+      103.786528879,
+      100.248721168,
+      101.168797107,
+      99.7357105447,
+      101.052417536,
+      98.8515976678,
+      97.877000582,
+      96.3375653489,
+      99.1059348488,
+      94.648115057,
+      92.1368074761,
+      93.3803201261,
+      94.9277820926,
+      92.8483662827,
+      95.4027828104,
+      93.7120531195,
+      92.2449441553,
+      91.7443151707,
+      90.342475681,
+      89.5809522474,
+      87.9626637883,
+      90.1453103555,
+      89.9749893532,
+      85.6697801975,
+      84.5746017585,
+      83.996833328,
+      85.3505759304,
+      83.291538503,
+      85.0585083661,
+      87.5288288539,
+      85.5410627694,
+      87.2410427126,
+      87.2114560998,
+      88.0795011146,
+      88.0877524725,
+      88.2839199786,
+      92.188732937,
+      89.9673387027,
+      89.3833324321,
+      92.6207675678,
+      93.9323133814,
+      97.1705824844,
+      96.9494373554,
+      99.7509634914,
+      100.302570867,
+      109.678272265,
+      111.893566045,
+      110.258904318,
+      113.844510241,
+      111.391102941,
+      112.263859942,
+      110.601549034,
+      111.578809934,
+      111.429098866,
+      111.137871817,
+      110.325387462,
+      110.569051819,
+      null,
+      null,
+      null,
+      null
+     ],
+     "quantiles": [
+      0.05,
+      0.25,
+      0.5,
+      0.75,
+      0.95
+     ],
+     "units": "units",
+     "values": [
+      [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       98.952311023,
+       99.0802286687,
+       99.3848602403,
+       100.035770499
+      ],
+      [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       100.545283722,
+       100.639997607,
+       101.139053011,
+       101.929854162
+      ],
+      [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       101.446450571,
+       101.50401282,
+       102.116151568,
+       102.850375193
+      ],
+      [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       101.879127317,
+       101.936065688,
+       102.580212775,
+       103.392697751
+      ],
+      [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       102.490137498,
+       102.516782711,
+       103.274725938,
+       104.134910087
+      ]
+     ]
+    },
+    "format": "mapi.forecast/v1",
+    "history": 64,
+    "kind": "expected",
+    "kpi": "y_hat",
+    "split_at": "2024-03-25",
+    "summed_over": [],
+    "total": {
+     "mean": 406.707076727,
+     "quantiles": {
+      "0.05": 397.452422544,
+      "0.25": 404.216110136,
+      "0.5": 407.934949029,
+      "0.75": 409.820291484,
+      "0.95": 412.415695211
+     },
+     "sd": 4.6863327257,
+     "units": "units"
+    },
+    "units": "units"
+   },
+   "horizon": {
+    "dim": "time",
+    "periods": 4
+   },
+   "inline": false,
+   "mode": "forecast",
+   "output": {
+    "summary": [
+     "mean",
+     "hdi_90"
+    ]
+   },
+   "probe_case": "forecast_4__readout",
+   "result": {
+    "aggregation_flagged": false,
+    "bundle_id": "23d4b60b62c075b575a0512ca4e5f4ca",
+    "conditioning": {
+     "conditioned": false,
+     "dim": "time",
+     "fit_end": "2024-03-18",
+     "horizon_source": "rows",
+     "message": "Forecast from the end of the fitted history (2024-03-18); no actuals were supplied. 4 periods forecast from 2024-03-25 to 2024-04-15.",
+     "n_actuals": 0,
+     "n_series": 1,
+     "parameters": "fitted",
+     "periods": 4,
+     "revised": 0,
+     "series": [
+      {
+       "forecast_from": "2024-03-25",
+       "forecast_to": "2024-04-15",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2024-03-18",
+       "revised": 0,
+       "series": {}
+      }
+     ],
+     "series_conditioned": 0,
+     "truncated": false
+    },
+    "groups": [
+     "/summary"
+    ],
+    "issues": [],
+    "kind": "expected",
+    "mode": "forecast",
+    "names": "dataset",
+    "output_space": {
+     "y_hat": "raw"
+    },
+    "representation": "draws",
+    "retransform": {
+     "y_hat": "none"
+    },
+    "units": "original"
+   },
+   "summary": {
+    "conditioning": {
+     "conditioned": false,
+     "dim": "time",
+     "fit_end": "2024-03-18",
+     "horizon_source": "rows",
+     "message": "Forecast from the end of the fitted history (2024-03-18); no actuals were supplied. 4 periods forecast from 2024-03-25 to 2024-04-15.",
+     "n_actuals": 0,
+     "n_series": 1,
+     "parameters": "fitted",
+     "periods": 4,
+     "revised": 0,
+     "series": [
+      {
+       "forecast_from": "2024-03-25",
+       "forecast_to": "2024-04-15",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2024-03-18",
+       "revised": 0,
+       "series": {}
+      }
+     ],
+     "series_conditioned": 0,
+     "truncated": false
+    },
+    "tables": [
+     {
+      "columns": [
+       "week",
+       "mean",
+       "hdi_90_lower",
+       "hdi_90_upper"
+      ],
+      "dims": [
+       "week"
+      ],
+      "rows": [
+       [
+        "2024-03-25",
+        101.14526469392891,
+        99.54821700716806,
+        102.80377806570584
+       ],
+       [
+        "2024-04-01",
+        101.21776985830132,
+        99.65390160379359,
+        102.81609827035724
+       ],
+       [
+        "2024-04-08",
+        101.78336860774782,
+        100.04225291266268,
+        103.55068488496624
+       ],
+       [
+        "2024-04-15",
+        102.5606735667962,
+        100.80269912257651,
+        104.45216730795457
+       ]
+      ],
+      "time_dim": "week",
+      "variable": "y_hat"
+     }
+    ],
+    "truncated": false
+   },
+   "trimmed": null
+  },
+  "forecast_predictive": {
+   "counterfactual": null,
+   "fields": null,
+   "forecast": {
+    "dim": "week",
+    "fan": {
+     "coords": [
+      "2023-01-02",
+      "2023-01-09",
+      "2023-01-16",
+      "2023-01-23",
+      "2023-01-30",
+      "2023-02-06",
+      "2023-02-13",
+      "2023-02-20",
+      "2023-02-27",
+      "2023-03-06",
+      "2023-03-13",
+      "2023-03-20",
+      "2023-03-27",
+      "2023-04-03",
+      "2023-04-10",
+      "2023-04-17",
+      "2023-04-24",
+      "2023-05-01",
+      "2023-05-08",
+      "2023-05-15",
+      "2023-05-22",
+      "2023-05-29",
+      "2023-06-05",
+      "2023-06-12",
+      "2023-06-19",
+      "2023-06-26",
+      "2023-07-03",
+      "2023-07-10",
+      "2023-07-17",
+      "2023-07-24",
+      "2023-07-31",
+      "2023-08-07",
+      "2023-08-14",
+      "2023-08-21",
+      "2023-08-28",
+      "2023-09-04",
+      "2023-09-11",
+      "2023-09-18",
+      "2023-09-25",
+      "2023-10-02",
+      "2023-10-09",
+      "2023-10-16",
+      "2023-10-23",
+      "2023-10-30",
+      "2023-11-06",
+      "2023-11-13",
+      "2023-11-20",
+      "2023-11-27",
+      "2023-12-04",
+      "2023-12-11",
+      "2023-12-18",
+      "2023-12-25",
+      "2024-01-01",
+      "2024-01-08",
+      "2024-01-15",
+      "2024-01-22",
+      "2024-01-29",
+      "2024-02-05",
+      "2024-02-12",
+      "2024-02-19",
+      "2024-02-26",
+      "2024-03-04",
+      "2024-03-11",
+      "2024-03-18",
+      "2024-03-25",
+      "2024-04-01",
+      "2024-04-08",
+      "2024-04-15"
+     ],
+     "dim": "week",
+     "observed": [
+      97.6945900545,
+      96.3834488467,
+      97.6093058988,
+      97.1083513461,
+      98.4108971218,
+      100.710011534,
+      101.185822543,
+      103.786528879,
+      100.248721168,
+      101.168797107,
+      99.7357105447,
+      101.052417536,
+      98.8515976678,
+      97.877000582,
+      96.3375653489,
+      99.1059348488,
+      94.648115057,
+      92.1368074761,
+      93.3803201261,
+      94.9277820926,
+      92.8483662827,
+      95.4027828104,
+      93.7120531195,
+      92.2449441553,
+      91.7443151707,
+      90.342475681,
+      89.5809522474,
+      87.9626637883,
+      90.1453103555,
+      89.9749893532,
+      85.6697801975,
+      84.5746017585,
+      83.996833328,
+      85.3505759304,
+      83.291538503,
+      85.0585083661,
+      87.5288288539,
+      85.5410627694,
+      87.2410427126,
+      87.2114560998,
+      88.0795011146,
+      88.0877524725,
+      88.2839199786,
+      92.188732937,
+      89.9673387027,
+      89.3833324321,
+      92.6207675678,
+      93.9323133814,
+      97.1705824844,
+      96.9494373554,
+      99.7509634914,
+      100.302570867,
+      109.678272265,
+      111.893566045,
+      110.258904318,
+      113.844510241,
+      111.391102941,
+      112.263859942,
+      110.601549034,
+      111.578809934,
+      111.429098866,
+      111.137871817,
+      110.325387462,
+      110.569051819,
+      null,
+      null,
+      null,
+      null
+     ],
+     "quantiles": [
+      0.05,
+      0.25,
+      0.5,
+      0.75,
+      0.95
+     ],
+     "units": "units",
+     "values": [
+      [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       97.8596142766,
+       97.6624574363,
+       98.1741021033,
+       98.8960599589
+      ],
+      [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       99.9486020259,
+       100.075488734,
+       100.394092457,
+       101.306105433
+      ],
+      [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       101.336957564,
+       101.446045018,
+       102.074655085,
+       102.635766896
+      ],
+      [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       102.54510047,
+       102.47459801,
+       103.302258849,
+       103.894025481
+      ],
+      [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       104.286185892,
+       104.415377587,
+       105.194835391,
+       105.850991807
+      ]
+     ]
+    },
+    "format": "mapi.forecast/v1",
+    "history": 64,
+    "kind": "predictive",
+    "kpi": "y_hat",
+    "split_at": "2024-03-25",
+    "summed_over": [],
+    "total": {
+     "mean": 406.890525179,
+     "quantiles": {
+      "0.05": 393.510383976,
+      "0.25": 402.751492929,
+      "0.5": 407.827430931,
+      "0.75": 412.058730396,
+      "0.95": 416.567847486
+     },
+     "sd": 7.55369124852,
+     "units": "units"
+    },
+    "units": "units"
+   },
+   "horizon": {
+    "dim": "time",
+    "periods": 4
+   },
+   "inline": false,
+   "mode": "forecast",
+   "output": {
+    "kind": "predictive",
+    "summary": [
+     "mean",
+     "hdi_90"
+    ]
+   },
+   "probe_case": "forecast_4__predictive",
+   "result": {
+    "aggregation_flagged": false,
+    "bundle_id": "23d4b60b62c075b575a0512ca4e5f4ca",
+    "conditioning": {
+     "conditioned": false,
+     "dim": "time",
+     "fit_end": "2024-03-18",
+     "horizon_source": "rows",
+     "message": "Forecast from the end of the fitted history (2024-03-18); no actuals were supplied. 4 periods forecast from 2024-03-25 to 2024-04-15.",
+     "n_actuals": 0,
+     "n_series": 1,
+     "parameters": "fitted",
+     "periods": 4,
+     "revised": 0,
+     "series": [
+      {
+       "forecast_from": "2024-03-25",
+       "forecast_to": "2024-04-15",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2024-03-18",
+       "revised": 0,
+       "series": {}
+      }
+     ],
+     "series_conditioned": 0,
+     "truncated": false
+    },
+    "groups": [
+     "/summary"
+    ],
+    "issues": [],
+    "kind": "predictive",
+    "mode": "forecast",
+    "names": "dataset",
+    "output_space": {
+     "y_hat": "raw"
+    },
+    "representation": "draws",
+    "retransform": {
+     "y_hat": "none"
+    },
+    "units": "original"
+   },
+   "summary": {
+    "conditioning": {
+     "conditioned": false,
+     "dim": "time",
+     "fit_end": "2024-03-18",
+     "horizon_source": "rows",
+     "message": "Forecast from the end of the fitted history (2024-03-18); no actuals were supplied. 4 periods forecast from 2024-03-25 to 2024-04-15.",
+     "n_actuals": 0,
+     "n_series": 1,
+     "parameters": "fitted",
+     "periods": 4,
+     "revised": 0,
+     "series": [
+      {
+       "forecast_from": "2024-03-25",
+       "forecast_to": "2024-04-15",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2024-03-18",
+       "revised": 0,
+       "series": {}
+      }
+     ],
+     "series_conditioned": 0,
+     "truncated": false
+    },
+    "tables": [
+     {
+      "columns": [
+       "week",
+       "mean",
+       "hdi_90_lower",
+       "hdi_90_upper"
+      ],
+      "dims": [
+       "week"
+      ],
+      "rows": [
+       [
+        "2024-03-25",
+        101.24610860706595,
+        98.50589166200594,
+        104.91441135819042
+       ],
+       [
+        "2024-04-01",
+        101.26822693358444,
+        98.0938668200793,
+        104.80513823637412
+       ],
+       [
+        "2024-04-08",
+        101.80003655962152,
+        97.57303898329123,
+        104.3429010275967
+       ],
+       [
+        "2024-04-15",
+        102.5761530782282,
+        99.53197610807551,
+        106.55464041789962
+       ]
+      ],
+      "time_dim": "week",
+      "variable": "y_hat"
+     }
+    ],
+    "truncated": false
+   },
+   "trimmed": null
+  },
+  "predictive": {
+   "counterfactual": null,
+   "fields": null,
+   "forecast": null,
+   "horizon": null,
+   "inline": false,
+   "mode": "predict",
+   "output": {
+    "kind": "predictive",
+    "summary": [
+     "mean",
+     "hdi_90"
+    ]
+   },
+   "probe_case": "predict_over_data__predictive",
+   "result": {
+    "aggregation_flagged": false,
+    "bundle_id": "23d4b60b62c075b575a0512ca4e5f4ca",
+    "groups": [
+     "/summary"
+    ],
+    "issues": [],
+    "kind": "predictive",
+    "mode": "predict",
+    "names": "dataset",
+    "output_space": {
+     "effect": "raw",
+     "y_hat": "raw"
+    },
+    "representation": "draws",
+    "retransform": {
+     "effect": "none",
+     "y_hat": "none"
+    },
+    "units": "original"
+   },
+   "summary": {
+    "tables": [
+     {
+      "columns": [
+       "week",
+       "mean",
+       "hdi_90_lower",
+       "hdi_90_upper"
+      ],
+      "dims": [
+       "week"
+      ],
+      "rows": [
+       [
+        "2023-01-02",
+        0.7576881808500547,
+        -10.792395084285275,
+        14.518283363659478
+       ],
+       [
+        "2023-01-09",
+        -0.49349485701064116,
+        -4.013672342632248,
+        1.9625723556962953
+       ],
+       [
+        "2023-01-16",
+        -0.3407302931637961,
+        -3.45478571150781,
+        2.329208904684762
+       ],
+       [
+        "2023-01-23",
+        -1.2308695423453928,
+        -3.2664282478523745,
+        1.9581205213207937
+       ],
+       [
+        "2023-01-30",
+        -0.30382430898513235,
+        -2.8714599310690545,
+        2.18610689416802
+       ],
+       [
+        "2023-02-06",
+        1.831514071627002,
+        -0.3585923322158493,
+        3.8515434642253155
+       ],
+       [
+        "2023-02-13",
+        0.07939663122907696,
+        -1.9479722838545968,
+        2.228472887017176
+       ],
+       [
+        "2023-02-20",
+        2.50293005058054,
+        0.1801998870214021,
+        4.944447825949595
+       ],
+       [
+        "2023-02-27",
+        -1.1028765333743231,
+        -3.5984632103759253,
+        0.7183207136444594
+       ],
+       [
+        "2023-03-06",
+        0.6959668237861248,
+        -1.684319813708953,
+        2.597903117467709
+       ],
+       [
+        "2023-03-13",
+        -0.5695051735152289,
+        -2.8309681598595517,
+        1.5809385198388526
+       ],
+       [
+        "2023-03-20",
+        0.2236270867418854,
+        -1.9648391519955908,
+        2.325851309584934
+       ],
+       [
+        "2023-03-27",
+        -0.46089519965027315,
+        -2.3069267646804548,
+        1.901835281229694
+       ],
+       [
+        "2023-04-03",
+        -0.6452974054528876,
+        -2.7065820848390416,
+        1.800002179711683
+       ],
+       [
+        "2023-04-10",
+        -0.5371170132615593,
+        -2.516884928171521,
+        2.1834598495500757
+       ],
+       [
+        "2023-04-17",
+        3.750707652293288,
+        1.7349784026818043,
+        6.271668473477021
+       ],
+       [
+        "2023-04-24",
+        -0.24573758676405283,
+        -2.337617748270276,
+        1.9205412580068923
+       ],
+       [
+        "2023-05-01",
+        -2.0986167584917026,
+        -4.890346523535342,
+        0.16208885271730367
+       ],
+       [
+        "2023-05-08",
+        -0.2794051224152801,
+        -2.5704993052896015,
+        1.8344583661317273
+       ],
+       [
+        "2023-05-15",
+        0.8257218415312115,
+        -1.4016766314125277,
+        3.299477313811593
+       ],
+       [
+        "2023-05-22",
+        -0.5615862376025283,
+        -2.7331670131476358,
+        1.5114484215395265
+       ],
+       [
+        "2023-05-29",
+        1.362921164891705,
+        -1.2480211874833316,
+        3.3372296710237492
+       ],
+       [
+        "2023-06-05",
+        0.676211980805758,
+        -1.1245923219928358,
+        3.310617803487503
+       ],
+       [
+        "2023-06-12",
+        -0.993513937605819,
+        -3.372512995686023,
+        1.266662925711799
+       ],
+       [
+        "2023-06-19",
+        -1.0624716475982214,
+        -2.8270984609982435,
+        1.7238930007390252
+       ],
+       [
+        "2023-06-26",
+        -1.218393213444765,
+        -2.9719430781801037,
+        1.0924343426624006
+       ],
+       [
+        "2023-07-03",
+        -0.7247601648940403,
+        -3.129631317705133,
+        1.2950751791596957
+       ],
+       [
+        "2023-07-10",
+        -1.657104215105893,
+        -4.420315523992812,
+        0.27370219118552086
+       ],
+       [
+        "2023-07-17",
+        1.613895933276197,
+        -0.20276396127410123,
+        3.886106692862512
+       ],
+       [
+        "2023-07-24",
+        1.626004579838193,
+        -0.5606515710844491,
+        3.626043622105385
+       ],
+       [
+        "2023-07-31",
+        -1.2291990987428045,
+        -3.353560044514694,
+        1.5318128414662766
+       ],
+       [
+        "2023-08-07",
+        -1.143537821616201,
+        -3.5579386246629667,
+        1.1083429736998482
+       ],
+       [
+        "2023-08-14",
+        -1.3881877867136878,
+        -3.6529366974727253,
+        0.5163831848612972
+       ],
+       [
+        "2023-08-21",
+        -0.3615937304680302,
+        -2.65366264898816,
+        1.841228381771458
+       ],
+       [
+        "2023-08-28",
+        -2.3792570471004706,
+        -5.14556259501947,
+        0.09936576383201157
+       ],
+       [
+        "2023-09-04",
+        -0.1818883984705232,
+        -3.0458216001018172,
+        1.9123054320030235
+       ],
+       [
+        "2023-09-11",
+        2.45109882544082,
+        -0.10233590700545392,
+        4.42316921034616
+       ],
+       [
+        "2023-09-18",
+        0.34284717897100836,
+        -1.5171509757352482,
+        2.827961583744184
+       ],
+       [
+        "2023-09-25",
+        1.4566329780443203,
+        -0.6840461990331335,
+        3.950051592744572
+       ],
+       [
+        "2023-10-02",
+        -0.20007218408827923,
+        -2.2712520993677288,
+        1.833398035656245
+       ],
+       [
+        "2023-10-09",
+        2.018163549332022,
+        -0.44842329570546724,
+        4.366343176489252
+       ],
+       [
+        "2023-10-16",
+        0.09734746830299791,
+        -2.121836399302424,
+        2.693974720164789
+       ],
+       [
+        "2023-10-23",
+        -0.6939450869455048,
+        -2.8276585398742213,
+        1.7692542952509456
+       ],
+       [
+        "2023-10-30",
+        2.2276270085886103,
+        0.464303234826815,
+        5.09493066388589
+       ],
+       [
+        "2023-11-06",
+        -1.177922302326819,
+        -3.429286683062614,
+        1.3943204198282615
+       ],
+       [
+        "2023-11-13",
+        -2.016796234011118,
+        -3.962708891023553,
+        0.18562944092239775
+       ],
+       [
+        "2023-11-20",
+        -0.3332849295362967,
+        -2.9050942059064653,
+        1.7933210859081612
+       ],
+       [
+        "2023-11-27",
+        -0.723347114181627,
+        -3.01807447890387,
+        1.2692215282723254
+       ],
+       [
+        "2023-12-04",
+        0.4190485628829016,
+        -2.0244784553082127,
+        2.45113083136107
+       ],
+       [
+        "2023-12-11",
+        -2.0151568462735963,
+        -4.193359038003379,
+        0.2664247435846221
+       ],
+       [
+        "2023-12-18",
+        -0.024897405820182357,
+        -2.5470798596883384,
+        2.4489038721995655
+       ],
+       [
+        "2023-12-25",
+        0.26089180439759585,
+        -2.3061851116936793,
+        2.3311193104451036
+       ],
+       [
+        "2024-01-01",
+        8.423227744172076,
+        6.193500546415635,
+        10.49745328958295
+       ],
+       [
+        "2024-01-08",
+        9.395809729850155,
+        7.067478740023148,
+        11.853938103793254
+       ],
+       [
+        "2024-01-15",
+        7.986395642112665,
+        5.687747938820621,
+        10.185412878101118
+       ],
+       [
+        "2024-01-22",
+        11.363721868281873,
+        8.767999205355082,
+        13.555486327402349
+       ],
+       [
+        "2024-01-29",
+        8.317510218675272,
+        6.100150247811442,
+        11.20789192815144
+       ],
+       [
+        "2024-02-05",
+        8.767277325817643,
+        5.884582787972164,
+        11.334983419103068
+       ],
+       [
+        "2024-02-12",
+        8.173086213108638,
+        5.783641981117697,
+        10.81552615484469
+       ],
+       [
+        "2024-02-19",
+        9.244068623510493,
+        6.5394593226208855,
+        12.138286360252891
+       ],
+       [
+        "2024-02-26",
+        9.49643612594418,
+        6.558997313860303,
+        12.892692507269857
+       ],
+       [
+        "2024-03-04",
+        10.067106357272847,
+        7.281862020293161,
+        12.956646958323844
+       ],
+       [
+        "2024-03-11",
+        8.82501958196766,
+        5.141763166462013,
+        11.627766356194272
+       ],
+       [
+        "2024-03-18",
+        9.360050329867006,
+        6.018893777044298,
+        12.852805455937542
+       ]
+      ],
+      "time_dim": "week",
+      "variable": "effect"
+     },
+     {
+      "columns": [
+       "week",
+       "mean",
+       "hdi_90_lower",
+       "hdi_90_upper"
+      ],
+      "dims": [
+       "week"
+      ],
+      "rows": [
+       [
+        "2023-01-02",
+        96.93690187364088,
+        83.17630669083145,
+        108.4869851387762
+       ],
+       [
+        "2023-01-09",
+        96.87694370367477,
+        94.42087649096784,
+        100.39712118929639
+       ],
+       [
+        "2023-01-16",
+        97.95003619191722,
+        95.28009699406867,
+        101.06409161026124
+       ],
+       [
+        "2023-01-23",
+        98.33922088849074,
+        95.15023082482456,
+        100.37477959399773
+       ],
+       [
+        "2023-01-30",
+        98.71472143076272,
+        96.22479022760957,
+        101.28235705284665
+       ],
+       [
+        "2023-02-06",
+        98.87849746241918,
+        96.85846806982087,
+        101.06860386626204
+       ],
+       [
+        "2023-02-13",
+        101.10642591190138,
+        98.9573496561133,
+        103.13379482698507
+       ],
+       [
+        "2023-02-20",
+        101.28359882878293,
+        98.84208105341386,
+        103.60632899234206
+       ],
+       [
+        "2023-02-27",
+        101.3515977014056,
+        99.53040045438682,
+        103.8471843784072
+       ],
+       [
+        "2023-03-06",
+        100.47283028278162,
+        98.57089398910003,
+        102.85311692027669
+       ],
+       [
+        "2023-03-13",
+        100.30521571818807,
+        98.15477202483399,
+        102.56667870453239
+       ],
+       [
+        "2023-03-20",
+        100.82879044893663,
+        98.72656622609358,
+        103.0172566876741
+       ],
+       [
+        "2023-03-27",
+        99.31249286748958,
+        96.94976238660962,
+        101.15852443251977
+       ],
+       [
+        "2023-04-03",
+        98.5222979874993,
+        96.07699840233474,
+        100.58358266688546
+       ],
+       [
+        "2023-04-10",
+        96.87468236220883,
+        94.15410549939718,
+        98.85445027711877
+       ],
+       [
+        "2023-04-17",
+        95.35522719649022,
+        92.83426637530648,
+        97.3709564461017
+       ],
+       [
+        "2023-04-24",
+        94.89385264372544,
+        92.7275737989545,
+        96.98573280523166
+       ],
+       [
+        "2023-05-01",
+        94.23542423460073,
+        91.97471862339171,
+        97.02715399964436
+       ],
+       [
+        "2023-05-08",
+        93.65972524846778,
+        91.54586175992077,
+        95.9508194313421
+       ],
+       [
+        "2023-05-15",
+        94.10206025103525,
+        91.62830477875488,
+        96.329458723979
+       ],
+       [
+        "2023-05-22",
+        93.40995252027076,
+        91.33691786112871,
+        95.58153329581587
+       ],
+       [
+        "2023-05-29",
+        94.03986164551199,
+        92.06555313937996,
+        96.65080399788704
+       ],
+       [
+        "2023-06-05",
+        93.03584113871301,
+        90.40143531603125,
+        94.83664544151159
+       ],
+       [
+        "2023-06-12",
+        93.23845809290287,
+        90.97828122958526,
+        95.61745715098309
+       ],
+       [
+        "2023-06-19",
+        92.8067868183045,
+        90.02042216996726,
+        94.57141363170453
+       ],
+       [
+        "2023-06-26",
+        91.56086889445491,
+        89.25004133834774,
+        93.31441875919025
+       ],
+       [
+        "2023-07-03",
+        90.30571241230962,
+        88.28587706825587,
+        92.7105835651207
+       ],
+       [
+        "2023-07-10",
+        89.61976800339227,
+        87.68896159710087,
+        92.3829793122792
+       ],
+       [
+        "2023-07-17",
+        88.53141442225446,
+        86.25920366266814,
+        90.34807431680476
+       ],
+       [
+        "2023-07-24",
+        88.34898477333809,
+        86.3489457310709,
+        90.53564092426073
+       ],
+       [
+        "2023-07-31",
+        86.89897929621912,
+        84.13796735601004,
+        89.02334024199101
+       ],
+       [
+        "2023-08-07",
+        85.7181395801411,
+        83.46625878482506,
+        88.13254038318787
+       ],
+       [
+        "2023-08-14",
+        85.38502111474799,
+        83.480450143173,
+        87.64977002550702
+       ],
+       [
+        "2023-08-21",
+        85.71216966086372,
+        83.50934754862423,
+        88.00423857938385
+       ],
+       [
+        "2023-08-28",
+        85.67079555009794,
+        83.19217273916546,
+        88.43710109801694
+       ],
+       [
+        "2023-09-04",
+        85.24039676453457,
+        83.14620293406102,
+        88.10432996616586
+       ],
+       [
+        "2023-09-11",
+        85.07773002842731,
+        83.10565964352196,
+        87.63116476087357
+       ],
+       [
+        "2023-09-18",
+        85.19821559041208,
+        82.7131011856389,
+        87.05821374511834
+       ],
+       [
+        "2023-09-25",
+        85.78440973452875,
+        83.2909911198285,
+        87.92508891160621
+       ],
+       [
+        "2023-10-02",
+        87.4115282838856,
+        85.37805806414109,
+        89.48270819916506
+       ],
+       [
+        "2023-10-09",
+        86.06133756521984,
+        83.71315793806262,
+        88.52792441025734
+       ],
+       [
+        "2023-10-16",
+        87.99040500419582,
+        85.39377775233405,
+        90.20958887180126
+       ],
+       [
+        "2023-10-23",
+        88.97786506559436,
+        86.51466568339791,
+        91.11157851852307
+       ],
+       [
+        "2023-10-30",
+        89.96110592837216,
+        87.09380227307487,
+        91.72442970213395
+       ],
+       [
+        "2023-11-06",
+        91.14526100504871,
+        88.57301828289361,
+        93.39662538578449
+       ],
+       [
+        "2023-11-13",
+        91.40012866607002,
+        89.1977029911365,
+        93.34604132308245
+       ],
+       [
+        "2023-11-20",
+        92.95405249732131,
+        90.82744648187688,
+        95.5258617736915
+       ],
+       [
+        "2023-11-27",
+        94.65566049561465,
+        92.6630918531607,
+        96.95038786033689
+       ],
+       [
+        "2023-12-04",
+        96.7515339214737,
+        94.71945165299553,
+        99.19506093966481
+       ],
+       [
+        "2023-12-11",
+        98.96459420168732,
+        96.68301261182911,
+        101.14279639341711
+       ],
+       [
+        "2023-12-18",
+        99.77586089724937,
+        97.30205961922962,
+        102.29804335111753
+       ],
+       [
+        "2023-12-25",
+        100.04167906234055,
+        97.97145155629306,
+        102.60875597843184
+       ],
+       [
+        "2024-01-01",
+        101.25504452086201,
+        99.18081897545115,
+        103.48477171861846
+       ],
+       [
+        "2024-01-08",
+        102.4977563154559,
+        100.03962794151282,
+        104.82608730528293
+       ],
+       [
+        "2024-01-15",
+        102.27250867591972,
+        100.07349143993127,
+        104.57115637921177
+       ],
+       [
+        "2024-01-22",
+        102.48078837278328,
+        100.2890239136628,
+        105.07651103571007
+       ],
+       [
+        "2024-01-29",
+        103.07359272190628,
+        100.1832110124301,
+        105.2909526927701
+       ],
+       [
+        "2024-02-05",
+        103.49658261590871,
+        100.92887652262328,
+        106.37927715375419
+       ],
+       [
+        "2024-02-12",
+        102.42846282105414,
+        99.7860228793181,
+        104.81790705304509
+       ],
+       [
+        "2024-02-19",
+        102.33474131005585,
+        99.44052357331346,
+        105.03935061094546
+       ],
+       [
+        "2024-02-26",
+        101.93266273986072,
+        98.53640635853505,
+        104.8701015519446
+       ],
+       [
+        "2024-03-04",
+        101.07076545962126,
+        98.18122485857026,
+        103.85600979660094
+       ],
+       [
+        "2024-03-11",
+        101.50036787976205,
+        98.69762110553542,
+        105.18362429526768
+       ],
+       [
+        "2024-03-18",
+        101.20900148929755,
+        97.71624636322701,
+        104.55015804212026
+       ]
+      ],
+      "time_dim": "week",
+      "variable": "y_hat"
+     }
+    ],
+    "truncated": false
+   },
+   "trimmed": null
+  }
+ }
+}

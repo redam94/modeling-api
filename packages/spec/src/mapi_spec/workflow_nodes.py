@@ -36,19 +36,35 @@ subworkflow    ``subworkflow.run`` (another saved workflow)
 JSON results in the control plane with the safe expression language; ``sandbox`` nodes run
 in a ``workflow_node`` run; ``child_run`` nodes start ordinary runs (fits, governance
 refits) as children of the workflow run. User data is only ever decoded in the sandbox.
+
+v0.18: plugins add nodes through the ``mapi.workflow_nodes`` entry-point group. A plugin
+contract names its namespace in ``plugin`` (the id stays ``<kind>.<plugin>_<name>``), runs in
+the sandbox, uses one of :data:`PLUGIN_NODE_KINDS` and passes :func:`plugin_contract_issues`.
+The contracts are built with :mod:`mapi_spec.node_authoring` (the helpers below are thin
+wrappers over it).
 """
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping, Sequence
 from enum import StrEnum
 from typing import Any, Final, Literal
 
 from pydantic import Field, JsonValue, field_validator, model_validator
 
+from mapi_spec import node_authoring as _authoring
 from mapi_spec._dto import ResponseModel, dto_examples
-from mapi_spec.about import About, AboutReference, Difficulty, TypicalRuntime
+from mapi_spec.about import About, Difficulty, TypicalRuntime, about_issues
 from mapi_spec.capabilities import check_json_schema
+from mapi_spec.errors import ErrorCode, Issue, json_pointer
+from mapi_spec.namespaces import (
+    BUILTIN_NAMESPACES,
+    check_namespace,
+    is_uploaded_namespace,
+    reserved_namespace,
+)
+from mapi_spec.schema_safety import sanitize_schema
 from mapi_spec.splitplan import (
     BlockedKFoldPlan,
     ExpandingWindowPlan,
@@ -63,6 +79,7 @@ __all__ = [
     "BRANCH_ARMS",
     "NODE_IMPLEMENTATIONS",
     "NODE_KIND_ABOUTS",
+    "PLUGIN_NODE_KINDS",
     "SUBWORKFLOW_NODE",
     "NodeImplementation",
     "NodeKind",
@@ -71,6 +88,7 @@ __all__ = [
     "ResultField",
     "RunsIn",
     "get_node",
+    "plugin_contract_issues",
 ]
 
 
@@ -162,6 +180,13 @@ class NodeImplementation(ResponseModel):
     runs_in: RunsIn = "sandbox"
     cacheable: bool = Field(True, description="Same inputs and params give the same result")
     about: About
+    plugin: str | None = Field(
+        None,
+        pattern=r"^[a-z][a-z0-9_]{0,62}$",
+        description="v0.18: the namespace of a plugin node (None for the built-in nodes); "
+        "the id is '<kind>.<plugin>_<name>'",
+        exclude_if=lambda v: v is None,
+    )
 
     model_config = dto_examples(
         {
@@ -185,6 +210,20 @@ class NodeImplementation(ResponseModel):
     def _kind(self) -> NodeImplementation:
         if self.id.split(".", 1)[0] != self.kind.value and self.kind is not NodeKind.BRANCH:
             raise ValueError(f"{self.id}: the id's prefix must be its kind")
+        if self.plugin is not None:
+            name = self.id.split(".", 1)[1]
+            if not name.startswith(f"{self.plugin}_") or name == f"{self.plugin}_":
+                raise ValueError(f"{self.id}: a plugin node id is '<kind>.{self.plugin}_<name>'")
+            # the platform's own namespaces; a built-in namespace depends on the exporting
+            # distribution, which only plugin_contract_issues knows. v0.19: an uploaded
+            # namespace (t_<code>_<short>) is well formed here; whether the exporter may use
+            # it is decided by the overlay loader (check_namespace(..., claimed=...))
+            if self.plugin in BUILTIN_NAMESPACES or is_uploaded_namespace(self.plugin):
+                reason = None
+            else:
+                reason = reserved_namespace(self.plugin)
+            if reason is not None:
+                raise ValueError(reason)
         return self
 
     @property
@@ -195,31 +234,7 @@ class NodeImplementation(ResponseModel):
 # ================================================================================ helpers
 
 
-def _a(
-    title: str,
-    summary: str,
-    use: Sequence[str],
-    avoid: Sequence[str],
-    needs: Sequence[str],
-    assumes: Sequence[str],
-    outputs: Sequence[str],
-    difficulty: Difficulty,
-    runtime: TypicalRuntime,
-    example: str,
-    *,
-    related: Sequence[str] = (),
-    expert: str | None = None,
-    refs: Sequence[tuple[str, str | None]] = (),
-    fits: Mapping[str, Sequence[str]] | None = None,
-) -> About:
-    return About(
-        title=title, summary_plain=summary, use_when=list(use), avoid_when=list(avoid),
-        data_needs=list(needs), assumptions=list(assumes), outputs=list(outputs),
-        difficulty=difficulty, typical_runtime=runtime, example=example,
-        related=list(related), expert_notes=expert,
-        references=[AboutReference(title=t, url=u) for t, u in refs],
-        fits={k: list(v) for k, v in (fits or {}).items()},
-    )  # fmt: skip
+_a = _authoring.about
 
 
 _B, _I, _X = Difficulty.BEGINNER, Difficulty.INTERMEDIATE, Difficulty.EXPERT
@@ -232,53 +247,14 @@ _NOW, _SEC, _MIN, _LONG = (
 _SM = ("statsmodels documentation", "https://www.statsmodels.org/stable/")
 
 
-def _schema(props: Mapping[str, dict[str, Any]], required: Sequence[str] = ()) -> dict[str, Any]:
-    out: dict[str, Any] = {
-        "type": "object",
-        "additionalProperties": False,
-        "properties": dict(props),
-    }
-    if required:
-        out["required"] = list(required)
-    return out
+_schema = _authoring.schema
+_num = _authoring.num
+_int = _authoring.integer
+_enum = _authoring.enum
+_bool = _authoring.boolean
 
 
-def _num(desc: str, default: float | None = None, lo: float | None = None,
-         hi: float | None = None, *, exclusive: bool = False) -> dict[str, Any]:  # fmt: skip
-    s: dict[str, Any] = {"type": "number", "description": desc}
-    if default is not None:
-        s["default"] = default
-    if lo is not None:
-        s["exclusiveMinimum" if exclusive else "minimum"] = lo
-    if hi is not None:
-        s["exclusiveMaximum" if exclusive else "maximum"] = hi
-    return s
-
-
-def _int(desc: str, default: int | None = None, lo: int | None = 0,
-         hi: int | None = None) -> dict[str, Any]:  # fmt: skip
-    s: dict[str, Any] = {"type": "integer", "description": desc}
-    if default is not None:
-        s["default"] = default
-    if lo is not None:
-        s["minimum"] = lo
-    if hi is not None:
-        s["maximum"] = hi
-    return s
-
-
-def _enum(desc: str, values: Sequence[str], default: str | None = None) -> dict[str, Any]:
-    s: dict[str, Any] = {"type": "string", "enum": list(values), "description": desc}
-    if default is not None:
-        s["default"] = default
-    return s
-
-
-def _bool(desc: str, default: bool) -> dict[str, Any]:
-    return {"type": "boolean", "description": desc, "default": default}
-
-
-_NAME = {"type": "string", "pattern": r"^[A-Za-z_][A-Za-z0-9_.\-]{0,127}$"}
+_NAME = {"type": "string", "pattern": _authoring.NAME_PATTERN}
 
 
 def _var(desc: str = "The variable to test (default: the dataset's target)") -> dict[str, Any]:
@@ -343,19 +319,12 @@ def _node(
     runs_in: RunsIn = "sandbox",
     cacheable: bool = True,
 ) -> None:
-    _NODES.append(
-        NodeImplementation(
-            id=id,
-            kind=kind,
-            inputs=dict(inputs if inputs is not None else _DATA_IN),
-            outputs=dict(outputs or {}),
-            params_schema=schema if schema is not None else _schema(params or {}, required),
-            result_fields=dict(fields or {}),
-            runs_in=runs_in,
-            cacheable=cacheable,
-            about=about,
-        )
-    )
+    contract = _authoring.node(
+        id, kind, about, params=params, required=required, schema=schema,
+        inputs=inputs if inputs is not None else _DATA_IN, outputs=outputs, fields=fields,
+        runs_in=runs_in, cacheable=cacheable,
+    )  # fmt: skip
+    _NODES.append(contract)
 
 
 def _test(
@@ -1823,6 +1792,74 @@ if len(NODE_IMPLEMENTATIONS) != len(_NODES):  # pragma: no cover - authoring gua
 def get_node(node_id: str) -> NodeImplementation | None:
     """The implementation ``node_id`` (an ``@version`` suffix is ignored), or ``None``."""
     return NODE_IMPLEMENTATIONS.get(node_id.split("@", 1)[0])
+
+
+# ============================================================================ plugin nodes
+
+PLUGIN_NODE_KINDS: Final = frozenset(
+    {
+        NodeKind.TEST,
+        NodeKind.TRANSFORM,
+        NodeKind.SPLIT,
+        NodeKind.SEARCH,
+        NodeKind.EVALUATE,
+        NodeKind.PLOT,
+        NodeKind.REPORT,
+        NodeKind.GOVERNANCE,
+    }
+)
+"""The kinds a plugin node may have. ``branch``, ``compare`` and ``select`` run in the
+control plane, ``model`` and ``subworkflow`` start child runs: those stay built-in."""
+
+_PORT_NAME: Final = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
+
+
+def plugin_contract_issues(
+    c: NodeImplementation, *, distribution: str | None = None, claimed: str | None = None
+) -> list[Issue]:
+    """Why a plugin node contract cannot be offered (empty when it can).
+
+    Checks: ``plugin`` is set and the exporting ``distribution`` may use that namespace
+    (:func:`mapi_spec.namespaces.check_namespace`); the id does not shadow a built-in node;
+    the kind is in :data:`PLUGIN_NODE_KINDS`; it runs in the sandbox; port and result-field
+    names are identifiers and it has at least one output; the About card is complete; the
+    parameter schema passes :mod:`mapi_spec.schema_safety` (``refuse`` mode). Pointers are
+    into the contract. ``claimed`` (v0.19) is the namespace assigned to the uploaded overlay
+    the contract was loaded from (see :func:`~mapi_spec.namespaces.check_namespace`).
+    """
+    out: list[Issue] = []
+
+    def bad(pointer: str, message: str, code: ErrorCode = ErrorCode.WORKFLOW_INVALID) -> None:
+        out.append(Issue(code=code, pointer=pointer, message=f"{c.id}: {message}"))
+
+    if c.plugin is None:
+        bad("/plugin", "a plugin node names its namespace in 'plugin'.")
+    else:
+        reason = check_namespace(c.id, distribution, plugin=c.plugin, claimed=claimed)
+        if reason is not None:
+            bad("/plugin", reason)
+    if c.id in NODE_IMPLEMENTATIONS:
+        bad("/id", "the id is the id of a built-in node.")
+    if c.kind not in PLUGIN_NODE_KINDS:
+        kinds = ", ".join(sorted(k.value for k in PLUGIN_NODE_KINDS))
+        bad("/kind", f"a plugin node cannot have the kind {c.kind.value!r} (use {kinds}).")
+    if c.runs_in != "sandbox":
+        bad("/runs_in", "a plugin node must run in the sandbox.")
+    if not c.outputs:
+        bad("/outputs", "a node must have at least one output port.")
+    for group, names in (
+        ("inputs", c.inputs),
+        ("outputs", c.outputs),
+        ("result_fields", c.result_fields),
+    ):
+        for name in names:
+            if not _PORT_NAME.match(name):
+                bad(json_pointer(group, name), "port and field names are lowercase identifiers.")
+    for problem in about_issues(c.about):
+        bad("/about", problem, ErrorCode.ABOUT_INCOMPLETE)
+    _, unsafe = sanitize_schema(c.params_schema, mode="refuse", where="/params_schema")
+    out.extend(unsafe)
+    return out
 
 
 # ============================================================================ node kind cards

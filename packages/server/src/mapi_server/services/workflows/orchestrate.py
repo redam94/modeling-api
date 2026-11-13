@@ -23,6 +23,12 @@ can be scored, explored, validated and promoted); ``search.grid`` runs its backt
 starts a child workflow run; ``report.evidence_pack`` is built here from the evidence and the
 model version's lineage; every other node is a ``workflow_node`` child run with its own
 resource class and timeout, in which statsmodels fits (backtests, forecasts) run in process.
+
+**Plugin nodes (v0.18).** The engine plans over the built-in node contracts plus those of the
+catalog's plugins (:mod:`mapi_server.services.workflows.node_catalog`); a plugin node is
+always a ``workflow_node`` child run, and its job carries the plugin's namespace
+(:data:`~mapi_server.services.workflows.node_catalog.NODE_PLUGIN_PARAM`) so the run goes to
+the image that ships the plugin.
 """
 
 from __future__ import annotations
@@ -51,11 +57,12 @@ from mapi_spec.jobs import (
     side_table_input,
 )
 from mapi_spec.loader import canonical_json, spec_hash
+from mapi_spec.plugins import OverlayPin
 from mapi_spec.refs import DatasetRef, ModelVersionRef, WorkflowRef
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import Actor, RunState, RunTrigger
 from mapi_spec.schema import DataSchema
-from mapi_spec.spec import DEFAULT_FIT_SEED
+from mapi_spec.spec import DEFAULT_FIT_SEED, ModelSpec
 from mapi_spec.storage import ObjectMeta, PreconditionFailed, dataset_prefix
 from mapi_spec.tree import NodeSelect, TreeSchema
 from mapi_spec.webhooks import WebhookEventType
@@ -93,7 +100,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.services.bundles import verified_bundle_object
+from mapi_server.services.catalog import CatalogService
 from mapi_server.services.finalizer import IntegrityError, dataset_sha, parse_data_summary
+from mapi_server.services.plugins.refs import (
+    TEMPLATE_LABEL,
+    document_ids,
+    merge_pins,
+    model_version_pins,
+    spec_catalog_ids,
+    uploaded_ids,
+)
+from mapi_server.services.plugins.view import (
+    catalog_view,
+    pins_from,
+    resolve_pins,
+    view_catalogs,
+)
 from mapi_server.services.runs import Scope, apply_transition, create_run, now
 from mapi_server.services.runspec import StoredRef
 from mapi_server.services.specs import (
@@ -112,6 +134,7 @@ from mapi_server.services.submit import (
 from mapi_server.services.webhooks.outbox import emit_event
 from mapi_server.services.workflows.events import append_events
 from mapi_server.services.workflows.hooks import governance_hooks
+from mapi_server.services.workflows.node_catalog import NODE_PLUGIN_PARAM, node_contracts
 from mapi_server.services.workflows.runs import (
     ACTIVE_STATUSES,
     clean_plot,
@@ -367,6 +390,11 @@ class WorkflowOrchestrator:
                 salt=self.ctx.catalogs.image_digest,
                 run_meta={"attempt": run.attempt, "trigger": wr.trigger, "id": run_id},
                 subworkflow_ports=await self._sub_ports(s, scope, spec),
+                # built-ins plus the catalog's plugin nodes (the default is built-ins only),
+                # v0.19: as the tenant catalog view of the run's creator shows them
+                registry=await node_contracts(
+                    self.ctx, s, tenant_id=scope.tenant_id, user_id=run.created_by
+                ),
             )
             env = _Env(s, scope, wr, run, wf, spec, rows, engine)
             if run.state == RunState.CANCELLING.value and not wr.cancel_requested:
@@ -606,13 +634,32 @@ class WorkflowOrchestrator:
             return max(60, action.node.timeout.seconds)
         return self.ctx.settings.workflow_node_timeout_s
 
-    async def _accept(self, env: _Env, run: m.Run) -> None:
+    async def _accept(self, env: _Env, run: m.Run, pins: list[OverlayPin]) -> None:
         run.parent_run_id = env.wr.run_id
         run.token_id = env.run.token_id
         run.created_by = env.run.created_by
         run.experiment_id = env.run.experiment_id  # v0.14: node runs join the workflow's
-        await admit(env.session, self.ctx, run, audit_action=None)
+        # v0.19: the pins are gated for the workflow run's creator (there is no request)
+        await admit(env.session, self.ctx, run, overlays=pins, audit_action=None)
         await apply_transition(env.session, run, RunTrigger.ACCEPT, Actor.API)
+
+    async def _origin(self, env: _Env) -> set[str]:
+        """The uploaded gallery template the workflow came from, when its creator may still
+        use it (v0.19). A template is a document, not code: it is recorded in the pins of
+        the runs (their lineage names it) but never stops them."""
+        label = env.spec.metadata.labels.get(TEMPLATE_LABEL)
+        if not label or not uploaded_ids([label]):
+            return set()
+        view = await catalog_view(
+            self.ctx, env.session, tenant_id=env.scope.tenant_id, user_id=env.run.created_by
+        )
+        return {label} if view.version_of(label) is not None else set()
+
+    async def _catalogs(self, env: _Env) -> CatalogService:
+        """The tenant catalog view of the workflow run's creator (v0.19)."""
+        return await view_catalogs(
+            self.ctx, env.session, tenant_id=env.scope.tenant_id, user_id=env.run.created_by
+        )
 
     async def _dataset(self, env: _Env, ref: str) -> m.DatasetVersion:
         try:
@@ -706,6 +753,8 @@ class WorkflowOrchestrator:
             params["_refs"] = refs
         if action.impl.id == "governance.policy":
             params["_policies"] = await self._policies(env, action, models)
+        if action.impl.plugin is not None:
+            params[NODE_PLUGIN_PARAM] = action.impl.plugin
         job = WorkflowNodeJob(
             workflow_run_id=env.wr.run_id,
             node_id=action.node_id,
@@ -717,6 +766,16 @@ class WorkflowOrchestrator:
         )
         payload = job.model_dump(mode="json")
         snapshot = await self.ctx.catalogs.get(s)
+        # v0.19 (D9): the node's own code, any uploaded model or recipe its parameters name,
+        # and the uploaded code of every model version it loads
+        pins = await resolve_pins(
+            self.ctx,
+            s,
+            ids={action.impl.id, *document_ids(action.params), *await self._origin(env)},
+            inherited=merge_pins(*(model_version_pins(mv.lineage) for mv in models)),
+            tenant_id=env.scope.tenant_id,
+            user_id=env.run.created_by,
+        )
         run = await create_run(
             s,
             env.scope,
@@ -729,7 +788,7 @@ class WorkflowOrchestrator:
             spec_hash=spec_hash(payload),
             catalog_digest=snapshot.digest if snapshot else None,
         )
-        await self._accept(env, run)
+        await self._accept(env, run, pins)
         return run.id
 
     async def _policies(
@@ -831,7 +890,8 @@ class WorkflowOrchestrator:
             )
         except ValueError as exc:
             raise _NodeFailure(ErrorCode.WORKFLOW_INVALID, str(exc)) from None
-        snapshot = await self.ctx.catalogs.get(s)
+        catalogs = await self._catalogs(env)
+        snapshot = await catalogs.get(s)
         data_schema = _bind_schema(dv, doc["data"])
         if snapshot is not None and data_schema:
             with contextlib.suppress(ValueError, ValidationError):
@@ -849,9 +909,11 @@ class WorkflowOrchestrator:
                             doc["data"]["split"] = canonical_split(
                                 doc["data"]["split"], doc["data"]["bind"]
                             )
-        v = await validate_document(s, env.scope, self.ctx.catalogs, document=doc)
+        v = await validate_document(s, env.scope, catalogs, document=doc)
         if not v.valid or v.resolved is None or v.dataset is None:
             raise ValidationFailed(v.issues)
+        assert isinstance(v.typed, ModelSpec)
+        pins = pins_from(catalogs, {*spec_catalog_ids(v.typed), *await self._origin(env)})
         spec_row = (
             await s.execute(
                 select(m.Spec)
@@ -931,7 +993,7 @@ class WorkflowOrchestrator:
             dataset_version=v.dataset.version,
             catalog_digest=v.catalog.digest if v.catalog else None,
         )
-        await self._accept(env, run)
+        await self._accept(env, run, pins)
         return run.id
 
     async def _submit_sub(self, env: _Env, action: Action) -> str:

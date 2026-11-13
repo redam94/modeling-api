@@ -2,7 +2,7 @@
 description: Running mapi-server multi-tenant - sign-in with an OpenID provider (Google, any OIDC IdP, or the offline development IdP), API tokens, CSRF, operators, the two database roles behind row-level security, and Pub/Sub push authentication.
 ---
 
-# Authentication and tenant isolation <span class="mapi-badge">v0.3</span>
+# Set up sign-in and tenant isolation <span class="mapi-badge">v0.3</span>
 
 This page is for the person who operates `mapi-server`. The concepts (roles, scopes, project
 selection) are in [Tenancy and authentication](../concepts/tenancy-and-auth.md). Each

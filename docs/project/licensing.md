@@ -7,7 +7,7 @@ write models and integrations. The copyleft licence protects the hosted platform
 |---|---|---|
 | **SDK and contracts**: `mapi-spec`, `mapi-sdk`, `mapi-pymc`, `mapi-sklearn`, `mapi-jax` | `packages/spec`, `packages/sdk`, `packages/sdk-pymc`, `packages/sdk-sklearn`, `packages/sdk-jax` | Apache-2.0 |
 | **Built-ins**: steps, plots, model plugins, workflow runtime, conformance corpus | `packages/steps-core`, `packages/plots-core`, `plugins/*`, `packages/workflows`, `conformance/` | Apache-2.0 |
-| **Tools**: CLI, Python client, GCS emulator | `packages/cli`, `packages/client`, `packages/gcs-shim` | Apache-2.0 |
+| **Tools**: CLI, Python client, MCP bridge, GCS emulator | `packages/cli`, `packages/client`, `packages/mcp`, `packages/gcs-shim` | Apache-2.0 |
 | **Platform**: API server, run harness, web apps, images, infrastructure | `packages/server`, `packages/runner`, `apps/*`, `images/`, `infra/`, `ops/`, `security/` | AGPLv3 **or** a commercial licence |
 | **Documentation** | `docs/` | CC BY 4.0 |
 
@@ -59,6 +59,20 @@ JavaScript packages that the build compiles into the web app and the plot sandbo
 A script makes this file from `uv.lock` and `pnpm-lock.yaml`. After you change a lock file,
 run `make notices`. If the file is not current, `make release-check` and the test suite fail.
 Each image contains this file and the licence files above, in `/usr/share/doc/mapi/`.
+
+## The docs site and the art { #the-docs-site-and-the-art }
+
+The documentation site loads no file from another host. It has copies of these files, each
+with its licence text beside it: the fonts Inter and JetBrains Mono (OFL-1.1,
+`docs/assets/fonts/LICENSE.txt`), mermaid (MIT, `docs/assets/vendor/mermaid/LICENSE.txt`) and
+Redoc (MIT, `docs/assets/vendor/redoc/LICENSE.txt`). They are not in
+`THIRD-PARTY-NOTICES.md`, because a script makes that file from the lock files. The line art
+was generated for this project with an image model. The art of the docs is under the licence
+of the documentation (CC BY 4.0), and the art of the web app is under the licence of the
+platform. Each folder of art has a `PROVENANCE.md` file with the model, the prompt, the
+request id and the date of each image: `docs/assets/brand/PROVENANCE.md`,
+`docs/assets/brand/icons/PROVENANCE.md` and `apps/web/src/assets/brand/PROVENANCE.md`.
+[The docs theme](docs-theme.md) tells how to add or refresh these files.
 
 ## Contributions
 

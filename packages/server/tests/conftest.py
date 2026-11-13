@@ -186,3 +186,49 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
     for item in items:
         if item.get_closest_marker("docker"):
             item.add_marker(skip)
+
+
+# ------------------------------------------------- v0.20: no test reaches the real Gemini API
+_GEMINI_ATTEMPTS: list[str] = []
+
+
+@pytest.fixture(scope="session", autouse=True)
+def gemini_attempts() -> Iterator[list[str]]:
+    """Refuse every name lookup of the Gemini API host for the whole session.
+
+    A request that is not served by an injected transport (``httpx.MockTransport``, respx,
+    the fake model) must resolve the host first, so it fails here and is recorded; the
+    per-test check below then fails the test even when the code under test caught the
+    error. Tests of this guard read and clear the returned list."""
+    import socket
+
+    from mapi_server.services.chat.gemini import GEMINI_HOST
+
+    real = socket.getaddrinfo
+
+    def guarded(host: object, *args: object, **kwargs: object) -> object:
+        name = host.decode() if isinstance(host, bytes) else str(host)
+        name = name.rstrip(".").lower()
+        if name == GEMINI_HOST or name.endswith("." + GEMINI_HOST):
+            _GEMINI_ATTEMPTS.append(name)
+            raise socket.gaierror(socket.EAI_NONAME, "tests never reach the Gemini API")
+        return real(host, *args, **kwargs)  # type: ignore[arg-type]
+
+    socket.getaddrinfo = guarded  # type: ignore[assignment]
+    try:
+        yield _GEMINI_ATTEMPTS
+    finally:
+        socket.getaddrinfo = real
+
+
+@pytest.fixture(autouse=True)
+def _no_gemini_request(gemini_attempts: list[str]) -> Iterator[None]:
+    gemini_attempts.clear()
+    yield
+    if gemini_attempts:
+        hosts = sorted(set(gemini_attempts))
+        gemini_attempts.clear()
+        pytest.fail(
+            f"the test tried to reach the Gemini API ({', '.join(hosts)}); use the fake chat "
+            "model or an httpx.MockTransport with a recorded fixture"
+        )

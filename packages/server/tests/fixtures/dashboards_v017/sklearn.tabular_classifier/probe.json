@@ -1,0 +1,742 @@
+{
+ "bundle_ui_artifacts": [
+  "ui/explore/diagnostics.json",
+  "ui/explore/index.json",
+  "ui/explore/params.json",
+  "ui/explore/plots/params.json",
+  "ui/explore/residuals.json",
+  "ui/preprocess.json",
+  "ui/summaries.json",
+  "ui/tree_index.json"
+ ],
+ "capabilities": {
+  "checkpointable": false,
+  "contribution_scale": "none",
+  "decision": false,
+  "deterministic_given_seed": true,
+  "evidence": false,
+  "fast_score": false,
+  "identified_quantities": [],
+  "inference": "point",
+  "loo_invalid_reason": "scikit-learn and xgboost estimators provide no pointwise log-likelihood",
+  "loo_valid": false,
+  "owns": [],
+  "recommend": false,
+  "representation": "point",
+  "score_modes": [
+   "counterfactual",
+   "evaluate",
+   "forecast",
+   "predict"
+  ]
+ },
+ "fit_metrics": [
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:36:36.668935-04:00",
+   "key": "accuracy",
+   "labels": {},
+   "last": 0.5666666666666667,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:36:36.668935-04:00",
+   "max": 0.5666666666666667,
+   "min": 0.5666666666666667
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:36:36.669039-04:00",
+   "key": "auc",
+   "labels": {},
+   "last": 0.8673469387755102,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:36:36.669039-04:00",
+   "max": 0.8673469387755102,
+   "min": 0.8673469387755102
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:36:36.669079-04:00",
+   "key": "brier",
+   "labels": {},
+   "last": 0.25698969410483236,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:36:36.669079-04:00",
+   "max": 0.25698969410483236,
+   "min": 0.25698969410483236
+  }
+ ],
+ "fit_run": "run_01m5fatzpb4x34ctybvd5mqww9",
+ "inputs": {
+  "input_table": {
+   "columns": [
+    {
+     "description": "The period (yyyy-MM-dd)",
+     "dims": [],
+     "freq": "W-SUN",
+     "name": "time",
+     "role": "coord"
+    },
+    {
+     "description": "A level of sku",
+     "dims": [],
+     "freq": null,
+     "name": "sku",
+     "role": "coord"
+    },
+    {
+     "description": "A level of store",
+     "dims": [],
+     "freq": null,
+     "name": "store",
+     "role": "coord"
+    },
+    {
+     "description": "Leave empty. This model forecasts from the end of its fitted history",
+     "dims": [
+      "store",
+      "sku",
+      "time"
+     ],
+     "freq": null,
+     "name": "y",
+     "role": "target"
+    },
+    {
+     "description": "An input",
+     "dims": [
+      "store",
+      "sku",
+      "time"
+     ],
+     "freq": null,
+     "name": "price",
+     "role": "input"
+    },
+    {
+     "description": "An input",
+     "dims": [
+      "store",
+      "sku",
+      "time"
+     ],
+     "freq": null,
+     "name": "promo",
+     "role": "input"
+    }
+   ],
+   "conditions_on_actuals": false,
+   "horizon_dim": "time",
+   "rows": [
+    [
+     "2024-10-13",
+     "k0",
+     "s0",
+     null,
+     null,
+     null
+    ],
+    [
+     "2024-10-13",
+     "k0",
+     "s1",
+     null,
+     null,
+     null
+    ],
+    [
+     "2024-10-13",
+     "k1",
+     "s0",
+     null,
+     null,
+     null
+    ],
+    [
+     "2024-10-13",
+     "k1",
+     "s1",
+     null,
+     null,
+     null
+    ],
+    [
+     "2024-10-20",
+     "k0",
+     "s0",
+     null,
+     null,
+     null
+    ],
+    [
+     "2024-10-20",
+     "k0",
+     "s1",
+     null,
+     null,
+     null
+    ],
+    [
+     "2024-10-20",
+     "k1",
+     "s0",
+     null,
+     null,
+     null
+    ],
+    [
+     "2024-10-20",
+     "k1",
+     "s1",
+     null,
+     null,
+     null
+    ]
+   ]
+  },
+  "max_inline_bytes": 5242880,
+  "model_ref": "model://default/v017-classifier-88c784@v1",
+  "snapshot": {
+   "conditions_on_actuals": false,
+   "fit_coords": {
+    "sku": {
+     "contiguous": true,
+     "end": null,
+     "freq": null,
+     "kind": "categorical",
+     "size": 3,
+     "start": null,
+     "step": null,
+     "values": [
+      "k0",
+      "k1",
+      "k2"
+     ]
+    },
+    "store": {
+     "contiguous": true,
+     "end": null,
+     "freq": null,
+     "kind": "categorical",
+     "size": 5,
+     "start": null,
+     "step": null,
+     "values": [
+      "s0",
+      "s1",
+      "s2",
+      "s3",
+      "s4"
+     ]
+    },
+    "time": {
+     "contiguous": true,
+     "end": "2024-10-06T00:00:00",
+     "freq": "W-SUN",
+     "kind": "time",
+     "size": 40,
+     "start": "2024-01-07T00:00:00",
+     "step": null,
+     "values": null
+    }
+   },
+   "future_required": [],
+   "horizon_dim": "time",
+   "input_schema": {
+    "dims": {
+     "sku": {
+      "description": null,
+      "freq": null,
+      "kind": "categorical",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "fixed"
+     },
+     "store": {
+      "description": null,
+      "freq": null,
+      "kind": "categorical",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "new_levels"
+     },
+     "time": {
+      "description": null,
+      "freq": "W-SUN",
+      "kind": "time",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "extend"
+     }
+    },
+    "layout": "dense",
+    "ragged": [],
+    "vars": {
+     "price": {
+      "bounds": null,
+      "description": null,
+      "dims": [
+       "store",
+       "sku",
+       "time"
+      ],
+      "dtype": "float64",
+      "future_required": false,
+      "index_of": null,
+      "missing": "forbid",
+      "missing_sentinel": null,
+      "role": "covariate",
+      "units": "EUR"
+     },
+     "promo": {
+      "bounds": null,
+      "description": null,
+      "dims": [
+       "store",
+       "sku",
+       "time"
+      ],
+      "dtype": "float64",
+      "future_required": false,
+      "index_of": null,
+      "missing": "forbid",
+      "missing_sentinel": null,
+      "role": "covariate",
+      "units": null
+     },
+     "y": {
+      "bounds": null,
+      "description": null,
+      "dims": [
+       "store",
+       "sku",
+       "time"
+      ],
+      "dtype": "int64",
+      "future_required": false,
+      "index_of": null,
+      "missing": "forbid",
+      "missing_sentinel": null,
+      "role": "target",
+      "units": "units"
+     }
+    }
+   },
+   "inputs_stage": "raw",
+   "representation": "point",
+   "schema_hash": "sha256:307537c2511e82f12b7812a855c592c0bf5ff8a2a31b0c05f1356f7de977cb79",
+   "score_modes": [
+    "counterfactual",
+    "evaluate",
+    "forecast",
+    "predict"
+   ]
+  }
+ },
+ "manifest_outputs": null,
+ "model_ref": "model://default/v017-classifier-88c784@v1",
+ "plugin": "sklearn.tabular_classifier@1.0.0",
+ "scorecard": {
+  "items": [
+   {
+    "category": "data",
+    "check": "data.missing",
+    "code": "DATA_MISSING",
+    "docs_anchor": "check-data-missing",
+    "message_expert": "0 of 1800 values missing",
+    "message_plain": "Only 0% of the values are missing.",
+    "metric": "missing_fraction",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 0.05,
+    "title": "Few missing values",
+    "value": 0.0
+   },
+   {
+    "category": "data",
+    "check": "data.history",
+    "code": "DATA_HISTORY",
+    "docs_anchor": "check-data-history",
+    "message_expert": "40 periods at W-SUN (52 per year) along 'time' at the model stage",
+    "message_plain": "There are only 0.8 years of history. This is not sufficient to separate media from seasonality.",
+    "metric": "history_years",
+    "status": "fail",
+    "suggested_action": "If you have more history, add it.",
+    "threshold": 1.0,
+    "title": "Enough history",
+    "value": 0.7692307692307693
+   }
+  ],
+  "overall": "fail",
+  "skipped": {
+   "convergence.divergences": "the model has no posterior draws (the fit did not use MCMC)",
+   "convergence.ess": "the model has no posterior draws (the fit did not use MCMC)",
+   "convergence.rhat": "the model has no posterior draws (the fit did not use MCMC)",
+   "data.spend_variation": "the dataset has no spend variable along time",
+   "holdout.coverage_90": "the spec does not evaluate it (evaluate.metrics) or has no holdout split",
+   "holdout.hit_rate": "only models of a categorical target (choice models) report a hit rate. Evaluate accuracy_lift on one of these models",
+   "holdout.mape": "the spec does not evaluate it (evaluate.metrics) or has no holdout split",
+   "plausibility.baseline_share": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.negative_roi": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.prior_overlap": "the fit kept no prior draws (set fit.prior_predictive or fit.keep.prior)",
+   "plausibility.roi_absurd": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.share_outlier": "the model has no response curves (outputs.derived: response_curves)"
+  }
+ },
+ "scores": {
+  "inline_gap_week": {
+   "captured": [],
+   "code": "NON_CONTIGUOUS_EXTENSION",
+   "inline": true,
+   "issues": [
+    {
+     "code": "NON_CONTIGUOUS_EXTENSION",
+     "context": {},
+     "message": "input coords of 'time' leave a gap of 9 period(s) after the fitted range",
+     "pointer": "/data",
+     "severity": "error",
+     "suggested_action": null,
+     "untrusted_text": "fit ends 2024-10-06T00:00:00; input starts 2024-12-15T00:00:00"
+    }
+   ],
+   "refused": "CoordPlanError: validation failed with 1 error. The first error is at /data: input coords of 'time' leave a gap of 9 period(s) after the fitted range",
+   "request": {
+    "apiVersion": "mapi/v1",
+    "kind": "ScoreRequest",
+    "mode": "predict",
+    "model": "model://default/v017-classifier-88c784@v1",
+    "output": {
+     "summary": [
+      "mean"
+     ]
+    }
+   }
+  },
+  "inline_new_store": {
+   "captured": [
+    "inline_new_store.summary.json",
+    "inline_new_store.result.json"
+   ],
+   "inline": true,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "kind": "ScoreRequest",
+    "mode": "predict",
+    "model": "model://default/v017-classifier-88c784@v1",
+    "output": {
+     "summary": [
+      "mean"
+     ]
+    }
+   },
+   "run_id": "run_01m5faxnmvj4ncxwyntpvgkt68",
+   "state": "succeeded"
+  },
+  "inline_next_week": {
+   "captured": [
+    "inline_next_week.summary.json",
+    "inline_next_week.result.json"
+   ],
+   "inline": true,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "kind": "ScoreRequest",
+    "mode": "predict",
+    "model": "model://default/v017-classifier-88c784@v1",
+    "output": {
+     "summary": [
+      "mean"
+     ]
+    }
+   },
+   "run_id": "run_01m5faxzdxx574gckv752n4mbw",
+   "state": "succeeded"
+  },
+  "inline_two_rows": {
+   "captured": [
+    "inline_two_rows.summary.json",
+    "inline_two_rows.result.json"
+   ],
+   "inline": true,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "kind": "ScoreRequest",
+    "mode": "predict",
+    "model": "model://default/v017-classifier-88c784@v1",
+    "output": {
+     "summary": [
+      "mean"
+     ]
+    }
+   },
+   "run_id": "run_01m5faxbv8tv68zcrb2ch1v3ht",
+   "state": "succeeded"
+  },
+  "inline_two_rows__predictive": {
+   "captured": [],
+   "code": "CAPABILITY_UNSUPPORTED",
+   "inline": true,
+   "issues": [
+    {
+     "code": "CAPABILITY_UNSUPPORTED",
+     "context": {},
+     "message": "predictive output (with observation noise) needs an uncertainty representation. This model gives point predictions",
+     "pointer": "/output/kind",
+     "severity": "error",
+     "suggested_action": null,
+     "untrusted_text": null
+    }
+   ],
+   "refused": "CapabilityError: validation failed with 1 error. The first error is at /output/kind: predictive output (with observation noise) needs an uncertainty representation. This model gives point predictions",
+   "request": {
+    "apiVersion": "mapi/v1",
+    "kind": "ScoreRequest",
+    "mode": "predict",
+    "model": "model://default/v017-classifier-88c784@v1",
+    "output": {
+     "kind": "predictive",
+     "summary": [
+      "mean"
+     ]
+    }
+   }
+  },
+  "predict_sum_store": {
+   "captured": [
+    "predict_sum_store.summary.json",
+    "predict_sum_store.result.json"
+   ],
+   "inline": false,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-classifier-88c784-predict-sum-store@v1",
+    "kind": "ScoreRequest",
+    "mode": "predict",
+    "model": "model://default/v017-classifier-88c784@v1",
+    "output": {
+     "aggregate": {
+      "over": [
+       "store"
+      ]
+     }
+    }
+   },
+   "run_id": "run_01m5fayp7rzc9f2szvf6ba2x39",
+   "state": "succeeded"
+  },
+  "predict_tail__canonical": {
+   "captured": [
+    "predict_tail__canonical.summary.json",
+    "predict_tail__canonical.result.json"
+   ],
+   "inline": false,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-classifier-88c784-predict-tail--canonical@v1",
+    "kind": "ScoreRequest",
+    "mode": "predict",
+    "model": "model://default/v017-classifier-88c784@v1",
+    "output": {
+     "names": "canonical",
+     "summary": [
+      "mean"
+     ]
+    }
+   },
+   "run_id": "run_01m5fawfysh523jgta5137fyaq",
+   "state": "succeeded"
+  },
+  "predict_tail__mean_only": {
+   "captured": [
+    "predict_tail__mean_only.summary.json",
+    "predict_tail__mean_only.result.json"
+   ],
+   "inline": false,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-classifier-88c784-predict-tail--mean-only@v1",
+    "kind": "ScoreRequest",
+    "mode": "predict",
+    "model": "model://default/v017-classifier-88c784@v1",
+    "output": {
+     "summary": [
+      "mean"
+     ]
+    }
+   },
+   "run_id": "run_01m5fax58xq1vnqvz0xfn2xhz8",
+   "state": "succeeded"
+  },
+  "predict_tail__predictive": {
+   "captured": [],
+   "code": "CAPABILITY_UNSUPPORTED",
+   "inline": false,
+   "issues": [
+    {
+     "code": "CAPABILITY_UNSUPPORTED",
+     "context": {},
+     "message": "predictive output (with observation noise) needs an uncertainty representation. This model gives point predictions",
+     "pointer": "/output/kind",
+     "severity": "error",
+     "suggested_action": null,
+     "untrusted_text": null
+    }
+   ],
+   "refused": "CapabilityError: validation failed with 1 error. The first error is at /output/kind: predictive output (with observation noise) needs an uncertainty representation. This model gives point predictions",
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-classifier-88c784-predict-tail--predictive@v1",
+    "kind": "ScoreRequest",
+    "mode": "predict",
+    "model": "model://default/v017-classifier-88c784@v1",
+    "output": {
+     "kind": "predictive",
+     "summary": [
+      "mean"
+     ]
+    }
+   }
+  },
+  "predict_tail__readout": {
+   "captured": [
+    "predict_tail__readout.summary.json",
+    "predict_tail__readout.result.json"
+   ],
+   "inline": false,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-classifier-88c784-predict-tail--readout@v1",
+    "kind": "ScoreRequest",
+    "mode": "predict",
+    "model": "model://default/v017-classifier-88c784@v1",
+    "output": {
+     "summary": [
+      "mean"
+     ]
+    }
+   },
+   "run_id": "run_01m5favn32bddag3rrse5g9hvv",
+   "state": "succeeded"
+  }
+ },
+ "size": "tiny",
+ "source": "probe case classifier",
+ "spec": {
+  "apiVersion": "mapi/v1",
+  "data": {
+   "bind": {
+    "dims": {
+     "time": "week"
+    },
+    "vars": {
+     "price": "price",
+     "promo": "promo_flag",
+     "y": "bought"
+    }
+   },
+   "dataset": "dataset://default/v017-classifier-88c784-data@v1",
+   "split": {
+    "dim": "time",
+    "kind": "time_holdout",
+    "last": 8
+   }
+  },
+  "evaluate": {
+   "metrics": [
+    "accuracy",
+    "accuracy_naive",
+    "brier",
+    "auc"
+   ]
+  },
+  "kind": "ModelSpec",
+  "metadata": {
+   "name": "v017-classifier-88c784",
+   "project": "default"
+  },
+  "model": {
+   "fit": {
+    "mode": "evaluate_then_refit",
+    "seed": 5
+   },
+   "settings": {
+    "coord_features": {
+     "sku": "onehot",
+     "store": "onehot"
+    },
+    "estimator": {
+     "kind": "sklearn.LogisticRegression",
+     "params": {
+      "C": 1.0,
+      "max_iter": 500
+     }
+    },
+    "rows": [
+     "store",
+     "sku",
+     "time"
+    ]
+   },
+   "use": "sklearn.tabular_classifier@^1"
+  }
+ },
+ "version_metrics": {
+  "accuracy": 0.5666666666666667,
+  "auc": 0.8673469387755102,
+  "brier": 0.25698969410483236
+ }
+}

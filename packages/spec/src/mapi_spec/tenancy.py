@@ -70,6 +70,7 @@ __all__ = [
     "required_rule",
     "residency_of_region",
     "resolve_project_scope",
+    "untrusted_placement_problem",
 ]
 
 PROJECT_HEADER: Final = "X-Mapi-Project"
@@ -164,6 +165,27 @@ TIER_PLACEMENT: Final[dict[TrustTier, PlacementRequirement]] = {
 """Placement is enforced in dispatcher code, never by tenant configuration. Shared,
 multi-tenant tiers (``verified``, ``public``) need isolation ≥ gVisor with egress and DNS
 enforced, exactly :meth:`ExecutorCaps.allows_public_tenants`."""
+
+
+def untrusted_placement_problem(caps: ExecutorCaps, *, multi_tenant: bool) -> str | None:
+    """Why an executor with ``caps`` may not run uploaded code (plain text), else ``None``.
+
+    The executor must report :attr:`ExecutorCaps.runs_untrusted_code` (docker, docker-gvisor,
+    Cloud Run Jobs; local-process only with the dev-only allowance). In the multi-tenant
+    profile it must also isolate at least as strongly as gVisor and enforce egress and DNS.
+    Tier placement (:func:`placement_allows`) applies on top of this.
+    """
+    if not caps.runs_untrusted_code:
+        return (
+            "This deployment has no executor that can run uploaded code. Use the docker, "
+            "docker-gvisor or Cloud Run executor."
+        )
+    if multi_tenant and not caps.allows_public_tenants():
+        return (
+            "In a multi-tenant deployment, uploaded code needs an executor with gVisor (or "
+            "stronger) isolation and enforced egress and DNS rules."
+        )
+    return None
 
 
 def placement_allows(
@@ -364,6 +386,13 @@ class ResourceKind(StrEnum):
     """Which client users may see a dashboard (v0.16)."""
     DASHBOARD_SHARE = "dashboard_share"
     """Revocable share links of a dashboard (v0.16)."""
+    LIBRARY = "library"
+    """A project's library items: model recipes, prep presets, chart and workflow templates
+    (v0.18)."""
+    TENANT_LIBRARY = "tenant_library"
+    """Tenant-wide library items, readable from every project of the tenant (v0.18)."""
+    PLUGIN_SETTINGS = "plugin_settings"
+    """A tenant's uploaded-code settings and its attested uploaders (v0.19)."""
 
 
 class Capability(StrEnum):
@@ -461,9 +490,17 @@ PERMISSIONS: Final[dict[tuple[ResourceKind, Action], Rule]] = {
     (_RK.WEBHOOK, _AC.CREATE): Rule(_A, _P),
     (_RK.WEBHOOK, _AC.UPDATE): Rule(_A, _P),
     (_RK.WEBHOOK, _AC.DELETE): Rule(_A, _P),
+    # v0.19: uploaded plugins. Reads from any project the caller can read (private versions
+    # of others are hidden by the handler); create also needs D1/D2 (tenant admin or an
+    # attested editor, an allowed tier); update (ask for approval) and delete (yank) need the
+    # uploader or a tenant admin; approve is a tenant admin with a recent web session.
     (_RK.PLUGIN, _AC.READ): Rule(_V, _P),
-    (_RK.PLUGIN, _AC.CREATE): Rule(_A, _P),
-    (_RK.PLUGIN, _AC.DELETE): Rule(_A, _P),
+    (_RK.PLUGIN, _AC.CREATE): Rule(_E, _P),
+    (_RK.PLUGIN, _AC.UPDATE): Rule(_E, _P),
+    (_RK.PLUGIN, _AC.DELETE): Rule(_E, _P),
+    (_RK.PLUGIN, _AC.APPROVE): Rule(_A, _T),
+    (_RK.PLUGIN_SETTINGS, _AC.READ): Rule(_A, _T),
+    (_RK.PLUGIN_SETTINGS, _AC.UPDATE): Rule(_A, _T),  # settings, attest and revoke uploaders
     (_RK.USAGE, _AC.READ): Rule(_V, _P),
     (_RK.BILLING, _AC.READ): Rule(_A, _T),
     (_RK.AUDIT, _AC.READ): Rule(_A, _T),
@@ -512,6 +549,17 @@ PERMISSIONS: Final[dict[tuple[ResourceKind, Action], Rule]] = {
     (_RK.DASHBOARD_SHARE, _AC.READ): Rule(_E, _P),
     (_RK.DASHBOARD_SHARE, _AC.CREATE): Rule(_E, _P),  # with inputs: the caller must be a runner
     (_RK.DASHBOARD_SHARE, _AC.DELETE): Rule(_E, _P),
+    # v0.18: the library (JSON documents compiled by trusted code: no approval) and the
+    # operator's catalog refresh. Archive is the DELETE action (items are never deleted).
+    (_RK.LIBRARY, _AC.READ): Rule(_V, _P),
+    (_RK.LIBRARY, _AC.CREATE): Rule(_E, _P),
+    (_RK.LIBRARY, _AC.UPDATE): Rule(_E, _P),
+    (_RK.LIBRARY, _AC.DELETE): Rule(_E, _P),
+    (_RK.TENANT_LIBRARY, _AC.READ): Rule(_V, _P),  # from any project the caller can read
+    (_RK.TENANT_LIBRARY, _AC.CREATE): Rule(_A, _T),
+    (_RK.TENANT_LIBRARY, _AC.UPDATE): Rule(_A, _T),
+    (_RK.TENANT_LIBRARY, _AC.DELETE): Rule(_A, _T),
+    (_RK.CATALOG, _AC.UPDATE): _OP,  # queue a catalog describe run
 }
 """The complete matrix. A pair that is not listed is denied to everyone."""
 

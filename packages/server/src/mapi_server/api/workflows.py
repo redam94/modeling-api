@@ -12,7 +12,14 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Header, Path, Query, Request, Response, status
 from fastapi.responses import JSONResponse, StreamingResponse
-from mapi_spec.api import LAST_EVENT_ID_HEADER, ArtifactLink, Page, new_id, parse_last_event_id
+from mapi_spec.api import (
+    LAST_EVENT_ID_HEADER,
+    PROJECT_HEADER,
+    ArtifactLink,
+    Page,
+    new_id,
+    parse_last_event_id,
+)
 from mapi_spec.audit import AuditAction, AuditOutcome
 from mapi_spec.cron import check_cron, check_timezone
 from mapi_spec.errors import ErrorCode, MapiError
@@ -40,8 +47,8 @@ from mapi_spec.workflow import (
     WorkflowValidateRequest,
     WorkflowValidation,
 )
-from mapi_spec.workflow_nodes import NODE_IMPLEMENTATIONS, NodeImplementation, NodeKind
-from mapi_spec.workflow_templates import WORKFLOW_TEMPLATES, WorkflowTemplate
+from mapi_spec.workflow_nodes import NodeImplementation, NodeKind
+from mapi_spec.workflow_templates import WorkflowTemplate
 from pydantic import JsonValue
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError as DBIntegrityError
@@ -55,6 +62,7 @@ from mapi_server.api.common import (
     IdempotencyKeyHeader,
     Limit,
     Session,
+    SystemSession,
     decode_cursor,
     encode_cursor,
 )
@@ -64,12 +72,15 @@ from mapi_server.db import models as m
 from mapi_server.errors import Conflict, NotFoundError, ProblemWithHeaders
 from mapi_server.services.audit import write_audit
 from mapi_server.services.bundles import artifact_link, verified_bundle_object
+from mapi_server.services.catalog import CatalogService
+from mapi_server.services.plugins.view import caller_tenant, view_catalogs, view_owner
 from mapi_server.services.quotas import charge_egress
 from mapi_server.services.runs import now
 from mapi_server.services.specs import resolve_dataset, resolve_model_version
 from mapi_server.services.submit import data_object_name
 from mapi_server.services.workflows.automation import schedule_next
 from mapi_server.services.workflows.events import event_dto, workflow_event_stream
+from mapi_server.services.workflows.node_catalog import node_contracts, templates
 from mapi_server.services.workflows.runs import (
     node_run_dto,
     request_cancel,
@@ -123,6 +134,23 @@ def _principal(ctx: ServerContext) -> str | None:
     return ctx.request.principal_id if ctx.request is not None else None
 
 
+async def _catalogs(ctx: ServerContext, session: AsyncSession) -> CatalogService:
+    """The caller's tenant catalog view (v0.19): their visible uploads validate too."""
+    tenant, user = view_owner(ctx)
+    if tenant is None:
+        return ctx.catalogs
+    return await view_catalogs(ctx, session, tenant_id=tenant, user_id=user)
+
+
+def _gallery_owner(ctx: ServerContext, request: Request) -> dict[str, str | None]:
+    """``tenant_id``/``user_id`` of the gallery routes (not project-scoped): the tenant the
+    ``X-Mapi-Project`` header, the token or the caller's only membership names."""
+    return {
+        "tenant_id": caller_tenant(ctx, request.headers.get(PROJECT_HEADER)),
+        "user_id": ctx.request.user_id if ctx.request is not None else None,
+    }
+
+
 def _page[T](items: list[T], rows: list[Any], limit: int, key: Any) -> tuple[list[T], str | None]:
     more = len(rows) > limit
     return items[:limit], encode_cursor(key(rows[limit - 1])) if more and rows else None
@@ -172,11 +200,14 @@ async def create_workflow(ctx: Ctx, session: Session, body: WorkflowCreate) -> J
     """Stores revision 1 with its static validation (a document with errors is stored but
     cannot run until a valid revision is added). The workflow's name is
     ``metadata.name``; ``409 CONFLICT`` when the project already has one of that name."""
-    doc, template = document_of(document=body.document, text=body.text, template=body.template)
+    gallery = await templates(ctx, session) if body.template is not None else None
+    doc, template = document_of(
+        document=body.document, text=body.text, template=body.template, templates=gallery
+    )
     if template is not None:
         doc["metadata"]["project"] = ctx.scope.project_id
         doc["metadata"].setdefault("labels", {})["workflow-template"] = template
-    validation = await validate_document(session, ctx.scope, ctx.catalogs, doc)
+    validation = await validate_document(session, ctx.scope, await _catalogs(ctx, session), doc)
     wf = new_workflow(ctx.scope, doc, template=template, created_by=_principal(ctx))
     try:
         async with session.begin_nested():
@@ -210,7 +241,7 @@ async def validate_workflow(
 ) -> WorkflowValidation:
     """200 even for invalid documents: the verdict is ``valid`` + ``issues``."""
     doc, _ = document_of(document=body.document, text=body.text)
-    return await validate_document(session, ctx.scope, ctx.catalogs, doc)
+    return await validate_document(session, ctx.scope, await _catalogs(ctx, session), doc)
 
 
 @router.get(
@@ -342,7 +373,7 @@ async def create_workflow_revision(
             code=ErrorCode.WORKFLOW_INVALID,
             pointer="/metadata/name",
         )
-    validation = await validate_document(session, ctx.scope, ctx.catalogs, doc)
+    validation = await validate_document(session, ctx.scope, await _catalogs(ctx, session), doc)
     wf.latest_revision += 1
     wf.updated_at = now()
     rev = revision_row(
@@ -1000,15 +1031,22 @@ async def delete_workflow_trigger(
     responses=responses_for("list_workflow_templates"),
 )
 async def list_workflow_templates(
-    limit: Limit = DEFAULT_LIMIT, cursor: str | None = None
+    ctx: Ctx,
+    session: SystemSession,
+    request: Request,
+    limit: Limit = DEFAULT_LIMIT,
+    cursor: str | None = None,
 ) -> Page[WorkflowTemplate]:
-    ids = sorted(WORKFLOW_TEMPLATES)
+    """The built-in templates and those of installed plugins (``source: "plugin"``; v0.18),
+    and (v0.19) the uploaded templates in the caller's tenant catalog view."""
+    gallery = await templates(ctx, session, **_gallery_owner(ctx, request))
+    ids = sorted(gallery)
     after = decode_cursor(cursor)
     if after is not None:
         ids = [i for i in ids if i > str(after)]
     page = ids[:limit]
     nxt = encode_cursor(page[-1]) if len(ids) > limit and page else None
-    return Page[WorkflowTemplate](items=[WORKFLOW_TEMPLATES[i] for i in page], next_cursor=nxt)
+    return Page[WorkflowTemplate](items=[gallery[i] for i in page], next_cursor=nxt)
 
 
 @templates_router.get(
@@ -1019,9 +1057,12 @@ async def list_workflow_templates(
     responses=responses_for("get_workflow_template"),
 )
 async def get_workflow_template(
+    ctx: Ctx,
+    session: SystemSession,
+    request: Request,
     template_id: Annotated[str, Path(pattern=r"^[a-z][a-z0-9_]{0,63}$")],
 ) -> WorkflowTemplate:
-    t = WORKFLOW_TEMPLATES.get(template_id)
+    t = (await templates(ctx, session, **_gallery_owner(ctx, request))).get(template_id)
     if t is None:
         raise NotFoundError("workflow template", template_id)
     return t
@@ -1035,15 +1076,23 @@ async def get_workflow_template(
     responses=responses_for("list_workflow_nodes"),
 )
 async def list_workflow_nodes(
-    limit: Limit = DEFAULT_LIMIT, cursor: str | None = None, kind: NodeKind | None = None
+    ctx: Ctx,
+    session: SystemSession,
+    request: Request,
+    limit: Limit = DEFAULT_LIMIT,
+    cursor: str | None = None,
+    kind: NodeKind | None = None,
 ) -> Page[NodeImplementation]:
-    ids = sorted(i for i, n in NODE_IMPLEMENTATIONS.items() if kind is None or n.kind is kind)
+    """The built-in nodes and those of installed plugins (``plugin`` set; v0.18), and
+    (v0.19) the uploaded nodes in the caller's tenant catalog view."""
+    nodes = await node_contracts(ctx, session, **_gallery_owner(ctx, request))
+    ids = sorted(i for i, n in nodes.items() if kind is None or n.kind is kind)
     after = decode_cursor(cursor)
     if after is not None:
         ids = [i for i in ids if i > str(after)]
     page = ids[:limit]
     nxt = encode_cursor(page[-1]) if len(ids) > limit and page else None
-    return Page[NodeImplementation](items=[NODE_IMPLEMENTATIONS[i] for i in page], next_cursor=nxt)
+    return Page[NodeImplementation](items=[nodes[i] for i in page], next_cursor=nxt)
 
 
 @catalog_router.get(
@@ -1054,9 +1103,12 @@ async def list_workflow_nodes(
     responses=responses_for("get_workflow_node"),
 )
 async def get_workflow_node(
+    ctx: Ctx,
+    session: SystemSession,
+    request: Request,
     node_id: Annotated[str, Path(pattern=r"^[a-z]+\.[a-z0-9_]+$")],
 ) -> NodeImplementation:
-    impl = NODE_IMPLEMENTATIONS.get(node_id)
+    impl = (await node_contracts(ctx, session, **_gallery_owner(ctx, request))).get(node_id)
     if impl is None:
         raise NotFoundError("workflow node", node_id)
     return impl

@@ -1,0 +1,4091 @@
+{
+ "actuals": null,
+ "capabilities": {
+  "checkpointable": true,
+  "contribution_scale": "none",
+  "decision": false,
+  "deterministic_given_seed": true,
+  "evidence": false,
+  "fast_score": false,
+  "identified_quantities": [
+   "alpha",
+   "sigma_g",
+   "ell",
+   "eta0",
+   "eta_d",
+   "inv_phi"
+  ],
+  "inference": "mcmc",
+  "loo_invalid_reason": null,
+  "loo_valid": true,
+  "owns": [],
+  "recommend": false,
+  "representation": "draws",
+  "score_modes": [
+   "evaluate",
+   "forecast",
+   "predict"
+  ]
+ },
+ "case": "field_lgcp",
+ "derived_from": [
+  "sci.lgcp_grid/predict_tail__predictive.fields.json",
+  "sci.lgcp_grid/predict_tail__predictive.result.json",
+  "sci.lgcp_grid/predict_tail__predictive.summary.json",
+  "sci.lgcp_grid/predict_tail__readout.fields.json",
+  "sci.lgcp_grid/predict_tail__readout.result.json",
+  "sci.lgcp_grid/predict_tail__readout.summary.json",
+  "sci.lgcp_grid/probe.json"
+ ],
+ "facts": {
+  "aggregates": {},
+  "predictive": {
+   "predictive.rate": {
+    "expected_width": 1.0004735474080155,
+    "predictive_width": 2.3333333333333335,
+    "widens": true
+   },
+   "predictive.total": {
+    "expected_width": 15.193587255751867,
+    "predictive_width": 15.193587255751867,
+    "widens": false
+   }
+  },
+  "scalar_fit_metrics": {
+   "coverage_90": 0.9833333333333333,
+   "mae": 0.9157916666666667,
+   "rmse": 1.342089710737202
+  },
+  "tables": {
+   "baseline": {
+    "rate": {
+     "band": [
+      "hdi_90_lower",
+      "hdi_90_upper"
+     ],
+     "centre": "mean",
+     "dims": [
+      "quarter",
+      "row",
+      "col"
+     ],
+     "mean_band_width": 1.0004735474080155,
+     "n_rows": 120,
+     "sum_centre": 111.63035585526242,
+     "sum_high": 171.05797771370308,
+     "sum_low": 51.00115202474123,
+     "time_dim": "quarter"
+    },
+    "total": {
+     "band": [
+      "hdi_90_lower",
+      "hdi_90_upper"
+     ],
+     "centre": "mean",
+     "dims": [
+      "quarter"
+     ],
+     "mean_band_width": 15.193587255751867,
+     "n_rows": 4,
+     "sum_centre": 111.63035585526242,
+     "sum_high": 140.00129387855992,
+     "sum_low": 79.22694485555245,
+     "time_dim": "quarter"
+    }
+   },
+   "predictive": {
+    "rate": {
+     "band": [
+      "hdi_90_lower",
+      "hdi_90_upper"
+     ],
+     "centre": "mean",
+     "dims": [
+      "quarter",
+      "row",
+      "col"
+     ],
+     "mean_band_width": 2.3333333333333335,
+     "n_rows": 120,
+     "sum_centre": 110.985,
+     "sum_high": 280.0,
+     "sum_low": 0.0,
+     "time_dim": "quarter"
+    },
+    "total": {
+     "band": [
+      "hdi_90_lower",
+      "hdi_90_upper"
+     ],
+     "centre": "mean",
+     "dims": [
+      "quarter"
+     ],
+     "mean_band_width": 15.193587255751867,
+     "n_rows": 4,
+     "sum_centre": 111.63035585526242,
+     "sum_high": 140.00129387855992,
+     "sum_low": 79.22694485555245,
+     "time_dim": "quarter"
+    }
+   }
+  }
+ },
+ "fit_metrics": [
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:39:25.262793-04:00",
+   "key": "coverage_90",
+   "labels": {},
+   "last": 0.9833333333333333,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:39:25.262793-04:00",
+   "max": 0.9833333333333333,
+   "min": 0.9833333333333333
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:19.799674-04:00",
+   "key": "divergences",
+   "labels": {
+    "chain": "0"
+   },
+   "last": 5.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:22.531439-04:00",
+   "max": 5.0,
+   "min": 0.0
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:16.416706-04:00",
+   "key": "divergences",
+   "labels": {
+    "chain": "0",
+    "fit": "evaluation"
+   },
+   "last": 2.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:18.178027-04:00",
+   "max": 2.0,
+   "min": 0.0
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:20.858083-04:00",
+   "key": "divergences",
+   "labels": {
+    "chain": "1"
+   },
+   "last": 7.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:23.026439-04:00",
+   "max": 7.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:17.182004-04:00",
+   "key": "divergences",
+   "labels": {
+    "chain": "1",
+    "fit": "evaluation"
+   },
+   "last": 5.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:18.450027-04:00",
+   "max": 5.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:39:25.262828-04:00",
+   "key": "mae",
+   "labels": {},
+   "last": 0.9157916666666667,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:39:25.262828-04:00",
+   "max": 0.9157916666666667,
+   "min": 0.9157916666666667
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:19.799674-04:00",
+   "key": "num_steps",
+   "labels": {
+    "chain": "0"
+   },
+   "last": 63.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:22.531439-04:00",
+   "max": 255.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:16.416706-04:00",
+   "key": "num_steps",
+   "labels": {
+    "chain": "0",
+    "fit": "evaluation"
+   },
+   "last": 31.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:18.178027-04:00",
+   "max": 255.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:20.858083-04:00",
+   "key": "num_steps",
+   "labels": {
+    "chain": "1"
+   },
+   "last": 63.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:23.026439-04:00",
+   "max": 255.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:17.182004-04:00",
+   "key": "num_steps",
+   "labels": {
+    "chain": "1",
+    "fit": "evaluation"
+   },
+   "last": 63.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:18.450027-04:00",
+   "max": 255.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:39:25.262857-04:00",
+   "key": "rmse",
+   "labels": {},
+   "last": 1.342089710737202,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:39:25.262857-04:00",
+   "max": 1.342089710737202,
+   "min": 1.342089710737202
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:19.799674-04:00",
+   "key": "step_size",
+   "labels": {
+    "chain": "0"
+   },
+   "last": 0.1469965306000813,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:22.531439-04:00",
+   "max": 0.9004215793867443,
+   "min": 0.006249619821255505
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:16.416706-04:00",
+   "key": "step_size",
+   "labels": {
+    "chain": "0",
+    "fit": "evaluation"
+   },
+   "last": 0.17211684790779813,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:18.178027-04:00",
+   "max": 0.6510824166349309,
+   "min": 0.0054106821368162345
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:20.858083-04:00",
+   "key": "step_size",
+   "labels": {
+    "chain": "1"
+   },
+   "last": 0.05941803917255802,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:23.026439-04:00",
+   "max": 0.22037270761460623,
+   "min": 0.005917765689602408
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:17.182004-04:00",
+   "key": "step_size",
+   "labels": {
+    "chain": "1",
+    "fit": "evaluation"
+   },
+   "last": 0.15987287051955054,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:18.450027-04:00",
+   "max": 0.2844424484947313,
+   "min": 0.007710453462335977
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:19.799674-04:00",
+   "key": "tree_depth",
+   "labels": {
+    "chain": "0"
+   },
+   "last": 6.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:22.531439-04:00",
+   "max": 8.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:16.416706-04:00",
+   "key": "tree_depth",
+   "labels": {
+    "chain": "0",
+    "fit": "evaluation"
+   },
+   "last": 5.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:18.178027-04:00",
+   "max": 8.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:20.858083-04:00",
+   "key": "tree_depth",
+   "labels": {
+    "chain": "1"
+   },
+   "last": 6.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:23.026439-04:00",
+   "max": 8.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:17.182004-04:00",
+   "key": "tree_depth",
+   "labels": {
+    "chain": "1",
+    "fit": "evaluation"
+   },
+   "last": 6.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:18.450027-04:00",
+   "max": 8.0,
+   "min": 1.0
+  }
+ ],
+ "format": "mapi.test.dashboard-material/v1",
+ "input_contract": {
+  "input_table": {
+   "columns": [
+    {
+     "description": "The period (yyyy-MM-dd)",
+     "dims": [],
+     "freq": "QS",
+     "name": "period",
+     "role": "coord"
+    },
+    {
+     "description": "A level of col",
+     "dims": [],
+     "freq": null,
+     "name": "col",
+     "role": "coord"
+    },
+    {
+     "description": "A level of row",
+     "dims": [],
+     "freq": null,
+     "name": "row",
+     "role": "coord"
+    },
+    {
+     "description": "Leave empty. This model forecasts from the end of its fitted history",
+     "dims": [
+      "period",
+      "row",
+      "col"
+     ],
+     "freq": null,
+     "name": "count",
+     "role": "target"
+    }
+   ],
+   "conditions_on_actuals": false,
+   "horizon_dim": "period",
+   "rows": [
+    [
+     "2013-01-01",
+     0,
+     0,
+     null
+    ],
+    [
+     "2013-01-01",
+     0,
+     1,
+     null
+    ],
+    [
+     "2013-01-01",
+     1,
+     0,
+     null
+    ],
+    [
+     "2013-01-01",
+     1,
+     1,
+     null
+    ],
+    [
+     "2013-04-01",
+     0,
+     0,
+     null
+    ],
+    [
+     "2013-04-01",
+     0,
+     1,
+     null
+    ],
+    [
+     "2013-04-01",
+     1,
+     0,
+     null
+    ],
+    [
+     "2013-04-01",
+     1,
+     1,
+     null
+    ]
+   ]
+  },
+  "max_inline_bytes": 5242880,
+  "model_ref": "model://default/v017-e07-lgcp-055cc4-model@v1",
+  "snapshot": {
+   "conditions_on_actuals": false,
+   "fit_coords": {
+    "col": {
+     "contiguous": true,
+     "end": 4,
+     "freq": null,
+     "kind": "integer",
+     "size": 5,
+     "start": 0,
+     "step": 1,
+     "values": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ]
+    },
+    "period": {
+     "contiguous": true,
+     "end": "2012-10-01T00:00:00",
+     "freq": "QS",
+     "kind": "time",
+     "size": 16,
+     "start": "2009-01-01T00:00:00",
+     "step": null,
+     "values": null
+    },
+    "row": {
+     "contiguous": true,
+     "end": 5,
+     "freq": null,
+     "kind": "integer",
+     "size": 6,
+     "start": 0,
+     "step": 1,
+     "values": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+     ]
+    }
+   },
+   "future_required": [],
+   "horizon_dim": "period",
+   "input_schema": {
+    "dims": {
+     "col": {
+      "description": null,
+      "freq": null,
+      "kind": "integer",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "fixed"
+     },
+     "period": {
+      "description": null,
+      "freq": "QS",
+      "kind": "time",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "extend"
+     },
+     "row": {
+      "description": null,
+      "freq": null,
+      "kind": "integer",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "fixed"
+     }
+    },
+    "layout": "dense",
+    "ragged": [],
+    "vars": {
+     "count": {
+      "bounds": null,
+      "description": null,
+      "dims": [
+       "period",
+       "row",
+       "col"
+      ],
+      "dtype": "int64",
+      "future_required": false,
+      "index_of": null,
+      "missing": "forbid",
+      "missing_sentinel": null,
+      "role": "target",
+      "units": "events"
+     }
+    }
+   },
+   "inputs_stage": "raw",
+   "representation": "draws",
+   "schema_hash": "sha256:963b2317842f6879363656490a1858a2823fa6b6b58b46163fb9ab3f135d0f0f",
+   "score_modes": [
+    "evaluate",
+    "forecast",
+    "predict"
+   ]
+  }
+ },
+ "manifest": {
+  "about": {
+   "assumptions": [
+    "The rate changes smoothly from one cell to the cells near it",
+    "The map changes only from one era (a group of periods) to the next",
+    "The total for the full grid changes gradually from one period to the next",
+    "Events can occur in groups (more variation than a constant rate gives)"
+   ],
+   "avoid_when": [
+    "You have exact locations and want a model for each point (bin them into cells first)",
+    "The grid has thousands of cells (the fit becomes too slow)",
+    "You must know what occurs if a cause changes, such as a new policy (the model has no columns for causes)",
+    "You need a forecast further ahead than the model permits without a new fit"
+   ],
+   "data_needs": [
+    "A count of events for each cell and each period (quarters, months or years)",
+    "Cells of equal size, with the row and column number of each cell"
+   ],
+   "difficulty": "expert",
+   "example": "Count the earthquakes in each 25 km cell for each quarter from 2009 to 2017. Then forecast the map and the total for 2018 and 2019 with a 90% range.",
+   "expert_notes": "Log-Gaussian Cox process on a space-time grid (pymc-challenges E07, rung 4). log rate = alpha + g_t + log softmax over cells of f_era(s): the total per period (exp(alpha + g_t), g a centred Gaussian random walk) is separate from the share of each cell, so the field cannot inflate the total. f is a 2-D Hilbert-space GP (Matern-5/2, product basis of m_row x m_col sine functions, boundary factor c) whose basis coefficients follow a random walk over eras, anchored at the busiest fit era. Negative binomial counts (prior on 1/phi). The random-walk steps and the era coefficients cover max_extension periods after the fit, so forecasts use posterior draws of their prior. Lengthscale prior: inverse gamma with 90% of its mass between ell_lower_km and ell_upper_km.",
+   "fits": {
+    "data_shape": [
+     "grid",
+     "panel"
+    ],
+    "experience": [
+     "expert"
+    ],
+    "frequency": [
+     "monthly"
+    ],
+    "goal": [
+     "map_fields",
+     "forecast"
+    ],
+    "history": [
+     "medium",
+     "long"
+    ],
+    "speed": [
+     "minutes",
+     "can_wait"
+    ],
+    "uncertainty": [
+     "essential",
+     "nice"
+    ]
+   },
+   "outputs": [
+    "The expected events for each cell and period, with a range",
+    "The expected total for each period, with a range",
+    "Forecasts of the map and of the total for the next periods"
+   ],
+   "references": [
+    {
+     "title": "Moller, Syversveen and Waagepetersen (1998), Log Gaussian Cox processes",
+     "url": "https://doi.org/10.1111/1467-9469.00115"
+    },
+    {
+     "title": "Riutort-Mayol et al. (2022), Practical Hilbert space approximate Bayesian Gaussian processes",
+     "url": "https://arxiv.org/abs/2004.11408"
+    }
+   ],
+   "related": [
+    "ts.hsgp_trend"
+   ],
+   "summary_plain": "Finds where and when events such as earthquakes occur more often. It counts the events in each cell of a map for each period, and it forecasts the next periods with a range.",
+   "title": "Event counts on a map over time",
+   "typical_runtime": "minutes",
+   "use_when": [
+    "You have counts of events in each cell of a regular grid for each period",
+    "The area with many events moves or changes over time",
+    "You want a map of the expected rate and a map of the uncertainty"
+   ]
+  },
+  "capabilities": {
+   "checkpointable": true,
+   "identified_quantities": [
+    "alpha",
+    "sigma_g",
+    "ell",
+    "eta0",
+    "eta_d",
+    "inv_phi"
+   ],
+   "inference": "mcmc",
+   "representation": "draws",
+   "score_modes": [
+    "evaluate",
+    "forecast",
+    "predict"
+   ]
+  },
+  "description": "A log-Gaussian Cox process for event counts on a regular space-time grid: a random-walk total per period times a smooth 2-D map (Mat\u00e9rn-5/2 HSGP) that can change from era to era, with negative-binomial counts. Forecasts reach at most max_extension periods past the fit.",
+  "id": "sci.lgcp_grid",
+  "outputs": {
+   "rate": {
+    "description": "Events per cell and period: the expected intensity, or a predictive count draw",
+    "dims": [
+     "period",
+     "row",
+     "col"
+    ],
+    "grid": {
+     "colormap": "magma",
+     "frame": "period",
+     "log": true,
+     "origin": "lower",
+     "x": "col",
+     "y": "row"
+    },
+    "units_of": "count"
+   },
+   "total": {
+    "description": "Expected events per period in the whole grid",
+    "dims": [
+     "period"
+    ],
+    "units_of": "count"
+   }
+  },
+  "plots": [
+   "core.convergence",
+   "core.posterior_forest",
+   "core.ppc_fan",
+   "sci.field_map",
+   "sci.ensemble"
+  ],
+  "resources": {
+   "est_fit_seconds": 120
+  },
+  "schema_template": {
+   "params": {
+    "max_extension": {
+     "default": 8,
+     "type": "integer"
+    }
+   },
+   "template": {
+    "dims": {
+     "col": {
+      "kind": "integer",
+      "policy": "fixed"
+     },
+     "period": {
+      "kind": "time",
+      "max_extension": "{max_extension}",
+      "policy": "extend"
+     },
+     "row": {
+      "kind": "integer",
+      "policy": "fixed"
+     }
+    },
+    "vars": {
+     "count": {
+      "dims": [
+       "period",
+       "row",
+       "col"
+      ],
+      "dtype": "int64",
+      "role": "target"
+     }
+    }
+   }
+  },
+  "settings_schema": {
+   "additionalProperties": false,
+   "description": "Settings of ``sci.lgcp_grid`` (lengthscales are in km).",
+   "properties": {
+    "alpha_sigma": {
+     "default": 1.5,
+     "description": "Sd of the log total per period (centred on the fit mean)",
+     "exclusiveMinimum": 0,
+     "title": "Alpha Sigma",
+     "type": "number"
+    },
+    "anchor": {
+     "default": "busiest",
+     "description": "The era whose map gets the marginal prior; the other eras walk away from it (busiest = the fit era with the most events)",
+     "enum": [
+      "busiest",
+      "first",
+      "last"
+     ],
+     "title": "Anchor",
+     "type": "string"
+    },
+    "c": {
+     "default": 1.5,
+     "description": "HSGP boundary factor",
+     "exclusiveMinimum": 1.0,
+     "maximum": 5.0,
+     "title": "C",
+     "type": "number"
+    },
+    "cell_km": {
+     "default": 25.0,
+     "description": "Width of one grid cell in km",
+     "exclusiveMinimum": 0,
+     "title": "Cell Km",
+     "type": "number"
+    },
+    "ell_lower_km": {
+     "default": 15.0,
+     "description": "5% quantile of the lengthscale prior",
+     "exclusiveMinimum": 0,
+     "title": "Ell Lower Km",
+     "type": "number"
+    },
+    "ell_upper_km": {
+     "default": 100.0,
+     "description": "95% quantile of the lengthscale prior",
+     "exclusiveMinimum": 0,
+     "title": "Ell Upper Km",
+     "type": "number"
+    },
+    "era_periods": {
+     "default": 4,
+     "description": "Periods in one era: the spatial field changes from era to era (4 quarters = one map per year)",
+     "maximum": 1000,
+     "minimum": 1,
+     "title": "Era Periods",
+     "type": "integer"
+    },
+    "eta0_scale": {
+     "default": 2.0,
+     "description": "Half-normal scale of the anchor map",
+     "exclusiveMinimum": 0,
+     "title": "Eta0 Scale",
+     "type": "number"
+    },
+    "eta_d_scale": {
+     "default": 1.0,
+     "description": "Half-normal scale of the era increments",
+     "exclusiveMinimum": 0,
+     "title": "Eta D Scale",
+     "type": "number"
+    },
+    "field": {
+     "default": "era_walk",
+     "description": "era_walk: a new map each era (a random walk of maps); static: one map for all periods (the separable model)",
+     "enum": [
+      "era_walk",
+      "static"
+     ],
+     "title": "Field",
+     "type": "string"
+    },
+    "inv_phi_rate": {
+     "default": 1.0,
+     "description": "Exponential rate of 1/phi (0 = Poisson)",
+     "exclusiveMinimum": 0,
+     "title": "Inv Phi Rate",
+     "type": "number"
+    },
+    "likelihood": {
+     "default": "negbin",
+     "enum": [
+      "negbin",
+      "poisson"
+     ],
+     "title": "Likelihood",
+     "type": "string"
+    },
+    "m_col": {
+     "default": 14,
+     "description": "HSGP basis functions along columns",
+     "maximum": 60,
+     "minimum": 2,
+     "title": "M Col",
+     "type": "integer"
+    },
+    "m_row": {
+     "default": 10,
+     "description": "HSGP basis functions along rows",
+     "maximum": 60,
+     "minimum": 2,
+     "title": "M Row",
+     "type": "integer"
+    },
+    "max_extension": {
+     "default": 8,
+     "description": "Periods a forecast may reach past the fitted range without a refit (x-ui-level: basic)",
+     "maximum": 400,
+     "minimum": 1,
+     "title": "Max Extension",
+     "type": "integer"
+    },
+    "sigma_g_scale": {
+     "default": 0.5,
+     "description": "Half-normal scale of the RW step",
+     "exclusiveMinimum": 0,
+     "title": "Sigma G Scale",
+     "type": "number"
+    }
+   },
+   "title": "LGCPGridSettings",
+   "type": "object"
+  },
+  "version": "1.0.0"
+ },
+ "note": "predict over the fitted tail; `total` ignores kind=predictive (predictive_ok false); fields.json `kind` says expected even for predictive runs - use the request's kind",
+ "plugin": "sci.lgcp_grid",
+ "preset": "field_map",
+ "primary_output": "rate",
+ "refusals": [],
+ "representation": "draws",
+ "scorecard": {
+  "items": [
+   {
+    "category": "convergence",
+    "check": "convergence.rhat",
+    "code": "RHAT",
+    "docs_anchor": "check-convergence-rhat",
+    "message_expert": "max rank-normalised split r-hat 1.082 for 'z' (threshold 1.01)",
+    "message_plain": "The chains do not agree (R-hat 1.08). The results are not reliable.",
+    "metric": "r_hat_max",
+    "status": "fail",
+    "suggested_action": "Increase the tuning steps and the draws, or make the model simpler.",
+    "threshold": 1.05,
+    "title": "Chains agree",
+    "value": 1.081850649035234
+   },
+   {
+    "category": "convergence",
+    "check": "convergence.ess",
+    "code": "ESS",
+    "docs_anchor": "check-convergence-ess",
+    "message_expert": "min bulk ESS 33 for 'sigma_g' (threshold 200)",
+    "message_plain": "There are only 33 independent draws. The results are not stable.",
+    "metric": "ess_bulk_min",
+    "status": "fail",
+    "suggested_action": "Increase the number of draws.",
+    "threshold": 100.0,
+    "title": "Enough independent draws",
+    "value": 33.00148269484455
+   },
+   {
+    "category": "convergence",
+    "check": "convergence.divergences",
+    "code": "DIVERGENCES",
+    "docs_anchor": "check-convergence-divergences",
+    "message_expert": "0 divergent transitions in 200 draws",
+    "message_plain": "The sampler had no problems with the model.",
+    "metric": "divergence_rate",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 0.0,
+    "title": "The sampler had no problems",
+    "value": 0.0
+   },
+   {
+    "category": "holdout",
+    "check": "holdout.coverage_90",
+    "code": "HOLDOUT_COVERAGE",
+    "docs_anchor": "check-holdout-coverage-90",
+    "message_expert": "coverage_90 0.9833 over 120 held-out values",
+    "message_plain": "98% of the holdout values were in the 90% range. This is correct.",
+    "metric": "coverage_90",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 0.1,
+    "title": "The uncertainty is correct",
+    "value": 0.9833333333333333
+   },
+   {
+    "category": "plausibility",
+    "check": "plausibility.prior_overlap",
+    "code": "PRIOR_OVERLAP",
+    "docs_anchor": "check-plausibility-prior-overlap",
+    "message_expert": "prior/posterior overlap 0.56 for 'sigma_g'",
+    "message_plain": "The data moved each parameter away from its prior.",
+    "metric": "prior_overlap_max",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 0.9,
+    "title": "The data changed the model",
+    "value": 0.565
+   },
+   {
+    "category": "data",
+    "check": "data.missing",
+    "code": "DATA_MISSING",
+    "docs_anchor": "check-data-missing",
+    "message_expert": "0 of 480 values missing",
+    "message_plain": "Only 0% of the values are missing.",
+    "metric": "missing_fraction",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 0.05,
+    "title": "Few missing values",
+    "value": 0.0
+   },
+   {
+    "category": "data",
+    "check": "data.history",
+    "code": "DATA_HISTORY",
+    "docs_anchor": "check-data-history",
+    "message_expert": "16 periods at QS (4 per year) along 'period' at the model stage",
+    "message_plain": "There are 4.0 years of history. This is enough to find the seasonality.",
+    "metric": "history_years",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 2.0,
+    "title": "Enough history",
+    "value": 4.0
+   }
+  ],
+  "overall": "fail",
+  "skipped": {
+   "data.spend_variation": "the dataset has no spend variable along time",
+   "holdout.hit_rate": "only models of a categorical target (choice models) report a hit rate. Evaluate accuracy_lift on one of these models",
+   "holdout.mape": "the spec does not evaluate it (evaluate.metrics) or has no holdout split",
+   "plausibility.baseline_share": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.negative_roi": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.roi_absurd": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.share_outlier": "the model has no response curves (outputs.derived: response_curves)"
+  }
+ },
+ "scores": {
+  "baseline": {
+   "counterfactual": null,
+   "fields": {
+    "caption_plain": "Shows each output of the score on its grid. Select the mean, the uncertainty or a draw. Use the slider to go through the frames.",
+    "fields": [
+     {
+      "color": "single",
+      "colormap": "magma",
+      "description": "Events per cell and period: the expected intensity, or a predictive count draw",
+      "downsampled": false,
+      "encoding": "log10",
+      "facet": {},
+      "frame_dim": "quarter",
+      "frames": [
+       {
+        "draws": [
+         {
+          "data": "A3Bzbm6lBp8udDqBnrX+/xu+pjpzUmrIeuiwigAAAxYfd96lc33xR/4A/y9qh3qOY64xC5M5fWJTX5+d",
+          "hi": 0.7168616284962314,
+          "lo": -1.1306372780194829
+         },
+         {
+          "data": "CYEtibObu7HnfvSmCM1F/fnfAaCjnYzw/v/xu7Fvuzk4nXGs/J1sewAARkByasqa+Lg9OulKJVHIc6GS",
+          "hi": 0.6837755882630449,
+          "lo": -1.4679717134605115
+         },
+         {
+          "data": "2S8AANCJo6DtBmFc8Y/+/9Ttb1i8bG3ObeSNiJY0GD6hkLVtBSwmRKsR8VrMRWZb3rarFT0/o0+DcKij",
+          "hi": 0.44294467997434867,
+          "lo": -1.0825191189859389
+         },
+         {
+          "data": "D0rDVwyhlsHKj2aBYr7+/z3QtmNahVvbm9kKiP1PHkPubjBnVFpgjWonEARmNU1t38AzRwAAtTcucTyn",
+          "hi": 0.6728477699028022,
+          "lo": -1.2064161862441793
+         },
+         {
+          "data": "W3ExWWa+voeLdmCeCrr+/1+7wWvPeaz0APWAwAdUYxO1gWzBvLXbgwAAcgiKg0yoHNH9Q6QmYEjMfQ/G",
+          "hi": 0.436344121559251,
+          "lo": -1.300586631792359
+         },
+         {
+          "data": "GhZdKiaZyMmMXfNk+anr8k/XAAAhcv7/o+LkkF4DDDEWuV+QP3DNdr8ZC1rVc3CNOr1tLzhK9nSCiYmn",
+          "hi": 0.546957706820119,
+          "lo": -1.3420227682470083
+         },
+         {
+          "data": "lQttHv16jqeEWoNKAoz+//3RTl/fW8XVXei/g3ciPTxTnqqUeV9hSg4jhDOtcsCJNb20EQAAlzwcdbiw",
+          "hi": 0.6505171563369896,
+          "lo": -1.0320181997637388
+         },
+         {
+          "data": "LE3CL12gBsSPknGAZsw3+3nNloH8lf7/ss9blfU5pUbqpMyPFIImWwAA/1/LZJKHjK7EHXhMJxYcZrmT",
+          "hi": 0.7926054519420729,
+          "lo": -1.2957757810466042
+         },
+         {
+          "data": "ihDjIAB8Ba/vYcZt/shP8yOm2UD/eP7/E+dGacooXSyGo1y1fXn3V30br1CLduCQrp20OzQoAACNUyuh",
+          "hi": 0.8733989718743979,
+          "lo": -1.2303679936821785
+         },
+         {
+          "data": "FUWQY82OgbMWcqZoLuz+/22+ME+ZNHm/7NpThAYWAABYRrGQnIlcZYYSDDT7hwa/7tGUI6Y0y2K5pWWm",
+          "hi": 0.3809571961660937,
+          "lo": -1.3572423061143797
+         },
+         {
+          "data": "JGkQWqWfbOkIu0qUM97+/5z/xqAcVFPQa/Ka4H56TyFqcFOvA8XtnGJH6To5WxCdocYkVq8PAAAzZoOp",
+          "hi": 0.41929514309978666,
+          "lo": -1.3259114195786295
+         },
+         {
+          "data": "I2uWbViuq8xjk2Sa29b+/9rJjGFgfLToau86aXwKHyULnGa88mFKUQAASEEUi2yTsMQIG4sJxkaGbbmc",
+          "hi": 0.5789881625599107,
+          "lo": -1.1278349563293057
+         },
+         {
+          "data": "vxnsInKZnLn7X6BK7pbD7rGgGDBiVUv1/v8OoXUbqwfvlAq88a1CawAAWiA8a/WTzKtOWAM5CEPEefuD",
+          "hi": 0.7194360258415634,
+          "lo": -1.2500320667932825
+         },
+         {
+          "data": "EFWvV76GW8lMXVapmtn+/8LgsGLbrdz/y/GHkcA9ozevl7mk2nwAeAAA5DtaYIaRQsldPbkwcg6RW7WR",
+          "hi": 0.5257622387448123,
+          "lo": -1.3607294804239785
+         },
+         {
+          "data": "6QpGVKOasJyTTTtW5MH+/4zWBDfSQQ/YMdn7lwAAVATalHZ95JKFWnkEFWNHT8iYZcgMDOlJvyeuJy+B",
+          "hi": 0.5238702545819722,
+          "lo": -0.9975459195263088
+         },
+         {
+          "data": "rGiCeOm2KMytjVTMRL/+/+3TL4Qjm2HRrMy3oUdTVCAvmaOb3pSLYX42BnN4aDOQDqySh0x2AACRYO65",
+          "hi": 0.6994818510022536,
+          "lo": -1.9161531071003512
+         }
+        ],
+        "label": "2012-01-01",
+        "mean": {
+         "data": "ezc/QZKQuK1ya454wMH+/4PIpVduYRviJOTdi1MlqwzvfvWLF3iBXAAAsTQoT7aI9rw9I1Aq2xapXR6i",
+         "hi": 0.6147724392388543,
+         "lo": -1.053871238670609
+        },
+        "q05": {
+         "data": "NTe5Rt6bwrbHczqBX8v+/3fNbGOhcYXkUuphmtE0kSEVi8OcvYuvawAAUz9KYHqSc8PWJaA3DCcjb8av",
+         "hi": 0.36601269004580506,
+         "lo": -1.6837149212391982
+        },
+        "q95": {
+         "data": "tkEqQ+KIcK7mbph3Y7/+/w7BOVQVWmnn4+IKiboihAnSeYWKTXM6WwAAfDHGTgqG27YlJ4snnRgxUb+f",
+         "hi": 0.8030013558037221,
+         "lo": -0.7126870062674593
+        },
+        "sd": {
+         "data": "rzqsQcOFw6o2c0Zyqrj+/4LCoFFgTBvtV96rej4bAAACgfaDEGdATyUCQC/sQb+Cfrh4IhssLRDQVweZ",
+         "hi": 0.09439444660060967,
+         "lo": -1.2154905384737398
+        }
+       },
+       {
+        "draws": [
+         {
+          "data": "A3Bzbm6lBp8udDqBnrX+/xu+pjpzUmrIeuiwigAAAxYfd96lc33xR/4A/y9qh3qOY64xC5M5fWJTX5+d",
+          "hi": 0.7721531656304039,
+          "lo": -1.0753457408853104
+         },
+         {
+          "data": "CYEtibObu7HnfvSmCM1F/fnfAaCjnYzw/v/xu7Fvuzk4nXGs/J1sewAARkByasqa+Lg9OulKJVHIc6GS",
+          "hi": 0.7042000390217422,
+          "lo": -1.447547262701814
+         },
+         {
+          "data": "2S8AANCJo6DtBmFc8Y/+/9Ttb1i8bG3ObeSNiJY0GD6hkLVtBSwmRKsR8VrMRWZb3rarFT0/o0+DcKij",
+          "hi": 0.6791044107251032,
+          "lo": -0.8463593882351845
+         },
+         {
+          "data": "D0rDVwyhlsHKj2aBYr7+/z3QtmNahVvbm9kKiP1PHkPubjBnVFpgjWonEARmNU1t38AzRwAAtTcucTyn",
+          "hi": 0.7107959889715376,
+          "lo": -1.1684679671754437
+         },
+         {
+          "data": "W3ExWWa+voeLdmCeCrr+/1+7wWvPeaz0APWAwAdUYxO1gWzBvLXbgwAAcgiKg0yoHNH9Q6QmYEjMfQ/G",
+          "hi": 0.5789873777770376,
+          "lo": -1.1579433755745723
+         },
+         {
+          "data": "GhZdKiaZyMmMXfNk+anr8k/XAAAhcv7/o+LkkF4DDDEWuV+QP3DNdr8ZC1rVc3CNOr1tLzhK9nSCiYmn",
+          "hi": 0.6533428824220087,
+          "lo": -1.2356375926451184
+         },
+         {
+          "data": "lQttHv16jqeEWoNKAoz+//3RTl/fW8XVXei/g3ciPTxTnqqUeV9hSg4jhDOtcsCJNb20EQAAlzwcdbiw",
+          "hi": 0.6967753651802455,
+          "lo": -0.9857599909204827
+         },
+         {
+          "data": "LE3CL12gBsSPknGAZsw3+3nNloH8lf7/ss9blfU5pUbqpMyPFIImWwAA/1/LZJKHjK7EHXhMJxYcZrmT",
+          "hi": 0.7299318967065992,
+          "lo": -1.3584493362820778
+         },
+         {
+          "data": "ihDjIAB8Ba/vYcZt/shP8yOm2UD/eP7/E+dGacooXSyGo1y1fXn3V30br1CLduCQrp20OzQoAACNUyuh",
+          "hi": 0.8395405372280222,
+          "lo": -1.2642264283285543
+         },
+         {
+          "data": "FUWQY82OgbMWcqZoLuz+/22+ME+ZNHm/7NpThAYWAABYRrGQnIlcZYYSDDT7hwa/7tGUI6Y0y2K5pWWm",
+          "hi": 0.5490939938609898,
+          "lo": -1.1891055084194837
+         },
+         {
+          "data": "JGkQWqWfbOkIu0qUM97+/5z/xqAcVFPQa/Ka4H56TyFqcFOvA8XtnGJH6To5WxCdocYkVq8PAAAzZoOp",
+          "hi": 0.5768382712169434,
+          "lo": -1.1683682914614728
+         },
+         {
+          "data": "I2uWbViuq8xjk2Sa29b+/9rJjGFgfLToau86aXwKHyULnGa88mFKUQAASEEUi2yTsMQIG4sJxkaGbbmc",
+          "hi": 0.6487922048510465,
+          "lo": -1.0580309140381698
+         },
+         {
+          "data": "vxnsInKZnLn7X6BK7pbD7rGgGDBiVUv1/v8OoXUbqwfvlAq88a1CawAAWiA8a/WTzKtOWAM5CEPEefuD",
+          "hi": 0.7445930147857124,
+          "lo": -1.2248750778491335
+         },
+         {
+          "data": "EFWvV76GW8lMXVapmtn+/8LgsGLbrdz/y/GHkcA9ozevl7mk2nwAeAAA5DtaYIaRQsldPbkwcg6RW7WR",
+          "hi": 0.6196289227500973,
+          "lo": -1.2668627964186934
+         },
+         {
+          "data": "6QpGVKOasJyTTTtW5MH+/4zWBDfSQQ/YMdn7lwAAVATalHZ95JKFWnkEFWNHT8iYZcgMDOlJvyeuJy+B",
+          "hi": 0.5089454383111137,
+          "lo": -1.0124707357971672
+         },
+         {
+          "data": "rGiCeOm2KMytjVTMRL/+/+3TL4Qjm2HRrMy3oUdTVCAvmaOb3pSLYX42BnN4aDOQDqySh0x2AACRYO65",
+          "hi": 0.7958572518768817,
+          "lo": -1.8197777062257232
+         }
+        ],
+        "label": "2012-04-01",
+        "mean": {
+         "data": "PTe0QBqRMq4Sa8R4scH+/wvJF1grYtvhLuRzjDUmOg3tfueLi3jDXAAAGDVeT8iIn7zrInwqKhiwXVei",
+         "hi": 0.6775571886421302,
+         "lo": -0.9955654706788839
+        },
+        "q05": {
+         "data": "kzgLTMScwrYtdciD78z+/0jQ6l7acsjln+s1mzs5DiOnj2WdS4rgcAAAMETDXf+VNMhfKWw32Cjgb2Ku",
+         "hi": 0.44250428318661117,
+         "lo": -1.621113931040795
+        },
+        "q95": {
+         "data": "hTnbPvKMrq/Vahx1K73+/+/JC1hVWcThr+EbhUclAg7kdWuIw3GmWgAAPTssSp+IULVSJG8m4B0cVECg",
+         "hi": 0.8596277865111964,
+         "lo": -0.6548822265748022
+        },
+        "sd": {
+         "data": "+zUROwyK86zBbyxyFLX+/8LIRlG/UennBtzDffUaAABTfiZ+cWdmTzUAky64PzqA7LGXH08rHxamUBqb",
+         "hi": 0.13385184001261347,
+         "lo": -1.1588922415426168
+        }
+       },
+       {
+        "draws": [
+         {
+          "data": "A3Bzbm6lBp8udDqBnrX+/xu+pjpzUmrIeuiwigAAAxYfd96lc33xR/4A/y9qh3qOY64xC5M5fWJTX5+d",
+          "hi": 0.5268125013929555,
+          "lo": -1.3206864051227587
+         },
+         {
+          "data": "CYEtibObu7HnfvSmCM1F/fnfAaCjnYzw/v/xu7Fvuzk4nXGs/J1sewAARkByasqa+Lg9OulKJVHIc6GS",
+          "hi": 0.6961975519731114,
+          "lo": -1.4555497497504448
+         },
+         {
+          "data": "2S8AANCJo6DtBmFc8Y/+/9Ttb1i8bG3ObeSNiJY0GD6hkLVtBSwmRKsR8VrMRWZb3rarFT0/o0+DcKij",
+          "hi": 0.6449032506360534,
+          "lo": -0.8805605483242342
+         },
+         {
+          "data": "D0rDVwyhlsHKj2aBYr7+/z3QtmNahVvbm9kKiP1PHkPubjBnVFpgjWonEARmNU1t38AzRwAAtTcucTyn",
+          "hi": 0.7201912646487189,
+          "lo": -1.1590726914982625
+         },
+         {
+          "data": "W3ExWWa+voeLdmCeCrr+/1+7wWvPeaz0APWAwAdUYxO1gWzBvLXbgwAAcgiKg0yoHNH9Q6QmYEjMfQ/G",
+          "hi": 0.5496162680183029,
+          "lo": -1.1873144853333069
+         },
+         {
+          "data": "GhZdKiaZyMmMXfNk+anr8k/XAAAhcv7/o+LkkF4DDDEWuV+QP3DNdr8ZC1rVc3CNOr1tLzhK9nSCiYmn",
+          "hi": 0.7293841138362299,
+          "lo": -1.1595963612308973
+         },
+         {
+          "data": "lQttHv16jqeEWoNKAoz+//3RTl/fW8XVXei/g3ciPTxTnqqUeV9hSg4jhDOtcsCJNb20EQAAlzwcdbiw",
+          "hi": 0.5972658630270351,
+          "lo": -1.0852694930736932
+         },
+         {
+          "data": "LE3CL12gBsSPknGAZsw3+3nNloH8lf7/ss9blfU5pUbqpMyPFIImWwAA/1/LZJKHjK7EHXhMJxYcZrmT",
+          "hi": 0.7805601379030302,
+          "lo": -1.3078210950856468
+         },
+         {
+          "data": "ihDjIAB8Ba/vYcZt/shP8yOm2UD/eP7/E+dGacooXSyGo1y1fXn3V30br1CLduCQrp20OzQoAACNUyuh",
+          "hi": 0.8970715322266629,
+          "lo": -1.2066954333299136
+         },
+         {
+          "data": "FUWQY82OgbMWcqZoLuz+/22+ME+ZNHm/7NpThAYWAABYRrGQnIlcZYYSDDT7hwa/7tGUI6Y0y2K5pWWm",
+          "hi": 0.5838995478602611,
+          "lo": -1.1542999544202124
+         },
+         {
+          "data": "JGkQWqWfbOkIu0qUM97+/5z/xqAcVFPQa/Ka4H56TyFqcFOvA8XtnGJH6To5WxCdocYkVq8PAAAzZoOp",
+          "hi": 0.34636300593796354,
+          "lo": -1.3988435567404527
+         },
+         {
+          "data": "I2uWbViuq8xjk2Sa29b+/9rJjGFgfLToau86aXwKHyULnGa88mFKUQAASEEUi2yTsMQIG4sJxkaGbbmc",
+          "hi": 0.5618463029335717,
+          "lo": -1.1449768159556446
+         },
+         {
+          "data": "vxnsInKZnLn7X6BK7pbD7rGgGDBiVUv1/v8OoXUbqwfvlAq88a1CawAAWiA8a/WTzKtOWAM5CEPEefuD",
+          "hi": 0.7925944214478149,
+          "lo": -1.176873671187031
+         },
+         {
+          "data": "EFWvV76GW8lMXVapmtn+/8LgsGLbrdz/y/GHkcA9ozevl7mk2nwAeAAA5DtaYIaRQsldPbkwcg6RW7WR",
+          "hi": 0.6668903648222998,
+          "lo": -1.219601354346491
+         },
+         {
+          "data": "6QpGVKOasJyTTTtW5MH+/4zWBDfSQQ/YMdn7lwAAVATalHZ95JKFWnkEFWNHT8iYZcgMDOlJvyeuJy+B",
+          "hi": 0.4935332894124391,
+          "lo": -1.0278828846958419
+         },
+         {
+          "data": "rGiCeOm2KMytjVTMRL/+/+3TL4Qjm2HRrMy3oUdTVCAvmaOb3pSLYX42BnN4aDOQDqySh0x2AACRYO65",
+          "hi": 0.6188984787897701,
+          "lo": -1.9967364793128348
+         }
+        ],
+        "label": "2012-07-01",
+        "mean": {
+         "data": "AzdZQSyRta1karF338H+/3nIcFcQYgvif+TSi6El0A1Yfw6MH3iUXAAAnTWvTw+J67yeIkgrJBlVXnui",
+         "hi": 0.6520858458687624,
+         "lo": -1.024339062758327
+        },
+        "q05": {
+         "data": "sjAgR2qcY7iUbliBZ8n+/y3SfmAMcPrire3xnvY26CLXjgSbiY82awAAGT+VWFuVVsZJKB4tKhvJaR2u",
+         "hi": 0.38566319862518655,
+         "lo": -1.6124850370378945
+        },
+        "q95": {
+         "data": "ijWoOomHcKw1ZHNvUL7+/9PFBFG5VrrmbuStgxUYqwk/fsCEL29tUwAA5DRuRseFrLWiGhomxRqhVOGb",
+         "hi": 0.846908592636447,
+         "lo": -0.6523533963379254
+        },
+        "sd": {
+         "data": "qDO/PBmI6qasZs5lnLf+/5K+50w2UKXoLuHldGQZ1gO8gVh/tWPzSwAA0DEkQciA4bb5GlIsaRnqUimd",
+         "hi": 0.15583493754734865,
+         "lo": -1.1819445304789424
+        }
+       },
+       {
+        "draws": [
+         {
+          "data": "A3Bzbm6lBp8udDqBnrX+/xu+pjpzUmrIeuiwigAAAxYfd96lc33xR/4A/y9qh3qOY64xC5M5fWJTX5+d",
+          "hi": 0.7971185741893629,
+          "lo": -1.0503803323263514
+         },
+         {
+          "data": "CYEtibObu7HnfvSmCM1F/fnfAaCjnYzw/v/xu7Fvuzk4nXGs/J1sewAARkByasqa+Lg9OulKJVHIc6GS",
+          "hi": 0.6331586806692725,
+          "lo": -1.5185886210542838
+         },
+         {
+          "data": "2S8AANCJo6DtBmFc8Y/+/9Ttb1i8bG3ObeSNiJY0GD6hkLVtBSwmRKsR8VrMRWZb3rarFT0/o0+DcKij",
+          "hi": 0.7106442934679917,
+          "lo": -0.8148195054922959
+         },
+         {
+          "data": "D0rDVwyhlsHKj2aBYr7+/z3QtmNahVvbm9kKiP1PHkPubjBnVFpgjWonEARmNU1t38AzRwAAtTcucTyn",
+          "hi": 0.6883530775660794,
+          "lo": -1.190910878580902
+         },
+         {
+          "data": "W3ExWWa+voeLdmCeCrr+/1+7wWvPeaz0APWAwAdUYxO1gWzBvLXbgwAAcgiKg0yoHNH9Q6QmYEjMfQ/G",
+          "hi": 0.7295794489409504,
+          "lo": -1.0073513044106595
+         },
+         {
+          "data": "GhZdKiaZyMmMXfNk+anr8k/XAAAhcv7/o+LkkF4DDDEWuV+QP3DNdr8ZC1rVc3CNOr1tLzhK9nSCiYmn",
+          "hi": 0.6575736602742247,
+          "lo": -1.2314068147929025
+         },
+         {
+          "data": "lQttHv16jqeEWoNKAoz+//3RTl/fW8XVXei/g3ciPTxTnqqUeV9hSg4jhDOtcsCJNb20EQAAlzwcdbiw",
+          "hi": 0.8149075885558774,
+          "lo": -0.8676277675448509
+         },
+         {
+          "data": "LE3CL12gBsSPknGAZsw3+3nNloH8lf7/ss9blfU5pUbqpMyPFIImWwAA/1/LZJKHjK7EHXhMJxYcZrmT",
+          "hi": 0.7337404237897487,
+          "lo": -1.3546408091989284
+         },
+         {
+          "data": "ihDjIAB8Ba/vYcZt/shP8yOm2UD/eP7/E+dGacooXSyGo1y1fXn3V30br1CLduCQrp20OzQoAACNUyuh",
+          "hi": 0.8845482869305366,
+          "lo": -1.21921867862604
+         },
+         {
+          "data": "FUWQY82OgbMWcqZoLuz+/22+ME+ZNHm/7NpThAYWAABYRrGQnIlcZYYSDDT7hwa/7tGUI6Y0y2K5pWWm",
+          "hi": 0.7222183413190604,
+          "lo": -1.015981160961413
+         },
+         {
+          "data": "JGkQWqWfbOkIu0qUM97+/5z/xqAcVFPQa/Ka4H56TyFqcFOvA8XtnGJH6To5WxCdocYkVq8PAAAzZoOp",
+          "hi": 0.44569156058481224,
+          "lo": -1.299515002093604
+         },
+         {
+          "data": "I2uWbViuq8xjk2Sa29b+/9rJjGFgfLToau86aXwKHyULnGa88mFKUQAASEEUi2yTsMQIG4sJxkaGbbmc",
+          "hi": 0.7112626540075943,
+          "lo": -0.9955604648816222
+         },
+         {
+          "data": "vxnsInKZnLn7X6BK7pbD7rGgGDBiVUv1/v8OoXUbqwfvlAq88a1CawAAWiA8a/WTzKtOWAM5CEPEefuD",
+          "hi": 0.8072898424333985,
+          "lo": -1.1621782502014473
+         },
+         {
+          "data": "EFWvV76GW8lMXVapmtn+/8LgsGLbrdz/y/GHkcA9ozevl7mk2nwAeAAA5DtaYIaRQsldPbkwcg6RW7WR",
+          "hi": 0.6561210849651434,
+          "lo": -1.2303706342036473
+         },
+         {
+          "data": "6QpGVKOasJyTTTtW5MH+/4zWBDfSQQ/YMdn7lwAAVATalHZ95JKFWnkEFWNHT8iYZcgMDOlJvyeuJy+B",
+          "hi": 0.544677492699927,
+          "lo": -0.976738681408354
+         },
+         {
+          "data": "rGiCeOm2KMytjVTMRL/+/+3TL4Qjm2HRrMy3oUdTVCAvmaOb3pSLYX42BnN4aDOQDqySh0x2AACRYO65",
+          "hi": 0.8639489111176027,
+          "lo": -1.7516860469850022
+         }
+        ],
+        "label": "2012-10-01",
+        "mean": {
+         "data": "ajcpQeWQQq4ja+l4tMH+/0vJDVhKYvvhcORnjBgmRw0hfzeMyHgzXQAAETW1T62Jdr3rItYqlRhAXu+i",
+         "hi": 0.7192613135869339,
+         "lo": -0.9543455966965532
+        },
+        "q05": {
+         "data": "vTYZRl6bH7Uqduh8Zsz+//3NaV/WcQfnPOp1m/IyXyCii8KawY5zawAAf0L5X16ThMMeLLQvxSQmakCv",
+         "hi": 0.48490602961484003,
+         "lo": -1.5748111480749858
+        },
+        "q95": {
+         "data": "WT3aPSqMbLGYa712Nr3+/+vKbVTCWUbm8+MghUEfDxRbf76KunkXXAAAKjIcTqSM5LfKHpcuGSFaW1Gj",
+         "hi": 0.8951179770221669,
+         "lo": -0.6180693321841908
+        },
+        "sd": {
+         "data": "rjrRPBuFFrBqb8l16Lb+/6zOwVFuUzPsmd+DftIcAACHf0mCamwJVp4BTi/NRHmKabuVIn4uyxlcVY2j",
+         "hi": 0.17690745470912994,
+         "lo": -1.1262680543866077
+        }
+       }
+      ],
+      "height": 6,
+      "kind": "scalar",
+      "log": true,
+      "n_draws": 200,
+      "omitted_frames": 0,
+      "origin": "lower",
+      "output": "rate",
+      "rgb_scale": "uint8",
+      "source_height": 6,
+      "source_width": 5,
+      "width": 5,
+      "x_coords": [
+       0,
+       1,
+       2,
+       3,
+       4
+      ],
+      "x_dim": "col",
+      "y_coords": [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5
+      ],
+      "y_dim": "row"
+     }
+    ],
+    "format": "mapi.model-explorer.fields/v1",
+    "kind": "expected",
+    "omitted": [],
+    "warnings_plain": []
+   },
+   "forecast": null,
+   "horizon": null,
+   "inline": false,
+   "mode": "predict",
+   "output": {
+    "summary": [
+     "mean",
+     "hdi_90"
+    ]
+   },
+   "probe_case": "predict_tail__readout",
+   "result": {
+    "aggregation_flagged": false,
+    "bundle_id": "ca672b1926817470defeec8fc59f4991",
+    "groups": [
+     "/summary"
+    ],
+    "issues": [],
+    "kind": "expected",
+    "mode": "predict",
+    "names": "dataset",
+    "output_space": {
+     "rate": "raw",
+     "total": "raw"
+    },
+    "representation": "draws",
+    "retransform": {
+     "rate": "none",
+     "total": "none"
+    },
+    "units": "original"
+   },
+   "summary": {
+    "tables": [
+     {
+      "columns": [
+       "quarter",
+       "mean",
+       "hdi_90_lower",
+       "hdi_90_upper"
+      ],
+      "dims": [
+       "quarter"
+      ],
+      "plots": [
+       "core.ppc_fan"
+      ],
+      "rows": [
+       [
+        "2012-01-01",
+        24.734793119922653,
+        17.202360821740317,
+        32.230223284266344
+       ],
+       [
+        "2012-04-01",
+        28.538354148717055,
+        21.64414072728894,
+        35.028634115037676
+       ],
+       [
+        "2012-07-01",
+        26.8539759802657,
+        17.6934577187987,
+        33.75229452432893
+       ],
+       [
+        "2012-10-01",
+        31.503232606357006,
+        22.68698558772449,
+        38.99014195492696
+       ]
+      ],
+      "time_dim": "quarter",
+      "variable": "total"
+     },
+     {
+      "columns": [
+       "quarter",
+       "row",
+       "col",
+       "mean",
+       "hdi_90_lower",
+       "hdi_90_upper"
+      ],
+      "dims": [
+       "quarter",
+       "row",
+       "col"
+      ],
+      "plots": [
+       "sci.field_map"
+      ],
+      "rows": [
+       [
+        "2012-01-01",
+        0,
+        0,
+        0.20313052827178552,
+        0.033764293540705946,
+        0.3859234423856211
+       ],
+       [
+        "2012-01-01",
+        0,
+        1,
+        0.2351966769837402,
+        0.06359100741504127,
+        0.4279021153420912
+       ],
+       [
+        "2012-01-01",
+        0,
+        2,
+        0.7735690374076459,
+        0.3080535474003371,
+        1.1932203500360261
+       ],
+       [
+        "2012-01-01",
+        0,
+        3,
+        1.1981047763256998,
+        0.49947626111863885,
+        1.7928563949111522
+       ],
+       [
+        "2012-01-01",
+        0,
+        4,
+        0.44309857942810765,
+        0.10124724377486731,
+        0.7940283483005801
+       ],
+       [
+        "2012-01-01",
+        1,
+        0,
+        0.5394540737035323,
+        0.1997161303838428,
+        0.9079306787284162
+       ],
+       [
+        "2012-01-01",
+        1,
+        1,
+        1.6182906706271312,
+        0.7332299552783933,
+        2.3891798241038664
+       ],
+       [
+        "2012-01-01",
+        1,
+        2,
+        4.118816456181429,
+        2.1719337756580788,
+        5.895303086711699
+       ],
+       [
+        "2012-01-01",
+        1,
+        3,
+        1.7911404037431184,
+        0.8624966025647639,
+        2.638620703563232
+       ],
+       [
+        "2012-01-01",
+        1,
+        4,
+        0.32916477001998196,
+        0.11568590977775542,
+        0.5791394415092511
+       ],
+       [
+        "2012-01-01",
+        2,
+        0,
+        0.38125929640170925,
+        0.15086419174815854,
+        0.613104414468818
+       ],
+       [
+        "2012-01-01",
+        2,
+        1,
+        2.6300873130369498,
+        1.1980715714049923,
+        3.977759441990411
+       ],
+       [
+        "2012-01-01",
+        2,
+        2,
+        2.7115713017551553,
+        1.3947831667196202,
+        3.94065000900264
+       ],
+       [
+        "2012-01-01",
+        2,
+        3,
+        0.7207773685878878,
+        0.3018826030429361,
+        1.1356941620891918
+       ],
+       [
+        "2012-01-01",
+        2,
+        4,
+        0.15467797629851399,
+        0.03530182332621329,
+        0.26291471749776407
+       ],
+       [
+        "2012-01-01",
+        3,
+        0,
+        0.10683505681609246,
+        0.027475954242603358,
+        0.1938696578750125
+       ],
+       [
+        "2012-01-01",
+        3,
+        1,
+        0.5936465244289262,
+        0.22153348260653502,
+        0.943781733634812
+       ],
+       [
+        "2012-01-01",
+        3,
+        2,
+        0.7218130686623735,
+        0.2934393456850921,
+        1.0887520665536314
+       ],
+       [
+        "2012-01-01",
+        3,
+        3,
+        0.5357012503085062,
+        0.20603368953892479,
+        0.8217387587276523
+       ],
+       [
+        "2012-01-01",
+        3,
+        4,
+        0.3540887403225183,
+        0.13193612539642782,
+        0.5700610226448127
+       ],
+       [
+        "2012-01-01",
+        4,
+        0,
+        0.08833417582233968,
+        0.009625505520950648,
+        0.16279891064027904
+       ],
+       [
+        "2012-01-01",
+        4,
+        1,
+        0.1947979186025377,
+        0.054157514549847574,
+        0.3329701930883725
+       ],
+       [
+        "2012-01-01",
+        4,
+        2,
+        0.28980274258488037,
+        0.10827567640259383,
+        0.49844819201186336
+       ],
+       [
+        "2012-01-01",
+        4,
+        3,
+        0.6874684029306968,
+        0.2881423936331256,
+        1.0639285317793155
+       ],
+       [
+        "2012-01-01",
+        4,
+        4,
+        1.5060109125550978,
+        0.6597752415699265,
+        2.2262030108141024
+       ],
+       [
+        "2012-01-01",
+        5,
+        0,
+        0.14990354310894602,
+        0.024899329296159508,
+        0.264918601433877
+       ],
+       [
+        "2012-01-01",
+        5,
+        1,
+        0.16669923126330183,
+        0.02767879202502851,
+        0.29694176370704106
+       ],
+       [
+        "2012-01-01",
+        5,
+        2,
+        0.12447890424162499,
+        0.03047308515109058,
+        0.2358994333099493
+       ],
+       [
+        "2012-01-01",
+        5,
+        3,
+        0.36028754678755875,
+        0.17175078682892914,
+        0.594342487866652
+       ],
+       [
+        "2012-01-01",
+        5,
+        4,
+        1.0065858727148669,
+        0.48977449912885834,
+        1.6069306855520897
+       ],
+       [
+        "2012-04-01",
+        0,
+        0,
+        0.23198567771801282,
+        0.040256351248586245,
+        0.4260759790227099
+       ],
+       [
+        "2012-04-01",
+        0,
+        1,
+        0.2675045787123398,
+        0.08356264812526298,
+        0.4929102404122296
+       ],
+       [
+        "2012-04-01",
+        0,
+        2,
+        0.8969831675866021,
+        0.37424922991092985,
+        1.3612289493948717
+       ],
+       [
+        "2012-04-01",
+        0,
+        3,
+        1.3897454702701384,
+        0.5795300721963664,
+        2.2283002710418356
+       ],
+       [
+        "2012-04-01",
+        0,
+        4,
+        0.5060846883577154,
+        0.14515034833831014,
+        0.8497434718956296
+       ],
+       [
+        "2012-04-01",
+        1,
+        0,
+        0.6219411346879332,
+        0.29620011234189303,
+        1.1146997937089134
+       ],
+       [
+        "2012-04-01",
+        1,
+        1,
+        1.8637113413951243,
+        1.0265784982568418,
+        2.7543336464039996
+       ],
+       [
+        "2012-04-01",
+        1,
+        2,
+        4.75945460176908,
+        2.2982910755717034,
+        6.577427647661816
+       ],
+       [
+        "2012-04-01",
+        1,
+        3,
+        2.081750558096226,
+        0.9600678789533177,
+        3.047297408209155
+       ],
+       [
+        "2012-04-01",
+        1,
+        4,
+        0.38033692316229306,
+        0.09298526276858092,
+        0.6278449231574766
+       ],
+       [
+        "2012-04-01",
+        2,
+        0,
+        0.44263960536369645,
+        0.23255696556546251,
+        0.7594184450925359
+       ],
+       [
+        "2012-04-01",
+        2,
+        1,
+        3.024111783310559,
+        1.6742947042831409,
+        4.743758597741389
+       ],
+       [
+        "2012-04-01",
+        2,
+        2,
+        3.1316792841499295,
+        1.7348265721767384,
+        4.323616674103774
+       ],
+       [
+        "2012-04-01",
+        2,
+        3,
+        0.8363690720936219,
+        0.36314312590816905,
+        1.2422443350520962
+       ],
+       [
+        "2012-04-01",
+        2,
+        4,
+        0.17952993239538606,
+        0.03269834243100659,
+        0.29308969255355666
+       ],
+       [
+        "2012-04-01",
+        3,
+        0,
+        0.12327696877953898,
+        0.03222377718649703,
+        0.21098486579772963
+       ],
+       [
+        "2012-04-01",
+        3,
+        1,
+        0.682350272569156,
+        0.31941631508086765,
+        1.0761509509892921
+       ],
+       [
+        "2012-04-01",
+        3,
+        2,
+        0.8294981590376688,
+        0.3611579362839765,
+        1.269630275350076
+       ],
+       [
+        "2012-04-01",
+        3,
+        3,
+        0.6198626663545823,
+        0.26978444998785744,
+        0.9386284625410665
+       ],
+       [
+        "2012-04-01",
+        3,
+        4,
+        0.4080556595749842,
+        0.15912448906502627,
+        0.6785316518446666
+       ],
+       [
+        "2012-04-01",
+        4,
+        0,
+        0.10102631900442677,
+        0.015602071976465536,
+        0.19199040114397575
+       ],
+       [
+        "2012-04-01",
+        4,
+        1,
+        0.224613887057279,
+        0.06741585418611158,
+        0.401271762649083
+       ],
+       [
+        "2012-04-01",
+        4,
+        2,
+        0.3335610018092684,
+        0.12768159227072032,
+        0.5573277421674004
+       ],
+       [
+        "2012-04-01",
+        4,
+        3,
+        0.7914473624070973,
+        0.3609701390206236,
+        1.2822213522183465
+       ],
+       [
+        "2012-04-01",
+        4,
+        4,
+        1.7267341156099951,
+        0.8674117738195775,
+        2.4976514122027047
+       ],
+       [
+        "2012-04-01",
+        5,
+        0,
+        0.17086035392319407,
+        0.038781300372616304,
+        0.28872509194811224
+       ],
+       [
+        "2012-04-01",
+        5,
+        1,
+        0.1914769631187465,
+        0.04287784382202914,
+        0.3470639963513474
+       ],
+       [
+        "2012-04-01",
+        5,
+        2,
+        0.14533795615292364,
+        0.04205972248323475,
+        0.30558946444876767
+       ],
+       [
+        "2012-04-01",
+        5,
+        3,
+        0.4137627990707269,
+        0.15618091501438883,
+        0.6272566714251684
+       ],
+       [
+        "2012-04-01",
+        5,
+        4,
+        1.1626618451788076,
+        0.5142273976408186,
+        1.7592127061782403
+       ],
+       [
+        "2012-07-01",
+        0,
+        0,
+        0.21673425540700536,
+        0.044272411767793805,
+        0.3828246609686872
+       ],
+       [
+        "2012-07-01",
+        0,
+        1,
+        0.25327958643981424,
+        0.06103130430177418,
+        0.4637790808353287
+       ],
+       [
+        "2012-07-01",
+        0,
+        2,
+        0.8440331096966507,
+        0.3598780711408366,
+        1.3194143064731556
+       ],
+       [
+        "2012-07-01",
+        0,
+        3,
+        1.2978483245332626,
+        0.6561434976563163,
+        2.1239080382841675
+       ],
+       [
+        "2012-07-01",
+        0,
+        4,
+        0.4703189616209387,
+        0.1447806519926323,
+        0.7894892870718101
+       ],
+       [
+        "2012-07-01",
+        1,
+        0,
+        0.574776352197652,
+        0.2362661995677391,
+        0.9441975706506877
+       ],
+       [
+        "2012-07-01",
+        1,
+        1,
+        1.7590156016013951,
+        0.7182224012804599,
+        2.568597046710777
+       ],
+       [
+        "2012-07-01",
+        1,
+        2,
+        4.488341010429277,
+        2.2200512789362756,
+        6.712994600596451
+       ],
+       [
+        "2012-07-01",
+        1,
+        3,
+        1.9431142310424878,
+        0.8146630156957033,
+        2.9297011683859417
+       ],
+       [
+        "2012-07-01",
+        1,
+        4,
+        0.3534054443900071,
+        0.13537823590175285,
+        0.6214129481406716
+       ],
+       [
+        "2012-07-01",
+        2,
+        0,
+        0.4148158662179494,
+        0.15445129184434186,
+        0.6605105081246063
+       ],
+       [
+        "2012-07-01",
+        2,
+        1,
+        2.8573581259289615,
+        1.3288747973580033,
+        4.3768981191826
+       ],
+       [
+        "2012-07-01",
+        2,
+        2,
+        2.965010532883432,
+        1.6736391060524807,
+        4.787578799761483
+       ],
+       [
+        "2012-07-01",
+        2,
+        3,
+        0.7786019940308989,
+        0.363970059475981,
+        1.22074937586506
+       ],
+       [
+        "2012-07-01",
+        2,
+        4,
+        0.16675545592757535,
+        0.0554755352437208,
+        0.28032786730435505
+       ],
+       [
+        "2012-07-01",
+        3,
+        0,
+        0.1164451773432976,
+        0.029117677139461732,
+        0.207184055586696
+       ],
+       [
+        "2012-07-01",
+        3,
+        1,
+        0.6450441473849754,
+        0.21053516698644895,
+        0.9728825219623846
+       ],
+       [
+        "2012-07-01",
+        3,
+        2,
+        0.7813258927895446,
+        0.2922496504236739,
+        1.177180757860776
+       ],
+       [
+        "2012-07-01",
+        3,
+        3,
+        0.5785112470324852,
+        0.2408589545786702,
+        0.8896398743405884
+       ],
+       [
+        "2012-07-01",
+        3,
+        4,
+        0.38187594812935627,
+        0.15794356228121212,
+        0.6150262867557409
+       ],
+       [
+        "2012-07-01",
+        4,
+        0,
+        0.0945498702584707,
+        0.011277120244560514,
+        0.18153536493939834
+       ],
+       [
+        "2012-07-01",
+        4,
+        1,
+        0.21220358627255956,
+        0.06747903260975506,
+        0.3803493770511089
+       ],
+       [
+        "2012-07-01",
+        4,
+        2,
+        0.31441081379915103,
+        0.10561237646271526,
+        0.5287994952680011
+       ],
+       [
+        "2012-07-01",
+        4,
+        3,
+        0.7468077075556862,
+        0.2918543785801319,
+        1.1711870635997497
+       ],
+       [
+        "2012-07-01",
+        4,
+        4,
+        1.6324470116690797,
+        0.8123447834315025,
+        2.4949600877833813
+       ],
+       [
+        "2012-07-01",
+        5,
+        0,
+        0.15935052980278297,
+        0.040502308668349446,
+        0.2896492890453227
+       ],
+       [
+        "2012-07-01",
+        5,
+        1,
+        0.18159089135719364,
+        0.04448779172087595,
+        0.32014675529083075
+       ],
+       [
+        "2012-07-01",
+        5,
+        2,
+        0.13813215477390992,
+        0.010075428390513258,
+        0.2518504115077822
+       ],
+       [
+        "2012-07-01",
+        5,
+        3,
+        0.3921184147181895,
+        0.14680464763226503,
+        0.669471064047393
+       ],
+       [
+        "2012-07-01",
+        5,
+        4,
+        1.0957537350317097,
+        0.5273236986390146,
+        1.697719028900117
+       ],
+       [
+        "2012-10-01",
+        0,
+        0,
+        0.25582732091432653,
+        0.05315957400992078,
+        0.47711298497981736
+       ],
+       [
+        "2012-10-01",
+        0,
+        1,
+        0.2962438695128446,
+        0.08060227257759495,
+        0.5023240123245206
+       ],
+       [
+        "2012-10-01",
+        0,
+        2,
+        0.9838421899521742,
+        0.4026378390084139,
+        1.4701740345459222
+       ],
+       [
+        "2012-10-01",
+        0,
+        3,
+        1.530737134169163,
+        0.722210470994045,
+        2.4520352000908
+       ],
+       [
+        "2012-10-01",
+        0,
+        4,
+        0.5572841349470213,
+        0.1860901927945412,
+        0.9763968932118959
+       ],
+       [
+        "2012-10-01",
+        1,
+        0,
+        0.6857089468847224,
+        0.19610828187685078,
+        1.0810350951722507
+       ],
+       [
+        "2012-10-01",
+        1,
+        1,
+        2.0513412429492566,
+        1.1039058795026884,
+        3.080625812384852
+       ],
+       [
+        "2012-10-01",
+        1,
+        2,
+        5.2391558007804955,
+        2.968774370468589,
+        7.531535645153776
+       ],
+       [
+        "2012-10-01",
+        1,
+        3,
+        2.299629031283891,
+        1.1125084681503743,
+        3.4472099046430125
+       ],
+       [
+        "2012-10-01",
+        1,
+        4,
+        0.41812944028753773,
+        0.11395708234474895,
+        0.6761643578892641
+       ],
+       [
+        "2012-10-01",
+        2,
+        0,
+        0.4877960863076808,
+        0.15736205388169577,
+        0.7553310953220979
+       ],
+       [
+        "2012-10-01",
+        2,
+        1,
+        3.3346987259692695,
+        1.8003768585718702,
+        4.966077302857477
+       ],
+       [
+        "2012-10-01",
+        2,
+        2,
+        3.4603561295053624,
+        1.883530972975129,
+        4.811799982999348
+       ],
+       [
+        "2012-10-01",
+        2,
+        3,
+        0.9195162536476938,
+        0.4132276182323499,
+        1.373142428094736
+       ],
+       [
+        "2012-10-01",
+        2,
+        4,
+        0.1971070106816919,
+        0.05228214228414027,
+        0.34321255277134083
+       ],
+       [
+        "2012-10-01",
+        3,
+        0,
+        0.13566503901969207,
+        0.02229357826079674,
+        0.2232716294343339
+       ],
+       [
+        "2012-10-01",
+        3,
+        1,
+        0.7529665357284488,
+        0.2894965833769242,
+        1.1362302828395037
+       ],
+       [
+        "2012-10-01",
+        3,
+        2,
+        0.9169291599298375,
+        0.39783637529569155,
+        1.435998364745368
+       ],
+       [
+        "2012-10-01",
+        3,
+        3,
+        0.6843868350176436,
+        0.280223039768317,
+        1.0680994682370808
+       ],
+       [
+        "2012-10-01",
+        3,
+        4,
+        0.45181297426801365,
+        0.17577491136896828,
+        0.7112117558036031
+       ],
+       [
+        "2012-10-01",
+        4,
+        0,
+        0.11108474010973218,
+        0.019521397375771084,
+        0.2143382703604761
+       ],
+       [
+        "2012-10-01",
+        4,
+        1,
+        0.24693463806044225,
+        0.07938167333323524,
+        0.44246669736096494
+       ],
+       [
+        "2012-10-01",
+        4,
+        2,
+        0.368768399016552,
+        0.11127621019381496,
+        0.612124853401834
+       ],
+       [
+        "2012-10-01",
+        4,
+        3,
+        0.8825663971091301,
+        0.3366014465717995,
+        1.384615939277329
+       ],
+       [
+        "2012-10-01",
+        4,
+        4,
+        1.9244595333399166,
+        0.9025007333148609,
+        2.7920015138447227
+       ],
+       [
+        "2012-10-01",
+        5,
+        0,
+        0.18790549087220026,
+        0.05285230598917451,
+        0.34208096157290047
+       ],
+       [
+        "2012-10-01",
+        5,
+        1,
+        0.2116867384430852,
+        0.051884198840345765,
+        0.3671218319497068
+       ],
+       [
+        "2012-10-01",
+        5,
+        2,
+        0.1608292788276927,
+        0.050174724658261775,
+        0.34270991803456596
+       ],
+       [
+        "2012-10-01",
+        5,
+        3,
+        0.4590337807434823,
+        0.13524325496396647,
+        0.7171819550955064
+       ],
+       [
+        "2012-10-01",
+        5,
+        4,
+        1.2908297480780115,
+        0.6694168067338309,
+        2.1843430940208455
+       ]
+      ],
+      "time_dim": "quarter",
+      "variable": "rate"
+     }
+    ],
+    "truncated": false
+   },
+   "trimmed": null
+  },
+  "predictive": {
+   "counterfactual": null,
+   "fields": {
+    "caption_plain": "Shows each output of the score on its grid. Select the mean, the uncertainty or a draw. Use the slider to go through the frames.",
+    "fields": [
+     {
+      "color": "single",
+      "colormap": "magma",
+      "description": "Events per cell and period: the expected intensity, or a predictive count draw",
+      "downsampled": false,
+      "encoding": "log10",
+      "facet": {},
+      "frame_dim": "quarter",
+      "frames": [
+       {
+        "draws": [
+         {
+          "data": "AAD//wAAAAD+/wAA/v///4Oh/////wAA/v////////8AAAAA/////////////wAA/v//////////////",
+          "hi": 0.47712125471966244,
+          "lo": 0.0
+         },
+         {
+          "data": "AAA7OwAA////////AAD+////OzsAAByZHJkAAP//////////Ozv///////8AAAAAAAD///////87O///",
+          "hi": 1.3010299956639813,
+          "lo": 0.0
+         },
+         {
+          "data": "//8AAP///v//////AAD///7/AAD+//7//v////////8AAP/////+////AAD//wAAAAD/////////////",
+          "hi": 0.3010299956639812,
+          "lo": 0.0
+         },
+         {
+          "data": "/////4OhAAD///7///8AAAAA////////g6EAAP//////////////////AAD/////////////////////",
+          "hi": 0.47712125471966244,
+          "lo": 0.0
+         },
+         {
+          "data": "/////////////wAAAACDof//////////AAAAAP///////////////////////wAA/v//////////////",
+          "hi": 0.47712125471966244,
+          "lo": 0.0
+         },
+         {
+          "data": "////////QG7//0Bu//+A3L6u//9Abv7/QG4AAP//////////QG7//////////0Bu//////////8AAEBu",
+          "hi": 0.6989700043360189,
+          "lo": 0.0
+         },
+         {
+          "data": "////////g6EAAP////8AAP7///8AAP7/g6EAAP//AAD+////AAAAAP////+DoQAAg6H//////////wAA",
+          "hi": 0.47712125471966244,
+          "lo": 0.0
+         },
+         {
+          "data": "/////zBb////////MFv+/zBb//8wW7frMFv//zBb/////wAAAAAwW///AAD/////AAAAAP////8AADBb",
+          "hi": 0.8450980400142568,
+          "lo": 0.0
+         },
+         {
+          "data": "//8AAP//////////AAD+/wAA/////7frX7b///////+HkP//////////////////////////AAD//wAA",
+          "hi": 0.8450980400142568,
+          "lo": 0.0
+         },
+         {
+          "data": "////////AAD////////+//////8AAP//////////AAD/////////f///AAD//wAAAAAAAP//AAD///7/",
+          "hi": 0.6020599913279624,
+          "lo": 0.0
+         },
+         {
+          "data": "////////g6GDoQAA//8AAP7//////wAA//+Dof//////////AAD/////////////g6EAAP////+Dof//",
+          "hi": 0.47712125471966244,
+          "lo": 0.0
+         },
+         {
+          "data": "AAD/////CGMIY///8uUAAPac//////7/CGMAAP////8AABDG/////////////wAA//////////8AAP//",
+          "hi": 0.7781512503836436,
+          "lo": 0.0
+         },
+         {
+          "data": "//8AAP//AAD/////wlD///////////7//3//////////////wlD//////////wAAwlD//////////wAA",
+          "hi": 0.9542425094393249,
+          "lo": 0.0
+         },
+         {
+          "data": "/////wAAAAD//////v+A3AAA//9AbkBuAAD///////9Abv//////////////////AAD//////////wAA",
+          "hi": 0.6989700043360189,
+          "lo": 0.0
+         },
+         {
+          "data": "//////7//38AAP//AAD/f/9/AAD/fwAAAAAAAP///////wAAAAD/////////////AAAAAP///////wAA",
+          "hi": 0.6020599913279624,
+          "lo": 0.0
+         },
+         {
+          "data": "////////AAD///7///+604eQ/////4eQ//8AAP///////zBb/////////////wAAAAAwW///AAD/////",
+          "hi": 0.8450980400142568,
+          "lo": 0.0
+         }
+        ],
+        "label": "2012-01-01",
+        "mean": {
+         "data": "szCxQ76X6a7JauuCF8b+/ynJ7VZMaArnF+gehY0sWyN6f5GTOIHOVQAAsUM9XBuWQb1qPUU4yCUWYlGp",
+         "hi": 0.6047658847038874,
+         "lo": -1.1249387366083
+        },
+        "q05": {
+         "data": "////////////////////////////////////////////////////////////////////////////////"
+        },
+        "q95": {
+         "data": "AAAAAOVMypnlTOVMypn+/yub5UzlTKnY39flTAAAAADlTOB55UzlTAAAAABqBeB5ypkAAAAAAADlTOB5",
+         "hi": 1.002166061756507,
+         "lo": 0.0
+        },
+        "sd": {
+         "data": "bzA5QVJ8qJ+0Y/t8o6z+/wS5Y1J+Vx7c+d+Zckg2OCfJc7GE+3LWTQAAHjszZlqGZ6a0M0oxoiESWw2X",
+         "hi": 0.5436333596216678,
+         "lo": -0.5783100423074959
+        }
+       },
+       {
+        "draws": [
+         {
+          "data": "//8AAFVVVVUAAAAAP4c/h1VV//////7/AAD///////8/h1VV////////////////VVX/////AAD//wAA",
+          "hi": 0.9030899869919435,
+          "lo": 0.0
+         },
+         {
+          "data": "/////wAA//8AAP//AAAASgAAAAD//wBK/v8AAAAA//////////8AAP///////0l1//8AAP////////+T",
+          "hi": 1.0413926851582251,
+          "lo": 0.0
+         },
+         {
+          "data": "MFv//wAAMFv//zBbAABftl+2//8AAIeQ/v8wW////////wAA//8AAP//AAAAAP//utP/////AAAAAP//",
+          "hi": 0.8450980400142568,
+          "lo": 0.0
+         },
+         {
+          "data": "//9VVf//IsZVVf//P4f+/z+H//9VVVVVAAD/////AAD///////8AAP///////z+HIsb//////////wAA",
+          "hi": 0.9030899869919435,
+          "lo": 0.0
+         },
+         {
+          "data": "/////97K//////////8AAAAA/////////v8AAP//AAD/f/7//3//////////f97K3sr///////////9/",
+          "hi": 0.6020599913279624,
+          "lo": 0.0
+         },
+         {
+          "data": "//////9/wlAAAAAA////fwAA//////7/wlD///////8AAP//AAD//////////wAA//////////8AAAAA",
+          "hi": 0.9542425094393249,
+          "lo": 0.0
+         },
+         {
+          "data": "////////AAD/////MFv+/zBbAAAAADBbMFv///////8AAAAAAAD//wAA////////AAAAAP////+HkP//",
+          "hi": 0.8450980400142568,
+          "lo": 0.0
+         },
+         {
+          "data": "////////AAD/////3sr+/wAA//////9/3sr/f/////////////8AAP////////9//////////////wAA",
+          "hi": 0.6020599913279624,
+          "lo": 0.0
+         },
+         {
+          "data": "//8AAAAA////////hkEAAAyD//////7/YKn///////8AAAAA////////AAD/////AAD//////////ySY",
+          "hi": 1.1760912590556813,
+          "lo": 0.0
+         },
+         {
+          "data": "////////CGP/////CGP+/whj/////whjAAD/////////////AAAIY/////8AAAAAAAD//whj/////xDG",
+          "hi": 0.7781512503836436,
+          "lo": 0.0
+         },
+         {
+          "data": "AAD/////CGMAAP///v8IY////////wAA8uUIY///AAD//xDG//8IY////////wAAAAD///////8AABDG",
+          "hi": 0.7781512503836436,
+          "lo": 0.0
+         },
+         {
+          "data": "//8AAL6uvq7/////vq6A3AAA/////4Dc/v////////8AAEBu////////////////AAD//////////4Dc",
+          "hi": 0.6989700043360189,
+          "lo": 0.0
+         },
+         {
+          "data": "////////aEf/////AADNpQAA//9oR/7/d8j///////8ucS5x0I4AAP////8AAAAA/////////////2hH",
+          "hi": 1.0791812460476249,
+          "lo": 0.0
+         },
+         {
+          "data": "/////////v///wAA/3//f/9/AAD/f/7/AAD///////////////8AAP//////////////////////////",
+          "hi": 0.6020599913279624,
+          "lo": 0.0
+         },
+         {
+          "data": "/////wAAQG7//wAA//++rv////8AAP7/AAC+rv////8AAP//QG7//////////76uAAD//wAA////////",
+          "hi": 0.6989700043360189,
+          "lo": 0.0
+         },
+         {
+          "data": "/////zBbX7YAAAAAMFu60/////8wW4eQ/v8AAP////8AAP//AAD///////8AAP//h5D/////////////",
+          "hi": 0.8450980400142568,
+          "lo": 0.0
+         }
+        ],
+        "label": "2012-04-01",
+        "mean": {
+         "data": "mDyPQzChWru0ckCDIML+/8TQakd2Y27mQfDHlkUNAAA1jOOQroCmZjIKGzveRLSRGMPWLd1J0Br3YHWt",
+         "hi": 0.6354837468149122,
+         "lo": -1.0457574905606752
+        },
+        "q05": {
+         "data": "////////////////////////////////////////////////////////////////////////////////"
+        },
+        "q95": {
+         "data": "AAAAALiTf6vcSdxJf6v+/+y+AADcSRvQk90QdQAAAAAQdRB13EncSQAAAAAAABB1f6sAAAAAAADcSbiT",
+         "hi": 1.043362278021129,
+         "lo": 0.0
+        },
+        "sd": {
+         "data": "Ijx1Ph6UaardY4xzl6z+/++5TEoUWqbWptbmgSwWAAD1dfWBTHBrWXAQwznIQ/d9ybM5KThFuxXbTzmd",
+         "hi": 0.5753527701409926,
+         "lo": -0.5422695894926527
+        }
+       },
+       {
+        "draws": [
+         {
+          "data": "//////////8AAP//wlD+/wAA//8AAP///3/////////CUP9/AAD///////8AAAAAAAD//////////wAA",
+          "hi": 0.9542425094393249,
+          "lo": 0.0
+         },
+         {
+          "data": "/////wAAAAD////////+/////////4Ohg6H/f///AAAAAMJQAAD///////////////////////8AAAAA",
+          "hi": 0.9542425094393249,
+          "lo": 0.0
+         },
+         {
+          "data": "AAD/////AAD/////AAD+/z+H//8AAP//AAD//////////wAA//9VVf//////////AAD///////9VVf//",
+          "hi": 0.9030899869919435,
+          "lo": 0.0
+         },
+         {
+          "data": "//8AAP//9pz//wAA///+//7/AAAIYwhjCGP/////////////////////////////CGP//////////whj",
+          "hi": 0.7781512503836436,
+          "lo": 0.0
+         },
+         {
+          "data": "AAD//////////wAA//9AbgAA//8AAAAAgNxAbv///////76u/v///////////4Dc////////AACA3AAA",
+          "hi": 0.6989700043360189,
+          "lo": 0.0
+         },
+         {
+          "data": "/////wAApW0AAC5FAAD+/wAA/////wAA07L/////AAAuRQAALkUAAP///////y5FLkX/////LkX//6Vt",
+          "hi": 1.1139433523068367,
+          "lo": 0.0
+         },
+         {
+          "data": "////f/7/AAAAAAAA///+/97K//////9//v///////////wAA//8AAAAA/////////3///////////wAA",
+          "hi": 0.6020599913279624,
+          "lo": 0.0
+         },
+         {
+          "data": "/////////v8AAP///v/+///////+/4Oh/v+Dof//////////g6H/////AAD//////v///wAA////////",
+          "hi": 0.47712125471966244,
+          "lo": 0.0
+         },
+         {
+          "data": "//8AAAAA/v///wAA/v/+/4Oh//8AAAAAg6EAAP////8AAAAAAAD/////AAD//wAA//8AAP////8AAIOh",
+          "hi": 0.47712125471966244,
+          "lo": 0.0
+         },
+         {
+          "data": "/////////////////v/+/4Oh/////wAAAAD/////////////AAD///////8AAP/////+////AAAAAIOh",
+          "hi": 0.47712125471966244,
+          "lo": 0.0
+         },
+         {
+          "data": "/////4Oh/v///////v///4Oh//////7///+Dof//////////AAD//wAA////////AAD//wAA////////",
+          "hi": 0.47712125471966244,
+          "lo": 0.0
+         },
+         {
+          "data": "/////wAAAAD//wAA//+60/////////7///+HkP///////4eQ/////////////wAA////////////////",
+          "hi": 0.8450980400142568,
+          "lo": 0.0
+         },
+         {
+          "data": "//8AAAAAAAD///////+WuAAA/////////v8AAP////8AAC5xAAD/////////////AAD/////////////",
+          "hi": 1.0791812460476249,
+          "lo": 0.0
+         },
+         {
+          "data": "////////AAD//wAA///eyv7//////97K////////AAD///7/AAAAAP////////////////////////9/",
+          "hi": 0.6020599913279624,
+          "lo": 0.0
+         },
+         {
+          "data": "////////g6H//////v+Dof7///8AAAAAg6EAAP////8AAAAA//8AAP////+Dof//AAAAAP///////wAA",
+          "hi": 0.47712125471966244,
+          "lo": 0.0
+         },
+         {
+          "data": "/////xBN/////yR6///+////AAAAAP//H5oAAP////8AACR6AAD/////////////AAD//////////yR6",
+          "hi": 1.0,
+          "lo": 0.0
+         }
+        ],
+        "label": "2012-07-01",
+        "mean": {
+         "data": "OkViUqebba1cet2C+r3+/+PRoGlcepDeDeirl+cctR/dgiaZ5YjgcbUfZD3vVrOLAMg3QhlIAAB4ZUGo",
+         "hi": 0.6575338875579863,
+         "lo": -1.1870866433571443
+        },
+        "q05": {
+         "data": "////////////////////////////////////////////////////////////////////////////////"
+        },
+        "q95": {
+         "data": "AAAAAEl1/5MASgBK/5P+/0i/AEoASivA/91JdQAAAAAASkl1AEoASgAAAAAAAEl10qsAAAAAAAAASkl1",
+         "hi": 1.0413926851582251,
+         "lo": 0.0
+        },
+        "sd": {
+         "data": "0zi1SqiCjpwoaK5vt6n+/wrPJl2eZHnMm+i3h8IbTR1tbVqCB3e9Z0UZsCoKSVaBvbFRRTJAAAAOWdKb",
+         "hi": 0.5486378133408122,
+         "lo": -0.5739716013542925
+        }
+       },
+       {
+        "draws": [
+         {
+          "data": "//8AAAAAAAD//wAAwlD+////AAD//wAA//8AAP////8AAMJQ////////////fwAAg7v/////////////",
+          "hi": 0.9542425094393249,
+          "lo": 0.0
+         },
+         {
+          "data": "AAD//y5xAAD/////AAAAAGhHaEf//wAA/v////////8AAP////8AAP//////////aEf//////////2hH",
+          "hi": 1.0791812460476249,
+          "lo": 0.0
+         },
+         {
+          "data": "////////9pz/////CGMQxv7///////ac9pwAAP///////whj//8IY////////whj9pz/////CGP/////",
+          "hi": 0.7781512503836436,
+          "lo": 0.0
+         },
+         {
+          "data": "/////wAAAAD2nP/////+/wAA/////wAA////////////////////////////////CGP/////AAAAAP//",
+          "hi": 0.7781512503836436,
+          "lo": 0.0
+         },
+         {
+          "data": "//////////9Abv///v/+////AAD+/4DcAAC+rv//AAAAAAAAAAD//////////0Buvq7///////8AAAAA",
+          "hi": 0.6989700043360189,
+          "lo": 0.0
+         },
+         {
+          "data": "////////EMb/////AAD+/////////wAAAAD////////2nP///////////////wAACGMIY/////8IYwhj",
+          "hi": 0.7781512503836436,
+          "lo": 0.0
+         },
+         {
+          "data": "AAD/////AAAAAEBuAAD+/wAAAAD///7//v8AAP////8AAAAA////////AAAAAP//AAD/////AAAAAL6u",
+          "hi": 0.6989700043360189,
+          "lo": 0.0
+         },
+         {
+          "data": "/////wAA/3//////3sr+//9///////9/AAAAAP///////////////////////////3//////////////",
+          "hi": 0.6020599913279624,
+          "lo": 0.0
+         },
+         {
+          "data": "////////AAAAAP//AABAbv//AAD///7//v8AAP////9AbgAA//////////8AAP//AAD//////////wAA",
+          "hi": 0.6989700043360189,
+          "lo": 0.0
+         },
+         {
+          "data": "/////wAAAAD2nP///v/y5QAA////////EMYIY///AAAAAP//AAD/////CGMAAPac9pz///////8AAP//",
+          "hi": 0.7781512503836436,
+          "lo": 0.0
+         },
+         {
+          "data": "/////////v8AADBbAABftgAA/////wAA//+HkP////8AAP//h5D//wAA////////utP/////////////",
+          "hi": 0.8450980400142568,
+          "lo": 0.0
+         },
+         {
+          "data": "/////wAA8uX//wAACGP+/whj/////wAA9pwAAP///////whjAAD///////8AAP//EMYIY///CGP//whj",
+          "hi": 0.7781512503836436,
+          "lo": 0.0
+         },
+         {
+          "data": "////////AAD////////WNf///////1VV/v/WNf////8AAFVVK4v////////////////WNf//AADWNf//",
+          "hi": 1.4313637641589874,
+          "lo": 0.0
+         },
+         {
+          "data": "AAD//wAAAAD//wBK/5NIv/+T//////7/SL8AAP///////wAA//////////8AAP//AEr/////////////",
+          "hi": 1.0413926851582251,
+          "lo": 0.0
+         },
+         {
+          "data": "//////9///8AAP///v/+//7///8AAN7KAAD///////8AAP//AAD//////////wAA3sr///////////9/",
+          "hi": 0.6020599913279624,
+          "lo": 0.0
+         },
+         {
+          "data": "AAD/////AAD///7/8uX+/xDG//////ac9pz2nP////8AAP//AAD//wAA////////CGP///////8AAPac",
+          "hi": 0.7781512503836436,
+          "lo": 0.0
+         }
+        ],
+        "label": "2012-10-01",
+        "mean": {
+         "data": "sSg9O2GIX7ENbPVz8sD+/7THf0w6V1PcU9yrjZIlYAVvg/6E8nRDTgAArSuYSz2CI7pLIjkbrSs2Wqee",
+         "hi": 0.7351995484223133,
+         "lo": -0.9208187539523752
+        },
+        "q05": {
+         "data": "//////////////////8AAP//////////////////////////////////////////////////////////",
+         "hi": 0.0,
+         "lo": 0.0
+        },
+        "q95": {
+         "data": "AABoRy5xzaVoR2hHlrj+/3G5aEdoR1viW+IucQAAAAAucS5xLnFoRwAAAAAHBS5xzaUAAAAAAABoR9CO",
+         "hi": 1.0791812460476249,
+         "lo": 0.0
+        },
+        "sd": {
+         "data": "eBdMOPx4Yq4yZvl16ML+/+LQ9UT7X5Pi1fHLfgcjOQPxeulyyHBqTAAAzyfNQOttO7CIKkwWzyd4S0CU",
+         "hi": 0.5508558389106907,
+         "lo": -0.449416720672275
+        }
+       }
+      ],
+      "height": 6,
+      "kind": "scalar",
+      "log": true,
+      "n_draws": 200,
+      "omitted_frames": 0,
+      "origin": "lower",
+      "output": "rate",
+      "rgb_scale": "uint8",
+      "source_height": 6,
+      "source_width": 5,
+      "width": 5,
+      "x_coords": [
+       0,
+       1,
+       2,
+       3,
+       4
+      ],
+      "x_dim": "col",
+      "y_coords": [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5
+      ],
+      "y_dim": "row"
+     }
+    ],
+    "format": "mapi.model-explorer.fields/v1",
+    "kind": "expected",
+    "omitted": [],
+    "warnings_plain": []
+   },
+   "forecast": null,
+   "horizon": null,
+   "inline": false,
+   "mode": "predict",
+   "output": {
+    "kind": "predictive",
+    "summary": [
+     "mean",
+     "hdi_90"
+    ]
+   },
+   "probe_case": "predict_tail__predictive",
+   "result": {
+    "aggregation_flagged": false,
+    "bundle_id": "ca672b1926817470defeec8fc59f4991",
+    "groups": [
+     "/summary"
+    ],
+    "issues": [],
+    "kind": "predictive",
+    "mode": "predict",
+    "names": "dataset",
+    "output_space": {
+     "rate": "raw",
+     "total": "raw"
+    },
+    "representation": "draws",
+    "retransform": {
+     "rate": "none",
+     "total": "none"
+    },
+    "units": "original"
+   },
+   "summary": {
+    "tables": [
+     {
+      "columns": [
+       "quarter",
+       "mean",
+       "hdi_90_lower",
+       "hdi_90_upper"
+      ],
+      "dims": [
+       "quarter"
+      ],
+      "plots": [
+       "core.ppc_fan"
+      ],
+      "rows": [
+       [
+        "2012-01-01",
+        24.734793119922653,
+        17.202360821740317,
+        32.230223284266344
+       ],
+       [
+        "2012-04-01",
+        28.538354148717055,
+        21.64414072728894,
+        35.028634115037676
+       ],
+       [
+        "2012-07-01",
+        26.8539759802657,
+        17.6934577187987,
+        33.75229452432893
+       ],
+       [
+        "2012-10-01",
+        31.503232606357006,
+        22.68698558772449,
+        38.99014195492696
+       ]
+      ],
+      "time_dim": "quarter",
+      "variable": "total"
+     },
+     {
+      "columns": [
+       "quarter",
+       "row",
+       "col",
+       "mean",
+       "hdi_90_lower",
+       "hdi_90_upper"
+      ],
+      "dims": [
+       "quarter",
+       "row",
+       "col"
+      ],
+      "plots": [
+       "sci.field_map"
+      ],
+      "rows": [
+       [
+        "2012-01-01",
+        0,
+        0,
+        0.16,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-01-01",
+        0,
+        1,
+        0.215,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-01-01",
+        0,
+        2,
+        0.795,
+        0.0,
+        2.0
+       ],
+       [
+        "2012-01-01",
+        0,
+        3,
+        1.14,
+        0.0,
+        3.0
+       ],
+       [
+        "2012-01-01",
+        0,
+        4,
+        0.395,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-01-01",
+        1,
+        0,
+        0.575,
+        0.0,
+        2.0
+       ],
+       [
+        "2012-01-01",
+        1,
+        1,
+        1.635,
+        0.0,
+        4.0
+       ],
+       [
+        "2012-01-01",
+        1,
+        2,
+        4.025,
+        0.0,
+        9.0
+       ],
+       [
+        "2012-01-01",
+        1,
+        3,
+        1.715,
+        0.0,
+        4.0
+       ],
+       [
+        "2012-01-01",
+        1,
+        4,
+        0.29,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-01-01",
+        2,
+        0,
+        0.38,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-01-01",
+        2,
+        1,
+        2.73,
+        0.0,
+        6.0
+       ],
+       [
+        "2012-01-01",
+        2,
+        2,
+        2.775,
+        0.0,
+        6.0
+       ],
+       [
+        "2012-01-01",
+        2,
+        3,
+        0.595,
+        0.0,
+        2.0
+       ],
+       [
+        "2012-01-01",
+        2,
+        4,
+        0.15,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-01-01",
+        3,
+        0,
+        0.13,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-01-01",
+        3,
+        1,
+        0.545,
+        0.0,
+        2.0
+       ],
+       [
+        "2012-01-01",
+        3,
+        2,
+        0.745,
+        0.0,
+        2.0
+       ],
+       [
+        "2012-01-01",
+        3,
+        3,
+        0.56,
+        0.0,
+        2.0
+       ],
+       [
+        "2012-01-01",
+        3,
+        4,
+        0.285,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-01-01",
+        4,
+        0,
+        0.075,
+        0.0,
+        0.0
+       ],
+       [
+        "2012-01-01",
+        4,
+        1,
+        0.215,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-01-01",
+        4,
+        2,
+        0.315,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-01-01",
+        4,
+        3,
+        0.775,
+        0.0,
+        2.0
+       ],
+       [
+        "2012-01-01",
+        4,
+        4,
+        1.425,
+        0.0,
+        3.0
+       ],
+       [
+        "2012-01-01",
+        5,
+        0,
+        0.195,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-01-01",
+        5,
+        1,
+        0.18,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-01-01",
+        5,
+        2,
+        0.135,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-01-01",
+        5,
+        3,
+        0.345,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-01-01",
+        5,
+        4,
+        1.045,
+        0.0,
+        3.0
+       ],
+       [
+        "2012-04-01",
+        0,
+        0,
+        0.225,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-04-01",
+        0,
+        1,
+        0.25,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-04-01",
+        0,
+        2,
+        1.03,
+        0.0,
+        3.0
+       ],
+       [
+        "2012-04-01",
+        0,
+        3,
+        1.53,
+        0.0,
+        3.0
+       ],
+       [
+        "2012-04-01",
+        0,
+        4,
+        0.51,
+        0.0,
+        2.0
+       ],
+       [
+        "2012-04-01",
+        1,
+        0,
+        0.655,
+        0.0,
+        2.0
+       ],
+       [
+        "2012-04-01",
+        1,
+        1,
+        1.695,
+        0.0,
+        4.0
+       ],
+       [
+        "2012-04-01",
+        1,
+        2,
+        4.32,
+        0.0,
+        8.0
+       ],
+       [
+        "2012-04-01",
+        1,
+        3,
+        2.115,
+        0.0,
+        5.0
+       ],
+       [
+        "2012-04-01",
+        1,
+        4,
+        0.265,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-04-01",
+        2,
+        0,
+        0.405,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-04-01",
+        2,
+        1,
+        2.935,
+        0.0,
+        6.0
+       ],
+       [
+        "2012-04-01",
+        2,
+        2,
+        3.405,
+        0.0,
+        7.0
+       ],
+       [
+        "2012-04-01",
+        2,
+        3,
+        0.88,
+        0.0,
+        2.0
+       ],
+       [
+        "2012-04-01",
+        2,
+        4,
+        0.11,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-04-01",
+        3,
+        0,
+        0.09,
+        0.0,
+        0.0
+       ],
+       [
+        "2012-04-01",
+        3,
+        1,
+        0.75,
+        0.0,
+        2.0
+       ],
+       [
+        "2012-04-01",
+        3,
+        2,
+        0.805,
+        0.0,
+        2.0
+       ],
+       [
+        "2012-04-01",
+        3,
+        3,
+        0.63,
+        0.0,
+        2.0
+       ],
+       [
+        "2012-04-01",
+        3,
+        4,
+        0.425,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-04-01",
+        4,
+        0,
+        0.105,
+        0.0,
+        0.0
+       ],
+       [
+        "2012-04-01",
+        4,
+        1,
+        0.22,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-04-01",
+        4,
+        2,
+        0.255,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-04-01",
+        4,
+        3,
+        0.815,
+        0.0,
+        2.0
+       ],
+       [
+        "2012-04-01",
+        4,
+        4,
+        1.72,
+        0.0,
+        4.0
+       ],
+       [
+        "2012-04-01",
+        5,
+        0,
+        0.18,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-04-01",
+        5,
+        1,
+        0.275,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-04-01",
+        5,
+        2,
+        0.135,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-04-01",
+        5,
+        3,
+        0.39,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-04-01",
+        5,
+        4,
+        1.24,
+        0.0,
+        3.0
+       ],
+       [
+        "2012-07-01",
+        0,
+        0,
+        0.205,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-07-01",
+        0,
+        1,
+        0.255,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-07-01",
+        0,
+        2,
+        0.86,
+        0.0,
+        2.0
+       ],
+       [
+        "2012-07-01",
+        0,
+        3,
+        1.155,
+        0.0,
+        3.0
+       ],
+       [
+        "2012-07-01",
+        0,
+        4,
+        0.495,
+        0.0,
+        2.0
+       ],
+       [
+        "2012-07-01",
+        1,
+        0,
+        0.57,
+        0.0,
+        2.0
+       ],
+       [
+        "2012-07-01",
+        1,
+        1,
+        1.52,
+        0.0,
+        4.0
+       ],
+       [
+        "2012-07-01",
+        1,
+        2,
+        4.545,
+        0.0,
+        10.0
+       ],
+       [
+        "2012-07-01",
+        1,
+        3,
+        2.115,
+        0.0,
+        4.0
+       ],
+       [
+        "2012-07-01",
+        1,
+        4,
+        0.375,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-07-01",
+        2,
+        0,
+        0.495,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-07-01",
+        2,
+        1,
+        2.61,
+        0.0,
+        5.0
+       ],
+       [
+        "2012-07-01",
+        2,
+        2,
+        3.055,
+        0.0,
+        7.0
+       ],
+       [
+        "2012-07-01",
+        2,
+        3,
+        0.805,
+        0.0,
+        2.0
+       ],
+       [
+        "2012-07-01",
+        2,
+        4,
+        0.105,
+        0.0,
+        0.0
+       ],
+       [
+        "2012-07-01",
+        3,
+        0,
+        0.11,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-07-01",
+        3,
+        1,
+        0.57,
+        0.0,
+        2.0
+       ],
+       [
+        "2012-07-01",
+        3,
+        2,
+        0.825,
+        0.0,
+        2.0
+       ],
+       [
+        "2012-07-01",
+        3,
+        3,
+        0.63,
+        0.0,
+        2.0
+       ],
+       [
+        "2012-07-01",
+        3,
+        4,
+        0.43,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-07-01",
+        4,
+        0,
+        0.11,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-07-01",
+        4,
+        1,
+        0.18,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-07-01",
+        4,
+        2,
+        0.275,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-07-01",
+        4,
+        3,
+        0.66,
+        0.0,
+        2.0
+       ],
+       [
+        "2012-07-01",
+        4,
+        4,
+        1.795,
+        0.0,
+        4.0
+       ],
+       [
+        "2012-07-01",
+        5,
+        0,
+        0.195,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-07-01",
+        5,
+        1,
+        0.215,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-07-01",
+        5,
+        2,
+        0.065,
+        0.0,
+        0.0
+       ],
+       [
+        "2012-07-01",
+        5,
+        3,
+        0.35,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-07-01",
+        5,
+        4,
+        1.06,
+        0.0,
+        3.0
+       ],
+       [
+        "2012-10-01",
+        0,
+        0,
+        0.22,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-10-01",
+        0,
+        1,
+        0.29,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-10-01",
+        0,
+        2,
+        0.915,
+        0.0,
+        2.0
+       ],
+       [
+        "2012-10-01",
+        0,
+        3,
+        1.685,
+        0.0,
+        4.0
+       ],
+       [
+        "2012-10-01",
+        0,
+        4,
+        0.6,
+        0.0,
+        2.0
+       ],
+       [
+        "2012-10-01",
+        1,
+        0,
+        0.675,
+        0.0,
+        2.0
+       ],
+       [
+        "2012-10-01",
+        1,
+        1,
+        2.125,
+        0.0,
+        5.0
+       ],
+       [
+        "2012-10-01",
+        1,
+        2,
+        5.435,
+        0.0,
+        11.0
+       ],
+       [
+        "2012-10-01",
+        1,
+        3,
+        2.35,
+        0.0,
+        5.0
+       ],
+       [
+        "2012-10-01",
+        1,
+        4,
+        0.375,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-10-01",
+        2,
+        0,
+        0.44,
+        0.0,
+        2.0
+       ],
+       [
+        "2012-10-01",
+        2,
+        1,
+        3.195,
+        0.0,
+        7.0
+       ],
+       [
+        "2012-10-01",
+        2,
+        2,
+        3.195,
+        0.0,
+        7.0
+       ],
+       [
+        "2012-10-01",
+        2,
+        3,
+        0.99,
+        0.0,
+        2.0
+       ],
+       [
+        "2012-10-01",
+        2,
+        4,
+        0.21,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-10-01",
+        3,
+        0,
+        0.13,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-10-01",
+        3,
+        1,
+        0.85,
+        0.0,
+        2.0
+       ],
+       [
+        "2012-10-01",
+        3,
+        2,
+        0.87,
+        0.0,
+        2.0
+       ],
+       [
+        "2012-10-01",
+        3,
+        3,
+        0.685,
+        0.0,
+        2.0
+       ],
+       [
+        "2012-10-01",
+        3,
+        4,
+        0.385,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-10-01",
+        4,
+        0,
+        0.12,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-10-01",
+        4,
+        1,
+        0.23,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-10-01",
+        4,
+        2,
+        0.37,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-10-01",
+        4,
+        3,
+        0.835,
+        0.0,
+        2.0
+       ],
+       [
+        "2012-10-01",
+        4,
+        4,
+        1.92,
+        0.0,
+        4.0
+       ],
+       [
+        "2012-10-01",
+        5,
+        0,
+        0.2,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-10-01",
+        5,
+        1,
+        0.18,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-10-01",
+        5,
+        2,
+        0.23,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-10-01",
+        5,
+        3,
+        0.46,
+        0.0,
+        1.0
+       ],
+       [
+        "2012-10-01",
+        5,
+        4,
+        1.275,
+        0.0,
+        3.0
+       ]
+      ],
+      "time_dim": "quarter",
+      "variable": "rate"
+     }
+    ],
+    "truncated": false
+   },
+   "trimmed": null
+  }
+ }
+}

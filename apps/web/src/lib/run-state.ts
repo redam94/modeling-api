@@ -5,7 +5,24 @@
 import type { Run, RunKind, RunState } from "@/api/types";
 import { shortId } from "@/lib/format";
 
-export const RUN_KINDS: readonly RunKind[] = ["fit", "validate", "score", "ingest", "evaluate", "derive", "render"];
+export const RUN_KINDS: readonly RunKind[] = ["fit", "validate", "score", "ingest", "evaluate", "derive", "render", "plugin_inspect", "plugin_describe"];
+
+/**
+ * v0.19: the two sandboxed runs that check an upload (`mapi_spec.executor.PLUGIN_KINDS`):
+ * `plugin_inspect` reads the wheel without running it, `plugin_describe` runs it in the sandbox
+ * to list its exports and run the kits. Both always count as uploaded-code runs.
+ */
+export const PLUGIN_RUN_KINDS: readonly RunKind[] = ["plugin_inspect", "plugin_describe"];
+
+export function isPluginRunKind(kind: string): boolean {
+  return (PLUGIN_RUN_KINDS as readonly string[]).includes(kind);
+}
+
+/** Plain names of the plugin run kinds (the run list shows the raw kind otherwise). */
+export const PLUGIN_RUN_KIND_LABEL: Readonly<Record<string, string>> = {
+  plugin_inspect: "Upload check (files)",
+  plugin_describe: "Upload check (tests)",
+};
 
 export const RUN_STATES: readonly RunState[] = [
   "created",
@@ -65,13 +82,14 @@ export const STATE_META: Record<RunState, StateMeta> = {
   cancelled: { label: "Cancelled", tone: "muted", description: "The run was cancelled." },
 };
 
+/** Soft pills: a tint of the tone and its ink, no border (v0.21). */
 export const TONE_CLASSES: Record<Tone, string> = {
-  neutral: "bg-secondary text-secondary-foreground border-border",
-  active: "bg-info/12 text-info border-info/30",
-  success: "bg-success/12 text-success border-success/30",
-  warning: "bg-warning/14 text-warning border-warning/35",
-  danger: "bg-destructive/12 text-destructive border-destructive/30",
-  muted: "bg-muted text-muted-foreground border-border",
+  neutral: "bg-secondary text-secondary-foreground",
+  active: "bg-info/12 text-info",
+  success: "bg-success/12 text-success",
+  warning: "bg-warning/14 text-warning",
+  danger: "bg-destructive/12 text-destructive",
+  muted: "bg-muted text-muted-foreground",
 };
 
 /** The resource classes, smallest first. v0.15: `GPU` (one NVIDIA L4) is the last one. */

@@ -1,0 +1,57 @@
+"""Contract-kit tests for {{step_id}} (run them with ``mapi plugin test``).
+
+The kit checks that fitting is deterministic, ``transform`` is pure and never learns from
+its input, the fitted state round-trips through a bundle, the declared schema effect
+matches the output, an absent target is tolerated and the About card is complete.
+"""
+
+from __future__ import annotations
+
+import numpy as np
+import pandas as pd
+import pytest
+import xarray as xr
+from mapi_sdk import StepContext, infer_schema
+from mapi_sdk.testing import check_step
+
+from {{module}}.steps import STEPS, WinsorizeStep
+
+
+def store_sales() -> xr.Dataset:
+    """Weekly sales of four stores with one extreme week."""
+    rng = np.random.default_rng(3)
+    time = pd.date_range("2025-01-05", periods=30, freq="W-SUN")
+    sales = 200.0 + rng.normal(0, 10, (4, 30))
+    sales[1, 7] = 10_000.0
+    return xr.Dataset(
+        {"y": (("geo", "time"), sales.copy()), "sales": (("geo", "time"), sales)},
+        coords={"geo": ["north", "south", "east", "west"], "time": time},
+    )
+
+
+def test_the_step_is_exported() -> None:
+    assert WinsorizeStep in STEPS
+    assert WinsorizeStep.catalog_entry().id == "{{step_id}}"
+
+
+def test_the_extreme_week_is_capped() -> None:
+    data = store_sales()
+    step = WinsorizeStep()
+    s = step.parse_settings({"vars": ["sales"], "upper": 0.95})
+    ctx = StepContext(step_id="w", phase="fit", schema=infer_schema(data), side_tables={})
+    out = step.transform(data, s, step.fit(data, s, ctx), ctx)
+    assert float(out["sales"].max()) < 1_000.0
+
+
+@pytest.mark.mapi_contract
+def test_contract_kit() -> None:
+    data = store_sales()
+    report = check_step(
+        WinsorizeStep,
+        data,
+        {"vars": ["sales"]},
+        schema=infer_schema(data, targets=["y"]),
+        raise_on_failure=False,
+        require_about=True,
+    )
+    assert report.ok, report.summary()

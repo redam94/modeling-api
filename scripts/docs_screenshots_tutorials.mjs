@@ -53,7 +53,12 @@ try {
   await page.goto(`${WEB}/integrations`);
   await expect(page.getByLabel("Apps Script", { exact: true })).toBeVisible();
   const sheets = page.locator('section[data-slot="card"]').filter({ hasText: "Score a model from a spreadsheet" });
+  // The card is taller than 900 px: in a taller window it fits below the sticky top bar,
+  // which otherwise covers the title of the card in the capture.
+  await page.setViewportSize({ width: 1440, height: 1600 });
+  await page.evaluate(() => window.scrollTo(0, 0));
   await shot(page, "integrations-sheets", sheets);
+  await page.setViewportSize({ width: 1440, height: 900 });
 
   await page.getByRole("button", { name: "Set up a webhook" }).click();
   const create = page.getByRole("dialog", { name: "New webhook" });

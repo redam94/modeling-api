@@ -74,7 +74,7 @@ above:
 | `MAPI_TRACING_ENABLED` | `true` | Make OpenTelemetry spans for requests, outgoing HTTP calls and runs |
 | `MAPI_OTLP_ENDPOINT` | unset | The OTLP/HTTP collector that gets the spans. The server also reads it from `OTEL_EXPORTER_OTLP_ENDPOINT`. If unset, the server makes spans but does not export them |
 | `MAPI_INTERNAL_TOKEN` | unset | If set (and Pub/Sub push authentication is not set), `POST /internal/events` needs this bearer token. A multi-tenant profile with neither refuses all pushes |
-| `MAPI_PUBSUB_PUSH_AUDIENCE`, `MAPI_PUBSUB_PUSH_SERVICE_ACCOUNT` | unset | Set the two to make `POST /internal/events` need an OIDC token that Google signed for the service account of the push subscription. Refer to [Authentication](authentication.md#pubsub-push) and the Cloud Run settings below |
+| `MAPI_PUBSUB_PUSH_AUDIENCE`, `MAPI_PUBSUB_PUSH_SERVICE_ACCOUNT` | unset | Set the two to make `POST /internal/events` need an OIDC token that Google signed for the service account of the push subscription. Refer to [Set up sign-in and tenant isolation](authentication.md#pubsub-push) and the Cloud Run settings below |
 | `MAPI_SSE_HEARTBEAT_S` | `15` | The seconds between `: keepalive` comments on event streams |
 | `MAPI_SSE_POLL_S` | `5` | The fallback poll of an event stream when no PostgreSQL `NOTIFY` comes |
 | `MAPI_SSE_REAUTH_S` | `60` | How frequently an open event stream does a check of the credential of its caller again. Revoked tokens, ended sessions and lost access close the stream |
@@ -97,7 +97,7 @@ above:
 | `MAPI_DATABASE_APP_URL` | unset | The dedicated login of the request-path role (row-level security applies). If unset: `DATABASE_URL` with the start-up option `role=$MAPI_DB_APP_ROLE` |
 | `MAPI_DATABASE_SYSTEM_URL` | unset | The dedicated login of the platform role. It is the only role that bypasses row-level security. The dispatcher, reconciler, finalizer and housekeeper of the orchestrator use it. The API never needs it. If unset: `DATABASE_URL` with `role=$MAPI_DB_SYSTEM_ROLE` |
 | `MAPI_DATABASE_GATEWAY_URL` | unset | The dedicated login of the gateway role. The API and events service use it for look-ups before they know the tenant (sign-in, memberships, operator metadata, pushed events). Row-level security applies. If unset: `DATABASE_URL` with `role=$MAPI_DB_GATEWAY_ROLE` |
-| `MAPI_DB_APP_ROLE`, `MAPI_DB_SYSTEM_ROLE`, `MAPI_DB_GATEWAY_ROLE` | `mapi_app`, `mapi_system`, `mapi_gateway` | The three runtime roles that `mapi-server migrate` makes and grants (refer to [Authentication](authentication.md#row-level-security)) |
+| `MAPI_DB_APP_ROLE`, `MAPI_DB_SYSTEM_ROLE`, `MAPI_DB_GATEWAY_ROLE` | `mapi_app`, `mapi_system`, `mapi_gateway` | The three runtime roles that `mapi-server migrate` makes and grants (refer to [Set up sign-in and tenant isolation](authentication.md#row-level-security)) |
 
 **Authentication (v0.3)**
 
@@ -147,7 +147,7 @@ Refer to [Sharing plots](../guides/sharing-plots.md).
 **Client dashboards and share links (v0.16)**
 
 Refer to [Client dashboards](../guides/client-dashboards.md) and
-[Share dashboards securely](../guides/sharing-dashboards-securely.md).
+[Share dashboards securely with a share link](../guides/sharing-dashboards-securely.md).
 
 | Variable | Default | Meaning |
 |---|---|---|
@@ -160,8 +160,62 @@ Refer to [Client dashboards](../guides/client-dashboards.md) and
 | `MAPI_SHARE_LOCKOUT_S` | `900` | How long a share link stays locked after too many wrong passcodes |
 | `MAPI_DASHBOARD_GRID_MAX_BYTES` | `4000000` | The largest response grid (`ui/grids/response_curves.json`) that a dashboard reads for its what-if sliders |
 | `MAPI_DASHBOARD_CACHE_TTL_S` | `86400` | How long a ready exact readout answers the same scenario or the same actuals again, in place of a new run. `0` turns the cache off |
-| `MAPI_DASHBOARD_PRIVATE_TTL_DAYS` | `30` | The days that the server keeps private readouts (saved scenarios and exact what-ifs) |
+| `MAPI_DASHBOARD_PRIVATE_TTL_DAYS` | `30` | The days that the server keeps private readouts (saved scenarios, exact what-ifs, tried cases and batch scores). A case that its owner keeps (`…/readouts/{seq}:keep`) does not expire |
 | `MAPI_DASHBOARD_REFRESH_DEBOUNCE_S` | `60` | The minimum time between two refresh readouts of one dashboard |
+| `MAPI_SHARE_BATCH_PER_DAY` | `2` | The batch scores (an uploaded file of cases) that one share link can start in each 24 hours. `0` stops batch scoring from share links |
+| `MAPI_CLIENT_BATCH_PER_DAY` | `4` | The batch scores that one client user can start in each 24 hours on one dashboard |
+| `MAPI_BATCH_ROWS_PER_DAY` | `20000` | The rows of all batch scores of one dashboard in each 24 hours, for all callers together |
+| `MAPI_DASHBOARD_AUTO_UPGRADE` | `true` | Move every layout 1 dashboard to layout 2 once when a worker starts. The pass is idempotent and runs under a Postgres advisory lock. A dashboard that needs review keeps its layout 1 revision |
+| `MAPI_DASHBOARD_LAYOUT1_CREATE` | `false` | Accept new layout 1 (media planner only) dashboard specs on create, and on the draft save of a layout 2 dashboard. Off (the default from v0.17), new dashboards are layout 2 and a layout 1 spec is refused with `422 DASHBOARD_LAYOUT_RETIRED`. A layout 1 draft that exists can still be saved |
+| `MAPI_LIBRARY_ITEMS_PER_TENANT` | `500` | v0.18: the library items (archived items included) that one tenant can have. More items get `409` |
+| `MAPI_LIBRARY_REVISIONS_PER_ITEM` | `200` | The revisions that one library item can have |
+| `MAPI_LIBRARY_VALIDATE_PER_MINUTE` | `60` | The library document checks (`POST /v1/library:validate`) that one user can ask for in each minute |
+| `MAPI_LIBRARY_CHART_PREVIEW_PER_MINUTE` | `60` | The chart template previews (`POST /v1/library/charts:preview`) that one user can ask for in each minute |
+| `MAPI_SAMPLES_ENABLED` | `true` | Offer the one-click sample project. Off, the samples list is empty and each sample action gets `404 SAMPLES_DISABLED` |
+| `MAPI_SAMPLE_MAX_ATTEMPTS` | `3` | The attempts that one sample project can take in total, the first install included |
+| `MAPI_PLOT_PREVIEW_ENABLED` | `true` (`false` with `cloudrun-jobs`) | Live recipe previews: a render run on the example data of a recipe. The default is off with the `cloudrun-jobs` executor, because a job start is too slow for a live preview. Off, a preview request gets `409 PREVIEW_DISABLED` |
+| `MAPI_PLOT_PREVIEW_PER_MINUTE` | `20` | The new preview runs that one user can start in each minute. A cached preview does not count. More requests get `429` |
+| `MAPI_PLOT_PREVIEW_PER_DAY` | `200` | The new preview runs that one tenant can start in each 24 hours |
+| `MAPI_PLOT_PREVIEW_WAIT_S` | `15.0` | The longest `Prefer: wait` that a recipe preview request can hold |
+| `MAPI_PLUGINS_ENABLED` | `true` | Accept uploaded plugins (v0.19) on the tiers that allow uploaded code. Off, the plugin routes refuse uploads and the catalog shows no uploaded entries. See [Uploaded code](uploaded-code.md) |
+| `MAPI_DEV_ALLOW_LOCAL_UNTRUSTED` | `false` | **Development only.** Lets the `local-process` executor run uploaded code without a sandbox. The server does not start with it in the `multi-tenant` profile, with `cloudrun-jobs`, with the `gcs` object store or on Cloud Run (`K_SERVICE`, `CLOUD_RUN_JOB`) |
+| `MAPI_PLUGIN_UPLOAD_MAX_BYTES` | `20971520` | The largest uploaded wheel (bytes) |
+| `MAPI_PLUGIN_UNCOMPRESSED_MAX_BYTES` | `104857600` | The largest total size of the files of a wheel after decompression |
+| `MAPI_PLUGIN_MEMBER_MAX_BYTES` | `20971520` | The largest size of one file of a wheel after decompression |
+| `MAPI_PLUGIN_MAX_MEMBERS` | `2000` | The most files in one wheel |
+| `MAPI_PLUGIN_MAX_RATIO` | `100` | The highest compression ratio of one file and of the wheel (zip bombs) |
+| `MAPI_PLUGIN_UPLOADS_PER_USER_PER_DAY` | `20` | The upload tickets that one user can take each day. More requests get `429 RATE_LIMITED` |
+| `MAPI_PLUGIN_PIPELINE_CONCURRENCY_PER_TENANT` | `2` | The check runs (`plugin_inspect`, `plugin_describe`) of one tenant that run at the same time. The others stay queued |
+| `MAPI_PLUGIN_INSPECT_TIMEOUT_S` | `60` | The time limit of a `plugin_inspect` run |
+| `MAPI_PLUGIN_DESCRIBE_TIMEOUT_S` | `600` | The time limit of a `plugin_describe` run |
+| `MAPI_PLUGIN_DATA_CHECK_TIMEOUT_S` | `120` | The time limit of one data test in a `plugin_describe` run |
+| `MAPI_PLUGIN_TICKET_TTL_S` | `900` | The life of an upload ticket (a POST policy) |
+| `MAPI_PLUGIN_RETENTION_DAYS` | `30` | The days before the purge deletes the files of refused, failed, rejected and withdrawn versions. The rows stay. The server applies it when a version fails or is withdrawn and stores the purge date then: a later change does not move the purge date of earlier versions |
+| `MAPI_PLUGIN_APPROVE_MAX_AUTH_AGE_S` | `900` | An approval or a rejection needs a sign-in that is not older than this (the ID token's `auth_time`) |
+| `MAPI_PLUGIN_APPROVER_MIN_MEMBERSHIP_AGE_DAYS` | `7` | A tenant admin whom the uploader added or promoted fewer days ago than this (directly or through someone they added) cannot approve the uploader's versions |
+| `MAPI_CHAT_PROVIDER` | `off` | The model of the dashboard chat (v0.20): `off`, `gemini` or `fake`. `fake` is a fixed local model that makes no network call, for development and tests. The server does not start with `fake` in the `multi-tenant` profile, with `cloudrun-jobs`, with the `gcs` object store or on Cloud Run. See [Ask about your dashboard](../guides/ask-about-your-dashboard.md#for-operators) |
+| `MAPI_GEMINI_API_KEY` | (none) | A secret: the Gemini Developer API key (a paid-tier key). Necessary with `gemini`. The server sends it only in the `x-goog-api-key` header and never logs or stores it |
+| `MAPI_GEMINI_ENDPOINT` | `https://generativelanguage.googleapis.com` | The base URL of the Gemini API. The `multi-tenant` profile allows only the default |
+| `MAPI_CHAT_MODEL` | `gemini-3.1-flash-lite` | The pinned model |
+| `MAPI_CHAT_THINKING_LEVEL` | `omit` | The thinking level sent to the model: `omit` (the model default), `minimal` or `low` |
+| `MAPI_CHAT_FUNCTION_MODE` | `VALIDATED` | The function-calling mode: `VALIDATED` or `AUTO` |
+| `MAPI_CHAT_MAX_OUTPUT_TOKENS` | `1024` | The most answer tokens of one model call |
+| `MAPI_CHAT_TEMPERATURE` | `0.2` | The sampling temperature |
+| `MAPI_CHAT_REQUEST_TIMEOUT_S` | `20.0` | The time limit of one model call |
+| `MAPI_CHAT_TURN_DEADLINE_S` | `45.0` | The time limit of one question, with all its model and tool calls. Over it, the answer is `503 CHAT_UNAVAILABLE` |
+| `MAPI_CHAT_ALLOWED_RESIDENCIES` | `us` | The data residencies (comma-separated) of the tenants that can use the chat. The Gemini Developer API is a global endpoint |
+| `MAPI_CHAT_PRICE_IN_MICROS_PER_MTOK` | `250000` | The price of one million input tokens (micro-dollars), for the cost estimate of the usage rows |
+| `MAPI_CHAT_PRICE_OUT_MICROS_PER_MTOK` | `1500000` | The price of one million output tokens, thoughts included (micro-dollars) |
+| `MAPI_CHAT_PRICE_VERSION` | `gemini-3.1-flash-lite@2026-10-22` | The name of the price table, stored on each usage row |
+| `MAPI_CHAT_MEMBER_TURNS_PER_MINUTE` | `10` | The questions that one member or client user can ask on one dashboard in each minute |
+| `MAPI_CHAT_SHARE_TURNS_PER_MINUTE` | `6` | The questions through one share link in each minute |
+| `MAPI_CHAT_SHARE_IP_TURNS_PER_MINUTE` | `12` | The share-link questions from one client address in each minute |
+| `MAPI_CHAT_TRANSCRIPT_TTL_DAYS` | `30` | The days that a kept chat message stays (only on dashboards that keep conversations) |
+| `MAPI_MCP_ENABLED` | `true` | Serve the MCP endpoint `POST /v1/mcp`. See [Connect a chat tool with MCP](../guides/connect-a-chat-tool-with-mcp.md) |
+| `MAPI_MCP_ALLOWED_ORIGINS` | (empty) | The browser origins (comma-separated) that can call `/v1/mcp`. Empty: a request with an `Origin` header gets `403` |
+| `MAPI_MCP_RATE_PER_MINUTE` | `120` | The MCP requests of one read token or share link in each minute |
+| `MAPI_DASHBOARD_READ_TOKEN_MAX_DAYS` | `90` | The longest life of a dashboard read token |
+| `MAPI_DASHBOARD_READ_TOKENS_PER_USER` | `5` | The active read tokens of one person on one dashboard. More get `409 READ_TOKEN_LIMIT` |
 
 **Object storage**
 
@@ -218,6 +272,7 @@ Refer to [Client dashboards](../guides/client-dashboards.md) and
 | `MAPI_CATALOG_PATH` | unset | A catalog JSON that the image build exports. If unset, the worker puts a sandboxed `describe` run in the queue |
 | `MAPI_IMAGE_DIGEST` | `sha256` of `uv.lock` | The digest of the runner image. The catalog cache uses it as the key |
 | `MAPI_UV_LOCK_PATH` | found above the working directory | The `uv.lock` whose hash is the image digest. When it is unset, the digest of a source checkout also hashes `packages/*/src` and `plugins/*/src`, so `make dev` makes a new catalog after a code change |
+| `MAPI_EXTENSIONS_LOCK_PATH` | unset | v0.18: the extensions lock of an image that `images/extend` builds (`/opt/mapi/extensions.lock`). The server adds its bytes to the image digest (never to a literal `MAPI_IMAGE_DIGEST`). Mount the same file into `api` and `worker`. If the file is missing, start-up fails. In a source checkout, the plugins that `.local/extra-plugins.txt` lists are also in the digest |
 | `MAPI_SIGNING_KEY_PATH` | `$MAPI_DATA_DIR/keys/bundle-signing-p256.pem` | The EC P-256 key that signs bundle manifests (in place of Cloud KMS). The worker signs and the API verifies, thus the two must load the same file. `mapi-server migrate` makes it |
 | `MAPI_SIGNING_TRUSTED_KEY_PATHS` | none | Old bundle-signing keys (PEM files, public or private, comma-separated) whose signatures still verify. Thus a key rotation does not break the models that the old key signed (`ops/runbooks/rotating-keys.md`) |
 | `MAPI_SIGNING_KEY_CREATE` | `true` | Make the key at the first use if it is missing. Compose turns it off for `api` and `worker`. Thus, if the key is missing, start-up fails, and the server does not mint a new key |
@@ -378,6 +433,20 @@ project=…)`) have priority over the environment. The environment has priority 
 `mapi config show` prints the result and the source of each value. `mapi login`, `mapi use`
 and `mapi config set` write the config file again atomically with mode `0600`.
 
+## The MCP bridge (`mapi-mcp`)
+
+`mapi-mcp` reads its settings from the environment of the chat tool that starts it, never
+from its command line ([Connect a chat tool with MCP](../guides/connect-a-chat-tool-with-mcp.md)).
+
+| Variable | Meaning |
+|---|---|
+| `MAPI_API_URL` | The API (`https://`, or `http://` for `localhost` only) |
+| `MAPI_DASHBOARD_TOKEN` | A dashboard read token, sent as `Authorization: Bearer` |
+| `MAPI_SHARE_LINK` | A share link (or its `mpd_…` token), in place of a read token. The bridge opens a share session and gets a new one before it ends |
+| `MAPI_SHARE_PASSCODE` | The passcode of the share link |
+| `MAPI_MCP_CONFIG` | The configuration file (default `~/.config/mapi/mcp.json`, mode `0600` only) |
+| `MAPI_MCP_LOG` | The log level on the standard error (default `WARNING`; `INFO` writes one line for each request) |
+
 ## `make dev`
 
 `scripts/dev.py` reads the topology variables and these variables:
@@ -411,6 +480,7 @@ build, set them yourself.
 | `VITE_APP_ORIGINS` (sandbox) | `http://127.0.0.1:5173,http://localhost:5173` | The origins that can frame the sandbox and send messages to it |
 | `VITE_AUTH_BASE` | `VITE_API_BASE` | The location of the sign-in routes (`/auth/*`), when they are not on the API base |
 | `VITE_TERMS_URL` | `/terms` | The terms of service that sign-up links to (an `http(s)` URL or a path on the origin of the app). The default is the plain-language summary in the app |
+| `VITE_DOCS_URL` | none | The root of the documentation site (an `http(s)` URL). The "Learn more" links of the chat panel go to its guide pages. Without it, the panel shows no "Learn more" links. From v0.21, the search of the app shows pages of the docs, and the account menu shows **Read the docs**, only when this variable is set |
 | `VITE_ACCEPTABLE_USE_URL` | `/acceptable-use` | The acceptable-use policy that sign-up links to, in the same way. A public installation must publish its own versions of the two documents |
 
 The Playwright smoke suite of the web app serves the app on 5173 and the sandbox on 5174. If
@@ -461,6 +531,7 @@ Use `docker build --build-arg NAME=value`. The Makefile gives `VERSION`, `VCS_RE
 | `MAPI_APT_PACKAGES` | The system packages of the runtime stage (`tini`, and `g++` for PyTensor) |
 | `MAPI_XLA_PREALLOCATE`, `MAPI_XLA_FLAGS` | v0.15: the values of `XLA_PYTHON_CLIENT_PREALLOCATE` and `XLA_FLAGS` in the image (empty by default). `base-dl` sets `false` (GPU memory on demand) and `--xla_gpu_deterministic_ops=true` (deterministic GPU operations). Not verified on a GPU |
 | `MAPI_ASSERT_PRESENT`, `MAPI_ASSERT_ABSENT` | The distributions that must be installed, and that must not be installed. If not, the build fails |
+| `MAPI_LICENSES` | v0.18, `images/extend`: the `org.opencontainers.image.licenses` label of an extended image |
 | `MAPI_IMAGE_NAME`, `MAPI_DESCRIPTION` | OCI labels, and the name that the catalog export records |
 | `PYTHON_IMAGE` (and the other base images) | Base images, pinned by tag *and* digest (`make docker-pin`) |
 
@@ -491,10 +562,19 @@ variables that Terraform sets on the Cloud Run services (the deployment contract
 | `MAPI_E2E_GUIDED_ACCOUNT` | The address that the M3 journey (`tests/e2e/test_m3_guided_stack.py`) uses to sign up. It is a development-IdP account (default `viewer@dev.local`) |
 | `MAPI_E2E_KEEP` | `1` keeps the project that the M3.5 journeys make (`tests/e2e/test_m35_stack.py`, `apps/web/e2e/m35-live.e2e.spec.ts`). It also keeps the project of the forecasts-with-actuals journey (`tests/e2e/test_forecast_actuals_stack.py`). Thus you can look at the project in the app ([M3.5 verification](m35-verification.md)) |
 | `MAPI_E2E_WEBHOOK_TLS_DIR` | The location where the webhook receiver of the M3 journey finds `cert.pem` and `key.pem` (default `$MAPI_DATA_DIR/dev/webhook-tls`) |
+| `MAPI_BUDGET_REPORT` | `1` makes `vite build` print each bundle budget of the web app: the chunk, the bytes that it adds and its budget |
 | `MAPI_UPDATE_SNAPSHOTS` | `1` makes the contract snapshot of `mapi_spec` and the Guided catalog fixture of the server tests again (`make snapshots`) |
+| `MAPI_REGEN_GOLDEN` | `1` makes the golden of the recipe examples (`packages/plots-core/tests/golden/recipe_examples.json`) again after a deliberate change to an example |
 | `MAPI_HYPOTHESIS_EXAMPLES` | The examples for each property in the wire-format round-trip tests (default 60) |
 | `MAPI_PYMC_CHALLENGES_DATA` | The `data/` directory of a local copy of pymc-challenges. The `from_challenges` loaders of `mapi-plugin-science` read the real data files there, and the tests that use them run. If it is not set, these tests are skipped |
 | `MAPI_E21_DRAWS` | The draws for each chain in the real-data sociality fit of `sci.network_latent_space` (`plugins/science/tests/test_network.py`, default 300) |
+| `MAPI_PROBES_API_URL` | The API of the docker stack that the probes-as-upload suite (`tests/security/test_probes_as_upload.py`, `-m docker`) pushes the probe plugin to (default `http://127.0.0.1:18000`) |
+| `MAPI_PROBES_GCS_ENDPOINT` | The GCS shim of that stack (default `http://127.0.0.1:14443`) |
+| `MAPI_PROBES_GCS_ROOT` | The root folder of that GCS shim on disk. The suite uses it to swap a stored object (default `.local-v019b/gcs`) |
+| `MAPI_PROBES_IMAGE` | The image that the probes-as-upload suite runs as its baseline (default `mapi/base-bayes:0.16.0`) |
+| `MAPI_PROBES_REVIEWER` | The second tenant admin that approves the probe plugin. It must be a development-IdP account that the uploader did not add (default `reviewer@dev.local`) |
+| `MAPI_PROBES_PLUGINS_BUCKET` | The bucket of uploaded plugins in that stack (default `mapi-local-plugins`) |
+| `MAPI_PROBES_RUNS_BUCKET` | The bucket of runs in that stack (default `mapi-local-runs`) |
 
 ## Documentation
 

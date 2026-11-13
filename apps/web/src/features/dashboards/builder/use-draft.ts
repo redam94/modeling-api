@@ -1,5 +1,6 @@
 /**
- * The builder's working copy of a dashboard draft. Setup and Inputs edit it locally; "Save
+ * The builder's working copy of a dashboard draft (either layout: a layout 1 draft until it
+ * moves to the new layout, then layout 2). Setup and Inputs edit it locally; "Save
  * draft" sends it with the `draft_etag` it was read with (`PUT …/draft`, `If-Match`). A
  * newer draft from the server replaces the copy only when there are no unsaved changes; with
  * changes, a save answers 412 `DASHBOARD_SPEC_STALE` and the page offers to reload.
@@ -9,11 +10,14 @@ import { useCallback, useEffect, useState } from "react";
 import { ApiError } from "@/api/client";
 
 import { useRefetchDashboard, useUpdateDraft } from "../api";
-import type { Dashboard, DashboardSpec } from "../types";
+import type { AnyDashboardSpec, Dashboard } from "../types";
 import { cleanSpec, sameSpec } from "./spec-form";
 
+/** A new spec, or a change of the current one (either layout). */
+export type SpecUpdate = AnyDashboardSpec | ((s: AnyDashboardSpec) => AnyDashboardSpec);
+
 export interface Draft {
-  spec: DashboardSpec;
+  spec: AnyDashboardSpec;
   /** The etag the working copy is based on. */
   etag: string;
   dirty: boolean;
@@ -21,7 +25,7 @@ export interface Draft {
   stale: boolean;
   saving: boolean;
   saveError: unknown;
-  set: (next: DashboardSpec | ((s: DashboardSpec) => DashboardSpec)) => void;
+  set: (next: SpecUpdate) => void;
   save: () => Promise<Dashboard | null>;
   /** Drop the changes and take the server's draft (read again first: the cached copy may be the old one). */
   reset: () => Promise<void>;
@@ -30,9 +34,9 @@ export interface Draft {
 export function useDraft(d: Dashboard): Draft {
   const update = useUpdateDraft(d.id);
   const refetch = useRefetchDashboard(d.id);
-  const [spec, setSpec] = useState<DashboardSpec>(d.draft_spec);
+  const [spec, setSpec] = useState<AnyDashboardSpec>(d.draft_spec);
   // the server draft the working copy started from, and its etag
-  const [base, setBase] = useState<{ spec: DashboardSpec; etag: string }>({ spec: d.draft_spec, etag: d.draft_etag });
+  const [base, setBase] = useState<{ spec: AnyDashboardSpec; etag: string }>({ spec: d.draft_spec, etag: d.draft_etag });
   const [stale, setStale] = useState(false);
   const dirty = !sameSpec(spec, base.spec);
 
@@ -49,7 +53,7 @@ export function useDraft(d: Dashboard): Draft {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [d.draft_etag]);
 
-  const set = useCallback((next: DashboardSpec | ((s: DashboardSpec) => DashboardSpec)) => setSpec((s) => (typeof next === "function" ? next(s) : next)), []);
+  const set = useCallback((next: SpecUpdate) => setSpec((s) => (typeof next === "function" ? next(s) : next)), []);
 
   const save = async (): Promise<Dashboard | null> => {
     try {

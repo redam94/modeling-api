@@ -772,7 +772,7 @@ v0.5 (milestone M3.5) adds the contracts for these items:
 
 The endpoint table agrees with `mapi_spec.api.M35_ENDPOINTS`. `mapi_spec.api.ENDPOINTS` is the
 full v0.5 surface (`V04_ENDPOINTS` + `M35_ENDPOINTS`). `ROUTE_ACCESS` gives the scope and the
-permission of each operation. [Workflows](../concepts/workflows.md),
+permission of each operation. [How workflows work](../concepts/workflows.md),
 [Governance](../concepts/governance.md) and
 [About cards and choosing](../concepts/about-and-choosing.md) explain the ideas.
 
@@ -1269,7 +1269,7 @@ endpoint, gives it to client users (the project role `client`) and makes share l
 persons without an account. Each dashboard keeps an append-only history of readouts.
 [Client dashboards](../concepts/client-dashboards.md) tells how the parts work. The guides
 are [Build a client dashboard](../guides/client-dashboards.md) and
-[Share dashboards securely](../guides/sharing-dashboards-securely.md).
+[Share dashboards securely with a share link](../guides/sharing-dashboards-securely.md).
 
 The contracts are in `mapi_spec.dashboards` (DTOs) and `mapi_spec.dashboard_tools` (the
 read-only tool surface). `mapi_spec.api.V016_ENDPOINTS` lists the routes below.
@@ -1296,7 +1296,7 @@ of each route is in the [permissions reference](generated/permissions.md):
 | `GET /v1/dashboards` | Dashboards of the project (a client sees only the published ones granted to them) | — | `Page[DashboardSummary]` | 200 | — |
 | `POST /v1/dashboards` | Create a dashboard draft | `DashboardCreate` | `Dashboard` | 201 | `SCHEMA_INVALID`, `CONFLICT` |
 | `GET /v1/dashboards/{dashboard_id}` | A dashboard (viewers and up: Dashboard; a client: ClientDashboard) | — | `Dashboard` | 200 | `NOT_FOUND` |
-| `PUT /v1/dashboards/{dashboard_id}/draft` | Replace the draft spec (If-Match: the draft_etag) | `DashboardDraftUpdate` | `Dashboard` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `DASHBOARD_SPEC_STALE`, `PRECONDITION_FAILED` |
+| `PUT /v1/dashboards/{dashboard_id}/draft` | Replace the draft spec (If-Match: the draft_etag) | `DashboardDraftUpdate` | `Dashboard` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `DASHBOARD_SPEC_STALE`, `PRECONDITION_FAILED`, `DASHBOARD_LAYOUT_RETIRED` |
 | `POST /v1/dashboards/{dashboard_id}:validate` | Check whether the draft can be published | — | `DashboardValidation` | 200 | `NOT_FOUND` |
 | `POST /v1/dashboards/{dashboard_id}:publish` | Publish the draft as a new revision (needs runner; queues a baseline readout). Optional `If-Match`: the `draft_etag` you checked | — | `Dashboard` | 200 | `NOT_FOUND`, `FORBIDDEN`, `SCHEMA_INVALID`, `NOT_READY`, `CONFLICT`, `DASHBOARD_SPEC_STALE` |
 | `POST /v1/dashboards/{dashboard_id}:archive` | Archive a dashboard (revokes its share links) | — | `Dashboard` | 200 | `NOT_FOUND` |
@@ -1425,6 +1425,105 @@ All of these are in `mapi_spec.dashboards`, except the tool DTOs.
 
 ```bash
 curl -s "$MAPI/v1/dashboards/$DASHBOARD/readouts?kind=actuals&limit=10" \
+  -H "Authorization: Bearer $MAPI_TOKEN" -H "X-Mapi-Project: growth"
+```
+
+## Dashboards for any model type <span class="mapi-badge">v0.17</span> { #v017 }
+
+v0.17 adds layout 2 dashboards: a dashboard for any model family (media planner, forecast,
+regression, classifier, causal impact, field map, image, generic), made of panels and built
+from a preset. New dashboards are layout 2 (`MAPI_DASHBOARD_LAYOUT1_CREATE`, default `false`,
+refuses a new layout 1 spec with `422 DASHBOARD_LAYOUT_RETIRED`), and a worker moves every
+layout 1 dashboard to layout 2 once (`MAPI_DASHBOARD_AUTO_UPGRADE`). Layout 1 revisions,
+stored readouts and share links keep working. [What's new in 0.17](../whats-new-0.17.md) and
+[Client dashboards](../concepts/client-dashboards.md) tell how the parts work.
+
+The contracts are in `mapi_spec.dashboard_v2` (DTOs), `mapi_spec.dashboard_presets` (the
+presets) and `mapi_spec.dashboard_tools` (six new read-only tools).
+`mapi_spec.api.V017_ENDPOINTS` lists the routes below; the v0.16 routes take a layout 2 spec
+and give layout 2 readouts (`ReadoutHeader.kind` adds `prediction` and `batch`).
+
+### Project routes { #v017-endpoints }
+
+They need the `X-Mapi-Project` header, as the v0.16 routes. Presets are `dashboard` `create`
+with `model` `read`; sources and upgrade are `dashboard` `update` (editor); predictions, keep,
+the batch template and batch scoring are `dashboard` `run` (client and higher); the
+predictions download and pictures are `dashboard` `read`. Keep and the predictions download
+also need the readout's owner or an editor. `CLIENT_OPERATIONS`
+adds `submit_dashboard_predictions`, `keep_dashboard_readout`, `get_dashboard_batch_template`,
+`submit_dashboard_batch`, `download_dashboard_predictions` and `get_dashboard_asset`. A client
+or a share link cannot score image files (`409 DASHBOARD_INPUT_DISABLED`).
+
+| Endpoint | Purpose | Request | Response | Success | Errors |
+|---|---|---|---|---|---|
+| `GET /v1/dashboards:presets` | Presets that fit a model version (or an endpoint), best first, and the compiled layout 2 spec of the first (nothing is saved) | — | `DashboardPresets` | 200 | `NOT_FOUND`, `SCHEMA_INVALID` |
+| `GET /v1/dashboards/{dashboard_id}/sources` | What the draft's model version offers to panels and inputs (outputs, metrics, scorecard checks, pictures, inputs) | — | `SourceCatalog` | 200 | `NOT_FOUND` |
+| `POST /v1/dashboards/{dashboard_id}:upgrade` | Convert a layout 1 draft to layout 2 and save it as the draft (If-Match: the draft_etag; SCHEMA_INVALID with the issues when it cannot be converted); publish it as usual | — | `DashboardUpgrade` | 200 | `NOT_FOUND`, `SCHEMA_INVALID`, `DASHBOARD_SPEC_STALE`, `PRECONDITION_FAILED`, `CONFLICT` |
+| `POST /v1/dashboards/{dashboard_id}/predictions` | Score scenario rows (values checked against the published revision): a private prediction readout (Prefer: wait=N -> 200 with the readout if done, else 202 with its header) | `ScenarioRowsRequest` | `Readout` | 202 | `SCHEMA_INVALID`, `NOT_FOUND`, `DASHBOARD_INPUT_DISABLED`, `DASHBOARD_LIVE_PAUSED`, `DASHBOARD_RUN_LIMIT`, `QUOTA_EXCEEDED`, `IDEMPOTENCY_CONFLICT`, `DASHBOARD_INPUT_INVALID`, `PAYLOAD_TOO_LARGE` |
+| `POST /v1/dashboards/{dashboard_id}/readouts/{seq}:keep` | Keep a tried case (a private prediction readout): it no longer expires and waits for an editor's review before it can enter the history (its owner or an editor) | — | `ReadoutHeader` | 200 | `NOT_FOUND`, `CONFLICT` |
+| `GET /v1/dashboards/{dashboard_id}/batch/template` | The columns of a batch file, an example CSV and the row cap | — | `BatchTemplate` | 200 | `NOT_FOUND`, `DASHBOARD_INPUT_DISABLED` |
+| `POST /v1/dashboards/{dashboard_id}/batch` | Score a file of new cases: a private batch readout with a summary and a predictions download (Prefer: wait=N -> 200 with the readout if done, else 202 with its header) | `BatchSubmit` | `Readout` | 202 | `SCHEMA_INVALID`, `NOT_FOUND`, `DASHBOARD_INPUT_DISABLED`, `DASHBOARD_LIVE_PAUSED`, `DASHBOARD_RUN_LIMIT`, `QUOTA_EXCEEDED`, `IDEMPOTENCY_CONFLICT`, `DASHBOARD_INPUT_INVALID`, `PAYLOAD_TOO_LARGE`, `DASHBOARD_BATCH_TOO_LARGE` |
+| `GET /v1/dashboards/{dashboard_id}/readouts/{seq}/predictions.csv` | The predictions of a batch readout as CSV (its owner or an editor) | — | `text/csv` | 200 | `NOT_FOUND`, `DASHBOARD_DOWNLOAD_GONE` |
+| `GET /v1/dashboards/{dashboard_id}/assets/{asset_id}` | A picture of the dashboard (PNG): a client reads only those of the published revision, members those of any revision | — | `image/png` | 200 | `NOT_FOUND` |
+
+`list_dashboard_presets` takes `model_id` and `version`, or `alias`. `upgrade_dashboard` needs
+`If-Match: <draft_etag>` (`412 PRECONDITION_FAILED` without it); a draft that cannot be
+converted answers `422 SCHEMA_INVALID` with the issues. `update_dashboard_draft` answers `422
+DASHBOARD_LAYOUT_RETIRED` for a layout 1 spec on a layout 2 draft (unless
+`MAPI_DASHBOARD_LAYOUT1_CREATE` is on). `submit_dashboard_predictions` and
+`submit_dashboard_batch` accept `Idempotency-Key` and `Prefer: wait=N` (a maximum of 30); they
+answer `202` with the readout's header, or `200` with the `Readout` when a cached readout is
+ready at once or the run finished within the wait (`Preference-Applied` says so). Poll `GET …/readouts/{seq}` until `status` is `ready` or `failed`. A tried case is
+private and expires after `MAPI_DASHBOARD_PRIVATE_TTL_DAYS`; `keep_dashboard_readout` moves it
+to `pending_review`, and an editor's `:publish` puts it in the history. The predictions CSV
+prefixes a cell that looks like a formula with `'`.
+
+### Public share routes { #v017-share }
+
+The same rules as the [v0.16 share routes](#v016-share): no project, no cookie, the session
+in `X-Mapi-Share`. A link must allow `scenario_rows` for predictions and `batch` for batch
+scoring (`DashboardShareCreate.allowed_inputs`). A share link cannot keep a case.
+
+| Endpoint | Purpose | Request | Response | Success | Errors |
+|---|---|---|---|---|---|
+| `POST /v1/shared/predictions` | Public: score scenario rows as this link's private readout (Prefer: wait=N -> 200 with the readout if done, else 202 with its header) | `ScenarioRowsRequest` | `Readout` | 202 | `SCHEMA_INVALID`, `UNAUTHENTICATED`, `LINK_EXPIRED`, `RATE_LIMITED`, `DASHBOARD_INPUT_DISABLED`, `DASHBOARD_LIVE_PAUSED`, `DASHBOARD_RUN_LIMIT`, `QUOTA_EXCEEDED`, `IDEMPOTENCY_CONFLICT`, `DASHBOARD_INPUT_INVALID`, `PAYLOAD_TOO_LARGE` |
+| `GET /v1/shared/batch/template` | Public: the batch file template (the link must allow batch scoring) | — | `BatchTemplate` | 200 | `UNAUTHENTICATED`, `LINK_EXPIRED`, `RATE_LIMITED`, `DASHBOARD_INPUT_DISABLED` |
+| `POST /v1/shared/batch` | Public: score a file of new cases as this link's private readout (Prefer: wait=N -> 200 with the readout if done, else 202 with its header) | `BatchSubmit` | `Readout` | 202 | `SCHEMA_INVALID`, `UNAUTHENTICATED`, `LINK_EXPIRED`, `RATE_LIMITED`, `DASHBOARD_INPUT_DISABLED`, `DASHBOARD_LIVE_PAUSED`, `DASHBOARD_RUN_LIMIT`, `QUOTA_EXCEEDED`, `IDEMPOTENCY_CONFLICT`, `DASHBOARD_INPUT_INVALID`, `PAYLOAD_TOO_LARGE`, `DASHBOARD_BATCH_TOO_LARGE` |
+| `GET /v1/shared/readouts/{seq}/predictions.csv` | Public: the predictions CSV of this link's own batch readout | — | `text/csv` | 200 | `NOT_FOUND`, `UNAUTHENTICATED`, `LINK_EXPIRED`, `RATE_LIMITED`, `DASHBOARD_DOWNLOAD_GONE` |
+| `GET /v1/shared/assets/{asset_id}` | Public: a picture of the shared dashboard (PNG) | — | `image/png` | 200 | `NOT_FOUND`, `UNAUTHENTICATED`, `LINK_EXPIRED`, `RATE_LIMITED` |
+
+### The DTOs { #v017-dtos }
+
+All of these are in `mapi_spec.dashboard_v2`.
+
+- `DashboardSpecV2`: `layout_version` (2), `preset` (`mmm_planner`, `forecast`, `regression`,
+  `classifier`, `causal_impact`, `field_map`, `image`, `generic`), `title`, `client_name`,
+  `summary`, `note`, `period_label`, `source`, `subject` (the result the dashboard is about),
+  `panels` (KPI, chart, table, note, recipe and media planner panels), `mmm`, `scenario_rows`,
+  `actuals`, `batch`, `refresh`, `limits` and `show_technical`.
+- `DashboardPresets` (`suggestions`: `PresetSuggestion` with `preset`, `reasons` and
+  `blocked_inputs`; `spec`: the compiled spec of the first; `issues`) and `SourceCatalog`
+  (`outputs`, `metrics`, `scorecard`, `pictures`, `inputs`, `score_modes`, `family` and the
+  shape of the model's input).
+- `DashboardUpgrade` (`dashboard`, `issues`, `notes`). A dashboard whose upgrade stopped has
+  `problem` `upgrade_needs_review` and `upgrade_issues`.
+- `ScenarioRowsRequest` (`rows`: the values of each case, checked against the published
+  inputs with pointers `/rows/<i>/<name>`; `label`).
+- `BatchTemplate` (`columns`: `BatchColumn` with `name`, `role`, `type`, `required`, `min`,
+  `max`, `choices`; `id_column`, `example_csv`, `max_rows`) and `BatchSubmit` (`inputs` as a
+  one-dim XrJSON table along the id column, `label`).
+- `Readout` and `ReadoutHeader` (as v0.16) carry layout 2 snapshots: panel blocks,
+  `PredictionResult` (`rows`, `band`, `approximate`), `BatchSummary` and the accuracy of an
+  actuals readout by kind: `ErrorAccuracy` (`mae`, `rmse`, `mape`, `wape`, `smape`, `bias`,
+  `r2`, `band_hit_rate`; the percentages in percent), `ClassAccuracy` (`accuracy`, `brier`,
+  `log_score`, `auc`, calibration `bins`, `confusion`) and `EffectAccuracy` (`total`, `low`,
+  `high`, `relative` in percent).
+- `ClientDashboard` adds `layout_version`, `preset`, `subject`, `panels_meta`,
+  `scenario_form`, `batch_form`, `sections` and `upgrade_note` (the one-time note after an
+  automatic upgrade).
+
+```bash
+curl -s "$MAPI/v1/dashboards:presets?model_id=$MODEL&version=3" \
   -H "Authorization: Bearer $MAPI_TOKEN" -H "X-Mapi-Project: growth"
 ```
 

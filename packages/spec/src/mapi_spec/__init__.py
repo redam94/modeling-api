@@ -9,7 +9,13 @@ param and tag keys, tracking budgets and the run-search grammar; and the v0.14 c
 run media, experiments, saved run views, run comparison, image-folder ingest and the
 column and stratified splits; and the v0.15 contracts: image collections, safetensors
 weights, the GPU resource class and model side tables; and the v0.16 contracts: client
-dashboards, readouts, share links, the client role and the read-only dashboard tools).
+dashboards, readouts, share links, the client role and the read-only dashboard tools; and the
+v0.17 contracts: layout 2 dashboards for any model type, with presets, panels, scenario rows,
+actuals tracking and batch scoring; and the v0.18 contracts: id namespaces, JSON-Schema
+safety, catalog diagnostics, plugin workflow nodes and templates, and recipe previews; and the
+v0.19 contracts: uploaded plugins (namespaces, version states, inspect and describe results,
+overlay pins) and untrusted-text safety; and the v0.20 contracts: dashboard chat, chat
+settings and transcripts, dashboard read tokens and tool-result caps).
 
 This package never imports numpy, xarray or pandas: the control plane depends on it and
 must stay JSON-only. Public names are re-exported here; see the submodules for details.
@@ -62,10 +68,20 @@ from mapi_spec.capabilities import (
 )
 from mapi_spec.catalog import (
     Catalog,
+    CatalogDiagnostic,
     ModelCatalogEntry,
     PlotCatalogEntry,
     StepCatalogEntry,
+    TemplateCatalogEntry,
     catalog_about_issues,
+)
+from mapi_spec.chat import (
+    CHAT_MAX_TOOL_CALLS,
+    ChatAvailability,
+    ChatRequest,
+    ChatResponse,
+    ChatTurn,
+    ReadToken,
 )
 from mapi_spec.collection import (
     BASE_INFO_INPUT,
@@ -112,6 +128,13 @@ from mapi_spec.cost import (
     estimate_cost,
 )
 from mapi_spec.dashboard_tools import DASHBOARD_TOOLS, ToolDecl, tools_json_schema
+from mapi_spec.dashboard_v2 import (
+    PRESET_RULES,
+    DashboardSpecV2,
+    PanelBlock,
+    PresetKey,
+    SourceCatalog,
+)
 from mapi_spec.dashboards import (
     ClientDashboard,
     Dashboard,
@@ -122,6 +145,7 @@ from mapi_spec.dashboards import (
     ReadoutSnapshot,
     generate_share_token,
     metrics_of,
+    parse_dashboard_spec,
     zone_of,
 )
 from mapi_spec.effects import (
@@ -194,6 +218,7 @@ from mapi_spec.ingest import (
     WideVarMapping,
 )
 from mapi_spec.jsonschema_export import export_schemas
+from mapi_spec.library_workflows import all_templates, node_contracts
 from mapi_spec.loader import (
     Limits,
     canonical_json,
@@ -216,6 +241,17 @@ from mapi_spec.media import (
     media_name,
     sniff_image,
 )
+from mapi_spec.namespaces import (
+    BUILTIN_DISTRIBUTIONS,
+    BUILTIN_NAMESPACES,
+    PLATFORM_RESERVED,
+    UPLOAD_NAMESPACE_RE,
+    check_namespace,
+    is_uploaded_namespace,
+    namespace_of,
+    reserved_namespace,
+    uploaded_namespace_of,
+)
 from mapi_spec.optimize import OptimizeRequest, OptimizeResult
 from mapi_spec.plots import (
     DataRef,
@@ -224,6 +260,23 @@ from mapi_spec.plots import (
     PlotExamples,
     PlotProvenance,
     PlotSpec,
+)
+from mapi_spec.plugins import (
+    MOUNTABLE_STATES,
+    PLUGIN_TRANSITIONS,
+    OverlayPin,
+    PluginDescribe,
+    PluginExports,
+    PluginInspection,
+    PluginKitReport,
+    PluginVersionState,
+    check_describe,
+    describe_digest,
+    is_uploaded_id,
+    lineage_has_uploaded_code,
+    lineage_pins,
+    upload_dist_name,
+    upload_namespace,
 )
 from mapi_spec.quotas import (
     PriorityClass,
@@ -264,6 +317,12 @@ from mapi_spec.schema import (
     Role,
     VarSpec,
 )
+from mapi_spec.schema_safety import (
+    is_safe_regex,
+    require_safe_schema,
+    sanitize_schema,
+    sanitize_settings_schema,
+)
 from mapi_spec.scorecard import (
     SCORECARD_CHECKS,
     GateOutcome,
@@ -274,7 +333,7 @@ from mapi_spec.scorecard import (
     evaluate_check,
     promotion_gate,
 )
-from mapi_spec.sharing import PlotEmbed, SavedPlot, embeddable
+from mapi_spec.sharing import PlotEmbed, SavedPlot, embeddable, uses_uploaded_ids
 from mapi_spec.snippets import Snippet, SnippetContext, SnippetLanguage, render_snippets
 from mapi_spec.spec import (
     API_VERSION,
@@ -314,8 +373,22 @@ from mapi_spec.tenancy import (
     TenantStatus,
     TrustTier,
     can,
+    untrusted_placement_problem,
 )
-from mapi_spec.tokens import ApiToken, ScopeName, generate_token, parse_token, scope_allows
+from mapi_spec.text_safety import (
+    check_reference_url,
+    has_unsafe_text,
+    normalize_untrusted_text,
+)
+from mapi_spec.tokens import (
+    ApiToken,
+    ScopeName,
+    dashboard_scope,
+    generate_token,
+    parse_token,
+    scope_allows,
+)
+from mapi_spec.tool_results import CappedResult, cap_tool_result
 from mapi_spec.tracking import (
     LogLevel,
     RunFilter,
@@ -376,8 +449,15 @@ from mapi_spec.workflow import (
     topological_order,
     validate_workflow,
 )
-from mapi_spec.workflow_nodes import NODE_IMPLEMENTATIONS, NodeImplementation, NodeKind, PortType
-from mapi_spec.workflow_templates import WORKFLOW_TEMPLATES, WorkflowTemplate
+from mapi_spec.workflow_nodes import (
+    NODE_IMPLEMENTATIONS,
+    PLUGIN_NODE_KINDS,
+    NodeImplementation,
+    NodeKind,
+    PortType,
+    plugin_contract_issues,
+)
+from mapi_spec.workflow_templates import WORKFLOW_TEMPLATES, WorkflowTemplate, template_from_entry
 from mapi_spec.xrjson import XrJsonDataset
 
 try:
@@ -389,6 +469,9 @@ __all__ = [
     "API_VERSION",
     "BASE_INFO_INPUT",
     "BASE_MANIFEST_INPUT",
+    "BUILTIN_DISTRIBUTIONS",
+    "BUILTIN_NAMESPACES",
+    "CHAT_MAX_TOOL_CALLS",
     "COLLECTION_FORMAT",
     "COLLECTION_INFO",
     "COLLECTION_MANIFEST",
@@ -416,14 +499,20 @@ __all__ = [
     "MAX_TREE_DEPTH",
     "MAX_TREE_NODES",
     "MAX_VERSION_PACKS",
+    "MOUNTABLE_STATES",
     "NODE_IMPLEMENTATIONS",
     "PACK_OBJECT_PREFIX",
     "PART_ENTRY_RE",
     "PERMISSIONS",
+    "PLATFORM_RESERVED",
+    "PLUGIN_NODE_KINDS",
+    "PLUGIN_TRANSITIONS",
+    "PRESET_RULES",
     "REPRESENTATION_RULES",
     "RESOURCE_CLASSES",
     "SBC",
     "SCORECARD_CHECKS",
+    "UPLOAD_NAMESPACE_RE",
     "WEIGHTS_ATTR",
     "WEIGHTS_DIM",
     "WEIGHTS_VAR",
@@ -447,8 +536,14 @@ __all__ = [
     "Campaign",
     "Capabilities",
     "Capability",
+    "CappedResult",
     "Catalog",
+    "CatalogDiagnostic",
     "ChannelBelief",
+    "ChatAvailability",
+    "ChatRequest",
+    "ChatResponse",
+    "ChatTurn",
     "CheckResult",
     "ChooserAnswer",
     "ChooserResult",
@@ -470,6 +565,7 @@ __all__ = [
     "DashboardRevision",
     "DashboardShare",
     "DashboardSpec",
+    "DashboardSpecV2",
     "DataBlock",
     "DataLayout",
     "DataRef",
@@ -543,7 +639,9 @@ __all__ = [
     "OptimizeResult",
     "OutputDecl",
     "OutputSelector",
+    "OverlayPin",
     "PackInfo",
+    "PanelBlock",
     "ParamItem",
     "ParamsPayload",
     "PlotBindings",
@@ -552,8 +650,14 @@ __all__ = [
     "PlotExamples",
     "PlotProvenance",
     "PlotSpec",
+    "PluginDescribe",
+    "PluginExports",
+    "PluginInspection",
+    "PluginKitReport",
+    "PluginVersionState",
     "PolicyCheck",
     "PortType",
+    "PresetKey",
     "PriceTable",
     "Principal",
     "PriorTranslationResult",
@@ -567,6 +671,7 @@ __all__ = [
     "QuotaPolicy",
     "QuotaScope",
     "RaggedSpec",
+    "ReadToken",
     "Readout",
     "ReadoutSnapshot",
     "Representation",
@@ -593,6 +698,7 @@ __all__ = [
     "Snippet",
     "SnippetContext",
     "SnippetLanguage",
+    "SourceCatalog",
     "SpecRef",
     "SpecValidation",
     "SplitPlan",
@@ -605,6 +711,7 @@ __all__ = [
     "Sweep",
     "TagItem",
     "TagsPayload",
+    "TemplateCatalogEntry",
     "Tenant",
     "TenantDeletion",
     "TenantStatus",
@@ -636,6 +743,7 @@ __all__ = [
     "XrJsonDataset",
     "__version__",
     "about_issues",
+    "all_templates",
     "apply_effect",
     "apply_prior_translation",
     "authorize_promotion",
@@ -645,16 +753,22 @@ __all__ = [
     "can",
     "can_aggregate",
     "canonical_json",
+    "cap_tool_result",
     "catalog_about_issues",
+    "check_describe",
     "check_labels",
     "check_media",
     "check_media_key",
     "check_metric_key",
+    "check_namespace",
     "check_param_key",
+    "check_reference_url",
     "check_tag_key",
     "check_webhook_url",
+    "dashboard_scope",
     "default_summary",
     "describe_dataset",
+    "describe_digest",
     "dump_yaml",
     "embeddable",
     "estimate_cost",
@@ -666,27 +780,37 @@ __all__ = [
     "export_schemas",
     "generate_share_token",
     "generate_token",
+    "has_unsafe_text",
     "http_status",
     "info_input",
     "is_ancestor",
+    "is_safe_regex",
+    "is_uploaded_id",
+    "is_uploaded_namespace",
     "json_pointer",
     "kill_switch_decision",
     "labels_key",
+    "lineage_has_uploaded_code",
+    "lineage_pins",
     "load_document",
     "load_model_spec",
     "load_score_request",
     "load_workflow",
     "media_name",
     "metrics_of",
+    "namespace_of",
     "node_ancestors",
+    "node_contracts",
     "node_depth",
     "node_join",
     "node_name",
     "node_parent",
+    "normalize_untrusted_text",
     "pack_digest",
     "pack_input",
     "pack_object_name",
     "param_text",
+    "parse_dashboard_spec",
     "parse_document",
     "parse_expression",
     "parse_freq",
@@ -700,13 +824,18 @@ __all__ = [
     "plan_folds",
     "plan_group_folds",
     "plan_leases",
+    "plugin_contract_issues",
     "promotion_gate",
     "propagate",
     "recommend",
     "register_upgrader",
     "render_snippets",
+    "require_safe_schema",
+    "reserved_namespace",
     "resolve_effect",
     "resolve_version",
+    "sanitize_schema",
+    "sanitize_settings_schema",
     "scenario_score_request",
     "schema_breaks",
     "scope_allows",
@@ -716,11 +845,17 @@ __all__ = [
     "split_for_events",
     "suggest_roles",
     "summary_allowed",
+    "template_from_entry",
     "tools_json_schema",
     "topological_order",
     "transition",
+    "untrusted_placement_problem",
     "upgrade",
+    "upload_dist_name",
+    "upload_namespace",
     "uploaded_code_allowed",
+    "uploaded_namespace_of",
+    "uses_uploaded_ids",
     "validate_score_request",
     "validate_spec",
     "validate_workflow",

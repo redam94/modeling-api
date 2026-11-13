@@ -20,12 +20,19 @@ import hmac
 import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Any, Final, Protocol
 from urllib.parse import urlencode
 
 import httpx
 import jwt
-from mapi_spec.auth import GOOGLE_ISSUERS, OIDC_SCOPES, LoginTransaction, build_authorize_url
+from mapi_spec.auth import (
+    GOOGLE_ISSUERS,
+    OIDC_SCOPES,
+    LoginTransaction,
+    build_authorize_url,
+    reauth_params,
+)
 from mapi_spec.errors import ErrorCode, MapiError
 
 from mapi_server.auth.identity import VerifiedIdentity
@@ -258,12 +265,20 @@ def _identity(claims: Mapping[str, Any]) -> VerifiedIdentity:
         raise OidcError("invalid subject")
     email = claims.get("email")
     name = claims.get("name")
+    auth_time = claims.get("auth_time")
+    authenticated: datetime | None = None
+    if isinstance(auth_time, int | float) and not isinstance(auth_time, bool):
+        try:
+            authenticated = datetime.fromtimestamp(auth_time, UTC)
+        except (OverflowError, OSError, ValueError):
+            raise OidcError("invalid auth_time") from None
     return VerifiedIdentity(
         issuer=iss,
         subject=sub,
         email=str(email)[:320] if isinstance(email, str) and "@" in email else None,
         email_verified=claims.get("email_verified") is True,
         name=str(name)[:200] if isinstance(name, str) and name else None,
+        auth_time=authenticated,
     )
 
 
@@ -313,6 +328,7 @@ class OidcClient:
             "nonce": tx.nonce,
             "code_challenge": tx.code_challenge,
             "code_challenge_method": "S256",
+            **reauth_params(tx),
         }
         sep = "&" if "?" in endpoint else "?"
         return f"{endpoint}{sep}{urlencode(params)}"

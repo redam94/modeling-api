@@ -5,7 +5,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Check, CircleStop, Play, RotateCcw } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { can } from "@/api/access";
 import { errorMessage, newIdempotencyKey } from "@/api/client";
@@ -18,6 +18,7 @@ import { useGrants } from "@/features/auth/workspace";
 import { useRunEvents } from "@/hooks/use-run-events";
 import { adviseProblem } from "@/lib/problems";
 import { formatMicros } from "@/lib/cost";
+import { emitOnboarding } from "@/lib/onboarding-events";
 import { isTerminal } from "@/lib/run-state";
 import { cn } from "@/lib/utils";
 
@@ -30,7 +31,7 @@ import { IngestStatus } from "./data-summary";
 function PhaseChecklist({ phase, done }: { phase: string | null; done: boolean }) {
   const slot = done ? PHASE_ORDER.length : phaseSlot(phase);
   return (
-    <ol className="grid gap-2 sm:grid-cols-2" aria-label="What happens during the fit">
+    <ol className="grid gap-2 sm:grid-cols-2" aria-label="What happens during the fit" data-tour="guided.run.chains">
       {PHASE_ORDER.map((p, i) => {
         const state = i < slot ? "done" : i === slot ? "now" : "later";
         return (
@@ -68,10 +69,15 @@ function LiveRun({ run, session }: { run: Run; session: GuidedSession }) {
   const text = phaseText(p?.phase);
   const eta = etaText(p?.eta_seconds);
   const advice = current.problem ? adviseProblem(current.problem) : null;
+  const succeeded = current.state === "succeeded" ? current.id : null;
+  useEffect(() => {
+    // v0.18 D25: a finished fit ticks "Fit a model" (the sample's fit counts too).
+    if (succeeded) emitOnboarding("fit_succeeded", { run: succeeded, source: "guided" });
+  }, [succeeded]);
 
   if (current.state === "succeeded") {
     return (
-      <Card>
+      <Card data-tour="guided.run.progress">
         <CardContent className="grid gap-4 pt-5">
           <div className="flex items-start gap-3">
             <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-success/12 text-success">
@@ -95,7 +101,7 @@ function LiveRun({ run, session }: { run: Run; session: GuidedSession }) {
   }
 
   return (
-    <Card>
+    <Card data-tour="guided.run.progress">
       <CardContent className="grid gap-5 pt-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="grid gap-1" aria-live="polite">

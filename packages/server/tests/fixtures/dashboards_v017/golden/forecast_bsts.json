@@ -1,0 +1,2974 @@
+{
+ "actuals": {
+  "against": "predictive",
+  "expected": {
+   "band_hit_rate": 0.5833333333333334,
+   "bias": 4.995830713293979,
+   "mae": 38.83447316708982,
+   "mape": 3.555844975649768,
+   "n": 12,
+   "r2": 0.4651055036190819,
+   "rmse": 48.52313324479322,
+   "smape": 3.5237513955627167,
+   "wape": 3.5207509919581756
+  },
+  "inputs": {
+   "coords": {
+    "t": {
+     "data": [
+      "2020-01-01",
+      "2020-02-01",
+      "2020-03-01",
+      "2020-04-01",
+      "2020-05-01",
+      "2020-06-01",
+      "2020-07-01",
+      "2020-08-01",
+      "2020-09-01",
+      "2020-10-01",
+      "2020-11-01",
+      "2020-12-01"
+     ],
+     "dims": [
+      "t"
+     ]
+    }
+   },
+   "data_vars": {
+    "y": {
+     "data": [
+      1053.308,
+      1139.813,
+      1211.348,
+      1145.119,
+      1192.617,
+      1144.824,
+      1061.707,
+      1051.127,
+      1032.891,
+      1048.773,
+      1155.229,
+      999.445
+     ],
+     "dims": [
+      "t"
+     ]
+    }
+   }
+  },
+  "kpi_column": "y",
+  "match": "time",
+  "names": {
+   "date": "t"
+  },
+  "table": {
+   "columns": [
+    "date",
+    "actual"
+   ],
+   "rows": [
+    [
+     "2020-01-01",
+     1053.308
+    ],
+    [
+     "2020-02-01",
+     1139.813
+    ],
+    [
+     "2020-03-01",
+     1211.348
+    ],
+    [
+     "2020-04-01",
+     1145.119
+    ],
+    [
+     "2020-05-01",
+     1192.617
+    ],
+    [
+     "2020-06-01",
+     1144.824
+    ],
+    [
+     "2020-07-01",
+     1061.707
+    ],
+    [
+     "2020-08-01",
+     1051.127
+    ],
+    [
+     "2020-09-01",
+     1032.891
+    ],
+    [
+     "2020-10-01",
+     1048.773
+    ],
+    [
+     "2020-11-01",
+     1155.229
+    ],
+    [
+     "2020-12-01",
+     999.445
+    ]
+   ]
+  }
+ },
+ "capabilities": {
+  "checkpointable": true,
+  "contribution_scale": "none",
+  "decision": false,
+  "deterministic_given_seed": false,
+  "evidence": false,
+  "fast_score": false,
+  "identified_quantities": [
+   "sigma_obs"
+  ],
+  "inference": "mcmc",
+  "loo_invalid_reason": "the Kalman likelihood is a sum over the whole series; steps depend on each other, so pointwise leave-one-out is not defined",
+  "loo_valid": false,
+  "owns": [
+   "scaling"
+  ],
+  "recommend": false,
+  "representation": "draws",
+  "score_modes": [
+   "evaluate",
+   "filter",
+   "forecast",
+   "predict"
+  ]
+ },
+ "case": "forecast_bsts",
+ "derived_from": [
+  "ts.bsts/forecast_12__predictive.forecast.json",
+  "ts.bsts/forecast_12__predictive.result.json",
+  "ts.bsts/forecast_12__predictive.summary.json",
+  "ts.bsts/forecast_12__readout.forecast.json",
+  "ts.bsts/forecast_12__readout.result.json",
+  "ts.bsts/forecast_12__readout.summary.json",
+  "ts.bsts/forecast_sum.result.json",
+  "ts.bsts/forecast_sum.summary.json",
+  "ts.bsts/probe.json"
+ ],
+ "facts": {
+  "aggregates": {
+   "aggregate.aggregate": {
+    "aggregation_flagged": false,
+    "over": [
+     "date"
+    ],
+    "tables": {
+     "level": {
+      "columns": [
+       "mean",
+       "hdi_90_lower",
+       "hdi_90_upper"
+      ],
+      "rows": [
+       [
+        13453.797971921698,
+        13386.821127767822,
+        13564.78629026609
+       ]
+      ]
+     },
+     "y_hat": {
+      "columns": [
+       "mean",
+       "hdi_90_lower",
+       "hdi_90_upper"
+      ],
+      "rows": [
+       [
+        13296.150968559528,
+        12787.916439364466,
+        13690.784405699846
+       ]
+      ]
+     }
+    }
+   },
+   "baseline.forecast_total": {
+    "kind": "expected",
+    "kpi": "y_hat",
+    "mean": 13326.275916,
+    "quantiles": {
+     "0.05": 13239.9462566,
+     "0.25": 13299.5729694,
+     "0.5": 13326.8615307,
+     "0.75": 13355.8737451,
+     "0.95": 13411.8639356
+    },
+    "sd": 54.0828436805,
+    "units": "units"
+   },
+   "predictive.forecast_total": {
+    "kind": "predictive",
+    "kpi": "y_hat",
+    "mean": 13296.1509686,
+    "quantiles": {
+     "0.05": 12813.335727,
+     "0.25": 13132.7864247,
+     "0.5": 13294.5931238,
+     "0.75": 13472.0898954,
+     "0.95": 13711.6929184
+    },
+    "sd": 287.12937297,
+    "units": "units"
+   }
+  },
+  "predictive": {
+   "predictive.level": {
+    "expected_width": 14.595575194237085,
+    "predictive_width": 14.595575194237085,
+    "widens": false
+   },
+   "predictive.y_hat": {
+    "expected_width": 16.225273754919737,
+    "predictive_width": 99.44863405495396,
+    "widens": true
+   }
+  },
+  "scalar_fit_metrics": {
+   "coverage_90": 0.8333333333333334,
+   "mape": 2.442115703308524,
+   "one_step_coverage_90": 0.8947368421052632,
+   "one_step_rmse": 24.04245219278214,
+   "rmse": 33.523928154685294,
+   "sigma_level": 5.540212272706185,
+   "sigma_obs": 16.787134302813897
+  },
+  "tables": {
+   "aggregate": {
+    "level": {
+     "band": [
+      "hdi_90_lower",
+      "hdi_90_upper"
+     ],
+     "centre": "mean",
+     "dims": [],
+     "mean_band_width": 177.9651624982689,
+     "n_rows": 1,
+     "sum_centre": 13453.797971921698,
+     "sum_high": 13564.78629026609,
+     "sum_low": 13386.821127767822,
+     "time_dim": null
+    },
+    "y_hat": {
+     "band": [
+      "hdi_90_lower",
+      "hdi_90_upper"
+     ],
+     "centre": "mean",
+     "dims": [],
+     "mean_band_width": 902.8679663353796,
+     "n_rows": 1,
+     "sum_centre": 13296.150968559528,
+     "sum_high": 13690.784405699846,
+     "sum_low": 12787.916439364466,
+     "time_dim": null
+    }
+   },
+   "baseline": {
+    "level": {
+     "band": [
+      "hdi_90_lower",
+      "hdi_90_upper"
+     ],
+     "centre": "mean",
+     "dims": [
+      "date"
+     ],
+     "mean_band_width": 14.595575194237085,
+     "n_rows": 12,
+     "sum_centre": 13453.7979719217,
+     "sum_high": 13559.434138340133,
+     "sum_low": 13384.287236009288,
+     "time_dim": "date"
+    },
+    "y_hat": {
+     "band": [
+      "hdi_90_lower",
+      "hdi_90_upper"
+     ],
+     "centre": "mean",
+     "dims": [
+      "date"
+     ],
+     "mean_band_width": 16.225273754919737,
+     "n_rows": 12,
+     "sum_centre": 13326.27591603084,
+     "sum_high": 13427.676398166,
+     "sum_low": 13232.973113106964,
+     "time_dim": "date"
+    }
+   },
+   "predictive": {
+    "level": {
+     "band": [
+      "hdi_90_lower",
+      "hdi_90_upper"
+     ],
+     "centre": "mean",
+     "dims": [
+      "date"
+     ],
+     "mean_band_width": 14.595575194237085,
+     "n_rows": 12,
+     "sum_centre": 13453.7979719217,
+     "sum_high": 13559.434138340133,
+     "sum_low": 13384.287236009288,
+     "time_dim": "date"
+    },
+    "y_hat": {
+     "band": [
+      "hdi_90_lower",
+      "hdi_90_upper"
+     ],
+     "centre": "mean",
+     "dims": [
+      "date"
+     ],
+     "mean_band_width": 99.44863405495396,
+     "n_rows": 12,
+     "sum_centre": 13296.150968559528,
+     "sum_high": 13881.068732270562,
+     "sum_low": 12687.685123611114,
+     "time_dim": "date"
+    }
+   }
+  }
+ },
+ "fit_metrics": [
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:41:12.746899-04:00",
+   "key": "coverage_90",
+   "labels": {},
+   "last": 0.8333333333333334,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:41:12.746899-04:00",
+   "max": 0.8333333333333334,
+   "min": 0.8333333333333334
+  },
+  {
+   "attempt": 1,
+   "count": 9,
+   "first_ts": "2026-10-21T09:41:09.864781-04:00",
+   "key": "divergences",
+   "labels": {
+    "chain": "0"
+   },
+   "last": 0.0,
+   "last_step": 200,
+   "last_ts": "2026-10-21T09:41:11.493855-04:00",
+   "max": 0.0,
+   "min": 0.0
+  },
+  {
+   "attempt": 1,
+   "count": 9,
+   "first_ts": "2026-10-21T09:41:03.412324-04:00",
+   "key": "divergences",
+   "labels": {
+    "chain": "0",
+    "fit": "evaluation"
+   },
+   "last": 0.0,
+   "last_step": 200,
+   "last_ts": "2026-10-21T09:41:05.012279-04:00",
+   "max": 0.0,
+   "min": 0.0
+  },
+  {
+   "attempt": 1,
+   "count": 11,
+   "first_ts": "2026-10-21T09:41:09.864781-04:00",
+   "key": "divergences",
+   "labels": {
+    "chain": "1"
+   },
+   "last": 0.0,
+   "last_step": 200,
+   "last_ts": "2026-10-21T09:41:11.724855-04:00",
+   "max": 0.0,
+   "min": 0.0
+  },
+  {
+   "attempt": 1,
+   "count": 7,
+   "first_ts": "2026-10-21T09:41:03.412324-04:00",
+   "key": "divergences",
+   "labels": {
+    "chain": "1",
+    "fit": "evaluation"
+   },
+   "last": 0.0,
+   "last_step": 200,
+   "last_ts": "2026-10-21T09:41:04.629910-04:00",
+   "max": 0.0,
+   "min": 0.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:41:12.746941-04:00",
+   "key": "mape",
+   "labels": {},
+   "last": 2.442115703308524,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:41:12.746941-04:00",
+   "max": 2.442115703308524,
+   "min": 2.442115703308524
+  },
+  {
+   "attempt": 1,
+   "count": 9,
+   "first_ts": "2026-10-21T09:41:09.864781-04:00",
+   "key": "num_steps",
+   "labels": {
+    "chain": "0"
+   },
+   "last": 7.0,
+   "last_step": 200,
+   "last_ts": "2026-10-21T09:41:11.493855-04:00",
+   "max": 15.0,
+   "min": 7.0
+  },
+  {
+   "attempt": 1,
+   "count": 9,
+   "first_ts": "2026-10-21T09:41:03.412324-04:00",
+   "key": "num_steps",
+   "labels": {
+    "chain": "0",
+    "fit": "evaluation"
+   },
+   "last": 15.0,
+   "last_step": 200,
+   "last_ts": "2026-10-21T09:41:05.012279-04:00",
+   "max": 31.0,
+   "min": 7.0
+  },
+  {
+   "attempt": 1,
+   "count": 11,
+   "first_ts": "2026-10-21T09:41:09.864781-04:00",
+   "key": "num_steps",
+   "labels": {
+    "chain": "1"
+   },
+   "last": 7.0,
+   "last_step": 200,
+   "last_ts": "2026-10-21T09:41:11.724855-04:00",
+   "max": 15.0,
+   "min": 7.0
+  },
+  {
+   "attempt": 1,
+   "count": 7,
+   "first_ts": "2026-10-21T09:41:03.412324-04:00",
+   "key": "num_steps",
+   "labels": {
+    "chain": "1",
+    "fit": "evaluation"
+   },
+   "last": 15.0,
+   "last_step": 200,
+   "last_ts": "2026-10-21T09:41:04.629910-04:00",
+   "max": 15.0,
+   "min": 7.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:41:12.009681-04:00",
+   "key": "one_step_coverage_90",
+   "labels": {},
+   "last": 0.8947368421052632,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:41:12.009681-04:00",
+   "max": 0.8947368421052632,
+   "min": 0.8947368421052632
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:41:05.249279-04:00",
+   "key": "one_step_coverage_90",
+   "labels": {
+    "fit": "evaluation"
+   },
+   "last": 0.9555555555555556,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:41:05.249279-04:00",
+   "max": 0.9555555555555556,
+   "min": 0.9555555555555556
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:41:12.009681-04:00",
+   "key": "one_step_rmse",
+   "labels": {},
+   "last": 24.04245219278214,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:41:12.009681-04:00",
+   "max": 24.04245219278214,
+   "min": 24.04245219278214
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:41:05.249279-04:00",
+   "key": "one_step_rmse",
+   "labels": {
+    "fit": "evaluation"
+   },
+   "last": 23.61629256310147,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:41:05.249279-04:00",
+   "max": 23.61629256310147,
+   "min": 23.61629256310147
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:41:12.746973-04:00",
+   "key": "rmse",
+   "labels": {},
+   "last": 33.523928154685294,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:41:12.746973-04:00",
+   "max": 33.523928154685294,
+   "min": 33.523928154685294
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:41:12.009681-04:00",
+   "key": "sigma_level",
+   "labels": {},
+   "last": 5.540212272706185,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:41:12.009681-04:00",
+   "max": 5.540212272706185,
+   "min": 5.540212272706185
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:41:05.249279-04:00",
+   "key": "sigma_level",
+   "labels": {
+    "fit": "evaluation"
+   },
+   "last": 4.147155781525041,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:41:05.249279-04:00",
+   "max": 4.147155781525041,
+   "min": 4.147155781525041
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:41:12.009681-04:00",
+   "key": "sigma_obs",
+   "labels": {},
+   "last": 16.787134302813897,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:41:12.009681-04:00",
+   "max": 16.787134302813897,
+   "min": 16.787134302813897
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:41:05.249279-04:00",
+   "key": "sigma_obs",
+   "labels": {
+    "fit": "evaluation"
+   },
+   "last": 17.145050712959993,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:41:05.249279-04:00",
+   "max": 17.145050712959993,
+   "min": 17.145050712959993
+  },
+  {
+   "attempt": 1,
+   "count": 9,
+   "first_ts": "2026-10-21T09:41:09.864781-04:00",
+   "key": "step_size",
+   "labels": {
+    "chain": "0"
+   },
+   "last": 0.4454385190777683,
+   "last_step": 200,
+   "last_ts": "2026-10-21T09:41:11.493855-04:00",
+   "max": 0.6704819270242136,
+   "min": 0.08283583527262604
+  },
+  {
+   "attempt": 1,
+   "count": 9,
+   "first_ts": "2026-10-21T09:41:03.412324-04:00",
+   "key": "step_size",
+   "labels": {
+    "chain": "0",
+    "fit": "evaluation"
+   },
+   "last": 0.4083195480605545,
+   "last_step": 200,
+   "last_ts": "2026-10-21T09:41:05.012279-04:00",
+   "max": 0.4083195480605545,
+   "min": 0.1802831171776038
+  },
+  {
+   "attempt": 1,
+   "count": 11,
+   "first_ts": "2026-10-21T09:41:09.864781-04:00",
+   "key": "step_size",
+   "labels": {
+    "chain": "1"
+   },
+   "last": 0.4232221291014044,
+   "last_step": 200,
+   "last_ts": "2026-10-21T09:41:11.724855-04:00",
+   "max": 0.4920975002940902,
+   "min": 0.11948945759794556
+  },
+  {
+   "attempt": 1,
+   "count": 7,
+   "first_ts": "2026-10-21T09:41:03.412324-04:00",
+   "key": "step_size",
+   "labels": {
+    "chain": "1",
+    "fit": "evaluation"
+   },
+   "last": 0.47824705290328134,
+   "last_step": 200,
+   "last_ts": "2026-10-21T09:41:04.629910-04:00",
+   "max": 0.847447113317468,
+   "min": 0.0885716441772238
+  }
+ ],
+ "format": "mapi.test.dashboard-material/v1",
+ "input_contract": {
+  "input_table": {
+   "columns": [
+    {
+     "description": "The period (yyyy-MM-dd)",
+     "dims": [],
+     "freq": "MS",
+     "name": "t",
+     "role": "coord"
+    },
+    {
+     "description": "Leave empty. This model forecasts from the end of its fitted history",
+     "dims": [
+      "t"
+     ],
+     "freq": null,
+     "name": "y",
+     "role": "target"
+    },
+    {
+     "description": "An input",
+     "dims": [
+      "t"
+     ],
+     "freq": null,
+     "name": "price",
+     "role": "input"
+    }
+   ],
+   "conditions_on_actuals": false,
+   "horizon_dim": "t",
+   "rows": [
+    [
+     "2020-01-01",
+     null,
+     null
+    ],
+    [
+     "2020-02-01",
+     null,
+     null
+    ]
+   ]
+  },
+  "max_inline_bytes": 5242880,
+  "model_ref": "model://default/v017-e13-bsts-963de5-model@v1",
+  "snapshot": {
+   "conditions_on_actuals": false,
+   "fit_coords": {
+    "t": {
+     "contiguous": true,
+     "end": "2019-12-01T00:00:00",
+     "freq": "MS",
+     "kind": "time",
+     "size": 60,
+     "start": "2015-01-01T00:00:00",
+     "step": null,
+     "values": null
+    }
+   },
+   "future_required": [],
+   "horizon_dim": "t",
+   "input_schema": {
+    "dims": {
+     "t": {
+      "description": null,
+      "freq": "MS",
+      "kind": "time",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "extend"
+     }
+    },
+    "layout": "dense",
+    "ragged": [],
+    "vars": {
+     "price": {
+      "bounds": null,
+      "description": null,
+      "dims": [
+       "t"
+      ],
+      "dtype": "float64",
+      "future_required": false,
+      "index_of": null,
+      "missing": "forbid",
+      "missing_sentinel": null,
+      "role": "covariate",
+      "units": "USD"
+     },
+     "y": {
+      "bounds": null,
+      "description": null,
+      "dims": [
+       "t"
+      ],
+      "dtype": "float64",
+      "future_required": false,
+      "index_of": null,
+      "missing": "allow",
+      "missing_sentinel": null,
+      "role": "target",
+      "units": "units"
+     }
+    }
+   },
+   "inputs_stage": "raw",
+   "representation": "draws",
+   "schema_hash": "sha256:7fba1eed61d7d1bf916c18d5e10d5f857363d262dc09cee0ba085a66b2543b5f",
+   "score_modes": [
+    "evaluate",
+    "filter",
+    "forecast",
+    "predict"
+   ]
+  }
+ },
+ "manifest": {
+  "about": {
+   "assumptions": [
+    "The level and the trend change by small random steps",
+    "Each driver has the same effect in all periods"
+   ],
+   "avoid_when": [
+    "You have many related series (this model takes one series)",
+    "The effect of a driver changes over time (the effect is the same in all periods)",
+    "You need results in seconds"
+   ],
+   "data_needs": [
+    "One number over time at a regular frequency",
+    "Optional drivers (for example the price). You must know their future values to forecast."
+   ],
+   "difficulty": "intermediate",
+   "example": "Monthly sales divide into a slow increase, a December peak and a price effect of -0.3 units for each euro.",
+   "expert_notes": "Bayesian structural time series on pymc-extras statespace: local level, local linear or smooth trend, dummy or Fourier seasonal components (fixed or with innovations), static regression (normal or horseshoe prior; the regression states start with zero variance, so the coefficients are static). Exact Kalman likelihood (NUTS). Scores re-run a numpy Kalman filter for each kept draw: one-step-ahead inside the fit, a forecast from the terminal state after it, and a 'filter' mode that continues the fit with new data. Leave-one-out is not defined.",
+   "fits": {
+    "data_shape": [
+     "one_series"
+    ],
+    "frequency": [
+     "daily",
+     "weekly",
+     "monthly"
+    ],
+    "goal": [
+     "forecast"
+    ],
+    "history": [
+     "medium",
+     "long"
+    ],
+    "uncertainty": [
+     "essential",
+     "nice"
+    ]
+   },
+   "outputs": [
+    "A forecast with a range",
+    "The level and the seasonal parts over time",
+    "The effect of each driver with a range",
+    "A filter mode that adds new periods to the fit state"
+   ],
+   "references": [
+    {
+     "title": "Harvey (1989), Forecasting, Structural Time Series Models and the Kalman Filter"
+    },
+    {
+     "title": "Durbin and Koopman (2012), Time Series Analysis by State Space Methods"
+    },
+    {
+     "title": "Scott and Varian (2014), Predicting the present with Bayesian structural time series"
+    }
+   ],
+   "related": [
+    "ts.unobserved_components",
+    "ts.hsgp_trend",
+    "causal.impact"
+   ],
+   "summary_plain": "Divides one series into a level, a trend, seasonal patterns and the effect of drivers that you know. It forecasts the series with a range of probable values.",
+   "title": "Bayesian trend, season and drivers",
+   "typical_runtime": "minutes",
+   "use_when": [
+    "You forecast one regular series and you want an honest range",
+    "The level, the trend or the seasonal pattern can change over time",
+    "Some values are missing (the model continues over the gaps)",
+    "You want to update the forecast with new periods without a new fit"
+   ]
+  },
+  "capabilities": {
+   "checkpointable": true,
+   "deterministic_given_seed": false,
+   "identified_quantities": [
+    "sigma_obs"
+   ],
+   "inference": "mcmc",
+   "loo_invalid_reason": "the Kalman likelihood is a sum over the whole series; steps depend on each other, so pointwise leave-one-out is not defined",
+   "loo_valid": false,
+   "owns": [
+    "scaling"
+   ],
+   "representation": "draws",
+   "score_modes": [
+    "evaluate",
+    "filter",
+    "forecast",
+    "predict"
+   ]
+  },
+  "description": "A Bayesian structural time series: a trend, seasonal patterns and drivers, fitted with the Kalman filter of pymc-extras. Forecasts and filters start from the stored terminal state.",
+  "id": "ts.bsts",
+  "outputs": {
+   "level": {
+    "description": "The trend and level component (expected)",
+    "dims": [
+     "t"
+    ],
+    "units_of": "y"
+   },
+   "y_hat": {
+    "description": "Expected value or predictive draw: one-step-ahead inside the fitted range, a forecast after it",
+    "dims": [
+     "t"
+    ],
+    "units_of": "y"
+   }
+  },
+  "plots": [
+   "core.ppc_fan",
+   "core.decomposition",
+   "core.convergence",
+   "core.posterior_forest"
+  ],
+  "schema_template": {
+   "params": {
+    "regressors": {
+     "default": [],
+     "type": "string_list"
+    }
+   },
+   "template": {
+    "dims": {
+     "t": {
+      "kind": "time",
+      "policy": "extend"
+     }
+    },
+    "vars": {
+     "y": {
+      "dims": [
+       "t"
+      ],
+      "dtype": "float64",
+      "missing": "allow",
+      "role": "target"
+     },
+     "{*regressors as x}": {
+      "dims": [
+       "t"
+      ],
+      "dtype": "float64",
+      "future_required": true,
+      "role": "covariate"
+     }
+    }
+   }
+  },
+  "settings_schema": {
+   "$defs": {
+    "SeasonSettings": {
+     "additionalProperties": false,
+     "description": "One seasonal pattern.",
+     "properties": {
+      "harmonics": {
+       "anyOf": [
+        {
+         "maximum": 50,
+         "minimum": 1,
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Number of sine/cosine pairs. Empty: one effect per season (needs a whole-number period of at most 24)",
+       "title": "Harmonics"
+      },
+      "period": {
+       "description": "Length of the cycle in periods of the time dim (12 for monthly data with a yearly cycle, 52.18 for weekly data, 7 for daily data)",
+       "exclusiveMinimum": 1,
+       "maximum": 1000,
+       "title": "Period",
+       "type": "number"
+      },
+      "sigma": {
+       "default": 0.05,
+       "description": "Half-normal scale of the seasonal changes (standardised)",
+       "exclusiveMinimum": 0,
+       "maximum": 5,
+       "title": "Sigma",
+       "type": "number"
+      },
+      "stochastic": {
+       "default": false,
+       "description": "Let the seasonal pattern change over time",
+       "title": "Stochastic",
+       "type": "boolean"
+      }
+     },
+     "required": [
+      "period"
+     ],
+     "title": "SeasonSettings",
+     "type": "object"
+    }
+   },
+   "additionalProperties": false,
+   "description": "Settings of ``ts.bsts``.",
+   "properties": {
+    "initial_sd": {
+     "default": 1.0,
+     "description": "Prior sd of the initial states and seasonal effects",
+     "exclusiveMinimum": 0,
+     "maximum": 10,
+     "title": "Initial Sd",
+     "type": "number"
+    },
+    "level_sigma": {
+     "default": 0.1,
+     "description": "Half-normal scale of level changes",
+     "exclusiveMinimum": 0,
+     "maximum": 5,
+     "title": "Level Sigma",
+     "type": "number"
+    },
+    "obs_sigma": {
+     "default": 0.5,
+     "description": "Half-normal scale of the noise",
+     "exclusiveMinimum": 0,
+     "maximum": 10,
+     "title": "Obs Sigma",
+     "type": "number"
+    },
+    "regression_prior": {
+     "default": "normal",
+     "description": "normal: every driver has an effect; horseshoe: most drivers have none",
+     "enum": [
+      "normal",
+      "horseshoe"
+     ],
+     "title": "Regression Prior",
+     "type": "string"
+    },
+    "regression_sigma": {
+     "default": 1.0,
+     "description": "Prior scale of the driver effects (standardised)",
+     "exclusiveMinimum": 0,
+     "maximum": 10,
+     "title": "Regression Sigma",
+     "type": "number"
+    },
+    "regressors": {
+     "description": "Driver variables (prices, promotions) whose future values are supplied for forecasts",
+     "items": {
+      "type": "string"
+     },
+     "maxItems": 32,
+     "title": "Regressors",
+     "type": "array",
+     "x-ui-level": "basic"
+    },
+    "seasonality": {
+     "description": "Seasonal patterns (at most three)",
+     "items": {
+      "$ref": "#/$defs/SeasonSettings"
+     },
+     "maxItems": 3,
+     "title": "Seasonality",
+     "type": "array",
+     "x-ui-level": "basic"
+    },
+    "slope_sigma": {
+     "default": 0.02,
+     "description": "Half-normal scale of slope changes",
+     "exclusiveMinimum": 0,
+     "maximum": 5,
+     "title": "Slope Sigma",
+     "type": "number"
+    },
+    "trend": {
+     "default": "local_linear",
+     "description": "level: a level that wanders; local_linear: a level and a slope that both wander; smooth: a slope that wanders slowly (a smooth trend)",
+     "enum": [
+      "level",
+      "local_linear",
+      "smooth"
+     ],
+     "title": "Trend",
+     "type": "string",
+     "x-ui-level": "basic"
+    }
+   },
+   "title": "BSTSSettings",
+   "type": "object"
+  },
+  "version": "1.0.0"
+ },
+ "note": "draws: ForecastView.total is the band of the horizon total; `level` is latent (predictive does not widen it)",
+ "plugin": "ts.bsts",
+ "preset": "forecast",
+ "primary_output": "y_hat",
+ "refusals": [],
+ "representation": "draws",
+ "scorecard": {
+  "items": [
+   {
+    "category": "convergence",
+    "check": "convergence.rhat",
+    "code": "RHAT",
+    "docs_anchor": "check-convergence-rhat",
+    "message_expert": "max rank-normalised split r-hat 1.070 for 'params_season_0' (threshold 1.01)",
+    "message_plain": "The chains do not agree (R-hat 1.07). The results are not reliable.",
+    "metric": "r_hat_max",
+    "status": "fail",
+    "suggested_action": "Increase the tuning steps and the draws, or make the model simpler.",
+    "threshold": 1.05,
+    "title": "Chains agree",
+    "value": 1.0698584454670683
+   },
+   {
+    "category": "convergence",
+    "check": "convergence.ess",
+    "code": "ESS",
+    "docs_anchor": "check-convergence-ess",
+    "message_expert": "min bulk ESS 91 for 'sigma_trend' (threshold 200)",
+    "message_plain": "There are only 91 independent draws. The results are not stable.",
+    "metric": "ess_bulk_min",
+    "status": "fail",
+    "suggested_action": "Increase the number of draws.",
+    "threshold": 100.0,
+    "title": "Enough independent draws",
+    "value": 91.36282818640863
+   },
+   {
+    "category": "convergence",
+    "check": "convergence.divergences",
+    "code": "DIVERGENCES",
+    "docs_anchor": "check-convergence-divergences",
+    "message_expert": "0 divergent transitions in 200 draws",
+    "message_plain": "The sampler had no problems with the model.",
+    "metric": "divergence_rate",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 0.0,
+    "title": "The sampler had no problems",
+    "value": 0.0
+   },
+   {
+    "category": "holdout",
+    "check": "holdout.mape",
+    "code": "HOLDOUT_MAPE",
+    "docs_anchor": "check-holdout-mape",
+    "message_expert": "mape 2.442% over 12 held-out values",
+    "message_plain": "The forecast error on the holdout periods was 2%.",
+    "metric": "mape",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 0.1,
+    "title": "Holdout error",
+    "value": 0.024421157033085242
+   },
+   {
+    "category": "holdout",
+    "check": "holdout.coverage_90",
+    "code": "HOLDOUT_COVERAGE",
+    "docs_anchor": "check-holdout-coverage-90",
+    "message_expert": "coverage_90 0.8333 over 12 held-out values",
+    "message_plain": "83% of the holdout values were in the 90% range. This is correct.",
+    "metric": "coverage_90",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 0.1,
+    "title": "The uncertainty is correct",
+    "value": 0.8333333333333334
+   },
+   {
+    "category": "data",
+    "check": "data.missing",
+    "code": "DATA_MISSING",
+    "docs_anchor": "check-data-missing",
+    "message_expert": "3 of 120 values missing",
+    "message_plain": "Only 2% of the values are missing.",
+    "metric": "missing_fraction",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 0.05,
+    "title": "Few missing values",
+    "value": 0.025
+   },
+   {
+    "category": "data",
+    "check": "data.history",
+    "code": "DATA_HISTORY",
+    "docs_anchor": "check-data-history",
+    "message_expert": "60 periods at MS (12 per year) along 't' at the model stage",
+    "message_plain": "There are 5.0 years of history. This is enough to find the seasonality.",
+    "metric": "history_years",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 2.0,
+    "title": "Enough history",
+    "value": 5.0
+   }
+  ],
+  "overall": "fail",
+  "skipped": {
+   "data.spend_variation": "the dataset has no spend variable along time",
+   "holdout.hit_rate": "only models of a categorical target (choice models) report a hit rate. Evaluate accuracy_lift on one of these models",
+   "plausibility.baseline_share": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.negative_roi": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.prior_overlap": "the fit kept no prior draws (set fit.prior_predictive or fit.keep.prior)",
+   "plausibility.roi_absurd": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.share_outlier": "the model has no response curves (outputs.derived: response_curves)"
+  }
+ },
+ "scores": {
+  "aggregate": {
+   "counterfactual": null,
+   "fields": null,
+   "forecast": null,
+   "horizon": {
+    "dim": "t",
+    "periods": 12
+   },
+   "inline": false,
+   "mode": "forecast",
+   "output": {
+    "aggregate": {
+     "over": [
+      "date"
+     ]
+    },
+    "kind": "predictive",
+    "summary": [
+     "mean",
+     "hdi_90"
+    ]
+   },
+   "probe_case": "forecast_sum",
+   "result": {
+    "aggregation_flagged": false,
+    "bundle_id": "dd8ab749e0de5928c1412232ea5df5d1",
+    "conditioning": {
+     "conditioned": false,
+     "dim": "t",
+     "fit_end": "2019-12-01",
+     "horizon_source": "rows",
+     "message": "Forecast from the end of the fitted history (2019-12-01); no actuals were supplied. 12 periods forecast from 2020-01-01 to 2020-12-01.",
+     "n_actuals": 0,
+     "n_series": 1,
+     "parameters": "fitted",
+     "periods": 12,
+     "revised": 0,
+     "series": [
+      {
+       "forecast_from": "2020-01-01",
+       "forecast_to": "2020-12-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 12,
+       "origin": "2019-12-01",
+       "revised": 0,
+       "series": {}
+      }
+     ],
+     "series_conditioned": 0,
+     "truncated": false
+    },
+    "groups": [
+     "/summary"
+    ],
+    "issues": [],
+    "kind": "predictive",
+    "mode": "forecast",
+    "names": "dataset",
+    "output_space": {
+     "level": "raw",
+     "y_hat": "raw"
+    },
+    "representation": "draws",
+    "retransform": {
+     "level": "none",
+     "y_hat": "none"
+    },
+    "units": "original"
+   },
+   "summary": {
+    "conditioning": {
+     "conditioned": false,
+     "dim": "t",
+     "fit_end": "2019-12-01",
+     "horizon_source": "rows",
+     "message": "Forecast from the end of the fitted history (2019-12-01); no actuals were supplied. 12 periods forecast from 2020-01-01 to 2020-12-01.",
+     "n_actuals": 0,
+     "n_series": 1,
+     "parameters": "fitted",
+     "periods": 12,
+     "revised": 0,
+     "series": [
+      {
+       "forecast_from": "2020-01-01",
+       "forecast_to": "2020-12-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 12,
+       "origin": "2019-12-01",
+       "revised": 0,
+       "series": {}
+      }
+     ],
+     "series_conditioned": 0,
+     "truncated": false
+    },
+    "tables": [
+     {
+      "columns": [
+       "mean",
+       "hdi_90_lower",
+       "hdi_90_upper"
+      ],
+      "dims": [],
+      "rows": [
+       [
+        13453.797971921698,
+        13386.821127767822,
+        13564.78629026609
+       ]
+      ],
+      "variable": "level"
+     },
+     {
+      "columns": [
+       "mean",
+       "hdi_90_lower",
+       "hdi_90_upper"
+      ],
+      "dims": [],
+      "rows": [
+       [
+        13296.150968559528,
+        12787.916439364466,
+        13690.784405699846
+       ]
+      ],
+      "variable": "y_hat"
+     }
+    ],
+    "truncated": false
+   },
+   "trimmed": null
+  },
+  "baseline": {
+   "counterfactual": null,
+   "fields": null,
+   "forecast": {
+    "dim": "date",
+    "fan": {
+     "coords": [
+      "2015-01-01",
+      "2015-02-01",
+      "2015-03-01",
+      "2015-04-01",
+      "2015-05-01",
+      "2015-06-01",
+      "2015-07-01",
+      "2015-08-01",
+      "2015-09-01",
+      "2015-10-01",
+      "2015-11-01",
+      "2015-12-01",
+      "2016-01-01",
+      "2016-02-01",
+      "2016-03-01",
+      "2016-04-01",
+      "2016-05-01",
+      "2016-06-01",
+      "2016-07-01",
+      "2016-08-01",
+      "2016-09-01",
+      "2016-10-01",
+      "2016-11-01",
+      "2016-12-01",
+      "2017-01-01",
+      "2017-02-01",
+      "2017-03-01",
+      "2017-04-01",
+      "2017-05-01",
+      "2017-06-01",
+      "2017-07-01",
+      "2017-08-01",
+      "2017-09-01",
+      "2017-10-01",
+      "2017-11-01",
+      "2017-12-01",
+      "2018-01-01",
+      "2018-02-01",
+      "2018-03-01",
+      "2018-04-01",
+      "2018-05-01",
+      "2018-06-01",
+      "2018-07-01",
+      "2018-08-01",
+      "2018-09-01",
+      "2018-10-01",
+      "2018-11-01",
+      "2018-12-01",
+      "2019-01-01",
+      "2019-02-01",
+      "2019-03-01",
+      "2019-04-01",
+      "2019-05-01",
+      "2019-06-01",
+      "2019-07-01",
+      "2019-08-01",
+      "2019-09-01",
+      "2019-10-01",
+      "2019-11-01",
+      "2019-12-01",
+      "2020-01-01",
+      "2020-02-01",
+      "2020-03-01",
+      "2020-04-01",
+      "2020-05-01",
+      "2020-06-01",
+      "2020-07-01",
+      "2020-08-01",
+      "2020-09-01",
+      "2020-10-01",
+      "2020-11-01",
+      "2020-12-01"
+     ],
+     "dim": "date",
+     "observed": [
+      996.728101503,
+      1023.86643052,
+      1097.29149245,
+      null,
+      1094.09606458,
+      1002.02440288,
+      1038.7994589,
+      1016.75857887,
+      994.118221584,
+      993.67320557,
+      985.838005169,
+      1049.71263107,
+      1027.60439119,
+      1071.01402219,
+      1126.19839901,
+      1152.01568417,
+      1075.846709,
+      1095.61294281,
+      1042.83198217,
+      1029.61995559,
+      939.79025903,
+      995.159139234,
+      953.298149184,
+      1046.8945686,
+      1012.22030143,
+      1049.81288362,
+      1096.22440987,
+      1122.12113698,
+      1121.594526,
+      1085.78978736,
+      null,
+      1049.36012054,
+      1038.02206478,
+      946.619767927,
+      1082.12991788,
+      1052.6630894,
+      1076.60295723,
+      1089.44952584,
+      1071.36640594,
+      1110.49825972,
+      1101.90264315,
+      1080.10239838,
+      1078.94366972,
+      1027.80057154,
+      986.31580862,
+      null,
+      1051.00654172,
+      1083.61666814,
+      1066.23767235,
+      1162.7251832,
+      1172.67762393,
+      1107.49975886,
+      1161.94764561,
+      1120.59531079,
+      1145.03349988,
+      1076.62612328,
+      1081.52601915,
+      1063.3913039,
+      1095.01459886,
+      1044.66789964,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+     ],
+     "quantiles": [
+      0.05,
+      0.25,
+      0.5,
+      0.75,
+      0.95
+     ],
+     "units": "units",
+     "values": [
+      [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       1068.60101536,
+       1129.5488032,
+       1152.50428014,
+       1201.70440417,
+       1185.61509393,
+       1108.76901064,
+       1107.06684034,
+       1020.77366543,
+       1060.21193451,
+       1030.6043679,
+       1072.58807268,
+       1090.46043444
+      ],
+      [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       1071.33200112,
+       1132.64345109,
+       1157.17957492,
+       1207.03880692,
+       1191.31726959,
+       1113.56816885,
+       1111.85574732,
+       1028.01408908,
+       1065.89738977,
+       1035.7890101,
+       1079.07266163,
+       1097.28213727
+      ],
+      [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       1073.70879406,
+       1134.71179445,
+       1159.76337246,
+       1210.8381452,
+       1194.89109974,
+       1115.97568899,
+       1114.12069307,
+       1032.18407359,
+       1068.41622902,
+       1039.32724935,
+       1081.59530285,
+       1099.67961685
+      ],
+      [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       1076.5883403,
+       1137.23840868,
+       1162.09751117,
+       1215.56557392,
+       1198.11561437,
+       1119.28746422,
+       1116.70955437,
+       1037.66377623,
+       1071.46470131,
+       1043.00179888,
+       1084.36003631,
+       1102.59078406
+      ],
+      [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       1080.80882161,
+       1140.61510014,
+       1165.39314265,
+       1222.45808358,
+       1204.75630315,
+       1123.29857069,
+       1120.84546622,
+       1046.86381029,
+       1077.30291457,
+       1048.18139037,
+       1090.74263373,
+       1108.73183448
+      ]
+     ]
+    },
+    "format": "mapi.forecast/v1",
+    "history": 60,
+    "kind": "expected",
+    "kpi": "y_hat",
+    "split_at": "2020-01-01",
+    "summed_over": [],
+    "total": {
+     "mean": 13326.275916,
+     "quantiles": {
+      "0.05": 13239.9462566,
+      "0.25": 13299.5729694,
+      "0.5": 13326.8615307,
+      "0.75": 13355.8737451,
+      "0.95": 13411.8639356
+     },
+     "sd": 54.0828436805,
+     "units": "units"
+    },
+    "units": "units"
+   },
+   "horizon": {
+    "dim": "t",
+    "periods": 12
+   },
+   "inline": false,
+   "mode": "forecast",
+   "output": {
+    "summary": [
+     "mean",
+     "hdi_90"
+    ]
+   },
+   "probe_case": "forecast_12__readout",
+   "result": {
+    "aggregation_flagged": false,
+    "bundle_id": "dd8ab749e0de5928c1412232ea5df5d1",
+    "conditioning": {
+     "conditioned": false,
+     "dim": "t",
+     "fit_end": "2019-12-01",
+     "horizon_source": "rows",
+     "message": "Forecast from the end of the fitted history (2019-12-01); no actuals were supplied. 12 periods forecast from 2020-01-01 to 2020-12-01.",
+     "n_actuals": 0,
+     "n_series": 1,
+     "parameters": "fitted",
+     "periods": 12,
+     "revised": 0,
+     "series": [
+      {
+       "forecast_from": "2020-01-01",
+       "forecast_to": "2020-12-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 12,
+       "origin": "2019-12-01",
+       "revised": 0,
+       "series": {}
+      }
+     ],
+     "series_conditioned": 0,
+     "truncated": false
+    },
+    "groups": [
+     "/summary"
+    ],
+    "issues": [],
+    "kind": "expected",
+    "mode": "forecast",
+    "names": "dataset",
+    "output_space": {
+     "level": "raw",
+     "y_hat": "raw"
+    },
+    "representation": "draws",
+    "retransform": {
+     "level": "none",
+     "y_hat": "none"
+    },
+    "units": "original"
+   },
+   "summary": {
+    "conditioning": {
+     "conditioned": false,
+     "dim": "t",
+     "fit_end": "2019-12-01",
+     "horizon_source": "rows",
+     "message": "Forecast from the end of the fitted history (2019-12-01); no actuals were supplied. 12 periods forecast from 2020-01-01 to 2020-12-01.",
+     "n_actuals": 0,
+     "n_series": 1,
+     "parameters": "fitted",
+     "periods": 12,
+     "revised": 0,
+     "series": [
+      {
+       "forecast_from": "2020-01-01",
+       "forecast_to": "2020-12-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 12,
+       "origin": "2019-12-01",
+       "revised": 0,
+       "series": {}
+      }
+     ],
+     "series_conditioned": 0,
+     "truncated": false
+    },
+    "tables": [
+     {
+      "columns": [
+       "date",
+       "mean",
+       "hdi_90_lower",
+       "hdi_90_upper"
+      ],
+      "dims": [
+       "date"
+      ],
+      "rows": [
+       [
+        "2020-01-01",
+        1112.1826822788132,
+        1107.5942820219186,
+        1116.8804252526058
+       ],
+       [
+        "2020-02-01",
+        1113.813072954206,
+        1108.3269800656244,
+        1118.587597931803
+       ],
+       [
+        "2020-03-01",
+        1115.4434636295994,
+        1109.7168111706644,
+        1120.6976602133022
+       ],
+       [
+        "2020-04-01",
+        1117.0738543049922,
+        1111.432381228033,
+        1123.7252217467733
+       ],
+       [
+        "2020-05-01",
+        1118.7042449803855,
+        1113.242997065143,
+        1126.7426116415618
+       ],
+       [
+        "2020-06-01",
+        1120.3346356557784,
+        1114.4752941443714,
+        1128.7715438149885
+       ],
+       [
+        "2020-07-01",
+        1121.9650263311714,
+        1116.3549478771808,
+        1131.5919276578784
+       ],
+       [
+        "2020-08-01",
+        1123.5954170065647,
+        1117.549451183745,
+        1133.7190153385095
+       ],
+       [
+        "2020-09-01",
+        1125.2258076819576,
+        1119.2708121974006,
+        1136.2740217177281
+       ],
+       [
+        "2020-10-01",
+        1126.8561983573506,
+        1120.718732191234,
+        1138.5121730971873
+       ],
+       [
+        "2020-11-01",
+        1128.4865890327437,
+        1122.1666521850677,
+        1140.8092587197254
+       ],
+       [
+        "2020-12-01",
+        1130.116979708137,
+        1123.4378946789054,
+        1143.1226812080702
+       ]
+      ],
+      "time_dim": "date",
+      "variable": "level"
+     },
+     {
+      "columns": [
+       "date",
+       "mean",
+       "hdi_90_lower",
+       "hdi_90_upper"
+      ],
+      "dims": [
+       "date"
+      ],
+      "rows": [
+       [
+        "2020-01-01",
+        1073.9931930129897,
+        1067.82676999615,
+        1079.921945471403
+       ],
+       [
+        "2020-02-01",
+        1134.962328239705,
+        1129.0413141508423,
+        1140.1146035033344
+       ],
+       [
+        "2020-03-01",
+        1159.5954033110243,
+        1152.3058379434442,
+        1164.9877476827025
+       ],
+       [
+        "2020-04-01",
+        1211.2854364245704,
+        1201.5320231477167,
+        1221.3695394654803
+       ],
+       [
+        "2020-05-01",
+        1194.7856642701015,
+        1184.8151206829705,
+        1202.5989969366972
+       ],
+       [
+        "2020-06-01",
+        1116.1226413679435,
+        1109.5429751866086,
+        1123.9048288407005
+       ],
+       [
+        "2020-07-01",
+        1114.1635443335313,
+        1108.3548019353184,
+        1121.2850786099712
+       ],
+       [
+        "2020-08-01",
+        1032.6081398320293,
+        1021.9322514849381,
+        1047.2833254061977
+       ],
+       [
+        "2020-09-01",
+        1068.360933049417,
+        1059.7963574034886,
+        1076.390145536751
+       ],
+       [
+        "2020-10-01",
+        1039.3931002278018,
+        1031.763463285488,
+        1048.3572628489605
+       ],
+       [
+        "2020-11-01",
+        1081.5297093097017,
+        1074.55595941724,
+        1092.0825670181057
+       ],
+       [
+        "2020-12-01",
+        1099.4758226520246,
+        1091.506238472758,
+        1109.380356845696
+       ]
+      ],
+      "time_dim": "date",
+      "variable": "y_hat"
+     }
+    ],
+    "truncated": false
+   },
+   "trimmed": null
+  },
+  "predictive": {
+   "counterfactual": null,
+   "fields": null,
+   "forecast": {
+    "dim": "date",
+    "fan": {
+     "coords": [
+      "2015-01-01",
+      "2015-02-01",
+      "2015-03-01",
+      "2015-04-01",
+      "2015-05-01",
+      "2015-06-01",
+      "2015-07-01",
+      "2015-08-01",
+      "2015-09-01",
+      "2015-10-01",
+      "2015-11-01",
+      "2015-12-01",
+      "2016-01-01",
+      "2016-02-01",
+      "2016-03-01",
+      "2016-04-01",
+      "2016-05-01",
+      "2016-06-01",
+      "2016-07-01",
+      "2016-08-01",
+      "2016-09-01",
+      "2016-10-01",
+      "2016-11-01",
+      "2016-12-01",
+      "2017-01-01",
+      "2017-02-01",
+      "2017-03-01",
+      "2017-04-01",
+      "2017-05-01",
+      "2017-06-01",
+      "2017-07-01",
+      "2017-08-01",
+      "2017-09-01",
+      "2017-10-01",
+      "2017-11-01",
+      "2017-12-01",
+      "2018-01-01",
+      "2018-02-01",
+      "2018-03-01",
+      "2018-04-01",
+      "2018-05-01",
+      "2018-06-01",
+      "2018-07-01",
+      "2018-08-01",
+      "2018-09-01",
+      "2018-10-01",
+      "2018-11-01",
+      "2018-12-01",
+      "2019-01-01",
+      "2019-02-01",
+      "2019-03-01",
+      "2019-04-01",
+      "2019-05-01",
+      "2019-06-01",
+      "2019-07-01",
+      "2019-08-01",
+      "2019-09-01",
+      "2019-10-01",
+      "2019-11-01",
+      "2019-12-01",
+      "2020-01-01",
+      "2020-02-01",
+      "2020-03-01",
+      "2020-04-01",
+      "2020-05-01",
+      "2020-06-01",
+      "2020-07-01",
+      "2020-08-01",
+      "2020-09-01",
+      "2020-10-01",
+      "2020-11-01",
+      "2020-12-01"
+     ],
+     "dim": "date",
+     "observed": [
+      996.728101503,
+      1023.86643052,
+      1097.29149245,
+      null,
+      1094.09606458,
+      1002.02440288,
+      1038.7994589,
+      1016.75857887,
+      994.118221584,
+      993.67320557,
+      985.838005169,
+      1049.71263107,
+      1027.60439119,
+      1071.01402219,
+      1126.19839901,
+      1152.01568417,
+      1075.846709,
+      1095.61294281,
+      1042.83198217,
+      1029.61995559,
+      939.79025903,
+      995.159139234,
+      953.298149184,
+      1046.8945686,
+      1012.22030143,
+      1049.81288362,
+      1096.22440987,
+      1122.12113698,
+      1121.594526,
+      1085.78978736,
+      null,
+      1049.36012054,
+      1038.02206478,
+      946.619767927,
+      1082.12991788,
+      1052.6630894,
+      1076.60295723,
+      1089.44952584,
+      1071.36640594,
+      1110.49825972,
+      1101.90264315,
+      1080.10239838,
+      1078.94366972,
+      1027.80057154,
+      986.31580862,
+      null,
+      1051.00654172,
+      1083.61666814,
+      1066.23767235,
+      1162.7251832,
+      1172.67762393,
+      1107.49975886,
+      1161.94764561,
+      1120.59531079,
+      1145.03349988,
+      1076.62612328,
+      1081.52601915,
+      1063.3913039,
+      1095.01459886,
+      1044.66789964,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+     ],
+     "quantiles": [
+      0.05,
+      0.25,
+      0.5,
+      0.75,
+      0.95
+     ],
+     "units": "units",
+     "values": [
+      [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       1030.33553783,
+       1094.52047438,
+       1112.36803817,
+       1172.11761585,
+       1148.1288867,
+       1071.62073463,
+       1057.72051672,
+       974.48788658,
+       1001.88128873,
+       968.413730031,
+       1004.08453657,
+       1032.26939777
+      ],
+      [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       1058.15758046,
+       1118.13742183,
+       1140.80481839,
+       1195.06442368,
+       1173.37008331,
+       1095.58324796,
+       1091.92783371,
+       1006.83355428,
+       1039.66166773,
+       1014.99711533,
+       1053.33236347,
+       1072.27835901
+      ],
+      [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       1074.5957929,
+       1130.58943346,
+       1157.95582968,
+       1210.24100889,
+       1193.8053593,
+       1115.92938098,
+       1107.09986732,
+       1031.27374784,
+       1061.28643978,
+       1037.00833862,
+       1078.30842884,
+       1098.18133903
+      ],
+      [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       1088.40138487,
+       1146.98235887,
+       1175.08947824,
+       1225.54907251,
+       1209.85179255,
+       1131.08465247,
+       1131.69854509,
+       1050.33110389,
+       1085.99076712,
+       1057.63042352,
+       1105.29833685,
+       1124.00495995
+      ],
+      [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       1108.23526836,
+       1174.6397828,
+       1201.74782878,
+       1255.61117648,
+       1236.84356608,
+       1160.74089341,
+       1166.46228334,
+       1083.33335777,
+       1122.40674467,
+       1097.00974916,
+       1129.94085044,
+       1157.43469521
+      ]
+     ]
+    },
+    "format": "mapi.forecast/v1",
+    "history": 60,
+    "kind": "predictive",
+    "kpi": "y_hat",
+    "split_at": "2020-01-01",
+    "summed_over": [],
+    "total": {
+     "mean": 13296.1509686,
+     "quantiles": {
+      "0.05": 12813.335727,
+      "0.25": 13132.7864247,
+      "0.5": 13294.5931238,
+      "0.75": 13472.0898954,
+      "0.95": 13711.6929184
+     },
+     "sd": 287.12937297,
+     "units": "units"
+    },
+    "units": "units"
+   },
+   "horizon": {
+    "dim": "t",
+    "periods": 12
+   },
+   "inline": false,
+   "mode": "forecast",
+   "output": {
+    "kind": "predictive",
+    "summary": [
+     "mean",
+     "hdi_90"
+    ]
+   },
+   "probe_case": "forecast_12__predictive",
+   "result": {
+    "aggregation_flagged": false,
+    "bundle_id": "dd8ab749e0de5928c1412232ea5df5d1",
+    "conditioning": {
+     "conditioned": false,
+     "dim": "t",
+     "fit_end": "2019-12-01",
+     "horizon_source": "rows",
+     "message": "Forecast from the end of the fitted history (2019-12-01); no actuals were supplied. 12 periods forecast from 2020-01-01 to 2020-12-01.",
+     "n_actuals": 0,
+     "n_series": 1,
+     "parameters": "fitted",
+     "periods": 12,
+     "revised": 0,
+     "series": [
+      {
+       "forecast_from": "2020-01-01",
+       "forecast_to": "2020-12-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 12,
+       "origin": "2019-12-01",
+       "revised": 0,
+       "series": {}
+      }
+     ],
+     "series_conditioned": 0,
+     "truncated": false
+    },
+    "groups": [
+     "/summary"
+    ],
+    "issues": [],
+    "kind": "predictive",
+    "mode": "forecast",
+    "names": "dataset",
+    "output_space": {
+     "level": "raw",
+     "y_hat": "raw"
+    },
+    "representation": "draws",
+    "retransform": {
+     "level": "none",
+     "y_hat": "none"
+    },
+    "units": "original"
+   },
+   "summary": {
+    "conditioning": {
+     "conditioned": false,
+     "dim": "t",
+     "fit_end": "2019-12-01",
+     "horizon_source": "rows",
+     "message": "Forecast from the end of the fitted history (2019-12-01); no actuals were supplied. 12 periods forecast from 2020-01-01 to 2020-12-01.",
+     "n_actuals": 0,
+     "n_series": 1,
+     "parameters": "fitted",
+     "periods": 12,
+     "revised": 0,
+     "series": [
+      {
+       "forecast_from": "2020-01-01",
+       "forecast_to": "2020-12-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 12,
+       "origin": "2019-12-01",
+       "revised": 0,
+       "series": {}
+      }
+     ],
+     "series_conditioned": 0,
+     "truncated": false
+    },
+    "tables": [
+     {
+      "columns": [
+       "date",
+       "mean",
+       "hdi_90_lower",
+       "hdi_90_upper"
+      ],
+      "dims": [
+       "date"
+      ],
+      "rows": [
+       [
+        "2020-01-01",
+        1112.1826822788132,
+        1107.5942820219186,
+        1116.8804252526058
+       ],
+       [
+        "2020-02-01",
+        1113.813072954206,
+        1108.3269800656244,
+        1118.587597931803
+       ],
+       [
+        "2020-03-01",
+        1115.4434636295994,
+        1109.7168111706644,
+        1120.6976602133022
+       ],
+       [
+        "2020-04-01",
+        1117.0738543049922,
+        1111.432381228033,
+        1123.7252217467733
+       ],
+       [
+        "2020-05-01",
+        1118.7042449803855,
+        1113.242997065143,
+        1126.7426116415618
+       ],
+       [
+        "2020-06-01",
+        1120.3346356557784,
+        1114.4752941443714,
+        1128.7715438149885
+       ],
+       [
+        "2020-07-01",
+        1121.9650263311714,
+        1116.3549478771808,
+        1131.5919276578784
+       ],
+       [
+        "2020-08-01",
+        1123.5954170065647,
+        1117.549451183745,
+        1133.7190153385095
+       ],
+       [
+        "2020-09-01",
+        1125.2258076819576,
+        1119.2708121974006,
+        1136.2740217177281
+       ],
+       [
+        "2020-10-01",
+        1126.8561983573506,
+        1120.718732191234,
+        1138.5121730971873
+       ],
+       [
+        "2020-11-01",
+        1128.4865890327437,
+        1122.1666521850677,
+        1140.8092587197254
+       ],
+       [
+        "2020-12-01",
+        1130.116979708137,
+        1123.4378946789054,
+        1143.1226812080702
+       ]
+      ],
+      "time_dim": "date",
+      "variable": "level"
+     },
+     {
+      "columns": [
+       "date",
+       "mean",
+       "hdi_90_lower",
+       "hdi_90_upper"
+      ],
+      "dims": [
+       "date"
+      ],
+      "rows": [
+       [
+        "2020-01-01",
+        1072.883529617231,
+        1029.8401912381532,
+        1108.1412620858557
+       ],
+       [
+        "2020-02-01",
+        1132.0386019418343,
+        1090.5083178739994,
+        1168.2557979631802
+       ],
+       [
+        "2020-03-01",
+        1157.4937652976682,
+        1111.7905813999573,
+        1194.643217190131
+       ],
+       [
+        "2020-04-01",
+        1210.9575675482704,
+        1167.909824146377,
+        1250.207943687707
+       ],
+       [
+        "2020-05-01",
+        1192.6171814469299,
+        1145.9482079864813,
+        1232.4540666983698
+       ],
+       [
+        "2020-06-01",
+        1114.613311003845,
+        1068.4594393447992,
+        1154.7763611197845
+       ],
+       [
+        "2020-07-01",
+        1110.5763887663213,
+        1063.051355924425,
+        1171.648989450063
+       ],
+       [
+        "2020-08-01",
+        1029.8950508447094,
+        972.5533674083748,
+        1078.7146277978693
+       ],
+       [
+        "2020-09-01",
+        1063.0977111001207,
+        994.0534989588451,
+        1114.8803945419197
+       ],
+       [
+        "2020-10-01",
+        1036.6874900047255,
+        984.4977358163217,
+        1105.3504264532517
+       ],
+       [
+        "2020-11-01",
+        1077.3539261844426,
+        1022.2934441159891,
+        1142.1020085177945
+       ],
+       [
+        "2020-12-01",
+        1097.9364448034296,
+        1036.7791593973902,
+        1159.8936367646345
+       ]
+      ],
+      "time_dim": "date",
+      "variable": "y_hat"
+     }
+    ],
+    "truncated": false
+   },
+   "trimmed": null
+  }
+ }
+}

@@ -11,7 +11,7 @@ import { useEffect } from "react";
 
 import { useDashboards, useMemberClient } from "../api";
 import { ReadoutPage } from "../readout/readout-page";
-import { TAB_KEYS, type TabKey } from "../types";
+import { SECTION_KEYS, TAB_KEYS, type SectionKey, type TabKey } from "../types";
 import { ClientShell } from "./client-shell";
 import { DashboardList } from "./dashboard-list";
 
@@ -68,20 +68,25 @@ const listRoute = createRoute({ getParentRoute: () => rootRoute, path: "/c", com
 
 function DashboardPage() {
   const { dashboardId } = dashboardRoute.useParams();
-  const { tab } = dashboardRoute.useSearch();
+  const { tab, section } = dashboardRoute.useSearch();
   const router = useRouter();
   const client = useMemberClient(dashboardId, { kind: "client" });
   const onTab = (t: TabKey) => {
     const q = t === "this_period" ? "" : `?tab=${t}`;
     void router.navigate({ href: `/c/${encodeURIComponent(dashboardId)}${q}`, replace: true });
   };
-  return <ReadoutPage key={client.cacheKey.join("/")} client={client} tab={tab ?? "this_period"} onTabChange={onTab} />;
+  // A layout 2 section survives a reload in `?section=` (a layout 1 `?tab=` is mapped when absent).
+  const onSection = (s: SectionKey) => {
+    const q = s === "overview" ? "" : `?section=${s}`;
+    void router.navigate({ href: `/c/${encodeURIComponent(dashboardId)}${q}`, replace: true });
+  };
+  return <ReadoutPage key={client.cacheKey.join("/")} client={client} tab={tab ?? "this_period"} onTabChange={onTab} section={section} onSectionChange={onSection} />;
 }
 
 const dashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/c/$dashboardId",
-  validateSearch: (s: Record<string, unknown>): { tab?: TabKey | undefined } => ({ tab: oneOf(s.tab, TAB_KEYS) }),
+  validateSearch: (s: Record<string, unknown>): { tab?: TabKey | undefined; section?: SectionKey | undefined } => ({ tab: oneOf(s.tab, TAB_KEYS), section: oneOf(s.section, SECTION_KEYS) }),
   component: DashboardPage,
 });
 

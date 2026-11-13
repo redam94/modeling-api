@@ -29,6 +29,8 @@ import { cn } from "@/lib/utils";
 import { useStartInspect, useUploadInspection } from "./api";
 import { CollectionUpload } from "./collection-upload-step";
 import { ImageFolderForm } from "./image-folder-form";
+import { emitOnboarding } from "@/lib/onboarding-events";
+
 import { ArrayBrowser, Hdf5Mapper } from "./inspection";
 import {
   combineFileText,
@@ -241,6 +243,7 @@ export function UploadWizard({ datasetId, onDone }: { datasetId: string; onDone:
         ? { assembly: toAssembly(sources.map((s, i) => ({ uploadId: ids[i]!, mapping: sourceMapping(s), placement: placements[i]! }))) }
         : { upload_id: ids[0]!, mapping: sourceMapping(sources[0]!) };
       const version = await createVersion.mutateAsync({ key: keyRef.current, body: { ...body, ...(message.trim() ? { message: message.trim() } : {}) } });
+      emitOnboarding("dataset_uploaded", { dataset: datasetId, source: "datasets" });
       setPhase("done");
       onDone(version);
     } catch (e) {

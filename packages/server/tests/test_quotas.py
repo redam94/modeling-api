@@ -160,7 +160,17 @@ async def test_kill_switches_refuse_new_compute(
     )
     assert r.status_code == 200 and r.json()["untrusted_execution_enabled"] is False
     assert (await client.post("/v1/runs", json=fit)).status_code == 201  # built-in: fine
-    monkeypatch.setattr(submit, "_overlay", lambda *a: True)  # pretend it ships tenant code
+    # pretend the fit uses an uploaded plugin version (v0.19: pins make a run untrusted)
+    from mapi_spec.plugins import OverlayPin
+
+    fake = OverlayPin(plugin_version_id="plv_" + "0" * 26, namespace="t_aaaaaa_xx",
+                      sha256="sha256:" + "0" * 64)  # fmt: skip
+
+    async def _mountable(*_a: object, **_k: object) -> None:
+        return None
+
+    monkeypatch.setattr(submit, "run_pins", lambda _run: [fake])
+    monkeypatch.setattr(submit, "pins_problem", _mountable)
     r = await client.post("/v1/runs", json=fit)
     assert r.status_code == 429 and "uploaded plugin code is paused" in r.json()["detail"]
     monkeypatch.undo()

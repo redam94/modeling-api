@@ -188,6 +188,46 @@ variable "oidc_client_secret" {
   ephemeral   = true
 }
 
+# ------------------------------------------------------------------------------ dashboard chat
+
+variable "chat" {
+  description = <<-EOT
+    Dashboard chat (v0.20): provider "off" (default) or "gemini". The API service sends readout
+    data to the Gemini Developer API (a global endpoint; MAPI_CHAT_ALLOWED_RESIDENCIES limits
+    which tenants may use it), so "gemini" needs a paid-tier key: raise gemini_api_key_version
+    and supply TF_VAR_gemini_api_key once to write it to Secret Manager. The fake model is
+    refused in the cloud.
+  EOT
+  type = object({
+    provider               = optional(string, "off")
+    gemini_api_key_version = optional(number, 0)
+  })
+  default = {}
+
+  validation {
+    condition     = contains(["off", "gemini"], var.chat.provider)
+    error_message = "chat.provider is \"off\" or \"gemini\" (the fake model is for local development only)."
+  }
+
+  validation {
+    condition     = var.chat.gemini_api_key_version >= 0 && floor(var.chat.gemini_api_key_version) == var.chat.gemini_api_key_version
+    error_message = "chat.gemini_api_key_version is a whole number, 0 or more."
+  }
+
+  validation {
+    condition     = var.chat.provider != "gemini" || var.chat.gemini_api_key_version > 0
+    error_message = "chat.provider = \"gemini\" needs a key in Secret Manager: set chat.gemini_api_key_version > 0 and TF_VAR_gemini_api_key."
+  }
+}
+
+variable "gemini_api_key" {
+  description = "The Gemini API key (TF_VAR_gemini_api_key). Ephemeral: written to Secret Manager with a write-only argument and never stored in state or plan files. Required (once) when chat.gemini_api_key_version is raised."
+  type        = string
+  default     = null
+  sensitive   = true
+  ephemeral   = true
+}
+
 # ---------------------------------------------------------------------------- identity platform
 
 variable "identity_platform" {
@@ -276,6 +316,16 @@ variable "extra_env" {
   description = "Additional plain environment variables per workload (api, events, orchestrator, migrate, web). Never put secrets here."
   type        = map(map(string))
   default     = {}
+
+  validation {
+    # the key comes from Secret Manager and the provider from var.chat, never a plain value
+    condition = alltrue([
+      for workload, vars in var.extra_env : alltrue([
+        for name in keys(vars) : !contains(["MAPI_GEMINI_API_KEY", "MAPI_CHAT_PROVIDER"], upper(name))
+      ])
+    ])
+    error_message = "Set the Gemini key with chat.gemini_api_key_version + TF_VAR_gemini_api_key and the provider with chat.provider, not in extra_env."
+  }
 }
 
 variable "pubsub" {

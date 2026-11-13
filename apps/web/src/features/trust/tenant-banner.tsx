@@ -26,7 +26,7 @@ export function TenantStatusBanner() {
           <>
             <span className="font-medium">The app is deleting {t.name}.</span> <span className="text-muted-foreground">You cannot change anything. The app removes its data now.</span>{" "}
             {admin ? (
-              <Link to="/settings" hash="data" className="font-medium text-primary hover:underline">
+              <Link to="/settings" hash="data" className="link font-medium">
                 See the progress
               </Link>
             ) : null}
@@ -35,7 +35,7 @@ export function TenantStatusBanner() {
           <>
             <span className="font-medium">{t.name} is scheduled for deletion on {absoluteTime(d.purge_after)}.</span>{" "}
             <span className="text-muted-foreground">Until then, it is read-only. You can export its data or cancel the deletion.</span>{" "}
-            <Link to="/settings" hash="data" className="font-medium text-primary hover:underline">
+            <Link to="/settings" hash="data" className="link font-medium">
               Cancel or export
             </Link>
           </>

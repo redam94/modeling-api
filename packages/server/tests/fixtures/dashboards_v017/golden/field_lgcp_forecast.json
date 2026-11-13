@@ -1,0 +1,7663 @@
+{
+ "actuals": null,
+ "capabilities": {
+  "checkpointable": true,
+  "contribution_scale": "none",
+  "decision": false,
+  "deterministic_given_seed": true,
+  "evidence": false,
+  "fast_score": false,
+  "identified_quantities": [
+   "alpha",
+   "sigma_g",
+   "ell",
+   "eta0",
+   "eta_d",
+   "inv_phi"
+  ],
+  "inference": "mcmc",
+  "loo_invalid_reason": null,
+  "loo_valid": true,
+  "owns": [],
+  "recommend": false,
+  "representation": "draws",
+  "score_modes": [
+   "evaluate",
+   "forecast",
+   "predict"
+  ]
+ },
+ "case": "field_lgcp_forecast",
+ "derived_from": [
+  "sci.lgcp_grid/forecast_4__predictive.fields.json",
+  "sci.lgcp_grid/forecast_4__predictive.forecast.json",
+  "sci.lgcp_grid/forecast_4__predictive.result.json",
+  "sci.lgcp_grid/forecast_4__predictive.summary.json",
+  "sci.lgcp_grid/forecast_4__readout.fields.json",
+  "sci.lgcp_grid/forecast_4__readout.forecast.json",
+  "sci.lgcp_grid/forecast_4__readout.result.json",
+  "sci.lgcp_grid/forecast_4__readout.summary.json",
+  "sci.lgcp_grid/forecast_sum.fields.json",
+  "sci.lgcp_grid/forecast_sum.result.json",
+  "sci.lgcp_grid/forecast_sum.summary.json",
+  "sci.lgcp_grid/probe.json"
+ ],
+ "facts": {
+  "aggregates": {
+   "aggregate.aggregate": {
+    "aggregation_flagged": false,
+    "over": [
+     "quarter"
+    ],
+    "tables": {
+     "rate": {
+      "columns": [
+       "row",
+       "col",
+       "mean",
+       "hdi_90_lower",
+       "hdi_90_upper"
+      ],
+      "rows": [
+       [
+        0,
+        0,
+        1.1,
+        0.0,
+        3.0
+       ],
+       [
+        0,
+        1,
+        1.33,
+        0.0,
+        4.0
+       ],
+       [
+        0,
+        2,
+        4.18,
+        0.0,
+        9.0
+       ],
+       [
+        0,
+        3,
+        7.195,
+        0.0,
+        14.0
+       ],
+       [
+        0,
+        4,
+        2.44,
+        0.0,
+        6.0
+       ],
+       [
+        1,
+        0,
+        3.36,
+        0.0,
+        7.0
+       ],
+       [
+        1,
+        1,
+        9.22,
+        0.0,
+        19.0
+       ],
+       [
+        1,
+        2,
+        21.875,
+        0.0,
+        40.0
+       ],
+       [
+        1,
+        3,
+        10.88,
+        0.0,
+        21.0
+       ],
+       [
+        1,
+        4,
+        1.805,
+        0.0,
+        4.0
+       ],
+       [
+        2,
+        0,
+        2.285,
+        0.0,
+        5.0
+       ],
+       [
+        2,
+        1,
+        14.005,
+        1.0,
+        27.0
+       ],
+       [
+        2,
+        2,
+        15.33,
+        2.0,
+        28.0
+       ],
+       [
+        2,
+        3,
+        4.06,
+        0.0,
+        9.0
+       ],
+       [
+        2,
+        4,
+        0.89,
+        0.0,
+        2.0
+       ],
+       [
+        3,
+        0,
+        0.555,
+        0.0,
+        2.0
+       ],
+       [
+        3,
+        1,
+        3.725,
+        0.0,
+        8.0
+       ],
+       [
+        3,
+        2,
+        4.715,
+        0.0,
+        10.0
+       ],
+       [
+        3,
+        3,
+        3.015,
+        0.0,
+        7.0
+       ],
+       [
+        3,
+        4,
+        2.055,
+        0.0,
+        5.0
+       ],
+       [
+        4,
+        0,
+        0.62,
+        0.0,
+        2.0
+       ],
+       [
+        4,
+        1,
+        1.31,
+        0.0,
+        3.0
+       ],
+       [
+        4,
+        2,
+        1.81,
+        0.0,
+        4.0
+       ],
+       [
+        4,
+        3,
+        4.35,
+        0.0,
+        9.0
+       ],
+       [
+        4,
+        4,
+        9.775,
+        0.0,
+        20.0
+       ],
+       [
+        5,
+        0,
+        0.965,
+        0.0,
+        3.0
+       ],
+       [
+        5,
+        1,
+        1.51,
+        0.0,
+        3.0
+       ],
+       [
+        5,
+        2,
+        0.78,
+        0.0,
+        2.0
+       ],
+       [
+        5,
+        3,
+        2.525,
+        0.0,
+        6.0
+       ],
+       [
+        5,
+        4,
+        6.585,
+        0.0,
+        17.0
+       ]
+      ]
+     },
+     "total": {
+      "columns": [
+       "mean",
+       "hdi_90_lower",
+       "hdi_90_upper"
+      ],
+      "rows": [
+       [
+        142.52901336451697,
+        58.47049036998028,
+        219.90194813404068
+       ]
+      ]
+     }
+    }
+   },
+   "forecast.forecast_total": {
+    "kind": "expected",
+    "kpi": "total",
+    "mean": 142.529013365,
+    "quantiles": {
+     "0.05": 72.9868428473,
+     "0.25": 102.963809138,
+     "0.5": 124.080518423,
+     "0.75": 157.127464124,
+     "0.95": 253.361877735
+    },
+    "sd": 74.8586083887,
+    "units": "events"
+   },
+   "forecast_predictive.forecast_total": {
+    "kind": "predictive",
+    "kpi": "total",
+    "mean": 142.529013365,
+    "quantiles": {
+     "0.05": 72.9868428473,
+     "0.25": 102.963809138,
+     "0.5": 124.080518423,
+     "0.75": 157.127464124,
+     "0.95": 253.361877735
+    },
+    "sd": 74.8586083887,
+    "units": "events"
+   }
+  },
+  "predictive": {
+   "forecast_predictive.rate": {
+    "expected_width": 2.1141369417257825,
+    "predictive_width": 3.0416666666666665,
+    "widens": true
+   },
+   "forecast_predictive.total": {
+    "expected_width": 41.80266777506991,
+    "predictive_width": 41.80266777506991,
+    "widens": false
+   }
+  },
+  "scalar_fit_metrics": {
+   "coverage_90": 0.9833333333333333,
+   "mae": 0.9157916666666667,
+   "rmse": 1.342089710737202
+  },
+  "tables": {
+   "aggregate": {
+    "rate": {
+     "band": [
+      "hdi_90_lower",
+      "hdi_90_upper"
+     ],
+     "centre": "mean",
+     "dims": [
+      "row",
+      "col"
+     ],
+     "mean_band_width": 9.866666666666667,
+     "n_rows": 30,
+     "sum_centre": 144.25,
+     "sum_high": 299.0,
+     "sum_low": 3.0,
+     "time_dim": null
+    },
+    "total": {
+     "band": [
+      "hdi_90_lower",
+      "hdi_90_upper"
+     ],
+     "centre": "mean",
+     "dims": [],
+     "mean_band_width": 161.43145776406038,
+     "n_rows": 1,
+     "sum_centre": 142.52901336451697,
+     "sum_high": 219.90194813404068,
+     "sum_low": 58.47049036998028,
+     "time_dim": null
+    }
+   },
+   "forecast": {
+    "rate": {
+     "band": [
+      "hdi_90_lower",
+      "hdi_90_upper"
+     ],
+     "centre": "mean",
+     "dims": [
+      "quarter",
+      "row",
+      "col"
+     ],
+     "mean_band_width": 2.1141369417257825,
+     "n_rows": 120,
+     "sum_centre": 142.529013364517,
+     "sum_high": 273.67632028630936,
+     "sum_low": 19.979887279215493,
+     "time_dim": "quarter"
+    },
+    "total": {
+     "band": [
+      "hdi_90_lower",
+      "hdi_90_upper"
+     ],
+     "centre": "mean",
+     "dims": [
+      "quarter"
+     ],
+     "mean_band_width": 41.80266777506991,
+     "n_rows": 4,
+     "sum_centre": 142.52901336451697,
+     "sum_high": 224.22511195786578,
+     "sum_low": 57.01444085758615,
+     "time_dim": "quarter"
+    }
+   },
+   "forecast_predictive": {
+    "rate": {
+     "band": [
+      "hdi_90_lower",
+      "hdi_90_upper"
+     ],
+     "centre": "mean",
+     "dims": [
+      "quarter",
+      "row",
+      "col"
+     ],
+     "mean_band_width": 3.0416666666666665,
+     "n_rows": 120,
+     "sum_centre": 144.25,
+     "sum_high": 365.0,
+     "sum_low": 0.0,
+     "time_dim": "quarter"
+    },
+    "total": {
+     "band": [
+      "hdi_90_lower",
+      "hdi_90_upper"
+     ],
+     "centre": "mean",
+     "dims": [
+      "quarter"
+     ],
+     "mean_band_width": 41.80266777506991,
+     "n_rows": 4,
+     "sum_centre": 142.52901336451697,
+     "sum_high": 224.22511195786578,
+     "sum_low": 57.01444085758615,
+     "time_dim": "quarter"
+    }
+   }
+  }
+ },
+ "fit_metrics": [
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:39:25.262793-04:00",
+   "key": "coverage_90",
+   "labels": {},
+   "last": 0.9833333333333333,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:39:25.262793-04:00",
+   "max": 0.9833333333333333,
+   "min": 0.9833333333333333
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:19.799674-04:00",
+   "key": "divergences",
+   "labels": {
+    "chain": "0"
+   },
+   "last": 5.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:22.531439-04:00",
+   "max": 5.0,
+   "min": 0.0
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:16.416706-04:00",
+   "key": "divergences",
+   "labels": {
+    "chain": "0",
+    "fit": "evaluation"
+   },
+   "last": 2.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:18.178027-04:00",
+   "max": 2.0,
+   "min": 0.0
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:20.858083-04:00",
+   "key": "divergences",
+   "labels": {
+    "chain": "1"
+   },
+   "last": 7.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:23.026439-04:00",
+   "max": 7.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:17.182004-04:00",
+   "key": "divergences",
+   "labels": {
+    "chain": "1",
+    "fit": "evaluation"
+   },
+   "last": 5.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:18.450027-04:00",
+   "max": 5.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:39:25.262828-04:00",
+   "key": "mae",
+   "labels": {},
+   "last": 0.9157916666666667,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:39:25.262828-04:00",
+   "max": 0.9157916666666667,
+   "min": 0.9157916666666667
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:19.799674-04:00",
+   "key": "num_steps",
+   "labels": {
+    "chain": "0"
+   },
+   "last": 63.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:22.531439-04:00",
+   "max": 255.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:16.416706-04:00",
+   "key": "num_steps",
+   "labels": {
+    "chain": "0",
+    "fit": "evaluation"
+   },
+   "last": 31.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:18.178027-04:00",
+   "max": 255.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:20.858083-04:00",
+   "key": "num_steps",
+   "labels": {
+    "chain": "1"
+   },
+   "last": 63.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:23.026439-04:00",
+   "max": 255.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:17.182004-04:00",
+   "key": "num_steps",
+   "labels": {
+    "chain": "1",
+    "fit": "evaluation"
+   },
+   "last": 63.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:18.450027-04:00",
+   "max": 255.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:39:25.262857-04:00",
+   "key": "rmse",
+   "labels": {},
+   "last": 1.342089710737202,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:39:25.262857-04:00",
+   "max": 1.342089710737202,
+   "min": 1.342089710737202
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:19.799674-04:00",
+   "key": "step_size",
+   "labels": {
+    "chain": "0"
+   },
+   "last": 0.1469965306000813,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:22.531439-04:00",
+   "max": 0.9004215793867443,
+   "min": 0.006249619821255505
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:16.416706-04:00",
+   "key": "step_size",
+   "labels": {
+    "chain": "0",
+    "fit": "evaluation"
+   },
+   "last": 0.17211684790779813,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:18.178027-04:00",
+   "max": 0.6510824166349309,
+   "min": 0.0054106821368162345
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:20.858083-04:00",
+   "key": "step_size",
+   "labels": {
+    "chain": "1"
+   },
+   "last": 0.05941803917255802,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:23.026439-04:00",
+   "max": 0.22037270761460623,
+   "min": 0.005917765689602408
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:17.182004-04:00",
+   "key": "step_size",
+   "labels": {
+    "chain": "1",
+    "fit": "evaluation"
+   },
+   "last": 0.15987287051955054,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:18.450027-04:00",
+   "max": 0.2844424484947313,
+   "min": 0.007710453462335977
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:19.799674-04:00",
+   "key": "tree_depth",
+   "labels": {
+    "chain": "0"
+   },
+   "last": 6.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:22.531439-04:00",
+   "max": 8.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:16.416706-04:00",
+   "key": "tree_depth",
+   "labels": {
+    "chain": "0",
+    "fit": "evaluation"
+   },
+   "last": 5.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:18.178027-04:00",
+   "max": 8.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:20.858083-04:00",
+   "key": "tree_depth",
+   "labels": {
+    "chain": "1"
+   },
+   "last": 6.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:23.026439-04:00",
+   "max": 8.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:17.182004-04:00",
+   "key": "tree_depth",
+   "labels": {
+    "chain": "1",
+    "fit": "evaluation"
+   },
+   "last": 6.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:18.450027-04:00",
+   "max": 8.0,
+   "min": 1.0
+  }
+ ],
+ "format": "mapi.test.dashboard-material/v1",
+ "input_contract": {
+  "input_table": {
+   "columns": [
+    {
+     "description": "The period (yyyy-MM-dd)",
+     "dims": [],
+     "freq": "QS",
+     "name": "period",
+     "role": "coord"
+    },
+    {
+     "description": "A level of col",
+     "dims": [],
+     "freq": null,
+     "name": "col",
+     "role": "coord"
+    },
+    {
+     "description": "A level of row",
+     "dims": [],
+     "freq": null,
+     "name": "row",
+     "role": "coord"
+    },
+    {
+     "description": "Leave empty. This model forecasts from the end of its fitted history",
+     "dims": [
+      "period",
+      "row",
+      "col"
+     ],
+     "freq": null,
+     "name": "count",
+     "role": "target"
+    }
+   ],
+   "conditions_on_actuals": false,
+   "horizon_dim": "period",
+   "rows": [
+    [
+     "2013-01-01",
+     0,
+     0,
+     null
+    ],
+    [
+     "2013-01-01",
+     0,
+     1,
+     null
+    ],
+    [
+     "2013-01-01",
+     1,
+     0,
+     null
+    ],
+    [
+     "2013-01-01",
+     1,
+     1,
+     null
+    ],
+    [
+     "2013-04-01",
+     0,
+     0,
+     null
+    ],
+    [
+     "2013-04-01",
+     0,
+     1,
+     null
+    ],
+    [
+     "2013-04-01",
+     1,
+     0,
+     null
+    ],
+    [
+     "2013-04-01",
+     1,
+     1,
+     null
+    ]
+   ]
+  },
+  "max_inline_bytes": 5242880,
+  "model_ref": "model://default/v017-e07-lgcp-055cc4-model@v1",
+  "snapshot": {
+   "conditions_on_actuals": false,
+   "fit_coords": {
+    "col": {
+     "contiguous": true,
+     "end": 4,
+     "freq": null,
+     "kind": "integer",
+     "size": 5,
+     "start": 0,
+     "step": 1,
+     "values": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ]
+    },
+    "period": {
+     "contiguous": true,
+     "end": "2012-10-01T00:00:00",
+     "freq": "QS",
+     "kind": "time",
+     "size": 16,
+     "start": "2009-01-01T00:00:00",
+     "step": null,
+     "values": null
+    },
+    "row": {
+     "contiguous": true,
+     "end": 5,
+     "freq": null,
+     "kind": "integer",
+     "size": 6,
+     "start": 0,
+     "step": 1,
+     "values": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+     ]
+    }
+   },
+   "future_required": [],
+   "horizon_dim": "period",
+   "input_schema": {
+    "dims": {
+     "col": {
+      "description": null,
+      "freq": null,
+      "kind": "integer",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "fixed"
+     },
+     "period": {
+      "description": null,
+      "freq": "QS",
+      "kind": "time",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "extend"
+     },
+     "row": {
+      "description": null,
+      "freq": null,
+      "kind": "integer",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "fixed"
+     }
+    },
+    "layout": "dense",
+    "ragged": [],
+    "vars": {
+     "count": {
+      "bounds": null,
+      "description": null,
+      "dims": [
+       "period",
+       "row",
+       "col"
+      ],
+      "dtype": "int64",
+      "future_required": false,
+      "index_of": null,
+      "missing": "forbid",
+      "missing_sentinel": null,
+      "role": "target",
+      "units": "events"
+     }
+    }
+   },
+   "inputs_stage": "raw",
+   "representation": "draws",
+   "schema_hash": "sha256:963b2317842f6879363656490a1858a2823fa6b6b58b46163fb9ab3f135d0f0f",
+   "score_modes": [
+    "evaluate",
+    "forecast",
+    "predict"
+   ]
+  }
+ },
+ "manifest": {
+  "about": {
+   "assumptions": [
+    "The rate changes smoothly from one cell to the cells near it",
+    "The map changes only from one era (a group of periods) to the next",
+    "The total for the full grid changes gradually from one period to the next",
+    "Events can occur in groups (more variation than a constant rate gives)"
+   ],
+   "avoid_when": [
+    "You have exact locations and want a model for each point (bin them into cells first)",
+    "The grid has thousands of cells (the fit becomes too slow)",
+    "You must know what occurs if a cause changes, such as a new policy (the model has no columns for causes)",
+    "You need a forecast further ahead than the model permits without a new fit"
+   ],
+   "data_needs": [
+    "A count of events for each cell and each period (quarters, months or years)",
+    "Cells of equal size, with the row and column number of each cell"
+   ],
+   "difficulty": "expert",
+   "example": "Count the earthquakes in each 25 km cell for each quarter from 2009 to 2017. Then forecast the map and the total for 2018 and 2019 with a 90% range.",
+   "expert_notes": "Log-Gaussian Cox process on a space-time grid (pymc-challenges E07, rung 4). log rate = alpha + g_t + log softmax over cells of f_era(s): the total per period (exp(alpha + g_t), g a centred Gaussian random walk) is separate from the share of each cell, so the field cannot inflate the total. f is a 2-D Hilbert-space GP (Matern-5/2, product basis of m_row x m_col sine functions, boundary factor c) whose basis coefficients follow a random walk over eras, anchored at the busiest fit era. Negative binomial counts (prior on 1/phi). The random-walk steps and the era coefficients cover max_extension periods after the fit, so forecasts use posterior draws of their prior. Lengthscale prior: inverse gamma with 90% of its mass between ell_lower_km and ell_upper_km.",
+   "fits": {
+    "data_shape": [
+     "grid",
+     "panel"
+    ],
+    "experience": [
+     "expert"
+    ],
+    "frequency": [
+     "monthly"
+    ],
+    "goal": [
+     "map_fields",
+     "forecast"
+    ],
+    "history": [
+     "medium",
+     "long"
+    ],
+    "speed": [
+     "minutes",
+     "can_wait"
+    ],
+    "uncertainty": [
+     "essential",
+     "nice"
+    ]
+   },
+   "outputs": [
+    "The expected events for each cell and period, with a range",
+    "The expected total for each period, with a range",
+    "Forecasts of the map and of the total for the next periods"
+   ],
+   "references": [
+    {
+     "title": "Moller, Syversveen and Waagepetersen (1998), Log Gaussian Cox processes",
+     "url": "https://doi.org/10.1111/1467-9469.00115"
+    },
+    {
+     "title": "Riutort-Mayol et al. (2022), Practical Hilbert space approximate Bayesian Gaussian processes",
+     "url": "https://arxiv.org/abs/2004.11408"
+    }
+   ],
+   "related": [
+    "ts.hsgp_trend"
+   ],
+   "summary_plain": "Finds where and when events such as earthquakes occur more often. It counts the events in each cell of a map for each period, and it forecasts the next periods with a range.",
+   "title": "Event counts on a map over time",
+   "typical_runtime": "minutes",
+   "use_when": [
+    "You have counts of events in each cell of a regular grid for each period",
+    "The area with many events moves or changes over time",
+    "You want a map of the expected rate and a map of the uncertainty"
+   ]
+  },
+  "capabilities": {
+   "checkpointable": true,
+   "identified_quantities": [
+    "alpha",
+    "sigma_g",
+    "ell",
+    "eta0",
+    "eta_d",
+    "inv_phi"
+   ],
+   "inference": "mcmc",
+   "representation": "draws",
+   "score_modes": [
+    "evaluate",
+    "forecast",
+    "predict"
+   ]
+  },
+  "description": "A log-Gaussian Cox process for event counts on a regular space-time grid: a random-walk total per period times a smooth 2-D map (Mat\u00e9rn-5/2 HSGP) that can change from era to era, with negative-binomial counts. Forecasts reach at most max_extension periods past the fit.",
+  "id": "sci.lgcp_grid",
+  "outputs": {
+   "rate": {
+    "description": "Events per cell and period: the expected intensity, or a predictive count draw",
+    "dims": [
+     "period",
+     "row",
+     "col"
+    ],
+    "grid": {
+     "colormap": "magma",
+     "frame": "period",
+     "log": true,
+     "origin": "lower",
+     "x": "col",
+     "y": "row"
+    },
+    "units_of": "count"
+   },
+   "total": {
+    "description": "Expected events per period in the whole grid",
+    "dims": [
+     "period"
+    ],
+    "units_of": "count"
+   }
+  },
+  "plots": [
+   "core.convergence",
+   "core.posterior_forest",
+   "core.ppc_fan",
+   "sci.field_map",
+   "sci.ensemble"
+  ],
+  "resources": {
+   "est_fit_seconds": 120
+  },
+  "schema_template": {
+   "params": {
+    "max_extension": {
+     "default": 8,
+     "type": "integer"
+    }
+   },
+   "template": {
+    "dims": {
+     "col": {
+      "kind": "integer",
+      "policy": "fixed"
+     },
+     "period": {
+      "kind": "time",
+      "max_extension": "{max_extension}",
+      "policy": "extend"
+     },
+     "row": {
+      "kind": "integer",
+      "policy": "fixed"
+     }
+    },
+    "vars": {
+     "count": {
+      "dims": [
+       "period",
+       "row",
+       "col"
+      ],
+      "dtype": "int64",
+      "role": "target"
+     }
+    }
+   }
+  },
+  "settings_schema": {
+   "additionalProperties": false,
+   "description": "Settings of ``sci.lgcp_grid`` (lengthscales are in km).",
+   "properties": {
+    "alpha_sigma": {
+     "default": 1.5,
+     "description": "Sd of the log total per period (centred on the fit mean)",
+     "exclusiveMinimum": 0,
+     "title": "Alpha Sigma",
+     "type": "number"
+    },
+    "anchor": {
+     "default": "busiest",
+     "description": "The era whose map gets the marginal prior; the other eras walk away from it (busiest = the fit era with the most events)",
+     "enum": [
+      "busiest",
+      "first",
+      "last"
+     ],
+     "title": "Anchor",
+     "type": "string"
+    },
+    "c": {
+     "default": 1.5,
+     "description": "HSGP boundary factor",
+     "exclusiveMinimum": 1.0,
+     "maximum": 5.0,
+     "title": "C",
+     "type": "number"
+    },
+    "cell_km": {
+     "default": 25.0,
+     "description": "Width of one grid cell in km",
+     "exclusiveMinimum": 0,
+     "title": "Cell Km",
+     "type": "number"
+    },
+    "ell_lower_km": {
+     "default": 15.0,
+     "description": "5% quantile of the lengthscale prior",
+     "exclusiveMinimum": 0,
+     "title": "Ell Lower Km",
+     "type": "number"
+    },
+    "ell_upper_km": {
+     "default": 100.0,
+     "description": "95% quantile of the lengthscale prior",
+     "exclusiveMinimum": 0,
+     "title": "Ell Upper Km",
+     "type": "number"
+    },
+    "era_periods": {
+     "default": 4,
+     "description": "Periods in one era: the spatial field changes from era to era (4 quarters = one map per year)",
+     "maximum": 1000,
+     "minimum": 1,
+     "title": "Era Periods",
+     "type": "integer"
+    },
+    "eta0_scale": {
+     "default": 2.0,
+     "description": "Half-normal scale of the anchor map",
+     "exclusiveMinimum": 0,
+     "title": "Eta0 Scale",
+     "type": "number"
+    },
+    "eta_d_scale": {
+     "default": 1.0,
+     "description": "Half-normal scale of the era increments",
+     "exclusiveMinimum": 0,
+     "title": "Eta D Scale",
+     "type": "number"
+    },
+    "field": {
+     "default": "era_walk",
+     "description": "era_walk: a new map each era (a random walk of maps); static: one map for all periods (the separable model)",
+     "enum": [
+      "era_walk",
+      "static"
+     ],
+     "title": "Field",
+     "type": "string"
+    },
+    "inv_phi_rate": {
+     "default": 1.0,
+     "description": "Exponential rate of 1/phi (0 = Poisson)",
+     "exclusiveMinimum": 0,
+     "title": "Inv Phi Rate",
+     "type": "number"
+    },
+    "likelihood": {
+     "default": "negbin",
+     "enum": [
+      "negbin",
+      "poisson"
+     ],
+     "title": "Likelihood",
+     "type": "string"
+    },
+    "m_col": {
+     "default": 14,
+     "description": "HSGP basis functions along columns",
+     "maximum": 60,
+     "minimum": 2,
+     "title": "M Col",
+     "type": "integer"
+    },
+    "m_row": {
+     "default": 10,
+     "description": "HSGP basis functions along rows",
+     "maximum": 60,
+     "minimum": 2,
+     "title": "M Row",
+     "type": "integer"
+    },
+    "max_extension": {
+     "default": 8,
+     "description": "Periods a forecast may reach past the fitted range without a refit (x-ui-level: basic)",
+     "maximum": 400,
+     "minimum": 1,
+     "title": "Max Extension",
+     "type": "integer"
+    },
+    "sigma_g_scale": {
+     "default": 0.5,
+     "description": "Half-normal scale of the RW step",
+     "exclusiveMinimum": 0,
+     "title": "Sigma G Scale",
+     "type": "number"
+    }
+   },
+   "title": "LGCPGridSettings",
+   "type": "object"
+  },
+  "version": "1.0.0"
+ },
+ "note": "forecast 4 periods (horizon-only scenario rows); forecast.json kpi is `total`; forecast_sum aggregates over quarter",
+ "plugin": "sci.lgcp_grid",
+ "preset": "field_map",
+ "primary_output": "rate",
+ "refusals": [],
+ "representation": "draws",
+ "scorecard": {
+  "items": [
+   {
+    "category": "convergence",
+    "check": "convergence.rhat",
+    "code": "RHAT",
+    "docs_anchor": "check-convergence-rhat",
+    "message_expert": "max rank-normalised split r-hat 1.082 for 'z' (threshold 1.01)",
+    "message_plain": "The chains do not agree (R-hat 1.08). The results are not reliable.",
+    "metric": "r_hat_max",
+    "status": "fail",
+    "suggested_action": "Increase the tuning steps and the draws, or make the model simpler.",
+    "threshold": 1.05,
+    "title": "Chains agree",
+    "value": 1.081850649035234
+   },
+   {
+    "category": "convergence",
+    "check": "convergence.ess",
+    "code": "ESS",
+    "docs_anchor": "check-convergence-ess",
+    "message_expert": "min bulk ESS 33 for 'sigma_g' (threshold 200)",
+    "message_plain": "There are only 33 independent draws. The results are not stable.",
+    "metric": "ess_bulk_min",
+    "status": "fail",
+    "suggested_action": "Increase the number of draws.",
+    "threshold": 100.0,
+    "title": "Enough independent draws",
+    "value": 33.00148269484455
+   },
+   {
+    "category": "convergence",
+    "check": "convergence.divergences",
+    "code": "DIVERGENCES",
+    "docs_anchor": "check-convergence-divergences",
+    "message_expert": "0 divergent transitions in 200 draws",
+    "message_plain": "The sampler had no problems with the model.",
+    "metric": "divergence_rate",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 0.0,
+    "title": "The sampler had no problems",
+    "value": 0.0
+   },
+   {
+    "category": "holdout",
+    "check": "holdout.coverage_90",
+    "code": "HOLDOUT_COVERAGE",
+    "docs_anchor": "check-holdout-coverage-90",
+    "message_expert": "coverage_90 0.9833 over 120 held-out values",
+    "message_plain": "98% of the holdout values were in the 90% range. This is correct.",
+    "metric": "coverage_90",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 0.1,
+    "title": "The uncertainty is correct",
+    "value": 0.9833333333333333
+   },
+   {
+    "category": "plausibility",
+    "check": "plausibility.prior_overlap",
+    "code": "PRIOR_OVERLAP",
+    "docs_anchor": "check-plausibility-prior-overlap",
+    "message_expert": "prior/posterior overlap 0.56 for 'sigma_g'",
+    "message_plain": "The data moved each parameter away from its prior.",
+    "metric": "prior_overlap_max",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 0.9,
+    "title": "The data changed the model",
+    "value": 0.565
+   },
+   {
+    "category": "data",
+    "check": "data.missing",
+    "code": "DATA_MISSING",
+    "docs_anchor": "check-data-missing",
+    "message_expert": "0 of 480 values missing",
+    "message_plain": "Only 0% of the values are missing.",
+    "metric": "missing_fraction",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 0.05,
+    "title": "Few missing values",
+    "value": 0.0
+   },
+   {
+    "category": "data",
+    "check": "data.history",
+    "code": "DATA_HISTORY",
+    "docs_anchor": "check-data-history",
+    "message_expert": "16 periods at QS (4 per year) along 'period' at the model stage",
+    "message_plain": "There are 4.0 years of history. This is enough to find the seasonality.",
+    "metric": "history_years",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 2.0,
+    "title": "Enough history",
+    "value": 4.0
+   }
+  ],
+  "overall": "fail",
+  "skipped": {
+   "data.spend_variation": "the dataset has no spend variable along time",
+   "holdout.hit_rate": "only models of a categorical target (choice models) report a hit rate. Evaluate accuracy_lift on one of these models",
+   "holdout.mape": "the spec does not evaluate it (evaluate.metrics) or has no holdout split",
+   "plausibility.baseline_share": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.negative_roi": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.roi_absurd": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.share_outlier": "the model has no response curves (outputs.derived: response_curves)"
+  }
+ },
+ "scores": {
+  "aggregate": {
+   "counterfactual": null,
+   "fields": {
+    "caption_plain": "Shows each output of the score on its grid. Select the mean, the uncertainty or a draw. Use the slider to go through the frames.",
+    "fields": [
+     {
+      "color": "single",
+      "colormap": "magma",
+      "description": "Events per cell and period: the expected intensity, or a predictive count draw",
+      "downsampled": false,
+      "encoding": "log10",
+      "facet": {},
+      "frames": [
+       {
+        "draws": [
+         {
+          "data": "9In0iQZ/9IkAAONNKrD+/wAAAAAAANzI3MgkMf//JDEZckhi//////////8kMQAAJDH//wAA//8kMcWb",
+          "hi": 1.568201724066995,
+          "lo": 0.0
+         },
+         {
+          "data": "AADaZ/K3YKkAAIZBhkG0z/7/JJj//7TPd/K0z4ZBAAAMgwyD2meGQf///////9pnrOL/////2mf/////",
+          "hi": 1.1760912590556813,
+          "lo": 0.0
+         },
+         {
+          "data": "//8AAGZmJlH//wAAAAB+1ZiZAAAAAOF2/v////////9mZkyi////////MzP//yZRZmb//wAA//8zM+F2",
+          "hi": 1.505149978319906,
+          "lo": 0.0
+         },
+         {
+          "data": "/////ySXVVVVVdY11jX+/wLBAADWNVVVg6EAAAAA////////AADWNf//////////rWv//wAA//8AAP//",
+          "hi": 1.4313637641589874,
+          "lo": 0.0
+         },
+         {
+          "data": "//8AAICn1Tf//6SBpIHS6Pz4AADVN5D8m86bzv////+Ap/7/gKf//wAA///VN6SBAAAAAAAA1TcAAKpv",
+          "hi": 1.380211241711606,
+          "lo": 0.0
+         },
+         {
+          "data": "//8AAABK0qsAAEl1AAD/3f+T////k0i/0qsAAP////8ASv//AAAAAABKAAD//////v8AAABK//9Jdf7/",
+          "hi": 1.0413926851582251,
+          "lo": 0.0
+         },
+         {
+          "data": "////////N6z/////aDlKhf7///8AAEqF+LUAAP////9oOWg5z3L///////9oOWSUN6z///////8AAM9y",
+          "hi": 1.3424226808222062,
+          "lo": 0.0
+         },
+         {
+          "data": "//8AAAJ9P7oCff//P7r+/1VVVVWDoYrzAn0AAP/////WNf////8AAP//AAD/////VVXWNf///////wJ9",
+          "hi": 1.4313637641589874,
+          "lo": 0.0
+         },
+         {
+          "data": "//8AAJ0u////////Hbb+/zpd/////xHpuNWdLv/////hScOTAACdLv//4UnhSQAA4UkAAP//AACdLjts",
+          "hi": 1.6532125137753437,
+          "lo": 0.0
+         },
+         {
+          "data": "//8AAKE+a5FCff//0q+F4GuRoT7//6E+h8ahPgAA/////+WhRGNrkf//AAChPkJ9/v8AAAAAa5FCfQAA",
+          "hi": 1.2304489213782739,
+          "lo": 0.0
+         },
+         {
+          "data": "VVVVVamq/v8/h1VVP4cixo7vAAAAACLGju+pqgAA//8AAAAA////////////////IsY/h////////z+H",
+          "hi": 0.9030899869919435,
+          "lo": 0.0
+         },
+         {
+          "data": "40IAAP2RXLnjQn6srKD+/ymcZ1Safua+5r4Wbf//MyopnPnDZ1QWbf//MypnVHl2xoUAADMqMyowjBZt",
+          "hi": 1.8260748027008264,
+          "lo": 0.0
+         },
+         {
+          "data": "AAD//8FdwlD//1tx/38QtMJQ//9hKOfT/v8ihv/////BkCjEW3H//2Eo//8AQP//YGjBXf//wlAAAABA",
+          "hi": 1.9084850188786497,
+          "lo": 0.0
+         },
+         {
+          "data": "qm/VNwAAKchUkP2w/v/S6CnIAAAAAFSQ/bCqb35Y///VN/2wpIHVN/////+kgaSBVJD//9U3AADVN/2w",
+          "hi": 1.380211241711606,
+          "lo": 0.0
+         },
+         {
+          "data": "AAD//4uOZD1kPU1hsZ7+/8h6//8AAE1hyHoAAAAA//9NYWQ9WKwAAP////9NYSy4j/UAAE1hAAAAALGe",
+          "hi": 1.255272505103306,
+          "lo": 0.0
+         },
+         {
+          "data": "//9NYU1hyHoAAIuOZD3+/2Q9AABkPU1hLLhkPf////8AAIuO/////////////wAAi47//////////8h6",
+          "hi": 1.255272505103306,
+          "lo": 0.0
+         }
+        ],
+        "mean": {
+         "data": "qi/lPK6MhLIsZ3d9zMP+/1XPLFKaYuzgOeemiucgAACmhBKV6nU1W7cH1jtdUnWP3seKJr1FthePaVis",
+         "hi": 1.3399480616943509,
+         "lo": -0.2557070168773237
+        },
+        "q05": {
+         "data": "////////6Af/////6Af+/8By/////0CxQLH/////////////////////////////AAD/////////////",
+         "hi": 0.6989700043360189,
+         "lo": -0.022276394711151747
+        },
+        "q95": {
+         "data": "sDewN4uGrrHfYgZ/7sD+/8/HtVZvY5vfQN2LhgAgAAAld2mNaW21VgAgtTbfYmmNlspOIbU2tTa1drq1",
+         "hi": 1.7096938697277912,
+         "lo": 0.3010299956639812
+        },
+        "sd": {
+         "data": "FDwqNFF28r2SWVp+rsD+/+T2fWBZYmbamuDvg6AWAABAeySRTnvnbQUm9k8YVZi6EO7xN6KM9R+Adee8",
+         "hi": 1.1874886719483595,
+         "lo": -0.048189191175645366
+        }
+       }
+      ],
+      "height": 6,
+      "kind": "scalar",
+      "log": true,
+      "n_draws": 200,
+      "omitted_frames": 0,
+      "origin": "lower",
+      "output": "rate",
+      "rgb_scale": "uint8",
+      "source_height": 6,
+      "source_width": 5,
+      "width": 5,
+      "x_coords": [
+       0,
+       1,
+       2,
+       3,
+       4
+      ],
+      "x_dim": "col",
+      "y_coords": [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5
+      ],
+      "y_dim": "row"
+     }
+    ],
+    "format": "mapi.model-explorer.fields/v1",
+    "kind": "expected",
+    "omitted": [],
+    "warnings_plain": []
+   },
+   "forecast": null,
+   "horizon": {
+    "dim": "period",
+    "periods": 4
+   },
+   "inline": false,
+   "mode": "forecast",
+   "output": {
+    "aggregate": {
+     "over": [
+      "quarter"
+     ]
+    },
+    "kind": "predictive",
+    "summary": [
+     "mean",
+     "hdi_90"
+    ]
+   },
+   "probe_case": "forecast_sum",
+   "result": {
+    "aggregation_flagged": false,
+    "bundle_id": "ca672b1926817470defeec8fc59f4991",
+    "conditioning": {
+     "conditioned": false,
+     "dim": "period",
+     "fit_end": "2012-10-01",
+     "horizon_source": "horizon",
+     "message": "Forecast from the end of the fitted history (2012-10-01); no actuals were supplied. 4 periods forecast from 2013-01-01 to 2013-10-01.",
+     "n_actuals": 0,
+     "n_series": 30,
+     "parameters": "fitted",
+     "periods": 4,
+     "revised": 0,
+     "series": [
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 0
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 0
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 0
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 0
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 0
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 1
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 1
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 1
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 1
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 1
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 2
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 2
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 2
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 2
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 2
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 3
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 3
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 3
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 3
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 3
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 4
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 4
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 4
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 4
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 4
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 5
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 5
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 5
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 5
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 5
+       }
+      }
+     ],
+     "series_conditioned": 0,
+     "truncated": false
+    },
+    "groups": [
+     "/summary"
+    ],
+    "issues": [],
+    "kind": "predictive",
+    "mode": "forecast",
+    "names": "dataset",
+    "output_space": {
+     "rate": "raw",
+     "total": "raw"
+    },
+    "representation": "draws",
+    "retransform": {
+     "rate": "none",
+     "total": "none"
+    },
+    "units": "original"
+   },
+   "summary": {
+    "conditioning": {
+     "conditioned": false,
+     "dim": "period",
+     "fit_end": "2012-10-01",
+     "horizon_source": "horizon",
+     "message": "Forecast from the end of the fitted history (2012-10-01); no actuals were supplied. 4 periods forecast from 2013-01-01 to 2013-10-01.",
+     "n_actuals": 0,
+     "n_series": 30,
+     "parameters": "fitted",
+     "periods": 4,
+     "revised": 0,
+     "series": [
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 0
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 0
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 0
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 0
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 0
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 1
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 1
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 1
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 1
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 1
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 2
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 2
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 2
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 2
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 2
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 3
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 3
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 3
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 3
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 3
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 4
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 4
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 4
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 4
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 4
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 5
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 5
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 5
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 5
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 5
+       }
+      }
+     ],
+     "series_conditioned": 0,
+     "truncated": false
+    },
+    "tables": [
+     {
+      "columns": [
+       "mean",
+       "hdi_90_lower",
+       "hdi_90_upper"
+      ],
+      "dims": [],
+      "rows": [
+       [
+        142.52901336451697,
+        58.47049036998028,
+        219.90194813404068
+       ]
+      ],
+      "variable": "total"
+     },
+     {
+      "columns": [
+       "row",
+       "col",
+       "mean",
+       "hdi_90_lower",
+       "hdi_90_upper"
+      ],
+      "dims": [
+       "row",
+       "col"
+      ],
+      "plots": [
+       "sci.field_map"
+      ],
+      "rows": [
+       [
+        0,
+        0,
+        1.1,
+        0.0,
+        3.0
+       ],
+       [
+        0,
+        1,
+        1.33,
+        0.0,
+        4.0
+       ],
+       [
+        0,
+        2,
+        4.18,
+        0.0,
+        9.0
+       ],
+       [
+        0,
+        3,
+        7.195,
+        0.0,
+        14.0
+       ],
+       [
+        0,
+        4,
+        2.44,
+        0.0,
+        6.0
+       ],
+       [
+        1,
+        0,
+        3.36,
+        0.0,
+        7.0
+       ],
+       [
+        1,
+        1,
+        9.22,
+        0.0,
+        19.0
+       ],
+       [
+        1,
+        2,
+        21.875,
+        0.0,
+        40.0
+       ],
+       [
+        1,
+        3,
+        10.88,
+        0.0,
+        21.0
+       ],
+       [
+        1,
+        4,
+        1.805,
+        0.0,
+        4.0
+       ],
+       [
+        2,
+        0,
+        2.285,
+        0.0,
+        5.0
+       ],
+       [
+        2,
+        1,
+        14.005,
+        1.0,
+        27.0
+       ],
+       [
+        2,
+        2,
+        15.33,
+        2.0,
+        28.0
+       ],
+       [
+        2,
+        3,
+        4.06,
+        0.0,
+        9.0
+       ],
+       [
+        2,
+        4,
+        0.89,
+        0.0,
+        2.0
+       ],
+       [
+        3,
+        0,
+        0.555,
+        0.0,
+        2.0
+       ],
+       [
+        3,
+        1,
+        3.725,
+        0.0,
+        8.0
+       ],
+       [
+        3,
+        2,
+        4.715,
+        0.0,
+        10.0
+       ],
+       [
+        3,
+        3,
+        3.015,
+        0.0,
+        7.0
+       ],
+       [
+        3,
+        4,
+        2.055,
+        0.0,
+        5.0
+       ],
+       [
+        4,
+        0,
+        0.62,
+        0.0,
+        2.0
+       ],
+       [
+        4,
+        1,
+        1.31,
+        0.0,
+        3.0
+       ],
+       [
+        4,
+        2,
+        1.81,
+        0.0,
+        4.0
+       ],
+       [
+        4,
+        3,
+        4.35,
+        0.0,
+        9.0
+       ],
+       [
+        4,
+        4,
+        9.775,
+        0.0,
+        20.0
+       ],
+       [
+        5,
+        0,
+        0.965,
+        0.0,
+        3.0
+       ],
+       [
+        5,
+        1,
+        1.51,
+        0.0,
+        3.0
+       ],
+       [
+        5,
+        2,
+        0.78,
+        0.0,
+        2.0
+       ],
+       [
+        5,
+        3,
+        2.525,
+        0.0,
+        6.0
+       ],
+       [
+        5,
+        4,
+        6.585,
+        0.0,
+        17.0
+       ]
+      ],
+      "variable": "rate"
+     }
+    ],
+    "truncated": false
+   },
+   "trimmed": null
+  },
+  "forecast": {
+   "counterfactual": null,
+   "fields": {
+    "caption_plain": "Shows each output of the score on its grid. Select the mean, the uncertainty or a draw. Use the slider to go through the frames.",
+    "fields": [
+     {
+      "color": "single",
+      "colormap": "magma",
+      "description": "Events per cell and period: the expected intensity, or a predictive count draw",
+      "downsampled": false,
+      "encoding": "log10",
+      "facet": {},
+      "frame_dim": "quarter",
+      "frames": [
+       {
+        "draws": [
+         {
+          "data": "86TKoivAELXqYzmbaNv+/73Bcz1XXKjLrtV7ewAA50BIkj2hpl3rHdNDpWdnjBFsGoIJOc1Pel+oU9ig",
+          "hi": 0.8075701503394837,
+          "lo": -1.3537909722334391
+         },
+         {
+          "data": "BXxTih+pSbk6ekSijMcx+ZnqfakJn8n5/v8Dz82IjEAjrZW9EcD4ngAAXkPmgevIQ+HBL0lLWmgonNCx",
+          "hi": 0.6080956489134025,
+          "lo": -1.5465897948946186
+         },
+         {
+          "data": "Qz8+O1ienYe+Aqo/tZz+/+vDMj+ISJ3Gqf5zjFYnrTK4jUq9SmNTKLQEUU9yjvOVgYcAAJU42WYFm+WZ",
+          "hi": 0.9035071627143618,
+          "lo": -1.1731383928947703
+         },
+         {
+          "data": "xlB9TE6shdqcuGaIZ6P+/9jyz5L0lWbMVN35pJ10hVkGZ5FY0FEnitc2AAAxFSZO96RTT28RqjLQaOOh",
+          "hi": 0.6960589623434359,
+          "lo": -1.4934101960626727
+         },
+         {
+          "data": "l1zDVUTBtob1aJqeIqn+/zjNIFXAkd7ymvnrurk0qSpwn0/TJ6NRXAAA/xooknqfu5GkMNoUg0QLaS95",
+          "hi": 0.9819471707597782,
+          "lo": -1.1655964106775318
+         },
+         {
+          "data": "VzsfZDutidHUkSyMGtR46pWwKwuGov7/0ro3cgAA+lL5n+RYuGKDjNkvHl7HVzKP9etuWYF67YucthLg",
+          "hi": 0.6453311880510195,
+          "lo": -1.509776428150829
+         },
+         {
+          "data": "XR6tOZSRibVdbS9BVYX+/+Pl9HoBNYCepdmxsSBWPBgYcdmShpUud+YQei3BejCgpcCHCQAAnT9kcY+j",
+          "hi": 0.6688965842880725,
+          "lo": -1.4407392106921355
+         },
+         {
+          "data": "PiU6JlmQqdpDsNyC8dT+/63IXn2Im1XfNZvFcAQd+jqvbQU5nWC6SwAAtT3yQDCF16+/IQwoWhEAeaKW",
+          "hi": 0.8357949629243797,
+          "lo": -1.6009930219993644
+         },
+         {
+          "data": "X0CtRkJndoQmUe5+hN0t5QKOOD9Xff7/E+wJdZgvhEMPs5rAd4VnV8cvYWWAerWMCZydPBYiAADhUlil",
+          "hi": 1.151026820660106,
+          "lo": -1.4626124285361601
+         },
+         {
+          "data": "CnkQcvmI97ulokp+V+UQ7Na/mXoLNUaqI7/shx1FAAAtOpl7tJxCotQtlUnXiK3N/v/cZNZlJnY4nkW1",
+          "hi": 0.6119592876972133,
+          "lo": -1.2441671042712705
+         },
+         {
+          "data": "voBDX0yy/v/Itp2Z/MN19Rn63Y+fRnywoNN+yOpvui4scViTAbdXqFpv7VGxS6iasM7ZatIgAACcZsWb",
+          "hi": 0.4836899776362631,
+          "lo": -1.3390275365007933
+         },
+         {
+          "data": "TG91cT6+99MfjiOfDsj+/8nLd2Qvkrzqsfcihesq9DzJuEHNN4j/cM8I60/Dk6KvtcsSIgAAuVBAj0Si",
+          "hi": 0.9424378567614008,
+          "lo": -1.0517584181959359
+         },
+         {
+          "data": "fz1KSYKTnZcuTetlWqA52SmTKht9Yzz6/v8PowAAHiQXt3PKG5RgNGorZjvIX7xacWeAdasxgCkTSlla",
+          "hi": 0.9634515050072388,
+          "lo": -1.292152727540341
+         },
+         {
+          "data": "/X2Bh6OPwdzUbE61d/T29h/ihH+VnQbpNNOthTNUNiYKeE6MNHc1kwAAfj05bDWu/v8YUN1DQTJ2l9nK",
+          "hi": 0.6700878623114666,
+          "lo": -1.034267929078748
+         },
+         {
+          "data": "uSwpVi2cXqukdm9sObYN8xbMBE96TQfCnszmiIsLAABIfyOO96d9dT4PrnPSi/TY/v8QQ62GaXI/bpDB",
+          "hi": 0.40128531358535885,
+          "lo": -1.0640595156310155
+         },
+         {
+          "data": "kXyqkiG7D69te5vPYOD+/7PG0ooUmv7KjOCElh5FRiBnmSWux4YZZagykZuoZLKIPdl4iXONAADgV0LH",
+          "hi": 0.9065752651428913,
+          "lo": -2.114277067036503
+         }
+        ],
+        "label": "2013-01-01",
+        "mean": {
+         "data": "MzMNPyuOPaw/aiN3FsL+/8TIbFc5Xkjj8uYIi4ghRwfRf9WUA3h+WgAAKDgpWeiPc8MtJboxFhr3Z3uq",
+         "hi": 0.7119789493778833,
+         "lo": -0.8955942042407246
+        },
+        "q05": {
+         "data": "+zVISMicdMDCafeDGsr+/xTTilaWb6jlgub+ldox9iSokPuL9oazZwAAL0i4TkKFY747IuYw9QLvWZOe",
+         "hi": 0.25993367881068935,
+         "lo": -1.7256781725468326
+        },
+        "q95": {
+         "data": "UT5IQZmSmLPLcox4EcL+/2fQOVfdVKbonel/jHsnAAB1fWeqn3jqXHcFskKlZpae5tstKE45ah7Edl65",
+         "hi": 0.9837126330252438,
+         "lo": -0.48697935468067244
+        },
+        "sd": {
+         "data": "rj3DTnqQF7S1dveBzsH+/6DQz2EqVwDor+n0jNkmAAC3gOqrWH9kZhYVkEQxfvOxWNwfO/1YwjGYiebL",
+         "hi": 0.418035573473049,
+         "lo": -1.0302973618643936
+        }
+       },
+       {
+        "draws": [
+         {
+          "data": "86TKoivAELXqYzmbaNv+/73Bcz1XXKjLrtV7ewAA50BIkj2hpl3rHdNDpWdnjBFsGoIJOc1Pel+oU9ig",
+          "hi": 0.8900385085356861,
+          "lo": -1.2713226140372367
+         },
+         {
+          "data": "BXxTih+pSbk6ekSijMcx+ZnqfakJn8n5/v8Dz82IjEAjrZW9EcD4ngAAXkPmgevIQ+HBL0lLWmgonNCx",
+          "hi": 0.6519801794059233,
+          "lo": -1.5027052644020977
+         },
+         {
+          "data": "Qz8+O1ienYe+Aqo/tZz+/+vDMj+ISJ3Gqf5zjFYnrTK4jUq9SmNTKLQEUU9yjvOVgYcAAJU42WYFm+WZ",
+          "hi": 0.7706802857369724,
+          "lo": -1.3059652698721598
+         },
+         {
+          "data": "xlB9TE6shdqcuGaIZ6P+/9jyz5L0lWbMVN35pJ10hVkGZ5FY0FEnitc2AAAxFSZO96RTT28RqjLQaOOh",
+          "hi": 0.7135584653226674,
+          "lo": -1.4759106930834411
+         },
+         {
+          "data": "l1zDVUTBtob1aJqeIqn+/zjNIFXAkd7ymvnrurk0qSpwn0/TJ6NRXAAA/xooknqfu5GkMNoUg0QLaS95",
+          "hi": 0.9195193224671674,
+          "lo": -1.2280242589701427
+         },
+         {
+          "data": "VzsfZDutidHUkSyMGtR46pWwKwuGov7/0ro3cgAA+lL5n+RYuGKDjNkvHl7HVzKP9etuWYF67YucthLg",
+          "hi": 0.6170352797558737,
+          "lo": -1.5380723364459747
+         },
+         {
+          "data": "XR6tOZSRibVdbS9BVYX+/+Pl9HoBNYCepdmxsSBWPBgYcdmShpUud+YQei3BejCgpcCHCQAAnT9kcY+j",
+          "hi": 0.5380771486646814,
+          "lo": -1.5715586463155269
+         },
+         {
+          "data": "PiU6JlmQqdpDsNyC8dT+/63IXn2Im1XfNZvFcAQd+jqvbQU5nWC6SwAAtT3yQDCF16+/IQwoWhEAeaKW",
+          "hi": 0.9624169702181953,
+          "lo": -1.4743710147055489
+         },
+         {
+          "data": "X0CtRkJndoQmUe5+hN0t5QKOOD9Xff7/E+wJdZgvhEMPs5rAd4VnV8cvYWWAerWMCZydPBYiAADhUlil",
+          "hi": 1.0922953218160167,
+          "lo": -1.5213439273802494
+         },
+         {
+          "data": "CnkQcvmI97ulokp+V+UQ7Na/mXoLNUaqI7/shx1FAAAtOpl7tJxCotQtlUnXiK3N/v/cZNZlJnY4nkW1",
+          "hi": 0.576112411627508,
+          "lo": -1.2800139803409758
+         },
+         {
+          "data": "voBDX0yy/v/Itp2Z/MN19Rn63Y+fRnywoNN+yOpvui4scViTAbdXqFpv7VGxS6iasM7ZatIgAACcZsWb",
+          "hi": 0.39770508109633673,
+          "lo": -1.4250124330407197
+         },
+         {
+          "data": "TG91cT6+99MfjiOfDsj+/8nLd2Qvkrzqsfcihesq9DzJuEHNN4j/cM8I60/Dk6KvtcsSIgAAuVBAj0Si",
+          "hi": 0.9603108201133886,
+          "lo": -1.033885454843948
+         },
+         {
+          "data": "fz1KSYKTnZcuTetlWqA52SmTKht9Yzz6/v8PowAAHiQXt3PKG5RgNGorZjvIX7xacWeAdasxgCkTSlla",
+          "hi": 0.9799176985303903,
+          "lo": -1.2756865340171895
+         },
+         {
+          "data": "/X2Bh6OPwdzUbE61d/T29h/ihH+VnQbpNNOthTNUNiYKeE6MNHc1kwAAfj05bDWu/v8YUN1DQTJ2l9nK",
+          "hi": 0.7578102618556738,
+          "lo": -0.9465455295345407
+         },
+         {
+          "data": "uSwpVi2cXqukdm9sObYN8xbMBE96TQfCnszmiIsLAABIfyOO96d9dT4PrnPSi/TY/v8QQ62GaXI/bpDB",
+          "hi": 0.42305394750575437,
+          "lo": -1.04229088171062
+         },
+         {
+          "data": "kXyqkiG7D69te5vPYOD+/7PG0ooUmv7KjOCElh5FRiBnmSWux4YZZagykZuoZLKIPdl4iXONAADgV0LH",
+          "hi": 0.5323738983583537,
+          "lo": -2.4884784338210406
+         }
+        ],
+        "label": "2013-04-01",
+        "mean": {
+         "data": "xDBoPPWLtawcZw93GsL+/wLKjVWbXSLipOWHiPseoASZfQ2RTXP6WAAAZjjbU1KMLsQVKEU1IhTcZPKp",
+         "hi": 0.7240154107350981,
+         "lo": -0.8554936692216867
+        },
+        "q05": {
+         "data": "bDMsR3+hgb0gbO+A6cv+/xfM21nacV/hWuqql7Q0VyZukIKQcolKZwAAmU9KUkaJmL7MJewx0BBdXCme",
+         "hi": 0.24049275245890972,
+         "lo": -1.8055290705918945
+        },
+        "q95": {
+         "data": "fzqMQXiMLLc/cBSCC8T+/wbTul53XLnlfeVAhAkdAAA3g9qaTW9WX7YLaTwPYuqO0tLtLJQwJSLtb2+/",
+         "hi": 1.0251602742185597,
+         "lo": -0.4428595199594357
+        },
+        "sd": {
+         "data": "nTdkQh+HtbsjbEmG2sn+/5zgW2CeZxbfuOMPh34jAAA9eFabwW7UZggaM1DTZlamieJmUVV3KxnufAzG",
+         "hi": 0.4921206279443993,
+         "lo": -0.9201103632036913
+        }
+       },
+       {
+        "draws": [
+         {
+          "data": "86TKoivAELXqYzmbaNv+/73Bcz1XXKjLrtV7ewAA50BIkj2hpl3rHdNDpWdnjBFsGoIJOc1Pel+oU9ig",
+          "hi": 1.1181221542848152,
+          "lo": -1.0432389682881076
+         },
+         {
+          "data": "BXxTih+pSbk6ekSijMcx+ZnqfakJn8n5/v8Dz82IjEAjrZW9EcD4ngAAXkPmgevIQ+HBL0lLWmgonNCx",
+          "hi": 0.6351585156024727,
+          "lo": -1.5195269282055484
+         },
+         {
+          "data": "Qz8+O1ienYe+Aqo/tZz+/+vDMj+ISJ3Gqf5zjFYnrTK4jUq9SmNTKLQEUU9yjvOVgYcAAJU42WYFm+WZ",
+          "hi": 0.7465002387411698,
+          "lo": -1.3301453168679624
+         },
+         {
+          "data": "xlB9TE6shdqcuGaIZ6P+/9jyz5L0lWbMVN35pJ10hVkGZ5FY0FEnitc2AAAxFSZO96RTT28RqjLQaOOh",
+          "hi": 0.7020678720665129,
+          "lo": -1.4874012863395956
+         },
+         {
+          "data": "l1zDVUTBtob1aJqeIqn+/zjNIFXAkd7ymvnrurk0qSpwn0/TJ6NRXAAA/xooknqfu5GkMNoUg0QLaS95",
+          "hi": 1.042197793763303,
+          "lo": -1.1053457876740072
+         },
+         {
+          "data": "VzsfZDutidHUkSyMGtR46pWwKwuGov7/0ro3cgAA+lL5n+RYuGKDjNkvHl7HVzKP9etuWYF67YucthLg",
+          "hi": 0.6108926556738598,
+          "lo": -1.5442149605279887
+         },
+         {
+          "data": "XR6tOZSRibVdbS9BVYX+/+Pl9HoBNYCepdmxsSBWPBgYcdmShpUud+YQei3BejCgpcCHCQAAnT9kcY+j",
+          "hi": 0.6579033783493896,
+          "lo": -1.4517324166308185
+         },
+         {
+          "data": "PiU6JlmQqdpDsNyC8dT+/63IXn2Im1XfNZvFcAQd+jqvbQU5nWC6SwAAtT3yQDCF16+/IQwoWhEAeaKW",
+          "hi": 0.8507083669722083,
+          "lo": -1.586079617951536
+         },
+         {
+          "data": "X0CtRkJndoQmUe5+hN0t5QKOOD9Xff7/E+wJdZgvhEMPs5rAd4VnV8cvYWWAerWMCZydPBYiAADhUlil",
+          "hi": 1.0062749089171177,
+          "lo": -1.6073643402791484
+         },
+         {
+          "data": "CnkQcvmI97ulokp+V+UQ7Na/mXoLNUaqI7/shx1FAAAtOpl7tJxCotQtlUnXiK3N/v/cZNZlJnY4nkW1",
+          "hi": 0.560390216989011,
+          "lo": -1.2957361749794727
+         },
+         {
+          "data": "voBDX0yy/v/Itp2Z/MN19Rn63Y+fRnywoNN+yOpvui4scViTAbdXqFpv7VGxS6iasM7ZatIgAACcZsWb",
+          "hi": 0.37097774773446834,
+          "lo": -1.4517397664025882
+         },
+         {
+          "data": "TG91cT6+99MfjiOfDsj+/8nLd2Qvkrzqsfcihesq9DzJuEHNN4j/cM8I60/Dk6KvtcsSIgAAuVBAj0Si",
+          "hi": 0.995353873570549,
+          "lo": -0.9988424013867875
+         },
+         {
+          "data": "fz1KSYKTnZcuTetlWqA52SmTKht9Yzz6/v8PowAAHiQXt3PKG5RgNGorZjvIX7xacWeAdasxgCkTSlla",
+          "hi": 1.0013155644301002,
+          "lo": -1.2542886681174796
+         },
+         {
+          "data": "/X2Bh6OPwdzUbE61d/T29h/ihH+VnQbpNNOthTNUNiYKeE6MNHc1kwAAfj05bDWu/v8YUN1DQTJ2l9nK",
+          "hi": 0.7477220826383144,
+          "lo": -0.9566337087519
+         },
+         {
+          "data": "uSwpVi2cXqukdm9sObYN8xbMBE96TQfCnszmiIsLAABIfyOO96d9dT4PrnPSi/TY/v8QQ62GaXI/bpDB",
+          "hi": 0.5219566661721635,
+          "lo": -0.9433881630442109
+         },
+         {
+          "data": "kXyqkiG7D69te5vPYOD+/7PG0ooUmv7KjOCElh5FRiBnmSWux4YZZagykZuoZLKIPdl4iXONAADgV0LH",
+          "hi": 0.507406822519996,
+          "lo": -2.513445509659398
+         }
+        ],
+        "label": "2013-07-01",
+        "mean": {
+         "data": "4zBePLeLeK2nZNh4tcH+/2rMClbCXk3hkeQYiF8fbANgfGyPG3ESWQAABzpvUjiLc8VyKoY7NBOaZF+q",
+         "hi": 0.7478672007133941,
+         "lo": -0.8198396320721496
+        },
+        "q05": {
+         "data": "3zUuShybOL/Ebv2Bvcn+/8bQI2Dyc6rnUfJWlhMrNyW1jlGPpo0JaAAAKk7aS8iLjr37J6U4dxgQVYud",
+         "hi": 0.17045175191282735,
+         "lo": -1.8078887952797138
+        },
+        "q95": {
+         "data": "SzeKPfCZs7TnbYB7/8H+/3LKD1ITUtjmbeKuheobAAA5gXufBG19VFIDHTihYgGOAMqgIOQsbhd2cr2z",
+         "hi": 1.0749026516520825,
+         "lo": -0.3691820802060282
+        },
+        "sd": {
+         "data": "djcnQMaEusVpX2mSs8H+/43zIWyKeADXRNxRj64tAAB4cmaQXWyLbiMdTV7CWt2dr+ziYBaPPhT+dv7E",
+         "hi": 0.5982871985173817,
+         "lo": -0.8071240203787223
+        }
+       },
+       {
+        "draws": [
+         {
+          "data": "86TKoivAELXqYzmbaNv+/73Bcz1XXKjLrtV7ewAA50BIkj2hpl3rHdNDpWdnjBFsGoIJOc1Pel+oU9ig",
+          "hi": 0.908027680376459,
+          "lo": -1.253333442196464
+         },
+         {
+          "data": "BXxTih+pSbk6ekSijMcx+ZnqfakJn8n5/v8Dz82IjEAjrZW9EcD4ngAAXkPmgevIQ+HBL0lLWmgonNCx",
+          "hi": 0.6477504513717032,
+          "lo": -1.506934992436318
+         },
+         {
+          "data": "Qz8+O1ienYe+Aqo/tZz+/+vDMj+ISJ3Gqf5zjFYnrTK4jUq9SmNTKLQEUU9yjvOVgYcAAJU42WYFm+WZ",
+          "hi": 0.7335407725778738,
+          "lo": -1.3431047830312584
+         },
+         {
+          "data": "xlB9TE6shdqcuGaIZ6P+/9jyz5L0lWbMVN35pJ10hVkGZ5FY0FEnitc2AAAxFSZO96RTT28RqjLQaOOh",
+          "hi": 0.7284185720463153,
+          "lo": -1.4610505863597931
+         },
+         {
+          "data": "l1zDVUTBtob1aJqeIqn+/zjNIFXAkd7ymvnrurk0qSpwn0/TJ6NRXAAA/xooknqfu5GkMNoUg0QLaS95",
+          "hi": 0.9638053020972381,
+          "lo": -1.1837382793400717
+         },
+         {
+          "data": "VzsfZDutidHUkSyMGtR46pWwKwuGov7/0ro3cgAA+lL5n+RYuGKDjNkvHl7HVzKP9etuWYF67YucthLg",
+          "hi": 0.6331975228919015,
+          "lo": -1.521910093309947
+         },
+         {
+          "data": "XR6tOZSRibVdbS9BVYX+/+Pl9HoBNYCepdmxsSBWPBgYcdmShpUud+YQei3BejCgpcCHCQAAnT9kcY+j",
+          "hi": 0.7976868215884579,
+          "lo": -1.3119489733917502
+         },
+         {
+          "data": "PiU6JlmQqdpDsNyC8dT+/63IXn2Im1XfNZvFcAQd+jqvbQU5nWC6SwAAtT3yQDCF16+/IQwoWhEAeaKW",
+          "hi": 0.816911252885172,
+          "lo": -1.6198767320385723
+         },
+         {
+          "data": "X0CtRkJndoQmUe5+hN0t5QKOOD9Xff7/E+wJdZgvhEMPs5rAd4VnV8cvYWWAerWMCZydPBYiAADhUlil",
+          "hi": 1.0127001685046484,
+          "lo": -1.6009390806916177
+         },
+         {
+          "data": "CnkQcvmI97ulokp+V+UQ7Na/mXoLNUaqI7/shx1FAAAtOpl7tJxCotQtlUnXiK3N/v/cZNZlJnY4nkW1",
+          "hi": 0.4633548009064878,
+          "lo": -1.392771591061996
+         },
+         {
+          "data": "voBDX0yy/v/Itp2Z/MN19Rn63Y+fRnywoNN+yOpvui4scViTAbdXqFpv7VGxS6iasM7ZatIgAACcZsWb",
+          "hi": 0.3712731368483054,
+          "lo": -1.451444377288751
+         },
+         {
+          "data": "TG91cT6+99MfjiOfDsj+/8nLd2Qvkrzqsfcihesq9DzJuEHNN4j/cM8I60/Dk6KvtcsSIgAAuVBAj0Si",
+          "hi": 1.0519777853257264,
+          "lo": -0.9422184896316101
+         },
+         {
+          "data": "fz1KSYKTnZcuTetlWqA52SmTKht9Yzz6/v8PowAAHiQXt3PKG5RgNGorZjvIX7xacWeAdasxgCkTSlla",
+          "hi": 1.0496966594373944,
+          "lo": -1.2059075731101851
+         },
+         {
+          "data": "/X2Bh6OPwdzUbE61d/T29h/ihH+VnQbpNNOthTNUNiYKeE6MNHc1kwAAfj05bDWu/v8YUN1DQTJ2l9nK",
+          "hi": 0.7175878646840917,
+          "lo": -0.9867679267061228
+         },
+         {
+          "data": "uSwpVi2cXqukdm9sObYN8xbMBE96TQfCnszmiIsLAABIfyOO96d9dT4PrnPSi/TY/v8QQ62GaXI/bpDB",
+          "hi": 0.46012023012903974,
+          "lo": -1.0052245990873347
+         },
+         {
+          "data": "kXyqkiG7D69te5vPYOD+/7PG0ooUmv7KjOCElh5FRiBnmSWux4YZZagykZuoZLKIPdl4iXONAADgV0LH",
+          "hi": 0.5348167225842162,
+          "lo": -2.486035609595178
+         }
+        ],
+        "label": "2013-10-01",
+        "mean": {
+         "data": "nzAEOZyJm6xJZcV33cD+/5DLjlPLXH3hWOSkiJIdTgN7fCuPoXYSYAAA7jncVLySKMpTJjA1BBScaLyq",
+         "hi": 0.7665111033760899,
+         "lo": -0.7833384060698678
+        },
+        "q05": {
+         "data": "qje0SSeYg7aLZrt5C7/+/2/HkVidbB3eieWIkUkutSE8iYuImYMhZAAAI0MESqmE/rKBJos26RCLUWaU",
+         "hi": 0.26912337761497374,
+         "lo": -1.820061423510013
+        },
+        "q95": {
+         "data": "xDSqRj2IbLJGbbWB/Lr+//3IwV9KXRfg69qGhCguAACSfqiQ92rrV3kQKDb7YViHq8B+KvZATRiscBOs",
+         "hi": 1.1991918322836095,
+         "lo": -0.40233450583645364
+        },
+        "sd": {
+         "data": "vTkvHPJnA6NoVA9wy6Zq56TKiUCNTSfCFcXFfFQKAADcbO+B6ZrQmZISm1EwYFbM/v8MNKtXygk7i5iw",
+         "hi": 0.7797767072608432,
+         "lo": -0.5841914687900046
+        }
+       }
+      ],
+      "height": 6,
+      "kind": "scalar",
+      "log": true,
+      "n_draws": 200,
+      "omitted_frames": 0,
+      "origin": "lower",
+      "output": "rate",
+      "rgb_scale": "uint8",
+      "source_height": 6,
+      "source_width": 5,
+      "width": 5,
+      "x_coords": [
+       0,
+       1,
+       2,
+       3,
+       4
+      ],
+      "x_dim": "col",
+      "y_coords": [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5
+      ],
+      "y_dim": "row"
+     }
+    ],
+    "format": "mapi.model-explorer.fields/v1",
+    "kind": "expected",
+    "omitted": [],
+    "warnings_plain": []
+   },
+   "forecast": {
+    "dim": "quarter",
+    "fan": {
+     "coords": [
+      "2009-01-01",
+      "2009-04-01",
+      "2009-07-01",
+      "2009-10-01",
+      "2010-01-01",
+      "2010-04-01",
+      "2010-07-01",
+      "2010-10-01",
+      "2011-01-01",
+      "2011-04-01",
+      "2011-07-01",
+      "2011-10-01",
+      "2012-01-01",
+      "2012-04-01",
+      "2012-07-01",
+      "2012-10-01",
+      "2013-01-01",
+      "2013-04-01",
+      "2013-07-01",
+      "2013-10-01"
+     ],
+     "dim": "quarter",
+     "observed": [
+      59.0,
+      68.0,
+      68.0,
+      46.0,
+      51.0,
+      60.0,
+      29.0,
+      46.0,
+      32.0,
+      49.0,
+      24.0,
+      26.0,
+      16.0,
+      34.0,
+      18.0,
+      37.0,
+      null,
+      null,
+      null,
+      null
+     ],
+     "quantiles": [
+      0.05,
+      0.25,
+      0.5,
+      0.75,
+      0.95
+     ],
+     "units": "events",
+     "values": [
+      [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       19.2612823561,
+       17.5101770379,
+       16.3125751375,
+       16.2836174994
+      ],
+      [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       26.4958607867,
+       25.869061829,
+       24.6309358803,
+       24.4380548124
+      ],
+      [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       31.8918052981,
+       31.2584579283,
+       31.1164910517,
+       30.2107489726
+      ],
+      [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       37.0524004414,
+       38.7053757925,
+       40.6319018609,
+       42.8712111715
+      ],
+      [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       53.4574638117,
+       60.8816171266,
+       68.6287726784,
+       77.7654047545
+      ]
+     ]
+    },
+    "format": "mapi.forecast/v1",
+    "history": 16,
+    "kind": "expected",
+    "kpi": "total",
+    "split_at": "2013-01-01",
+    "summed_over": [],
+    "total": {
+     "mean": 142.529013365,
+     "quantiles": {
+      "0.05": 72.9868428473,
+      "0.25": 102.963809138,
+      "0.5": 124.080518423,
+      "0.75": 157.127464124,
+      "0.95": 253.361877735
+     },
+     "sd": 74.8586083887,
+     "units": "events"
+    },
+    "units": "events"
+   },
+   "horizon": {
+    "dim": "period",
+    "periods": 4
+   },
+   "inline": false,
+   "mode": "forecast",
+   "output": {
+    "summary": [
+     "mean",
+     "hdi_90"
+    ]
+   },
+   "probe_case": "forecast_4__readout",
+   "result": {
+    "aggregation_flagged": false,
+    "bundle_id": "ca672b1926817470defeec8fc59f4991",
+    "conditioning": {
+     "conditioned": false,
+     "dim": "period",
+     "fit_end": "2012-10-01",
+     "horizon_source": "horizon",
+     "message": "Forecast from the end of the fitted history (2012-10-01); no actuals were supplied. 4 periods forecast from 2013-01-01 to 2013-10-01.",
+     "n_actuals": 0,
+     "n_series": 30,
+     "parameters": "fitted",
+     "periods": 4,
+     "revised": 0,
+     "series": [
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 0
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 0
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 0
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 0
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 0
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 1
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 1
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 1
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 1
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 1
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 2
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 2
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 2
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 2
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 2
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 3
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 3
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 3
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 3
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 3
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 4
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 4
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 4
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 4
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 4
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 5
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 5
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 5
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 5
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 5
+       }
+      }
+     ],
+     "series_conditioned": 0,
+     "truncated": false
+    },
+    "groups": [
+     "/summary"
+    ],
+    "issues": [],
+    "kind": "expected",
+    "mode": "forecast",
+    "names": "dataset",
+    "output_space": {
+     "rate": "raw",
+     "total": "raw"
+    },
+    "representation": "draws",
+    "retransform": {
+     "rate": "none",
+     "total": "none"
+    },
+    "units": "original"
+   },
+   "summary": {
+    "conditioning": {
+     "conditioned": false,
+     "dim": "period",
+     "fit_end": "2012-10-01",
+     "horizon_source": "horizon",
+     "message": "Forecast from the end of the fitted history (2012-10-01); no actuals were supplied. 4 periods forecast from 2013-01-01 to 2013-10-01.",
+     "n_actuals": 0,
+     "n_series": 30,
+     "parameters": "fitted",
+     "periods": 4,
+     "revised": 0,
+     "series": [
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 0
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 0
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 0
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 0
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 0
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 1
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 1
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 1
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 1
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 1
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 2
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 2
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 2
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 2
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 2
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 3
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 3
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 3
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 3
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 3
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 4
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 4
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 4
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 4
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 4
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 5
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 5
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 5
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 5
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 5
+       }
+      }
+     ],
+     "series_conditioned": 0,
+     "truncated": false
+    },
+    "tables": [
+     {
+      "columns": [
+       "quarter",
+       "mean",
+       "hdi_90_lower",
+       "hdi_90_upper"
+      ],
+      "dims": [
+       "quarter"
+      ],
+      "plots": [
+       "core.ppc_fan"
+      ],
+      "rows": [
+       [
+        "2013-01-01",
+        33.08853939506813,
+        17.008025615878278,
+        46.245704206699514
+       ],
+       [
+        "2013-04-01",
+        34.21556948376261,
+        14.002038349096598,
+        52.13286556000801
+       ],
+       [
+        "2013-07-01",
+        36.44394909826374,
+        13.219778756116593,
+        60.97154306002206
+       ],
+       [
+        "2013-10-01",
+        38.7809553874225,
+        12.78459813649468,
+        64.8749991311362
+       ]
+      ],
+      "time_dim": "quarter",
+      "variable": "total"
+     },
+     {
+      "columns": [
+       "quarter",
+       "row",
+       "col",
+       "mean",
+       "hdi_90_lower",
+       "hdi_90_upper"
+      ],
+      "dims": [
+       "quarter",
+       "row",
+       "col"
+      ],
+      "plots": [
+       "sci.field_map"
+      ],
+      "rows": [
+       [
+        "2013-01-01",
+        0,
+        0,
+        0.2666404998497333,
+        0.02639307404323216,
+        0.5544196333767901
+       ],
+       [
+        "2013-01-01",
+        0,
+        1,
+        0.3164837762011758,
+        0.04438716332575077,
+        0.6222813586899905
+       ],
+       [
+        "2013-01-01",
+        0,
+        2,
+        0.9935631753129097,
+        0.12008016024214362,
+        1.75320086332204
+       ],
+       [
+        "2013-01-01",
+        0,
+        3,
+        1.5346766203102253,
+        0.4600302352941102,
+        2.9492604280338717
+       ],
+       [
+        "2013-01-01",
+        0,
+        4,
+        0.5910318755981596,
+        0.055222340516614246,
+        1.1554372018094794
+       ],
+       [
+        "2013-01-01",
+        1,
+        0,
+        0.7121310975393161,
+        0.19061024643781863,
+        1.4624480780772648
+       ],
+       [
+        "2013-01-01",
+        1,
+        1,
+        2.1048790100213033,
+        0.5480451673243381,
+        3.9204355955128154
+       ],
+       [
+        "2013-01-01",
+        1,
+        2,
+        5.152036716173228,
+        1.476633980777126,
+        8.828270950474703
+       ],
+       [
+        "2013-01-01",
+        1,
+        3,
+        2.318353248605975,
+        0.5515793367126379,
+        4.61243176175407
+       ],
+       [
+        "2013-01-01",
+        1,
+        4,
+        0.4501853289342091,
+        0.038391696927586004,
+        0.8929078585000265
+       ],
+       [
+        "2013-01-01",
+        2,
+        0,
+        0.49672184916059064,
+        0.08886254365982338,
+        0.8824984808679984
+       ],
+       [
+        "2013-01-01",
+        2,
+        1,
+        3.4015580710850704,
+        0.8271493630817078,
+        5.98201965491526
+       ],
+       [
+        "2013-01-01",
+        2,
+        2,
+        3.586657485332621,
+        0.7413828147293334,
+        6.200319432314706
+       ],
+       [
+        "2013-01-01",
+        2,
+        3,
+        0.9495027665038829,
+        0.21788141483008058,
+        1.686048112987122
+       ],
+       [
+        "2013-01-01",
+        2,
+        4,
+        0.20652112126964547,
+        0.021757355946241303,
+        0.4116178806435433
+       ],
+       [
+        "2013-01-01",
+        3,
+        0,
+        0.1412906604871246,
+        0.01434811764914898,
+        0.27793049472331405
+       ],
+       [
+        "2013-01-01",
+        3,
+        1,
+        0.8073698533265258,
+        0.20012092356548117,
+        1.4857480665672367
+       ],
+       [
+        "2013-01-01",
+        3,
+        2,
+        1.0940497054498126,
+        0.08094553931890144,
+        2.218589283053563
+       ],
+       [
+        "2013-01-01",
+        3,
+        3,
+        0.7211968902203424,
+        0.08462701457909608,
+        1.2757794034758327
+       ],
+       [
+        "2013-01-01",
+        3,
+        4,
+        0.47061520730152184,
+        0.061042537535114606,
+        0.9166121728399389
+       ],
+       [
+        "2013-01-01",
+        4,
+        0,
+        0.12717618581279377,
+        0.0038302591659086682,
+        0.24637551619227055
+       ],
+       [
+        "2013-01-01",
+        4,
+        1,
+        0.28645195166301396,
+        0.020610143303578184,
+        0.5873011267788562
+       ],
+       [
+        "2013-01-01",
+        4,
+        2,
+        0.461637777037531,
+        0.03300680539142509,
+        0.9602727879089766
+       ],
+       [
+        "2013-01-01",
+        4,
+        3,
+        1.0188510334912073,
+        0.11263540308129127,
+        2.0722580581917156
+       ],
+       [
+        "2013-01-01",
+        4,
+        4,
+        2.1467259904128606,
+        0.0886291724720938,
+        4.444562872876331
+       ],
+       [
+        "2013-01-01",
+        5,
+        0,
+        0.217696909895362,
+        0.005337646370369543,
+        0.42445441630111963
+       ],
+       [
+        "2013-01-01",
+        5,
+        1,
+        0.26102908574101813,
+        0.0019443783948837302,
+        0.5091410768364887
+       ],
+       [
+        "2013-01-01",
+        5,
+        2,
+        0.18544762031430206,
+        0.005083358050153757,
+        0.38980808367877523
+       ],
+       [
+        "2013-01-01",
+        5,
+        3,
+        0.5718561505663824,
+        0.0199274751039019,
+        1.2930948723205944
+       ],
+       [
+        "2013-01-01",
+        5,
+        4,
+        1.4962017314502893,
+        0.04350142636129109,
+        3.0453027726086175
+       ],
+       [
+        "2013-04-01",
+        0,
+        0,
+        0.2788707786016133,
+        0.01448892354235731,
+        0.5790627928022202
+       ],
+       [
+        "2013-04-01",
+        0,
+        1,
+        0.32901611335983927,
+        0.044706156561549824,
+        0.7362534319709317
+       ],
+       [
+        "2013-04-01",
+        0,
+        2,
+        1.0187587040513975,
+        0.1899236798392326,
+        2.1483897485203807
+       ],
+       [
+        "2013-04-01",
+        0,
+        3,
+        1.6222699263038276,
+        0.18216327455984296,
+        3.0404226664718492
+       ],
+       [
+        "2013-04-01",
+        0,
+        4,
+        0.6035249372935769,
+        0.052034680805246696,
+        1.2735288862365275
+       ],
+       [
+        "2013-04-01",
+        1,
+        0,
+        0.7570197280490828,
+        0.08835481549991345,
+        1.516347935508383
+       ],
+       [
+        "2013-04-01",
+        1,
+        1,
+        2.1986337650805394,
+        0.3366904073269258,
+        3.9503205543158444
+       ],
+       [
+        "2013-04-01",
+        1,
+        2,
+        5.296822390829118,
+        0.9309812398140793,
+        9.394360828605059
+       ],
+       [
+        "2013-04-01",
+        1,
+        3,
+        2.459933254935224,
+        0.4167703110929546,
+        4.828766867195705
+       ],
+       [
+        "2013-04-01",
+        1,
+        4,
+        0.4702901322909176,
+        0.031232933617075676,
+        0.9345087812837074
+       ],
+       [
+        "2013-04-01",
+        2,
+        0,
+        0.5273160263368359,
+        0.10666616458873764,
+        0.988032781395406
+       ],
+       [
+        "2013-04-01",
+        2,
+        1,
+        3.465613254994849,
+        0.7900329339686563,
+        6.5183146363476885
+       ],
+       [
+        "2013-04-01",
+        2,
+        2,
+        3.642676458145063,
+        0.9365263212102505,
+        6.783994513733762
+       ],
+       [
+        "2013-04-01",
+        2,
+        3,
+        0.970289922898344,
+        0.12228265141112699,
+        1.7366154576678337
+       ],
+       [
+        "2013-04-01",
+        2,
+        4,
+        0.21659613451704643,
+        0.020852470586576063,
+        0.4445729033505219
+       ],
+       [
+        "2013-04-01",
+        3,
+        0,
+        0.14895087371798751,
+        0.018778154830664355,
+        0.2975448003710347
+       ],
+       [
+        "2013-04-01",
+        3,
+        1,
+        0.8307486169668776,
+        0.09514873290148,
+        1.5574472517646294
+       ],
+       [
+        "2013-04-01",
+        3,
+        2,
+        1.0951680821810867,
+        0.05182256429987823,
+        2.340305728054502
+       ],
+       [
+        "2013-04-01",
+        3,
+        3,
+        0.7176684217118924,
+        0.12488653500795979,
+        1.3056024582988683
+       ],
+       [
+        "2013-04-01",
+        3,
+        4,
+        0.4937392351933707,
+        0.0480261005919022,
+        0.95310049446664
+       ],
+       [
+        "2013-04-01",
+        4,
+        0,
+        0.1394781989446131,
+        0.0012248414278959725,
+        0.2608021173738739
+       ],
+       [
+        "2013-04-01",
+        4,
+        1,
+        0.31080760008646413,
+        0.009280680218315462,
+        0.6178289097897224
+       ],
+       [
+        "2013-04-01",
+        4,
+        2,
+        0.45909160621829365,
+        0.048657339306103616,
+        1.0104323803089619
+       ],
+       [
+        "2013-04-01",
+        4,
+        3,
+        1.0240002122492404,
+        0.1332339887078314,
+        2.111054853460175
+       ],
+       [
+        "2013-04-01",
+        4,
+        4,
+        2.264409678080334,
+        0.08492175423766316,
+        4.616041267377351
+       ],
+       [
+        "2013-04-01",
+        5,
+        0,
+        0.2464947872571469,
+        0.00258562898444554,
+        0.47973546707888376
+       ],
+       [
+        "2013-04-01",
+        5,
+        1,
+        0.2972931662780686,
+        0.0029690150449419015,
+        0.529969448845834
+       ],
+       [
+        "2013-04-01",
+        5,
+        2,
+        0.1856596719906755,
+        0.0032472936716606685,
+        0.4163562209581052
+       ],
+       [
+        "2013-04-01",
+        5,
+        3,
+        0.5845608793764887,
+        0.019093895341102802,
+        1.2793630436025956
+       ],
+       [
+        "2013-04-01",
+        5,
+        4,
+        1.5598669258227977,
+        0.13600124940978672,
+        2.9488675582149324
+       ],
+       [
+        "2013-07-01",
+        0,
+        0,
+        0.30167357325041366,
+        0.008448702320708145,
+        0.6224868248572181
+       ],
+       [
+        "2013-07-01",
+        0,
+        1,
+        0.35469593582419345,
+        0.027870135228371538,
+        0.7683499872063223
+       ],
+       [
+        "2013-07-01",
+        0,
+        2,
+        1.0858538743308237,
+        0.0848613132324841,
+        2.125193839582941
+       ],
+       [
+        "2013-07-01",
+        0,
+        3,
+        1.747810439689629,
+        0.35039915138497263,
+        3.259275406869028
+       ],
+       [
+        "2013-07-01",
+        0,
+        4,
+        0.6259870570207648,
+        0.049216740469915324,
+        1.3531291249928743
+       ],
+       [
+        "2013-07-01",
+        1,
+        0,
+        0.8321855188384215,
+        0.12174166868383576,
+        1.8506488163241317
+       ],
+       [
+        "2013-07-01",
+        1,
+        1,
+        2.3250046780127738,
+        0.23771066518312306,
+        4.687794272052613
+       ],
+       [
+        "2013-07-01",
+        1,
+        2,
+        5.5958646405449395,
+        0.9659937272371705,
+        11.020411055273932
+       ],
+       [
+        "2013-07-01",
+        1,
+        3,
+        2.703991751464827,
+        0.15691667427873537,
+        5.052902043142395
+       ],
+       [
+        "2013-07-01",
+        1,
+        4,
+        0.5094003176571776,
+        0.03546490298346529,
+        1.0006229975762215
+       ],
+       [
+        "2013-07-01",
+        2,
+        0,
+        0.5760451554465638,
+        0.0858520151502344,
+        0.9989049760799565
+       ],
+       [
+        "2013-07-01",
+        2,
+        1,
+        3.630014894561871,
+        0.7152644068616226,
+        6.93832172844811
+       ],
+       [
+        "2013-07-01",
+        2,
+        2,
+        3.801209060984674,
+        0.7786493073439853,
+        7.049651520830507
+       ],
+       [
+        "2013-07-01",
+        2,
+        3,
+        1.0317982814538562,
+        0.1224058431254306,
+        1.8045294192619894
+       ],
+       [
+        "2013-07-01",
+        2,
+        4,
+        0.23566126793559847,
+        0.010808739904968575,
+        0.4700457990655466
+       ],
+       [
+        "2013-07-01",
+        3,
+        0,
+        0.15889310442989257,
+        0.007368872125493718,
+        0.30563541739023
+       ],
+       [
+        "2013-07-01",
+        3,
+        1,
+        0.8746732287301339,
+        0.10207382035166047,
+        1.7068517304542614
+       ],
+       [
+        "2013-07-01",
+        3,
+        2,
+        1.1441444372077887,
+        0.08941620838495316,
+        2.404118001088504
+       ],
+       [
+        "2013-07-01",
+        3,
+        3,
+        0.7461403548552872,
+        0.10669715420994819,
+        1.3460466779161777
+       ],
+       [
+        "2013-07-01",
+        3,
+        4,
+        0.5316551378058978,
+        0.03432230819429014,
+        1.0118880011339875
+       ],
+       [
+        "2013-07-01",
+        4,
+        0,
+        0.15141202504761686,
+        0.0006821492931684614,
+        0.27089669691828233
+       ],
+       [
+        "2013-07-01",
+        4,
+        1,
+        0.34317892680958606,
+        0.03007695640318508,
+        0.6789727343800357
+       ],
+       [
+        "2013-07-01",
+        4,
+        2,
+        0.48414483366975347,
+        0.01703752202413161,
+        1.092023285128817
+       ],
+       [
+        "2013-07-01",
+        4,
+        3,
+        1.078335057928274,
+        0.12579053203536664,
+        2.3869735059314245
+       ],
+       [
+        "2013-07-01",
+        4,
+        4,
+        2.451031747937328,
+        0.09202810939521275,
+        4.765421047279333
+       ],
+       [
+        "2013-07-01",
+        5,
+        0,
+        0.27548547766951287,
+        0.0013517678309912374,
+        0.456500476850778
+       ],
+       [
+        "2013-07-01",
+        5,
+        1,
+        0.35050335180381864,
+        0.0016535295656946527,
+        0.5799016018779087
+       ],
+       [
+        "2013-07-01",
+        5,
+        2,
+        0.1985000985587491,
+        0.009091824748419382,
+        0.43224020691752096
+       ],
+       [
+        "2013-07-01",
+        5,
+        3,
+        0.625520682051647,
+        0.020691695608572782,
+        1.3670800534834717
+       ],
+       [
+        "2013-07-01",
+        5,
+        4,
+        1.673134186741926,
+        0.045169710066797736,
+        3.263155061783054
+       ],
+       [
+        "2013-10-01",
+        0,
+        0,
+        0.3243605789080626,
+        0.010943070068056941,
+        0.5999767786827771
+       ],
+       [
+        "2013-10-01",
+        0,
+        1,
+        0.36463159246586124,
+        0.02312581216338774,
+        0.828645779881911
+       ],
+       [
+        "2013-10-01",
+        0,
+        2,
+        1.1214426305661818,
+        0.1299775797970972,
+        2.3979589983837877
+       ],
+       [
+        "2013-10-01",
+        0,
+        3,
+        1.8267296225267176,
+        0.20444769635422805,
+        3.363792731524157
+       ],
+       [
+        "2013-10-01",
+        0,
+        4,
+        0.6758953447525796,
+        0.047769795452933715,
+        1.4618804771562828
+       ],
+       [
+        "2013-10-01",
+        1,
+        0,
+        0.8745470331624287,
+        0.057819884637372164,
+        1.8014386758524847
+       ],
+       [
+        "2013-10-01",
+        1,
+        1,
+        2.4227828152395388,
+        0.4166635077253701,
+        4.7826423963123466
+       ],
+       [
+        "2013-10-01",
+        1,
+        2,
+        5.841321410977734,
+        0.8057433613068429,
+        11.072404051873997
+       ],
+       [
+        "2013-10-01",
+        1,
+        3,
+        2.8125132191011404,
+        0.1937107989817642,
+        5.165634301291499
+       ],
+       [
+        "2013-10-01",
+        1,
+        4,
+        0.5278546892240606,
+        0.037333924370360864,
+        1.1675881538789057
+       ],
+       [
+        "2013-10-01",
+        2,
+        0,
+        0.6004162001316574,
+        0.07609487667874956,
+        1.099100980857143
+       ],
+       [
+        "2013-10-01",
+        2,
+        1,
+        3.8179043490269033,
+        0.6294782794812782,
+        7.195116618899983
+       ],
+       [
+        "2013-10-01",
+        2,
+        2,
+        3.9731063443288677,
+        0.9663530707759124,
+        7.920457774676409
+       ],
+       [
+        "2013-10-01",
+        2,
+        3,
+        1.1064122501110474,
+        0.10830821872719773,
+        2.1523301853143786
+       ],
+       [
+        "2013-10-01",
+        2,
+        4,
+        0.24870679715564822,
+        0.01213363615873364,
+        0.5184445262459164
+       ],
+       [
+        "2013-10-01",
+        3,
+        0,
+        0.17244797149359492,
+        0.0031545029609612927,
+        0.3408848414602456
+       ],
+       [
+        "2013-10-01",
+        3,
+        1,
+        0.9339237418366159,
+        0.10655789742041194,
+        1.8728469355256396
+       ],
+       [
+        "2013-10-01",
+        3,
+        2,
+        1.2118027855904243,
+        0.06750350546868038,
+        2.6377731577769867
+       ],
+       [
+        "2013-10-01",
+        3,
+        3,
+        0.8607376379808303,
+        0.11865336857651135,
+        1.5309274259099994
+       ],
+       [
+        "2013-10-01",
+        3,
+        4,
+        0.6285072056514299,
+        0.04237026927682779,
+        1.0533140597452175
+       ],
+       [
+        "2013-10-01",
+        4,
+        0,
+        0.16468786291569926,
+        0.0008421009762785623,
+        0.27088844394751593
+       ],
+       [
+        "2013-10-01",
+        4,
+        1,
+        0.36931417253320376,
+        0.02145502212548042,
+        0.6738458331910452
+       ],
+       [
+        "2013-10-01",
+        4,
+        2,
+        0.537567286419397,
+        0.01435784841314379,
+        1.105589486529351
+       ],
+       [
+        "2013-10-01",
+        4,
+        3,
+        1.2736187615078431,
+        0.0571020989367698,
+        2.385692590217684
+       ],
+       [
+        "2013-10-01",
+        4,
+        4,
+        2.757817087994273,
+        0.0922623791762603,
+        4.9528134286985885
+       ],
+       [
+        "2013-10-01",
+        5,
+        0,
+        0.2809947613331596,
+        0.0017508594253611484,
+        0.5171308073542811
+       ],
+       [
+        "2013-10-01",
+        5,
+        1,
+        0.3456844328269941,
+        0.0020412523702975707,
+        0.6544624357382482
+       ],
+       [
+        "2013-10-01",
+        5,
+        2,
+        0.21768747338662128,
+        0.003265610549872472,
+        0.4859936266702254
+       ],
+       [
+        "2013-10-01",
+        5,
+        3,
+        0.707930167951481,
+        0.020744369069231477,
+        1.3624600513707366
+       ],
+       [
+        "2013-10-01",
+        5,
+        4,
+        1.77960916032251,
+        0.04528469556586831,
+        3.5755393402388096
+       ]
+      ],
+      "time_dim": "quarter",
+      "variable": "rate"
+     }
+    ],
+    "truncated": false
+   },
+   "trimmed": null
+  },
+  "forecast_predictive": {
+   "counterfactual": null,
+   "fields": {
+    "caption_plain": "Shows each output of the score on its grid. Select the mean, the uncertainty or a draw. Use the slider to go through the frames.",
+    "fields": [
+     {
+      "color": "single",
+      "colormap": "magma",
+      "description": "Events per cell and period: the expected intensity, or a predictive count draw",
+      "downsampled": false,
+      "encoding": "log10",
+      "facet": {},
+      "frame_dim": "quarter",
+      "frames": [
+       {
+        "draws": [
+         {
+          "data": "AAAuRS5FLkX/////AAD+/////////wAAXIr/////AAAAAP///////////////wAA/////////////y5F",
+          "hi": 1.1139433523068367,
+          "lo": 0.0
+         },
+         {
+          "data": "AAAAAP//AAD//wAA//8wWzBbAAD/////h5AAAP////8wWwAAh5D//////////////v//////////////",
+          "hi": 0.8450980400142568,
+          "lo": 0.0
+         },
+         {
+          "data": "/////8JQ/////wAA//+DoQAA/////8JQ/v/////////CUAAA////////////////AAD///////////9/",
+          "hi": 0.9542425094393249,
+          "lo": 0.0
+         },
+         {
+          "data": "/////wAAAEr/////AAD+/wBKAAD/////AAAAAP//////////////////////////AAD/////////////",
+          "hi": 1.0413926851582251,
+          "lo": 0.0
+         },
+         {
+          "data": "//8AAIeQ/////4eQX7aHkLfr//////7//v8AAP////8AAIeQMFv//////////1+2/////wAAAAD/////",
+          "hi": 0.8450980400142568,
+          "lo": 0.0
+         },
+         {
+          "data": "//8AAP////8AAP//AAAAAP//////f/////////////////////8AAP///////////v//////////////",
+          "hi": 0.6020599913279624,
+          "lo": 0.0
+         },
+         {
+          "data": "//////////////////////7//////76uvq7//////////0BuAAD///////8AAEBuAAD/////////////",
+          "hi": 0.6989700043360189,
+          "lo": 0.0
+         },
+         {
+          "data": "//////////8AAP//AACO71VVAACpqv7/P4f///////8AAP///////////////////////////////1VV",
+          "hi": 0.9030899869919435,
+          "lo": 0.0
+         },
+         {
+          "data": "////////////////2mf+/////////2CpksT///////8AAAyDAAD/////AAAAAAAA//8AAP//////////",
+          "hi": 1.1760912590556813,
+          "lo": 0.0
+         },
+         {
+          "data": "//8AAP//AAAAAP//vq7/////AAD/////AAD//wAA/////0Buvq4AAP///////////v//////AAAAAP//",
+          "hi": 0.6989700043360189,
+          "lo": 0.0
+         },
+         {
+          "data": "//8AAAAA//8AAAAAQG6A3P7//////0Bu//9Abv///////wAA//////////////////9Abv///////wAA",
+          "hi": 0.6989700043360189,
+          "lo": 0.0
+         },
+         {
+          "data": "AAAAAIOhAAAAAIO7wlDB0IO7wlAAALbiRfL///////+Du/9///8AAP//AAAAAP9//3//////wlD+/wAA",
+          "hi": 0.9542425094393249,
+          "lo": 0.0
+         },
+         {
+          "data": "////////AAD//1yK//+lbS5F//////7/XIoAAP////8AAM/lAAD///////8AAP//AAClbf//LkX/////",
+          "hi": 1.1139433523068367,
+          "lo": 0.0
+         },
+         {
+          "data": "////////SXUAAABK/v//k///AAD//wAAAAAAAP///////wBKAEoAAP////8ASgAA/////////////wAA",
+          "hi": 1.0413926851582251,
+          "lo": 0.0
+         },
+         {
+          "data": "/////wAAAACDof///v8AAAAA////////AAD/////////////AAD///////8AAIOhAAAAAAAA/////4Oh",
+          "hi": 0.47712125471966244,
+          "lo": 0.0
+         },
+         {
+          "data": "//8AAAAAAAD//whjAAD+/wAA//8AAAAAEMb///////////ac////////////////9pz//////////wAA",
+          "hi": 0.7781512503836436,
+          "lo": 0.0
+         }
+        ],
+        "label": "2013-01-01",
+        "mean": {
+         "data": "nDyDQqiMq7CncgSCD8X+/9HNq1D9aWrnWurQii8qAADqiGuc3oL6WQwDoUNqbNibecfNK19BVjPRa7Wx",
+         "hi": 0.7193312869837266,
+         "lo": -0.978810700930062
+        },
+        "q05": {
+         "data": "////////////////////////////////////////////////////////////////////////////////"
+        },
+        "q95": {
+         "data": "AAAAAJFqHpyiRSxswrz+/7XJPEM8Q5no1t+RagAAAACRanmGkWo8QwAAPEM8Q3mGwrwAADxDAAA8Qx6c",
+         "hi": 1.146128035678238,
+         "lo": 0.0
+        },
+        "sd": {
+         "data": "0jJsMXF436hUZIB1p7z+//6/UkjGX77gFt36dnUpAABaeIaQwXOnZskJBUXJa16axslQL905/y+6bISz",
+         "hi": 0.6859041563478766,
+         "lo": -0.4904470758543771
+        }
+       },
+       {
+        "draws": [
+         {
+          "data": "9pz//wAA9pz/////EMb+////AAAAAAhj9pwAAP////8AAP//////////////////AAD//wAA//8AAAhj",
+          "hi": 0.7781512503836436,
+          "lo": 0.0
+         },
+         {
+          "data": "//8wW////////wAAAAD//4eQAAD///7/utOHkP////8wW////////////////wAAMFv/////////////",
+          "hi": 0.8450980400142568,
+          "lo": 0.0
+         },
+         {
+          "data": "/////1VVAAD///////+U3D+H/////////v///////////6mq/////////////1VV//////////8AAP//",
+          "hi": 0.9030899869919435,
+          "lo": 0.0
+         },
+         {
+          "data": "/////wAAAAAwWwAA///+//7///8AAAAA/v//////////////AAAAAP//////////////////////////",
+          "hi": 0.8450980400142568,
+          "lo": 0.0
+         },
+         {
+          "data": "/////6Vt/////wAAAABL21yK//8AAEvbLkWhoP////8uRf7/LkX///////8AAAAAAAAAAP////8AAAAA",
+          "hi": 1.1139433523068367,
+          "lo": 0.0
+         },
+         {
+          "data": "/////////3////9/////fwAA/////wAAAAAAAP////8AAP//AAD//////////////3///wAA////f/7/",
+          "hi": 0.6020599913279624,
+          "lo": 0.0
+         },
+         {
+          "data": "////////h5D///////8AAP7///8AAAAAAAD//////////////////////////wAAh5D//////////zBb",
+          "hi": 0.8450980400142568,
+          "lo": 0.0
+         },
+         {
+          "data": "/////wAAP4c/h///qaqU3AAAAAAAAP7/AAAAAP////////////8AAP//AAD//////////////////1VV",
+          "hi": 0.9030899869919435,
+          "lo": 0.0
+         },
+         {
+          "data": "////////////////7YvtiwAA//////7/h3j///////8AAIRf//9DPP////8AAP//AAD/////AAD//0M8",
+          "hi": 1.2787536009528289,
+          "lo": 0.0
+         },
+         {
+          "data": "//////////8IY///9pwIYwhj/////wAA/v8IY////////whj//8AAP//AAD//whj9pwAAAAA9pwAAAAA",
+          "hi": 0.7781512503836436,
+          "lo": 0.0
+         },
+         {
+          "data": "/////wAAAAD///////8AAP9///8AAP///v8AAP//////////////////////////AAD/////////////",
+          "hi": 0.6020599913279624,
+          "lo": 0.0
+         },
+         {
+          "data": "/////35Y/bDVN76cqm/+/35YAAAAAICnAADVN/////8AAAAAAAAAAP////8AAP//qm///////////wAA",
+          "hi": 1.380211241711606,
+          "lo": 0.0
+         },
+         {
+          "data": "/////yQx403/////JDHjTf////8AAP+p/v8kMf/////jTSQxJDH///////8kMf//JDH/////AAD/////",
+          "hi": 1.568201724066995,
+          "lo": 0.0
+         },
+         {
+          "data": "CGP/////9pwIY/ac/v/2nBDG//////acEMb2nAAA/////wAACGP///////8IY/ac8uX///////////Ll",
+          "hi": 0.7781512503836436,
+          "lo": 0.0
+         },
+         {
+          "data": "AAD//////////wAAQG4AAEBu////////QG7//wAA//9AbgAAQG7///////////7/AAD//wAAAAAAAEBu",
+          "hi": 0.6989700043360189,
+          "lo": 0.0
+         },
+         {
+          "data": "////////AAD///7////+/wAA//8AAP//g6H///////8AAIOh/////////////wAA/////////////4Oh",
+          "hi": 0.47712125471966244,
+          "lo": 0.0
+         }
+        ],
+        "label": "2013-04-01",
+        "mean": {
+         "data": "rS7/PkSUkrkKa+GPEsf+//HOzU83bATnRu1Qma0uAACLhLWb9XjfYgAAXzoeW/CR2MlCEwpeUCIKawC0",
+         "hi": 0.6998377258672457,
+         "lo": -0.9030899869919435
+        },
+        "q05": {
+         "data": "////////////////////////////////////////////////////////////////////////////////"
+        },
+        "q95": {
+         "data": "AAAuRVyK07IuRUxvNsL+/zbCLkUuRc/lz+VcigAAAAClbVyKpUcuRQAA3wQuRaVtp7MAAAAAAAClR5+h",
+         "hi": 1.1139433523068367,
+         "lo": 0.0
+        },
+        "sd": {
+         "data": "HDTNRWGBerQ+UcWIx8T+/9XTU0zFdgXXGuwfiXA1uAo4coqSgW4lYgAAHUHkWmucKM6AGjipFy5TY22x",
+         "hi": 0.7020462242134267,
+         "lo": -0.4604548480769613
+        }
+       },
+       {
+        "draws": [
+         {
+          "data": "AABciqVtLkUAAC5F07L+/wAA/////4nPXIr/////AAAAAC5F//////////8uRf//AAD///////8AAKVt",
+          "hi": 1.1139433523068367,
+          "lo": 0.0
+         },
+         {
+          "data": "//////////////////9AbkBuQG7//wAAQG7+/wAA/////wAA/////////////wAA////////AAD/////",
+          "hi": 0.6989700043360189,
+          "lo": 0.0
+         },
+         {
+          "data": "////////CGP/////AAD+/wAAAAAAAAAAEMb///////8AAAAA////////CGP/////9pz///////8AAP//",
+          "hi": 0.7781512503836436,
+          "lo": 0.0
+         },
+         {
+          "data": "/////4Oh//8AAP/////+/8JQ/////////////wAA/////////////////////////////wAA////////",
+          "hi": 0.9542425094393249,
+          "lo": 0.0
+         },
+         {
+          "data": "/////whjAAD//wAA//8IY/7///////acCGPy5f////////ac9pz//wAA////////////////AAD///ac",
+          "hi": 0.7781512503836436,
+          "lo": 0.0
+         },
+         {
+          "data": "////////AAD//wAA//+A3L6u/////wAAAAD//////////////////0BuAAD/////QG4AAAAA//8AAP7/",
+          "hi": 0.6989700043360189,
+          "lo": 0.0
+         },
+         {
+          "data": "////////vq7/////QG6A3P7/////////QG7///////9Abv//QG7///////8AAAAAvq7///////8AAP//",
+          "hi": 0.6989700043360189,
+          "lo": 0.0
+         },
+         {
+          "data": "/////76uAAAAAP//vq7+////AAAAAP7/AAD/////////////////////////////QG5Abv///////wAA",
+          "hi": 0.6989700043360189,
+          "lo": 0.0
+         },
+         {
+          "data": "/////wAA///////////SqwAA/////////v////////8AAAAA////////AEoAAP////////////8ASkl1",
+          "hi": 1.0413926851582251,
+          "lo": 0.0
+         },
+         {
+          "data": "/////wAAAAD/////AAD+/1VV/////wAA/////////////1VV//8/h////////wAAAAD///////8AAP//",
+          "hi": 0.9030899869919435,
+          "lo": 0.0
+         },
+         {
+          "data": "AAD//wAA/v8AAP//////////AAD//0BuAAD//wAA//////////////////////////8AAP///////wAA",
+          "hi": 0.6989700043360189,
+          "lo": 0.0
+         },
+         {
+          "data": "Qzz//4RfLqn//wAALqn+/4RfAABDPId4h3gAAP//AACHeHrQhF+EX///AAD//0M8AAAAAP///////wAA",
+          "hi": 1.2787536009528289,
+          "lo": 0.0
+         },
+         {
+          "data": "/////1JW/////wAA//+Iyf////8AAOxs/v92Nv/////sbFvPUlb/////////////AAAAAP///////3Y2",
+          "hi": 1.414973347970818,
+          "lo": 0.0
+         },
+         {
+          "data": "//9Abv//vq5AbgAAvq7+//7//////0BuQG7///////8AAL6uAAAAAP///////wAAAAD//wAAAAD//0Bu",
+          "hi": 0.6989700043360189,
+          "lo": 0.0
+         },
+         {
+          "data": "/////5FqAAD////////+//////8AAJFq//8AAP////8AAP////8AAP////8AAAAAmej//wAA////////",
+          "hi": 1.146128035678238,
+          "lo": 0.0
+         },
+         {
+          "data": "//8AAP7/AAAAAP//AAD+/////////wAAAAD+////////////////////////////AAD/////////////",
+          "hi": 0.3010299956639812,
+          "lo": 0.0
+         }
+        ],
+        "label": "2013-07-01",
+        "mean": {
+         "data": "nDWaS2aV1LNWbE+AUcb+/+fVNlN8W6zefulnjnow4RJdjHebI3ErZxcK7EfvT7uP6MzdSJpLAACfdZyu",
+         "hi": 0.7319914490189294,
+         "lo": -0.9030899869919435
+        },
+        "q05": {
+         "data": "////////////////////////////////////////////////////////////////////////////////"
+        },
+        "q95": {
+         "data": "AADtP9p/P6XtP1Jlx7/+/8e/7T/tP6TKJt1vlAAAAADaf9p/UmVSZQAA7T/tP9p/pMrtP+0/AABSZQOm",
+         "hi": 1.2054750367408904,
+         "lo": 0.0
+        },
+        "sd": {
+         "data": "/CpxUL141KDoYm6AtKmC3v7/bngFR9bH3tVGgbUpfRiKfEmQrF1+Va8XnE9eSqGNVdbcUkWCAADedICv",
+         "hi": 0.8652490132447751,
+         "lo": -0.47945250735767786
+        }
+       },
+       {
+        "draws": [
+         {
+          "data": "CGMAAP///////wAAAADy5f////////7//v8AAP////8IYwhj/////////////////////////////whj",
+          "hi": 0.7781512503836436,
+          "lo": 0.0
+         },
+         {
+          "data": "/////47vIsYAAP//AAAixv7/AAD//wAAP4f//wAAAAD//1VV//9VVf///////wAAVVX/////VVX/////",
+          "hi": 0.9030899869919435,
+          "lo": 0.0
+         },
+         {
+          "data": "//8AAP////////////8ASkl1/////wBK/v////////8AAEl1/////////////wAA/////wAA/////wBK",
+          "hi": 1.0413926851582251,
+          "lo": 0.0
+         },
+         {
+          "data": "/////wAA/////wAAAAD//wAA//8AAIOh//////////////////8AAP///////////v////////8AAP//",
+          "hi": 0.47712125471966244,
+          "lo": 0.0
+         },
+         {
+          "data": "////////AAD///////8Qxv7/AAAAABDGCGMIY//////y5fLlAAD///////8AAP//////////////////",
+          "hi": 0.7781512503836436,
+          "lo": 0.0
+         },
+         {
+          "data": "//////9//3////////8AAP//////f/7/3sr///////8AAP//////////////////3sr///////////9/",
+          "hi": 0.6020599913279624,
+          "lo": 0.0
+         },
+         {
+          "data": "////////QG7///////////7//////wAAvq4AAP//////////AAD//////////0BuAAD//////////0Bu",
+          "hi": 0.6989700043360189,
+          "lo": 0.0
+         },
+         {
+          "data": "//8AAAAAtuL//////3/+///////CUMJQ//////////8AAP//////////////////AAD/////////////",
+          "hi": 0.9542425094393249,
+          "lo": 0.0
+         },
+         {
+          "data": "//8AAAAA////////SKb+/zs7/////0imAAA7O////////wAA////////////////Ozv/////////////",
+          "hi": 1.3010299956639813,
+          "lo": 0.0
+         },
+         {
+          "data": "/////wAAP4cAAP////9VVQAAAAD/////VVX///////////////////////9VVQAA/v//////AAAAAP//",
+          "hi": 0.9030899869919435,
+          "lo": 0.0
+         },
+         {
+          "data": "AAAAAAAA/38AAAAAAAD//////////wAA/38AAP////8AAP///////////////////v///////////wAA",
+          "hi": 0.6020599913279624,
+          "lo": 0.0
+         },
+         {
+          "data": "/////wAAyHr//8h6AAD+/2Q9///Iesh678tNYf//AABNYe/L//8AAP////9kPWQ9AAD//2Q9//8AAE1h",
+          "hi": 1.255272505103306,
+          "lo": 0.0
+         },
+         {
+          "data": "AAD//////////zxDwryRajxD/////1vf/v8enP////95hpFqAAD//zxD////////PEMAAP//AAAAAAAA",
+          "hi": 1.146128035678238,
+          "lo": 0.0
+         },
+         {
+          "data": "CGP//wAA9pwAAPacEMb+//ac//8AAP//CGP//whj//8AAPac//////////8AAP///////wAA//8IYwAA",
+          "hi": 0.7781512503836436,
+          "lo": 0.0
+         },
+         {
+          "data": "/////wAA//////9/AAD/fwAA////////AAD//////////wAA/v////////8AAP//3sr///////////9/",
+          "hi": 0.6020599913279624,
+          "lo": 0.0
+         },
+         {
+          "data": "//8AAP//AAD////////+////AAD//wAAAAD/////////////////////////////AAD//////////wAA",
+          "hi": 0.8450980400142568,
+          "lo": 0.0
+         }
+        ],
+        "label": "2013-10-01",
+        "mean": {
+         "data": "Wy+4NnSGobJdYEpuO8L+/4XOQV8mZcDZnt4tggMMAAAvg3yK+HVRVlgcpzlJPi6KMMZfGbA4QxYrZv+k",
+         "hi": 0.7944880466591696,
+         "lo": -0.7958800173440752
+        },
+        "q05": {
+         "data": "////////////////////////////////////////////////////////////////////////////////"
+        },
+        "q95": {
+         "data": "KwQAAHZ2SKbhXeFdsbH+/zu8Vz1LX7LUstR2dgAAAAB2doiJ4V07OwAAOzs7O+FdwbIAADs7AADhXRyZ",
+         "hi": 1.3010299956639813,
+         "lo": 0.0
+        },
+        "sd": {
+         "data": "+FU/Hj5g8sgDTBtwTrn+/8DfalT1ajjNXNGEcgAAHADFcY97+4zZdaExsjy1KC++Bue7JXE+4hmNZRKh",
+         "hi": 0.821265067976444,
+         "lo": -0.3238844935833478
+        }
+       }
+      ],
+      "height": 6,
+      "kind": "scalar",
+      "log": true,
+      "n_draws": 200,
+      "omitted_frames": 0,
+      "origin": "lower",
+      "output": "rate",
+      "rgb_scale": "uint8",
+      "source_height": 6,
+      "source_width": 5,
+      "width": 5,
+      "x_coords": [
+       0,
+       1,
+       2,
+       3,
+       4
+      ],
+      "x_dim": "col",
+      "y_coords": [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5
+      ],
+      "y_dim": "row"
+     }
+    ],
+    "format": "mapi.model-explorer.fields/v1",
+    "kind": "expected",
+    "omitted": [],
+    "warnings_plain": []
+   },
+   "forecast": {
+    "dim": "quarter",
+    "fan": {
+     "coords": [
+      "2009-01-01",
+      "2009-04-01",
+      "2009-07-01",
+      "2009-10-01",
+      "2010-01-01",
+      "2010-04-01",
+      "2010-07-01",
+      "2010-10-01",
+      "2011-01-01",
+      "2011-04-01",
+      "2011-07-01",
+      "2011-10-01",
+      "2012-01-01",
+      "2012-04-01",
+      "2012-07-01",
+      "2012-10-01",
+      "2013-01-01",
+      "2013-04-01",
+      "2013-07-01",
+      "2013-10-01"
+     ],
+     "dim": "quarter",
+     "observed": [
+      59.0,
+      68.0,
+      68.0,
+      46.0,
+      51.0,
+      60.0,
+      29.0,
+      46.0,
+      32.0,
+      49.0,
+      24.0,
+      26.0,
+      16.0,
+      34.0,
+      18.0,
+      37.0,
+      null,
+      null,
+      null,
+      null
+     ],
+     "quantiles": [
+      0.05,
+      0.25,
+      0.5,
+      0.75,
+      0.95
+     ],
+     "units": "events",
+     "values": [
+      [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       19.2612823561,
+       17.5101770379,
+       16.3125751375,
+       16.2836174994
+      ],
+      [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       26.4958607867,
+       25.869061829,
+       24.6309358803,
+       24.4380548124
+      ],
+      [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       31.8918052981,
+       31.2584579283,
+       31.1164910517,
+       30.2107489726
+      ],
+      [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       37.0524004414,
+       38.7053757925,
+       40.6319018609,
+       42.8712111715
+      ],
+      [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       53.4574638117,
+       60.8816171266,
+       68.6287726784,
+       77.7654047545
+      ]
+     ]
+    },
+    "format": "mapi.forecast/v1",
+    "history": 16,
+    "kind": "predictive",
+    "kpi": "total",
+    "split_at": "2013-01-01",
+    "summed_over": [],
+    "total": {
+     "mean": 142.529013365,
+     "quantiles": {
+      "0.05": 72.9868428473,
+      "0.25": 102.963809138,
+      "0.5": 124.080518423,
+      "0.75": 157.127464124,
+      "0.95": 253.361877735
+     },
+     "sd": 74.8586083887,
+     "units": "events"
+    },
+    "units": "events"
+   },
+   "horizon": {
+    "dim": "period",
+    "periods": 4
+   },
+   "inline": false,
+   "mode": "forecast",
+   "output": {
+    "kind": "predictive",
+    "summary": [
+     "mean",
+     "hdi_90"
+    ]
+   },
+   "probe_case": "forecast_4__predictive",
+   "result": {
+    "aggregation_flagged": false,
+    "bundle_id": "ca672b1926817470defeec8fc59f4991",
+    "conditioning": {
+     "conditioned": false,
+     "dim": "period",
+     "fit_end": "2012-10-01",
+     "horizon_source": "horizon",
+     "message": "Forecast from the end of the fitted history (2012-10-01); no actuals were supplied. 4 periods forecast from 2013-01-01 to 2013-10-01.",
+     "n_actuals": 0,
+     "n_series": 30,
+     "parameters": "fitted",
+     "periods": 4,
+     "revised": 0,
+     "series": [
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 0
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 0
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 0
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 0
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 0
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 1
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 1
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 1
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 1
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 1
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 2
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 2
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 2
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 2
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 2
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 3
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 3
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 3
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 3
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 3
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 4
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 4
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 4
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 4
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 4
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 5
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 5
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 5
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 5
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 5
+       }
+      }
+     ],
+     "series_conditioned": 0,
+     "truncated": false
+    },
+    "groups": [
+     "/summary"
+    ],
+    "issues": [],
+    "kind": "predictive",
+    "mode": "forecast",
+    "names": "dataset",
+    "output_space": {
+     "rate": "raw",
+     "total": "raw"
+    },
+    "representation": "draws",
+    "retransform": {
+     "rate": "none",
+     "total": "none"
+    },
+    "units": "original"
+   },
+   "summary": {
+    "conditioning": {
+     "conditioned": false,
+     "dim": "period",
+     "fit_end": "2012-10-01",
+     "horizon_source": "horizon",
+     "message": "Forecast from the end of the fitted history (2012-10-01); no actuals were supplied. 4 periods forecast from 2013-01-01 to 2013-10-01.",
+     "n_actuals": 0,
+     "n_series": 30,
+     "parameters": "fitted",
+     "periods": 4,
+     "revised": 0,
+     "series": [
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 0
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 0
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 0
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 0
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 0
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 1
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 1
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 1
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 1
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 1
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 2
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 2
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 2
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 2
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 2
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 3
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 3
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 3
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 3
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 3
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 4
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 4
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 4
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 4
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 4
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 0,
+        "row": 5
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 1,
+        "row": 5
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 2,
+        "row": 5
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 3,
+        "row": 5
+       }
+      },
+      {
+       "forecast_from": "2013-01-01",
+       "forecast_to": "2013-10-01",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 4,
+       "origin": "2012-10-01",
+       "revised": 0,
+       "series": {
+        "col": 4,
+        "row": 5
+       }
+      }
+     ],
+     "series_conditioned": 0,
+     "truncated": false
+    },
+    "tables": [
+     {
+      "columns": [
+       "quarter",
+       "mean",
+       "hdi_90_lower",
+       "hdi_90_upper"
+      ],
+      "dims": [
+       "quarter"
+      ],
+      "plots": [
+       "core.ppc_fan"
+      ],
+      "rows": [
+       [
+        "2013-01-01",
+        33.08853939506813,
+        17.008025615878278,
+        46.245704206699514
+       ],
+       [
+        "2013-04-01",
+        34.21556948376261,
+        14.002038349096598,
+        52.13286556000801
+       ],
+       [
+        "2013-07-01",
+        36.44394909826374,
+        13.219778756116593,
+        60.97154306002206
+       ],
+       [
+        "2013-10-01",
+        38.7809553874225,
+        12.78459813649468,
+        64.8749991311362
+       ]
+      ],
+      "time_dim": "quarter",
+      "variable": "total"
+     },
+     {
+      "columns": [
+       "quarter",
+       "row",
+       "col",
+       "mean",
+       "hdi_90_lower",
+       "hdi_90_upper"
+      ],
+      "dims": [
+       "quarter",
+       "row",
+       "col"
+      ],
+      "plots": [
+       "sci.field_map"
+      ],
+      "rows": [
+       [
+        "2013-01-01",
+        0,
+        0,
+        0.265,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-01-01",
+        0,
+        1,
+        0.29,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-01-01",
+        0,
+        2,
+        0.9,
+        0.0,
+        2.0
+       ],
+       [
+        "2013-01-01",
+        0,
+        3,
+        1.56,
+        0.0,
+        4.0
+       ],
+       [
+        "2013-01-01",
+        0,
+        4,
+        0.605,
+        0.0,
+        2.0
+       ],
+       [
+        "2013-01-01",
+        1,
+        0,
+        0.765,
+        0.0,
+        2.0
+       ],
+       [
+        "2013-01-01",
+        1,
+        1,
+        2.13,
+        0.0,
+        5.0
+       ],
+       [
+        "2013-01-01",
+        1,
+        2,
+        5.24,
+        0.0,
+        11.0
+       ],
+       [
+        "2013-01-01",
+        1,
+        3,
+        2.435,
+        0.0,
+        6.0
+       ],
+       [
+        "2013-01-01",
+        1,
+        4,
+        0.36,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-01-01",
+        2,
+        0,
+        0.53,
+        0.0,
+        2.0
+       ],
+       [
+        "2013-01-01",
+        2,
+        1,
+        3.6,
+        0.0,
+        8.0
+       ],
+       [
+        "2013-01-01",
+        2,
+        2,
+        3.765,
+        0.0,
+        9.0
+       ],
+       [
+        "2013-01-01",
+        2,
+        3,
+        0.875,
+        0.0,
+        2.0
+       ],
+       [
+        "2013-01-01",
+        2,
+        4,
+        0.2,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-01-01",
+        3,
+        0,
+        0.105,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-01-01",
+        3,
+        1,
+        0.85,
+        0.0,
+        3.0
+       ],
+       [
+        "2013-01-01",
+        3,
+        2,
+        1.145,
+        0.0,
+        3.0
+       ],
+       [
+        "2013-01-01",
+        3,
+        3,
+        0.775,
+        0.0,
+        2.0
+       ],
+       [
+        "2013-01-01",
+        3,
+        4,
+        0.415,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-01-01",
+        4,
+        0,
+        0.11,
+        0.0,
+        0.0
+       ],
+       [
+        "2013-01-01",
+        4,
+        1,
+        0.295,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-01-01",
+        4,
+        2,
+        0.55,
+        0.0,
+        2.0
+       ],
+       [
+        "2013-01-01",
+        4,
+        3,
+        1.135,
+        0.0,
+        3.0
+       ],
+       [
+        "2013-01-01",
+        4,
+        4,
+        2.21,
+        0.0,
+        5.0
+       ],
+       [
+        "2013-01-01",
+        5,
+        0,
+        0.205,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-01-01",
+        5,
+        1,
+        0.285,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-01-01",
+        5,
+        2,
+        0.23,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-01-01",
+        5,
+        3,
+        0.545,
+        0.0,
+        2.0
+       ],
+       [
+        "2013-01-01",
+        5,
+        4,
+        1.585,
+        0.0,
+        3.0
+       ],
+       [
+        "2013-04-01",
+        0,
+        0,
+        0.245,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-04-01",
+        0,
+        1,
+        0.31,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-04-01",
+        0,
+        2,
+        1.06,
+        0.0,
+        3.0
+       ],
+       [
+        "2013-04-01",
+        0,
+        3,
+        1.815,
+        0.0,
+        5.0
+       ],
+       [
+        "2013-04-01",
+        0,
+        4,
+        0.585,
+        0.0,
+        2.0
+       ],
+       [
+        "2013-04-01",
+        1,
+        0,
+        0.995,
+        0.0,
+        3.0
+       ],
+       [
+        "2013-04-01",
+        1,
+        1,
+        2.205,
+        0.0,
+        5.0
+       ],
+       [
+        "2013-04-01",
+        1,
+        2,
+        5.01,
+        0.0,
+        10.0
+       ],
+       [
+        "2013-04-01",
+        1,
+        3,
+        2.47,
+        0.0,
+        5.0
+       ],
+       [
+        "2013-04-01",
+        1,
+        4,
+        0.395,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-04-01",
+        2,
+        0,
+        0.595,
+        0.0,
+        2.0
+       ],
+       [
+        "2013-04-01",
+        2,
+        1,
+        3.495,
+        0.0,
+        8.0
+       ],
+       [
+        "2013-04-01",
+        2,
+        2,
+        3.825,
+        0.0,
+        8.0
+       ],
+       [
+        "2013-04-01",
+        2,
+        3,
+        1.14,
+        0.0,
+        3.0
+       ],
+       [
+        "2013-04-01",
+        2,
+        4,
+        0.245,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-04-01",
+        3,
+        0,
+        0.125,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-04-01",
+        3,
+        1,
+        0.845,
+        0.0,
+        2.0
+       ],
+       [
+        "2013-04-01",
+        3,
+        2,
+        1.18,
+        0.0,
+        3.0
+       ],
+       [
+        "2013-04-01",
+        3,
+        3,
+        0.715,
+        0.0,
+        2.0
+       ],
+       [
+        "2013-04-01",
+        3,
+        4,
+        0.52,
+        0.0,
+        2.0
+       ],
+       [
+        "2013-04-01",
+        4,
+        0,
+        0.125,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-04-01",
+        4,
+        1,
+        0.29,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-04-01",
+        4,
+        2,
+        0.465,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-04-01",
+        4,
+        3,
+        1.025,
+        0.0,
+        3.0
+       ],
+       [
+        "2013-04-01",
+        4,
+        4,
+        2.295,
+        0.0,
+        5.0
+       ],
+       [
+        "2013-04-01",
+        5,
+        0,
+        0.165,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-04-01",
+        5,
+        1,
+        0.485,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-04-01",
+        5,
+        2,
+        0.205,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-04-01",
+        5,
+        3,
+        0.585,
+        0.0,
+        2.0
+       ],
+       [
+        "2013-04-01",
+        5,
+        4,
+        1.675,
+        0.0,
+        4.0
+       ],
+       [
+        "2013-07-01",
+        0,
+        0,
+        0.275,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-07-01",
+        0,
+        1,
+        0.38,
+        0.0,
+        2.0
+       ],
+       [
+        "2013-07-01",
+        0,
+        2,
+        1.125,
+        0.0,
+        3.0
+       ],
+       [
+        "2013-07-01",
+        0,
+        3,
+        1.76,
+        0.0,
+        5.0
+       ],
+       [
+        "2013-07-01",
+        0,
+        4,
+        0.615,
+        0.0,
+        2.0
+       ],
+       [
+        "2013-07-01",
+        1,
+        0,
+        0.825,
+        0.0,
+        2.0
+       ],
+       [
+        "2013-07-01",
+        1,
+        1,
+        2.31,
+        0.0,
+        6.0
+       ],
+       [
+        "2013-07-01",
+        1,
+        2,
+        5.395,
+        0.0,
+        12.0
+       ],
+       [
+        "2013-07-01",
+        1,
+        3,
+        2.905,
+        0.0,
+        6.0
+       ],
+       [
+        "2013-07-01",
+        1,
+        4,
+        0.425,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-07-01",
+        2,
+        0,
+        0.48,
+        0.0,
+        2.0
+       ],
+       [
+        "2013-07-01",
+        2,
+        1,
+        3.305,
+        0.0,
+        7.0
+       ],
+       [
+        "2013-07-01",
+        2,
+        2,
+        3.875,
+        0.0,
+        9.0
+       ],
+       [
+        "2013-07-01",
+        2,
+        3,
+        1.015,
+        0.0,
+        3.0
+       ],
+       [
+        "2013-07-01",
+        2,
+        4,
+        0.255,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-07-01",
+        3,
+        0,
+        0.165,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-07-01",
+        3,
+        1,
+        0.985,
+        0.0,
+        3.0
+       ],
+       [
+        "2013-07-01",
+        3,
+        2,
+        1.23,
+        0.0,
+        3.0
+       ],
+       [
+        "2013-07-01",
+        3,
+        3,
+        0.66,
+        0.0,
+        2.0
+       ],
+       [
+        "2013-07-01",
+        3,
+        4,
+        0.57,
+        0.0,
+        2.0
+       ],
+       [
+        "2013-07-01",
+        4,
+        0,
+        0.145,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-07-01",
+        4,
+        1,
+        0.36,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-07-01",
+        4,
+        2,
+        0.405,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-07-01",
+        4,
+        3,
+        1.035,
+        0.0,
+        3.0
+       ],
+       [
+        "2013-07-01",
+        4,
+        4,
+        2.545,
+        0.0,
+        6.0
+       ],
+       [
+        "2013-07-01",
+        5,
+        0,
+        0.365,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-07-01",
+        5,
+        1,
+        0.38,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-07-01",
+        5,
+        2,
+        0.125,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-07-01",
+        5,
+        3,
+        0.705,
+        0.0,
+        2.0
+       ],
+       [
+        "2013-07-01",
+        5,
+        4,
+        1.63,
+        0.0,
+        4.0
+       ],
+       [
+        "2013-10-01",
+        0,
+        0,
+        0.315,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-10-01",
+        0,
+        1,
+        0.35,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-10-01",
+        0,
+        2,
+        1.095,
+        0.0,
+        3.0
+       ],
+       [
+        "2013-10-01",
+        0,
+        3,
+        2.06,
+        0.0,
+        5.0
+       ],
+       [
+        "2013-10-01",
+        0,
+        4,
+        0.635,
+        0.0,
+        2.0
+       ],
+       [
+        "2013-10-01",
+        1,
+        0,
+        0.775,
+        0.0,
+        2.0
+       ],
+       [
+        "2013-10-01",
+        1,
+        1,
+        2.575,
+        0.0,
+        6.0
+       ],
+       [
+        "2013-10-01",
+        1,
+        2,
+        6.23,
+        0.0,
+        14.0
+       ],
+       [
+        "2013-10-01",
+        1,
+        3,
+        3.07,
+        0.0,
+        7.0
+       ],
+       [
+        "2013-10-01",
+        1,
+        4,
+        0.625,
+        0.0,
+        2.0
+       ],
+       [
+        "2013-10-01",
+        2,
+        0,
+        0.68,
+        0.0,
+        2.0
+       ],
+       [
+        "2013-10-01",
+        2,
+        1,
+        3.605,
+        0.0,
+        8.0
+       ],
+       [
+        "2013-10-01",
+        2,
+        2,
+        3.865,
+        0.0,
+        9.0
+       ],
+       [
+        "2013-10-01",
+        2,
+        3,
+        1.03,
+        0.0,
+        3.0
+       ],
+       [
+        "2013-10-01",
+        2,
+        4,
+        0.19,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-10-01",
+        3,
+        0,
+        0.16,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-10-01",
+        3,
+        1,
+        1.045,
+        0.0,
+        3.0
+       ],
+       [
+        "2013-10-01",
+        3,
+        2,
+        1.16,
+        0.0,
+        3.0
+       ],
+       [
+        "2013-10-01",
+        3,
+        3,
+        0.865,
+        0.0,
+        2.0
+       ],
+       [
+        "2013-10-01",
+        3,
+        4,
+        0.55,
+        0.0,
+        2.0
+       ],
+       [
+        "2013-10-01",
+        4,
+        0,
+        0.24,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-10-01",
+        4,
+        1,
+        0.365,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-10-01",
+        4,
+        2,
+        0.39,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-10-01",
+        4,
+        3,
+        1.155,
+        0.0,
+        3.0
+       ],
+       [
+        "2013-10-01",
+        4,
+        4,
+        2.725,
+        0.0,
+        5.0
+       ],
+       [
+        "2013-10-01",
+        5,
+        0,
+        0.23,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-10-01",
+        5,
+        1,
+        0.36,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-10-01",
+        5,
+        2,
+        0.22,
+        0.0,
+        1.0
+       ],
+       [
+        "2013-10-01",
+        5,
+        3,
+        0.69,
+        0.0,
+        2.0
+       ],
+       [
+        "2013-10-01",
+        5,
+        4,
+        1.695,
+        0.0,
+        4.0
+       ]
+      ],
+      "time_dim": "quarter",
+      "variable": "rate"
+     }
+    ],
+    "truncated": false
+   },
+   "trimmed": null
+  }
+ }
+}

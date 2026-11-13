@@ -175,6 +175,23 @@ def test_bundles_cannot_be_deleted_by_the_platform() -> None:
     assert "is_locked        = var.lock_bundle_retention" in buckets
 
 
+def test_plugins_bucket_is_purgeable_and_never_mounted_by_role() -> None:
+    """v0.19 (D5): inspected uploads live in their own bucket. The orchestrator copies them
+    in and purges them (no retention lock, no soft delete); executions reach them only through
+    a signed GET minted by url_signer for their own run, never with a role; the API and the
+    upload signer have nothing there."""
+    buckets = (TF_ROOT / "modules" / "data" / "buckets.tf").read_text()
+    plugins = re.search(r"\n    plugins = \{(.*?)\}", buckets, re.S)
+    assert plugins, "the plugins bucket is declared"
+    body = plugins.group(1)
+    assert re.search(r"retention_days\s*=\s*null", body), "no retention lock on plugins"
+    assert re.search(r"soft_delete_seconds\s*=\s*0", body), "a purge must really delete"
+    assert re.search(r"cors_methods\s*=\s*\[\]", body), "no browser reads plugins"
+    iam = strip_comments((TF_ROOT / "modules" / "data" / "iam.tf").read_text())
+    grants = set(re.findall(r'\["plugins", "(\w+)", "([\w${}-]+)"\]', iam))
+    assert grants == {("objectUser", "orchestrator"), ("reader", "url_signer")}, grants
+
+
 # --------------------------------------------------------------------------------- exec / egress
 
 
@@ -351,6 +368,57 @@ def test_secrets_never_reach_state() -> None:
     assert secret_var and "ephemeral   = true" in secret_var.group(1)
     run_tf = (TF_ROOT / "modules" / "control" / "run.tf").read_text()
     assert 'version = "latest"' in run_tf and "secret_key_ref" in run_tf
+
+
+def test_the_gemini_key_reaches_only_the_api_from_secret_manager() -> None:
+    """v0.20 dashboard chat: the Gemini key is a write-only Secret Manager value from an
+    ephemeral variable, written only once a version is raised, readable by the API identity
+    alone and injected as ``MAPI_GEMINI_API_KEY`` through ``secret_key_ref`` (never a plain
+    value). The API keeps ``PRIVATE_RANGES_ONLY`` egress."""
+    from mapi_server.settings import Settings
+
+    control = TF_ROOT / "modules" / "control"
+    secrets_tf = strip_comments((control / "secrets.tf").read_text())
+    access = re.search(r"secret_access\s*=\s*\{(.*?)\n  \}", secrets_tf, re.S)
+    assert access, "secret_access not found"
+    grants = dict(re.findall(r'"([a-z0-9-]+)"\s*=\s*\[([^\]]*)\]', access.group(1)))
+    assert re.findall(r'"(\w+)"', grants["gemini-api-key"]) == ["api"]
+    assert '"gemini-api-key"' in secrets_tf.split("secret_access", 1)[0], "not in secret_ids"
+
+    blocks = _module_blocks("control")
+    version = _one(blocks, "google_secret_manager_secret_version", "gemini_api_key")
+    assert re.search(r"secret_data_wo\s*=\s*var\.gemini_api_key\b", version.body)
+    assert re.search(r"count\s*=\s*var\.chat\.gemini_api_key_version\s*>\s*0", version.body)
+    assert re.search(
+        r"secret_data_wo_version\s*=\s*var\.chat\.gemini_api_key_version", version.body
+    )
+
+    variables = (control / "variables.tf").read_text()
+    key_var = re.search(r'variable "gemini_api_key" \{(.*?)\n\}', variables, re.S)
+    assert key_var
+    assert re.search(r"ephemeral\s*=\s*true", key_var.group(1))
+    assert re.search(r"sensitive\s*=\s*true", key_var.group(1))
+
+    api = _one(blocks, "google_cloud_run_v2_service", "api").body
+    assert re.search(r'egress\s*=\s*"PRIVATE_RANGES_ONLY"', api)
+    assert re.search(
+        r'MAPI_GEMINI_API_KEY\s*=\s*"gemini-api-key"\s*\}.*?secret_key_ref', api, re.S
+    ), "the key is injected through a Secret Manager reference"
+    # never a literal: no `value = ...` names the key, and no other workload mentions it
+    assert not re.search(r'MAPI_GEMINI_API_KEY\s*=\s*+(?!"gemini-api-key")', api)
+    for b in (
+        resources(blocks, "google_cloud_run_v2_service")
+        + resources(blocks, "google_cloud_run_v2_worker_pool")
+        + resources(blocks, "google_cloud_run_v2_job")
+    ):
+        if b.name != "api":
+            assert "MAPI_GEMINI_API_KEY" not in b.body, b.name
+            assert "gemini-api-key" not in b.body, b.name
+    locals_tf = strip_comments((control / "locals.tf").read_text())
+    assert "MAPI_GEMINI_API_KEY" not in locals_tf, "not a plain environment value"
+
+    fields = {f"MAPI_{n.upper()}" for n in Settings.model_fields}
+    assert {"MAPI_GEMINI_API_KEY", "MAPI_CHAT_PROVIDER"} <= fields
 
 
 def test_images_are_deployed_by_digest() -> None:

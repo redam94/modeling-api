@@ -1,0 +1,20 @@
+# Part 2 of docs/tutorials/your-first-extensions.md: a spec that uses the acme plugin's
+# step, model and plot recipe on the sample project's data. `make docs-test` validates it
+# against the catalog with acme registered.
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: revenue-baseline, project: sample}
+data:
+  dataset: dataset://sample/sample-geo-mmm@latest
+  bind:
+    dims: {geo: region, time: week}
+    vars: {y: revenue_gbp}
+  split: {kind: time_holdout, dim: time, last: 8}
+pipeline:
+  - {id: cap, use: acme.winsorize@^0.1, with: {vars: [y], upper: 0.99}}
+model:
+  use: acme.group_mean@^0.1
+  settings: {shrinkage: 0.2}
+outputs:
+  plots: [acme.weekly_total@^1]
+evaluate: {metrics: [rmse, mape]}

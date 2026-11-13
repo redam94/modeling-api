@@ -20,17 +20,25 @@ tenant are ended, unfinished runs are cancelled again, and every registered
    bootstrap objects;
 2. ``database``: every table with a ``tenant_id`` column (discovered from the catalog, so
    tables added later are covered), children before parents, in batches, through the
-   tenant's own row-level-security session where the request-path role may delete. Kept:
+   tenant's own row-level-security session where the request-path role may delete (v0.18:
+   the library items and revisions, onboarding progress and sample rows, which that role
+   may not delete, go through the platform session). Kept:
    ``audit_events``, ``cost_ledger``, this deletion's record and the tenant row itself as a
-   tombstone (:data:`mapi_spec.trust.RETAINED_RECORDS`). People who belonged only to this
+   tombstone (:data:`mapi_spec.trust.RETAINED_RECORDS`). v0.20: the dashboard chat
+   settings, usage rows and kept conversations, and the dashboard read tokens (API tokens
+   with a ``dashboard_id``), go with every other tenant table; the platform rate counters
+   of the tenant's tokens, dashboards and share links (chat budgets and turn limits, MCP
+   limits, :func:`tenant_counter_subjects`) are deleted too. People who belonged only to this
    tenant are deleted too; sign-up records keep only their keyed client digests (the Sybil
    look-back) and lose the e-mail, name and organisation;
-3. ``object_store``: every object under ``t/{tenant}/`` in the quarantine, runs, bundles and
-   data buckets, through :class:`~mapi_spec.storage.ObjectStore`. An object a retention lock
-   refuses is recorded with the time it may be deleted (``time_created`` + the bundles
-   retention, ``MAPI_BUNDLE_RETENTION_DAYS``), and the purge resumes then. The image packs
-   of collection versions (v0.15, ``t/{tenant}/blobs/packs/``) are shared by every version
-   that references them, so nothing else deletes them: they go here, with the tenant;
+3. ``object_store``: every object under ``t/{tenant}/`` in the quarantine, runs, bundles,
+   data and (v0.19) plugins buckets (uploaded wheels; the plugin rows go with the database
+   store, through the platform session), through :class:`~mapi_spec.storage.ObjectStore`.
+   An object a retention lock refuses is recorded with the time it may be deleted
+   (``time_created`` + the bundles retention, ``MAPI_BUNDLE_RETENTION_DAYS``), and the purge
+   resumes then. The image packs of collection versions (v0.15,
+   ``t/{tenant}/blobs/packs/``) are shared by every version that references them, so nothing
+   else deletes them: they go here, with the tenant;
 4. ``logs``: not purged. Request and run logs hold ids, not content, and expire with the
    log buckets' retention (documented in the data-deletion guide);
 5. ``webhooks``: delivers ``tenant.deletion.completed`` through the configured
@@ -92,6 +100,7 @@ __all__ = [
     "latest_deletion",
     "request_deletion",
     "retry_deletion",
+    "tenant_counter_subjects",
 ]
 
 log = logging.getLogger(__name__)
@@ -112,6 +121,7 @@ PURGE_BUCKETS: Final = (
     BucketPurpose.RUNS,
     BucketPurpose.BUNDLES,
     BucketPurpose.DATA,
+    BucketPurpose.PLUGINS,
 )
 """Buckets with ``t/{tenant}/`` prefixes (the bootstrap bucket is keyed by nonce)."""
 BATCH: Final = 5000
@@ -386,6 +396,30 @@ async def retry_deletion(
 
 
 # =================================================================================== purge
+
+
+def tenant_counter_subjects(
+    tenant_id: str,
+    *,
+    token_ids: Sequence[str] = (),
+    dashboard_ids: Sequence[str] = (),
+    share_ids: Sequence[str] = (),
+) -> tuple[list[str], list[str]]:
+    """The ``rate_counters`` subjects a tenant's purge deletes: exact subjects and ``LIKE``
+    prefixes (already escaped). Covers the tenant's request and egress counters, its tokens
+    (requests, v0.20 MCP), and the v0.20 chat budgets and turn limits of its dashboards and
+    share links (``services.chat.budget``) and MCP limits of its share links."""
+    exact = [f"tenant:{tenant_id}", egress_subject(tenant_id)]
+    exact += [f"token:{t}" for t in token_ids] + [f"mcp:{t}" for t in token_ids]
+    exact += [f"chattok:{d}" for d in dashboard_ids]
+    for sid in share_ids:
+        exact += [f"chattokshare:{sid}", f"chatshare:{sid}", f"mcpshare:{sid}"]
+    prefixes = [f"chat:{_like_escape(d)}:" for d in dashboard_ids]
+    return exact, prefixes
+
+
+def _like_escape(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 def _quote(name: str) -> str:
@@ -745,6 +779,20 @@ class TenantPurger:
                     await s.execute(select(m.ApiToken.id).where(m.ApiToken.tenant_id == tenant_id))
                 ).scalars()
             )
+            dashboards = list(
+                (
+                    await s.execute(
+                        select(m.Dashboard.id).where(m.Dashboard.tenant_id == tenant_id)
+                    )
+                ).scalars()
+            )
+            shares = list(
+                (
+                    await s.execute(
+                        select(m.DashboardShare.id).where(m.DashboardShare.tenant_id == tenant_id)
+                    )
+                ).scalars()
+            )
         total = sum(counts.values()) + len(sole)
         done = 0
         await self._update(deletion_id, "database", "running", at, total=total, done=0)
@@ -769,12 +817,16 @@ class TenantPurger:
                     break
             await self._update(deletion_id, "database", "running", at, total=total, done=done)
         async with self.ctx.db.session() as s:
-            subjects = [
-                f"tenant:{tenant_id}",
-                egress_subject(tenant_id),
-                *(f"token:{t}" for t in tokens),
-            ]
+            subjects, prefixes = tenant_counter_subjects(
+                tenant_id, token_ids=tokens, dashboard_ids=dashboards, share_ids=shares
+            )
             await s.execute(delete(m.RateCounter).where(m.RateCounter.subject.in_(subjects)))
+            for prefix in prefixes:
+                await s.execute(
+                    delete(m.RateCounter).where(
+                        m.RateCounter.subject.like(prefix + "%", escape="\\")
+                    )
+                )
             await s.execute(
                 delete(m.QuotaPolicy).where(
                     ((m.QuotaPolicy.scope == "tenant") & (m.QuotaPolicy.subject_id == tenant_id))

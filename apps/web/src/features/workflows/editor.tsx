@@ -4,16 +4,19 @@
  * into one draft, which the server validates live; problems are pinned to nodes through their
  * JSON pointers. Saving stores a new revision (`expected_revision` guards concurrent edits).
  */
-import { AlertTriangle, CheckCircle2, LayoutGrid, Loader2, Redo2, Save, Undo2 } from "lucide-react";
+import { AlertTriangle, BookmarkPlus, CheckCircle2, LayoutGrid, Loader2, Redo2, Save, Undo2 } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
+import { can } from "@/api/access";
 import { ApiError } from "@/api/client";
 import type { Issue } from "@/api/types";
 import { ErrorNotice, IssueList, Spinner } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle, SegmentedControl } from "@/components/ui/overlays";
 import { Field, Input } from "@/components/ui/primitives";
+import { useGrants } from "@/features/auth/workspace";
 import { YamlEditor, type YamlEditorHandle } from "@/features/editor/yaml-editor";
+import type { JsonObject as LibraryJsonObject } from "@/features/library/types";
 import { useHotkeys } from "@/hooks/use-hotkeys";
 import { locateIssues } from "@/lib/yaml-diagnostics";
 import { cn } from "@/lib/utils";
@@ -29,6 +32,8 @@ import { pinIssues, useCanvasPositions, useDocHistory, useLiveValidation } from 
 import { WorkflowSettings } from "./workflow-settings";
 
 const WorkflowCanvas = lazy(() => import("./canvas"));
+// v0.18 D8: "Save as team template" (library code loads only when someone opens it).
+const SaveTemplateDialog = lazy(() => import("@/features/extend/save-template-dialog"));
 
 export function CanvasFallback({ height = "70vh" }: { height?: string }) {
   return (
@@ -86,6 +91,8 @@ export function WorkflowEditor({
   const [view, setView] = useState<View>("canvas");
   const [refusal, setRefusal] = useState<string | null>(null);
   const [saveOpen, setSaveOpen] = useState(false);
+  const [templateOpen, setTemplateOpen] = useState(false);
+  const mayShare = can(useGrants(), "create", "library");
   const [message, setMessage] = useState("");
   const live = useLiveValidation(doc);
   const subs = useSubworkflowIndex(doc, catalog);
@@ -243,6 +250,18 @@ export function WorkflowEditor({
         <div className="flex flex-wrap items-center gap-3" role="status" aria-live="polite">
           {status}
           {dirty ? <span className="text-xs text-muted-foreground">Unsaved changes{baseRevision ? ` (on r${baseRevision})` : ""}</span> : null}
+          {mayShare ? (
+            <Button
+              size="sm"
+              variant="outline"
+              data-tour="workflows.save-as-template"
+              onClick={() => setTemplateOpen(true)}
+              disabled={!doc.nodes.length || errors.length > 0}
+              title={!doc.nodes.length ? "Add a node first" : errors.length ? "Correct the problems first: a team template must be valid" : "Your team can start from this workflow in the gallery"}
+            >
+              <BookmarkPlus /> Save as team template
+            </Button>
+          ) : null}
           {!readOnly ? (
             <Button size="sm" onClick={() => setSaveOpen(true)} disabled={!dirty || !doc.nodes.length || saving}>
               {saving ? <Spinner /> : <Save />} {baseRevision ? "Save revision" : "Create workflow"}
@@ -343,6 +362,12 @@ export function WorkflowEditor({
           )}
         </aside>
       </div>
+
+      {templateOpen ? (
+        <Suspense fallback={null}>
+          <SaveTemplateDialog open={templateOpen} onOpenChange={setTemplateOpen} document={doc as unknown as LibraryJsonObject} title={doc.metadata.name} />
+        </Suspense>
+      ) : null}
 
       <Dialog open={saveOpen} onOpenChange={setSaveOpen}>
         <DialogContent>

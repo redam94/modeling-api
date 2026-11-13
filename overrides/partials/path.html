@@ -1,0 +1,24 @@
+{#-
+  Mono theme: the breadcrumbs, as the small grey line above the page title.
+
+  Material shows this row only below the second level. Here every page with a parent shows
+  its parents, so the reader always sees which section a page is in. A section's own index
+  page does not name itself, and the home page has no row.
+-#}
+{% import "partials/path-item.html" as item with context %}
+{% if page.meta and page.meta.hide %}
+  {% set hidden = "hidden" if "path" in page.meta.hide %}
+{% endif %}
+{% set crumbs = page.ancestors %}
+{% if page.is_index %}
+  {% set crumbs = page.ancestors[1:] %}
+{% endif %}
+{% if crumbs and not page.is_homepage %}
+  <nav class="md-path" aria-label="Breadcrumb" {{ hidden }}>
+    <ol class="md-path__list">
+      {% for nav_item in crumbs | reverse %}
+        {{ item.render(nav_item) }}
+      {% endfor %}
+    </ol>
+  </nav>
+{% endif %}

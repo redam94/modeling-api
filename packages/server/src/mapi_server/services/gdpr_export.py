@@ -22,14 +22,23 @@ Contents (``include`` selects the parts):
 
 * ``metadata/<table>.jsonl``: every row of every tenant table (projects, members, tokens,
   datasets and versions with their schemas and profiles, specs and revisions with their
-  YAML, runs, models and versions, plots, ...), discovered from the catalog so tables added
-  later are exported too. Columns that hold credentials (token hashes, HMAC keys, nonces,
-  webhook secrets) are redacted;
+  YAML, runs, models and versions, plots, v0.18 library items and revisions, onboarding
+  progress and sample rows, ...), discovered from the catalog so tables added later are
+  exported too. Columns that hold credentials (token hashes, HMAC keys, nonces,
+  webhook secrets) are redacted. v0.20 dashboard chat: the settings, the usage rows (token
+  counts, never text) and the kept conversation turns of the workspace's own people
+  (members and client users) are exported; turns typed through a share link
+  (:data:`ROW_FILTERS`) are not, because they come from anonymous viewers outside the
+  workspace (editors still see them in the app until they expire);
 * ``datasets/<dataset>/v<n>/<object>``: the stored objects of every ready dataset version,
   copied byte for byte (never decoded), up to ``MAPI_EXPORT_MAX_INLINE_BYTES`` in total;
   the rest is listed with size and checksums in ``manifest.json``;
 * ``models/<model>/v<n>/manifest.json`` (the signed bundle manifest) and
   ``model_version.json`` (lineage, diagnostics, scorecard, metrics, artifact list);
+* ``plugins/<namespace>/<version>.whl`` (v0.19, with ``models``): the wheels the tenant
+  uploaded, copied byte for byte from the plugins bucket (or, before inspect copied them,
+  the quarantine bucket) and never opened; purged versions have no file. The plugin,
+  version, describe and decision rows are in ``metadata``;
 * ``audit/audit_events.jsonl`` and ``usage/cost_ledger.jsonl``;
 * ``manifest.json`` (what is inside, with SHA-256 per entry) and ``README.txt``.
 
@@ -76,6 +85,7 @@ __all__ = [
     "INTERRUPTED",
     "LEASE_SLACK",
     "REDACTED",
+    "ROW_FILTERS",
     "ExportBuilder",
     "create_export",
     "expire_exports",
@@ -91,6 +101,10 @@ REDACTED: Final = "[redacted]"
 _SECRET_COLUMN: Final = re.compile(r"(secret|hmac|nonce|password|token_hash|^key$|_key$)")
 _SPLIT_TABLES: Final = {"audit_events": "audit", "cost_ledger": "usage"}
 """Tables exported under their own part instead of ``metadata``."""
+ROW_FILTERS: Final[dict[str, str]] = {
+    "dashboard_chat_transcripts": "principal_kind <> 'share'",
+}
+"""Extra ``WHERE`` terms (fixed SQL, no input) of tables exported only in part."""
 INTERRUPTED: Final = "interrupted: built again"
 """``error`` of an export whose first build died: a second death fails it."""
 LEASE_SLACK: Final = timedelta(minutes=5)
@@ -116,6 +130,10 @@ This archive holds everything your workspace stored on modeling-api when the exp
   metadata/<table>.jsonl     one JSON object per line for every record of your workspace
   datasets/...               your uploaded data as stored (zarr zip archives and sidecars)
   models/...                 the signed manifest and metadata of every model version
+  plugins/...                the code packages (wheels) your workspace uploaded
+  metadata/dashboard_chat_*  dashboard chat settings, usage (token counts) and the kept
+                             conversations of your workspace's people (not those typed
+                             through share links)
   audit/audit_events.jsonl   your workspace's audit log
   usage/cost_ledger.jsonl    metered compute usage
 
@@ -514,10 +532,11 @@ class ExportBuilder:
         """Rows written, and whether the metadata budget (``budget[0]`` bytes left) cut the
         table short: the archive is built in memory, so its size is bounded."""
         quoted = '"' + table.replace('"', '""') + '"'
+        extra = f" AND ({ROW_FILTERS[table]})" if table in ROW_FILTERS else ""
         n = 0
         async with self._session(tenant_id, through_rls) as s, archive.stream(path) as out:
             result = await s.stream(
-                text(f"SELECT * FROM {quoted} WHERE tenant_id = :t"),
+                text(f"SELECT * FROM {quoted} WHERE tenant_id = :t{extra}"),
                 {"t": tenant_id},
             )
             async for part in result.mappings().partitions(ROW_BATCH):
@@ -560,6 +579,7 @@ class ExportBuilder:
             skipped.extend(await self._datasets(archive, tenant_id))
         if "models" in include:
             await self._models(archive, tenant_id)
+            skipped.extend(await self._plugins(archive, tenant_id))
         manifest: dict[str, Any] = {
             "format": "mapi.gdpr-export/v1",
             "export_id": export_id,
@@ -648,6 +668,63 @@ class ExportBuilder:
                 f"{base}/model_version.json",
                 json.dumps(info, indent=2, default=_json_default).encode(),
             )
+
+    async def _plugins(self, archive: _Archive, tenant_id: str) -> list[dict[str, Any]]:
+        """The tenant's uploaded wheels as bytes (never opened), within the inline budget."""
+        budget = self.ctx.settings.export_max_inline_bytes
+        skipped: list[dict[str, Any]] = []
+        async with self.ctx.db.tenant_session(tenant_id) as s:
+            rows = (
+                await s.execute(
+                    select(m.Plugin.namespace, m.PluginVersion)
+                    .join(
+                        m.Plugin,
+                        (m.Plugin.id == m.PluginVersion.plugin_id)
+                        & (m.Plugin.tenant_id == m.PluginVersion.tenant_id),
+                    )
+                    .where(
+                        m.PluginVersion.tenant_id == tenant_id,
+                        m.PluginVersion.purged_at.is_(None),
+                    )
+                    .order_by(m.Plugin.namespace, m.PluginVersion.version)
+                )
+            ).all()
+        buckets = self.ctx.buckets
+        for namespace, v in rows:
+            if v.overlay_key is not None and v.overlay_generation is not None:
+                bucket, key, generation = buckets.plugins, v.overlay_key, v.overlay_generation
+            else:
+                bucket, key, generation = (
+                    buckets.quarantine,
+                    v.quarantine_key,
+                    v.quarantine_generation,
+                )
+            path = f"plugins/{_safe_part(namespace)}/{_safe_part(v.version)}.whl"
+            if not key.startswith(f"t/{tenant_id}/"):  # defence in depth: own prefix only
+                continue
+            try:
+                meta = await self.ctx.store.stat(bucket, key, generation=generation)
+            except NotFound:  # the quarantine lifecycle may have removed it
+                skipped.append({"path": path, "reason": "not found"})
+                continue
+            if meta.size > budget:
+                skipped.append(
+                    {"path": path, "reason": "export size limit", "size": meta.size,
+                     "sha256": v.upload_sha256}
+                )  # fmt: skip
+                continue
+            budget -= meta.size
+            async with archive.stream(path) as out:
+                start = 0
+                while start < meta.size:
+                    end = min(start + READ_CHUNK, meta.size) - 1
+                    out.write(
+                        await self.ctx.store.get(
+                            bucket, key, generation=meta.generation, byte_range=(start, end)
+                        )
+                    )
+                    start = end + 1
+        return skipped
 
 
 async def expire_exports(ctx: ServerContext, *, at: datetime) -> int:

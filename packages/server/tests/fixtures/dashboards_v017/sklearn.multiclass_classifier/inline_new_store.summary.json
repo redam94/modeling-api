@@ -1,0 +1,45 @@
+{
+ "tables": [
+  {
+   "columns": [
+    "store",
+    "sku",
+    "week",
+    "class",
+    "mean"
+   ],
+   "dims": [
+    "store",
+    "sku",
+    "week",
+    "class"
+   ],
+   "rows": [
+    [
+     "s_new",
+     "k0",
+     "2024-10-06",
+     "high",
+     0.03969086199108797
+    ],
+    [
+     "s_new",
+     "k0",
+     "2024-10-06",
+     "low",
+     0.7377533745199609
+    ],
+    [
+     "s_new",
+     "k0",
+     "2024-10-06",
+     "mid",
+     0.22255576348895123
+    ]
+   ],
+   "time_dim": "week",
+   "variable": "y_hat"
+  }
+ ],
+ "truncated": false
+}

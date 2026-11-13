@@ -148,4 +148,4 @@ the manifest does not use. Thus put only the images of the manifest in the parts
 - `dl.embed` on a collection needs `data.collection` (a sample). To use all images, use
   `dl.finetune_classifier` with `freeze: backbone`.
 
-Next: [Measure the effect of a change](causal-effects.md).
+Next: [How the platform measures the effect of a change](causal-effects.md).

@@ -1,14 +1,24 @@
 /**
  * The builder's palette: pipeline steps (by kind), models (by namespace), datasets and plots,
  * searchable. Drag an item onto the spec, or select it and press "Add" (the keyboard path).
+ *
+ * v0.18 (D4, D17): a "From your team" group lists the library's model recipes and prep presets
+ * (never ranked among the built-ins). Picking one and pressing "Add to the spec" asks the
+ * server to compile it (`:use`, a prep preset's slots filled from the columns the pipeline
+ * has at its end) and hands the result to the builder. "Add your own" sits at the foot.
  */
-import { Plus, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Plus, Search, Users } from "lucide-react";
+import { useId, useMemo, useState } from "react";
 
 import type { CatalogResponse, Dataset } from "@/api/types";
+import { ErrorNotice, Spinner } from "@/components/common";
+import { AddYourOwn } from "@/components/extend/add-your-own";
 import { Button } from "@/components/ui/button";
-import { Badge, Input } from "@/components/ui/primitives";
+import { Badge, Input, NativeSelect } from "@/components/ui/primitives";
 import { latestModels, latestSteps, pinnedUse } from "@/features/editor/spec-hints";
+import { teamItems } from "@/features/extend/team";
+import { useLibraryItemUse, useLibraryItems, useLibraryRevision } from "@/features/library/api";
+import { hasErrors, isPrepPresetDoc, KIND_LABEL, type Json, type LibraryItem, type LibraryUseResult, type Slot } from "@/features/library/types";
 import { cn } from "@/lib/utils";
 
 import { dragPayload, type PaletteItem, type PaletteKind } from "./dnd";
@@ -94,19 +104,42 @@ export const KIND_COLOR: Record<PaletteKind, string> = {
   plot: "var(--series-2)",
 };
 
+/** What the palette needs to put a team item into the spec (the visual builder supplies it). */
+export interface TeamUse {
+  /** Apply the compiled item (`spec_fragment` of a model recipe, `pipeline` of a prep preset). */
+  onUse: (item: LibraryItem, result: LibraryUseResult) => void;
+  /** Columns and dims at the end of the pipeline (a prep preset's slot choices). */
+  names: { vars: string[]; dims: string[] };
+  /** The spec's dataset (`dataset://…`), for the server's checks. */
+  dataset: string | null;
+}
+
 export function SpecPalette({
   catalog,
   datasets,
   onAdd,
   disabled,
+  team,
 }: {
   catalog: CatalogResponse | null;
   datasets: Dataset[];
   onAdd: (item: PaletteItem) => void;
   disabled?: boolean | undefined;
+  team?: TeamUse | undefined;
 }) {
   const [q, setQ] = useState("");
-  const [picked, setPicked] = useState<string | null>(null);
+  const [picked, setPickedRaw] = useState<string | null>(null);
+  const [teamPick, setTeamPickRaw] = useState<string | null>(null);
+  const setPicked = (key: string | null) => {
+    setPickedRaw(key);
+    setTeamPickRaw(null);
+  };
+  const setTeamPick = (id: string | null) => {
+    setTeamPickRaw(id);
+    setPickedRaw(null);
+  };
+  const teamList = useTeamPalette(Boolean(team));
+  const teamItem = teamPick ? (teamList.data ?? []).find((i) => i.id === teamPick) : undefined;
   const groups = useMemo(() => {
     const needle = q.trim().toLowerCase();
     const all = groupsOf(catalog, datasets);
@@ -163,9 +196,12 @@ export function SpecPalette({
             </ul>
           </details>
         ))}
+        {team ? <TeamGroup q={q} picked={teamPick} onPick={(id) => setTeamPick(id)} /> : null}
         {groups.length === 0 ? <p className="px-2 text-sm text-muted-foreground">{q ? `No item matches “${q}”. Type a different word.` : "The app gets the catalog…"}</p> : null}
       </div>
-      {current ? (
+      {team && teamItem ? (
+        <TeamItemPanel key={teamItem.id} item={teamItem} team={team} disabled={disabled} />
+      ) : current ? (
         <div className="grid gap-2 rounded-lg border bg-card p-3">
           <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
             {current.title}
@@ -181,6 +217,152 @@ export function SpecPalette({
       ) : (
         <p className="text-xs text-muted-foreground">Drag an item to the spec. Or select the item and click Add.</p>
       )}
+      {team ? <AddYourOwn kind="step" variant="compact" headingLevel={3} /> : null}
     </section>
+  );
+}
+
+// ----------------------------------------------------------------------------- from your team
+
+const TEAM_KINDS: ReadonlySet<LibraryItem["kind"]> = new Set(["model_recipe", "prep_preset"]);
+
+/** The team's model recipes and prep presets (non-archived) that match `q`. */
+export function teamPaletteItems(items: readonly LibraryItem[], q: string): LibraryItem[] {
+  const needle = q.trim().toLowerCase();
+  return teamItems(items)
+    .filter((i) => TEAM_KINDS.has(i.kind))
+    .filter((i) => !needle || [i.title, i.name, i.summary ?? "", ...(i.tags ?? [])].some((t) => t.toLowerCase().includes(needle)));
+}
+
+function useTeamPalette(enabled: boolean) {
+  const items = useLibraryItems({}, { enabled });
+  return items;
+}
+
+function TeamGroup({ q, picked, onPick }: { q: string; picked: string | null; onPick: (id: string) => void }) {
+  const items = useTeamPalette(true);
+  const list = useMemo(() => teamPaletteItems(items.data ?? [], q), [items.data, q]);
+  if (!list.length) return null;
+  return (
+    <details open={Boolean(q) || picked !== null} className="rounded-md" role="listitem">
+      <summary className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium hover:bg-accent" title="Model recipes and prep presets your team made in Make your own.">
+        <Users aria-hidden className="size-3.5 text-highlight-ink" />
+        From your team
+        <span className="ml-auto text-xs text-muted-foreground">{list.length}</span>
+      </summary>
+      <ul className="grid grid-cols-[minmax(0,1fr)] gap-0.5 pb-1">
+        {list.map((i) => (
+          <li key={i.id}>
+            <button
+              type="button"
+              onClick={() => onPick(i.id)}
+              aria-pressed={picked === i.id}
+              data-palette={`team:${i.id}`}
+              title={i.summary || i.title}
+              className={cn("flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-sm hover:bg-accent", picked === i.id && "bg-accent text-accent-foreground")}
+            >
+              <span className="min-w-0 flex-1 truncate">{i.title}</span>
+              <span className="shrink-0 text-[10px] font-semibold text-muted-foreground">{i.kind === "model_recipe" ? "Model" : "Prep"}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
+/** A slot's value from the picker (a list for `var_list`). */
+export function slotChoice(slot: Slot, value: string | string[] | undefined): Json | undefined {
+  if (slot.kind === "var_list") return Array.isArray(value) && value.length ? value : undefined;
+  return typeof value === "string" && value ? value : undefined;
+}
+
+function SlotField({ name, slot, names, value, onChange }: { name: string; slot: Slot; names: TeamUse["names"]; value: string | string[] | undefined; onChange: (v: string | string[]) => void }) {
+  const id = useId();
+  const options = slot.kind === "dim" ? names.dims : names.vars;
+  if (slot.kind === "var_list") {
+    const chosen = Array.isArray(value) ? value : [];
+    return (
+      <fieldset className="grid gap-1">
+        <legend className="text-xs font-medium [overflow-wrap:anywhere]">{slot.label || name}</legend>
+        <div className="grid max-h-28 gap-0.5 overflow-y-auto">
+          {options.map((o) => (
+            <label key={o} className="flex items-center gap-1.5 text-xs">
+              <input type="checkbox" checked={chosen.includes(o)} onChange={(e) => onChange(e.target.checked ? [...chosen, o] : chosen.filter((x) => x !== o))} />
+              <span className="font-mono">{o}</span>
+            </label>
+          ))}
+          {!options.length ? <span className="text-xs text-muted-foreground">Set the dataset first.</span> : null}
+        </div>
+      </fieldset>
+    );
+  }
+  return (
+    <div className="grid gap-1">
+      <label htmlFor={id} className="text-xs font-medium [overflow-wrap:anywhere]">
+        {slot.label || name}
+      </label>
+      <NativeSelect id={id} value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} className="h-8 text-xs">
+        <option value="">{slot.kind === "dim" ? "Pick a dimension" : "Pick a column"}</option>
+        {options.map((o) => (
+          <option key={o} value={o}>
+            {o}
+          </option>
+        ))}
+      </NativeSelect>
+    </div>
+  );
+}
+
+function TeamItemPanel({ item, team, disabled }: { item: LibraryItem; team: TeamUse; disabled?: boolean | undefined }) {
+  const revision = useLibraryRevision(item.kind === "prep_preset" ? item.id : undefined, item.latest_revision);
+  const use = useLibraryItemUse(item.id);
+  const [values, setValues] = useState<Record<string, string | string[]>>({});
+  const [issues, setIssues] = useState<NonNullable<LibraryUseResult["issues"]>>([]);
+  const doc = revision.data?.document;
+  const slots = item.kind === "prep_preset" && isPrepPresetDoc(doc) ? Object.entries(doc.slots ?? {}) : [];
+  const add = () => {
+    setIssues([]);
+    const filled: Record<string, Json> = {};
+    for (const [name, slot] of slots) {
+      const v = slotChoice(slot, values[name]);
+      if (v !== undefined) filled[name] = v;
+    }
+    use.mutate(
+      { slots: filled, exposed: {}, revision: item.latest_revision, ...(item.kind === "model_recipe" && team.dataset ? { dataset: team.dataset } : {}) },
+      {
+        onSuccess: (result) => {
+          if (hasErrors(result.issues)) setIssues(result.issues ?? []);
+          else team.onUse(item, result);
+        },
+      },
+    );
+  };
+  return (
+    <div className="grid gap-2.5 rounded-lg border bg-card p-3" data-testid="team-palette-item">
+      <div className="grid gap-0.5">
+        <span className="text-[10px] font-bold tracking-wide text-highlight-ink uppercase">From your team · {KIND_LABEL[item.kind]}</span>
+        <span className="text-sm font-medium [overflow-wrap:anywhere]">{item.title}</span>
+      </div>
+      {item.summary ? <p className="text-xs text-muted-foreground [overflow-wrap:anywhere]">{item.summary}</p> : null}
+      {item.kind === "prep_preset" && revision.isPending ? <Spinner /> : null}
+      {slots.map(([name, slot]) => (
+        <SlotField key={name} name={name} slot={slot} names={team.names} value={values[name]} onChange={(v) => setValues({ ...values, [name]: v })} />
+      ))}
+      {item.kind === "model_recipe" ? <p className="text-xs text-muted-foreground">Adds its steps and sets the model block. The model you have now is replaced.</p> : null}
+      {issues.length ? (
+        <ul role="alert" className="grid gap-1 text-xs text-destructive">
+          {issues
+            .filter((i) => (i.severity ?? "error") === "error")
+            .map((i, n) => (
+              <li key={`${i.pointer ?? ""}-${n}`}>{i.message}</li>
+            ))}
+        </ul>
+      ) : null}
+      {use.error ? <ErrorNotice error={use.error} title="The item was not added" /> : null}
+      <Button size="sm" className="justify-self-start" onClick={add} disabled={disabled || use.isPending || (item.kind === "prep_preset" && revision.isPending)}>
+        {use.isPending ? <Spinner /> : <Plus />} Add to the spec
+      </Button>
+    </div>
   );
 }

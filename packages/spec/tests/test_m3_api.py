@@ -37,7 +37,7 @@ def _resolve(name: str) -> type[BaseModel]:
 def test_the_served_table_is_m1_m2_m3_and_m3_is_additive() -> None:
     assert V03_ENDPOINTS == M1_ENDPOINTS + M2_ENDPOINTS
     assert api.V04_ENDPOINTS == V03_ENDPOINTS + M3_ENDPOINTS
-    # M3.5, M4, v0.11, v0.14, v0.15 and v0.16 are additive
+    # M3.5, M4, v0.11, v0.14, v0.15, v0.16, v0.17 and v0.18 are additive
     assert ENDPOINTS == (
         api.V04_ENDPOINTS
         + api.M35_ENDPOINTS
@@ -46,6 +46,10 @@ def test_the_served_table_is_m1_m2_m3_and_m3_is_additive() -> None:
         + api.V014_ENDPOINTS
         + api.V015_ENDPOINTS
         + api.V016_ENDPOINTS
+        + api.V017_ENDPOINTS
+        + api.V018_ENDPOINTS
+        + api.V019_ENDPOINTS
+        + api.V020_ENDPOINTS
     )
     assert ALL_ENDPOINTS == ENDPOINTS
     keys = [(e.method, e.path) for e in ALL_ENDPOINTS]

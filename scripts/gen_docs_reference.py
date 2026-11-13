@@ -6,6 +6,12 @@ Writes into ``docs/reference/generated/`` (git-ignored):
   app at a fixed width, so the page always matches the installed CLI;
 * ``server-settings.md`` - every ``mapi_server.settings.Settings`` field: its ``MAPI_*``
   variable, type, default and description;
+* ``extension-points.md`` - v0.18: the entry-point groups a plugin exports, the reserved and
+  built-in namespaces, the plugin node kinds and port types, the schema-safety limits, the
+  catalog diagnostic codes and the closed choices of the library documents, read from
+  ``mapi_spec`` and the loaders, so the page always matches the code; v0.19 adds the
+  uploaded plugins: namespaces, version states, archive limits, the file checks, the
+  ``/v1/plugins`` routes and their error codes (``mapi_spec.plugins``, ``V019_ENDPOINTS``);
 * ``openapi.json``       - a copy of the committed OpenAPI 3.1 document
   (``apps/web/openapi.json``) that the OpenAPI explorer page loads.
 
@@ -18,7 +24,7 @@ from __future__ import annotations
 
 import argparse
 import shutil
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from enum import Enum
 from pathlib import Path
 from typing import Any, Literal, get_args, get_origin
@@ -157,9 +163,360 @@ def settings_page() -> str:
     )
 
 
+# ------------------------------------------------------------------------ extension points
+
+# (group, what one entry point exports, id pattern, contract kit, `mapi plugin init --kind`)
+_GROUPS: tuple[tuple[str, str, str, str, str], ...] = (
+    (
+        "mapi.models",
+        "a model class or a list of them (`CustomModel`, `PyMCModel`, `SklearnModel`)",
+        "`<ns>.<name>`",
+        "`mapi_sdk.testing.check_model`",
+        "`model` (`--base` `custom`, `pymc` or `sklearn`)",
+    ),
+    (
+        "mapi.steps",
+        "a `Step` class or a list of them",
+        "`<ns>.<name>`",
+        "`mapi_sdk.testing.check_step`",
+        "`step`",
+    ),
+    (
+        "mapi.plots",
+        "a `@recipe` function or a list of them",
+        "`<ns>.<name>`",
+        "`mapi_plots.testing.check_recipe`",
+        "`recipe`",
+    ),
+    (
+        "mapi.workflow_nodes",
+        "a `NodeExport(contract, fn)` or a list of them (a `{id: fn}` dict is deprecated)",
+        "`<kind>.<ns>_<name>`, `contract.plugin == ns`",
+        "`mapi_workflows.kit.check_node`",
+        "`node`",
+    ),
+    (
+        "mapi.workflow_templates",
+        "a `TemplateCatalogEntry` or a list of them",
+        "`<ns>_<name>`",
+        "`mapi_workflows.kit.check_template`",
+        "`template`",
+    ),
+    (
+        "mapi.governance_checks",
+        "a mapping of check id to runner (operators; no scaffold)",
+        "a `GOVERNANCE_CHECKS` id",
+        "-",
+        "-",
+    ),
+)
+
+_DIAGNOSTICS: dict[str, str] = {
+    "load_error": "An entry point or one of its objects could not be imported or registered.",
+    "namespace_reserved": "The id uses a built-in or platform namespace.",
+    "id_collision": "The id and version are already registered; the first one stays.",
+    "schema_unsafe": "A settings or parameter schema had a keyword the platform removes.",
+    "about_incomplete": "The About card misses a field that the catalog shows.",
+    "node_contract_invalid": "A workflow node contract breaks a plugin rule.",
+    "template_invalid": "A workflow template does not validate against the known nodes.",
+    "deprecated": "The export uses an old form that still works (for example `{id: fn}`).",
+}
+
+
+def _codes(values: Iterable[Any]) -> str:
+    return ", ".join(f"`{getattr(v, 'value', v)}`" for v in sorted(values, key=str))
+
+
+def extension_points_page() -> str:
+    from typing import get_args
+
+    from mapi_sdk.registry import ENTRY_POINT_GROUPS
+    from mapi_spec import library, model_recipes, namespaces, prep_presets, schema_safety
+    from mapi_spec.catalog import (
+        CATALOG_DIAGNOSTICS_MAX,
+        DIAGNOSTICS_PER_DISTRIBUTION_MAX,
+        DiagnosticCode,
+    )
+    from mapi_spec.workflow_nodes import PLUGIN_NODE_KINDS, PortType
+    from mapi_workflows.runtime.governance import CHECK_ENTRY_POINT_GROUP
+    from mapi_workflows.runtime.nodes import TEMPLATE_ENTRY_POINT_GROUP
+
+    groups = [g[0] for g in _GROUPS]
+    known = {*ENTRY_POINT_GROUPS, TEMPLATE_ENTRY_POINT_GROUP, CHECK_ENTRY_POINT_GROUP}
+    assert known <= {*groups, "mapi.workflow_nodes"}, known - set(groups)
+    assert set(get_args(DiagnosticCode)) == set(_DIAGNOSTICS), set(get_args(DiagnosticCode))
+
+    lines = [
+        HEADER + "# Extension points\n",
+        "Generated from `mapi_spec` and the plugin loaders by `scripts/gen_docs_reference.py`. "
+        "The [Extend](../../extend/index.md) pages explain each item with examples; "
+        "[Develop with Python](../../extend/develop/index.md) has the workflow.\n",
+        "## Entry-point groups\n",
+        "A plugin distribution registers its objects through these groups in its "
+        '`pyproject.toml` (`[project.entry-points."<group>"]`). Each entry point names one '
+        "module attribute, so a broken model never hides your plots or workflow nodes. "
+        "`mapi plugin validate` and `mapi plugin doctor` read the same groups.\n",
+        "| Group | One entry point exports | Id | Contract kit | `mapi plugin init --kind` |",
+        "|---|---|---|---|---|",
+    ]
+    lines += [f"| `{g}` | {what} | {ids} | {kit} | {kind} |" for g, what, ids, kit, kind in _GROUPS]
+    lines += [
+        "",
+        "## Namespaces\n",
+        "Every id lives in one namespace: `<ns>.<name>` for models, steps and recipes, "
+        '`<kind>.<ns>_<name>` for workflow nodes (with `contract.plugin = "<ns>"`) and '
+        "`<ns>_<name>` for workflow templates. A third-party plugin may not use these "
+        "namespaces (`mapi_spec.namespaces`):\n",
+        f"- **Built-in** (only the distributions that ship with the platform): "
+        f"{_codes(namespaces.BUILTIN_NAMESPACES)}.",
+        f"- **Reserved for the platform** (library items, uploads): "
+        f"{_codes(namespaces.PLATFORM_RESERVED)}, and every namespace that starts with "
+        f"{_codes(namespaces.RESERVED_PREFIXES)}.",
+        f"- **Built-in distributions:** {_codes(namespaces.BUILTIN_DISTRIBUTIONS)}. The "
+        "catalog sets `provider` (the distribution name) on every entry of any other "
+        'distribution; the app shows it as "Installed by your team".',
+        "",
+        "## Workflow nodes\n",
+        f"- Kinds a plugin node may have: {_codes(PLUGIN_NODE_KINDS)}. Never `branch`, "
+        "`compare`, `select`, `model` or `subworkflow` (they run in the control plane or "
+        "start fits).",
+        "- `runs_in` is `sandbox`. The runner refuses a job whose node version is not the "
+        "version of the installed contract (`NODE_UNKNOWN`).",
+        f"- Port types: {_codes(PortType)}.",
+        "",
+        "## Settings and parameter schemas\n",
+        "The control plane checks every JSON Schema that a plugin publishes before a form is "
+        "made from it (`mapi_spec.schema_safety`). Built-in and installed catalogs are "
+        "*stripped* (an unsafe keyword is removed, with a `schema_unsafe` diagnostic); "
+        "library documents are *refused*.\n",
+        "| Limit | Value |",
+        "|---|---|",
+        f"| Size of a schema | {schema_safety.SCHEMA_MAX_BYTES:,} B |",
+        f"| Size of a plot `settings_schema` after sanitizing | "
+        f"{schema_safety.SETTINGS_SCHEMA_MAX_BYTES:,} B |",
+        f"| Depth | {schema_safety.SCHEMA_MAX_DEPTH} |",
+        f"| Properties | {schema_safety.SCHEMA_MAX_PROPS} |",
+        f"| `enum` items | {schema_safety.ENUM_MAX_ITEMS} of at most "
+        f"{schema_safety.ENUM_ITEM_MAX_CHARS} characters |",
+        f"| `title`, `description` | plain text, at most {schema_safety.TEXT_MAX_CHARS} "
+        "characters |",
+        f"| `pattern` | at most {schema_safety.REGEX_MAX_LEN} characters; no back-references, "
+        "look-arounds, possessive or atomic groups, nested quantifiers or alternation inside "
+        f"a quantified group; `{{m,n}}` with n at most {schema_safety.REGEX_MAX_REPEAT} |",
+        f"| `format` | {_codes(schema_safety.ALLOWED_FORMATS)} |",
+        "| `$ref` | local `#/$defs/...` only, no cycles |",
+        f"| `x-ui-widget` | {_codes(schema_safety.UI_WIDGETS)} |",
+        f"| Other `x-ui-*` keywords | {_codes(schema_safety.UI_KEYWORDS - {'x-ui-widget'})} |",
+        "",
+        "## Catalog diagnostics\n",
+        "What the runner could not put into the catalog, or put there with a change. Tenant "
+        "admins see them in Catalog > Yours > Problems and through "
+        "`GET /v1/catalog/diagnostics`; `mapi plugin doctor` prints them. At most "
+        f"{CATALOG_DIAGNOSTICS_MAX} in all and {DIAGNOSTICS_PER_DISTRIBUTION_MAX} for each "
+        "distribution.\n",
+        "| Code | Meaning |",
+        "|---|---|",
+    ]
+    lines += [f"| `{code}` | {text} |" for code, text in _DIAGNOSTICS.items()]
+    lines += [
+        "",
+        "## Library documents (no code)\n",
+        "The four kinds an analyst makes in Make your own. Each is a JSON (or YAML) document "
+        "that pure `mapi_spec` code compiles to things the platform already runs.\n",
+        "| Kind | Document `kind` | Lineage label on what it makes |",
+        "|---|---|---|",
+        f"| Model recipe | `ModelRecipe` | `{library.LABEL_MODEL}` |",
+        f"| Prep preset | `PrepPreset` | `{library.LABEL_PREP}` |",
+        "| Chart template | `ChartTemplate` | the plot's `provenance.author` |",
+        f"| Workflow template | `WorkflowTemplate` | `{library.LABEL_TEMPLATE}` |",
+        "",
+        f"- Document size: at most {library.LIBRARY_DOC_MAX_BYTES:,} B; a chart template's "
+        f"Vega-Lite spec at most {library.PLOT_SPEC_MAX_BYTES:,} B.",
+        f"- Items per tenant: {library.MAX_ITEMS_PER_TENANT}; revisions per item: "
+        f"{library.MAX_REVISIONS_PER_ITEM}.",
+        f"- A declarative model recipe compiles to `{model_recipes.DECLARATIVE_MODEL_ID}@"
+        f"{model_recipes.DECLARATIVE_MODEL_RANGE}`. Outcome families: "
+        f"{_codes(get_args(library.GlmFamily))}. Priors: "
+        f"{_codes(get_args(library.PriorDist))}. Signs: `any`, `positive`, `negative`. "
+        f"Transforms: {_codes(get_args(library.TransformUse))}. At most 3 groups, 16 "
+        "interactions and 64 terms.",
+        f'- A prep preset slot is a whole value `"{prep_presets.SLOT_PREFIX}<name>"` (or '
+        "an item of a list). Slot kinds: `var`, `var_list`, `dim`. A "
+        f"`{prep_presets.FORMULA_STEP_ID}` expression has at most "
+        f"{prep_presets.MAX_EXPR_CHARS} printable ASCII characters; the sandbox parses it "
+        "when the model is fitted.",
+        "",
+    ]
+    lines += uploaded_plugins_section()
+    return "\n".join(lines)
+
+
+# ------------------------------------------------------------------------ uploaded plugins
+
+_STATES: dict[str, str] = {
+    "uploaded": "The file is stored and hashed.",
+    "inspecting": "The file check (`plugin_inspect`) runs.",
+    "inspect_failed": "The file check found problems. The version is refused.",
+    "describing": "The test run (`plugin_describe`) runs.",
+    "kit_failed": "A test or a check of the exports failed.",
+    "kit_passed": "The checks passed. The uploader can use it (private use).",
+    "awaiting_approval": "The uploader asked for a review. The uploader can still use it.",
+    "approved": "A second tenant admin approved it. The tenant can use it.",
+    "rejected": "A tenant admin did not approve it.",
+    "yanked": "Withdrawn. No new run can use it.",
+    "purged": "The file is deleted. The row and the audit log stay.",
+}
+
+_INSPECT_CHECKS: dict[str, str] = {
+    "archive_size": "The wheel, or its total size after decompression, is too large.",
+    "member_count": "The wheel has too many files.",
+    "member_size": "One file is too large after decompression.",
+    "ratio": "A file, or the wheel, expands too much (a zip bomb).",
+    "path_unsafe": "A file name is absolute, has `..`, a backslash, NUL or is too long or deep.",
+    "link_member": "An entry is a symbolic link.",
+    "special_member": "An entry is a device, pipe or socket.",
+    "duplicate_name": "Two entries have the same name.",
+    "case_collision": "Two names differ only in case.",
+    "zip_structure": "The zip structure is not correct (overlaps, bad headers, data before "
+    "the first entry, ZIP64 not necessary).",
+    "encrypted": "A file is encrypted.",
+    "compression_method": "A file uses a compression method other than stored or deflate.",
+    "nested_archive": "The wheel holds another archive.",
+    "native_code": "The wheel holds compiled native code (by name or by magic bytes).",
+    "bytecode": "The wheel holds compiled Python bytecode or `__pycache__`.",
+    "pth_file": "The wheel holds a `.pth` file.",
+    "site_hook": "The wheel holds `sitecustomize`, `usercustomize`, an `.egg-link` or a "
+    "top-level `__main__.py`.",
+    "top_level_name": "The wheel has a top-level name other than the namespace package, or "
+    "the package hides a package of the base image.",
+    "namespace_package": "The namespace package has no `__init__.py`.",
+    "dist_name": "The distribution name is not the namespace with dashes, or is the name of "
+    "a package of the base image.",
+    "dist_info": "The `.dist-info` directory is missing, doubled or misnamed, or a metadata "
+    "file is missing.",
+    "wheel_tag": "The `WHEEL` file is not for pure Python 3 (`py3-none-any`, "
+    "`Root-Is-Purelib: true`).",
+    "data_dir": "The wheel has a `.data` directory.",
+    "entry_point_group": "An entry point group is not allowed, or there is no entry point.",
+    "entry_point_target": "An entry point target is not `module:attribute` in the namespace "
+    "package.",
+    "requirement_unlocked": "A requirement is not installed in the base image, or not in a "
+    "version that fits.",
+    "requirement_url": "A requirement is a URL or a path.",
+    "requires_python": "`Requires-Python` excludes the Python of the base image.",
+    "metadata_invalid": "`METADATA` or `entry_points.txt` cannot be read, or the version is "
+    "not the uploaded version.",
+    "text_unsafe": "A name has invisible, control or direction-changing characters.",
+    "sha_mismatch": "The file is not the file that was uploaded (sha256).",
+}
+
+
+def _cell(text: object) -> str:
+    """Plain text for a table cell (no pipes, no HTML)."""
+    out = str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    return out.replace("|", "\\|")
+
+
+def uploaded_plugins_section() -> list[str]:
+    """The v0.19 section of the extension points page (``#uploaded-plugins``)."""
+    from typing import get_args
+
+    from mapi_spec import plugins
+    from mapi_spec.api import V019_ENDPOINTS
+    from mapi_spec.errors import ERROR_INFO, PLUGIN_ERROR_CODES, ErrorCode
+
+    assert set(plugins.PLUGIN_VERSION_STATES) == set(_STATES), plugins.PLUGIN_VERSION_STATES
+    assert set(get_args(plugins.InspectCheck)) == set(_INSPECT_CHECKS)
+    limits = plugins.ArchiveLimits()
+    codes = sorted(
+        {c for e in V019_ENDPOINTS for c in e.errors if c.value.startswith("PLUGIN_")}
+        | {
+            ErrorCode.PLUGIN_UNAVAILABLE,
+            ErrorCode.UPLOADED_CODE_NOT_SHAREABLE,
+            ErrorCode.UNTRUSTED_PLACEMENT_UNAVAILABLE,
+            ErrorCode.REAUTH_REQUIRED,
+        },
+        key=lambda c: c.value,
+    )
+    assert not set(codes) & set(PLUGIN_ERROR_CODES)
+
+    lines = [
+        "## Uploaded plugins\n",
+        "v0.19. A tenant admin or a confirmed uploader uploads a pure-Python wheel "
+        "([Upload your own code](../../extend/upload.md)); a second tenant admin approves it "
+        "([Review uploaded code](../../extend/review-uploads.md)). Generated from "
+        "`mapi_spec.plugins` and `mapi_spec.api.V019_ENDPOINTS`.\n",
+        "### Namespaces and ids\n",
+        f"- Namespace: `t_<tenant code>_<short name>`, pattern `{plugins.UPLOAD_NAMESPACE_RE}`. "
+        f"Tenant code `{plugins.TENANT_CODE_RE}` (given by the platform); short name "
+        f"`{plugins.PLUGIN_SHORT_RE}` (no underscore).",
+        "- Ids: `<ns>.<name>` for models, steps and plot recipes, `<kind>.<ns>_<name>` for "
+        "workflow nodes and `<ns>_<name>` for workflow templates.",
+        "- Distribution name: the namespace with dashes (`t-k3vq7m-acme`); one top-level "
+        "package named the namespace.",
+        f"- Entry-point groups an upload may use: {_codes(plugins.PLUGIN_ENTRY_POINT_GROUPS)}.",
+        f"- Overlays mounted in one run: at most {plugins.OVERLAYS_MAX}.",
+        "",
+        "### Version states\n",
+        "| State | Meaning | Next states |",
+        "|---|---|---|",
+    ]
+    for state in plugins.PLUGIN_VERSION_STATES:
+        after = plugins.PLUGIN_TRANSITIONS[state]
+        mark = " (can run)" if state in plugins.MOUNTABLE_STATES else ""
+        lines.append(f"| `{state}`{mark} | {_STATES[state]} | {_codes(after) if after else '-'} |")
+    lines += [
+        "",
+        "### Archive limits\n",
+        "Defaults; the operator changes them with the settings in "
+        "[Uploaded code](../../operations/uploaded-code.md#limits).\n",
+        "| Limit | Value |",
+        "|---|---|",
+        f"| Wheel size | {limits.max_bytes:,} B |",
+        f"| Total size after decompression | {limits.max_uncompressed:,} B |",
+        f"| One file after decompression | {limits.max_member:,} B |",
+        f"| Files | {limits.max_members:,} |",
+        f"| Compression ratio | {limits.max_ratio} |",
+        f"| Path depth | {limits.max_depth} |",
+        f"| Path length | {limits.max_path} characters |",
+        f"| `describe.json` | {plugins.DESCRIBE_MAX_BYTES:,} B |",
+        f"| `inspection.json` | {plugins.INSPECTION_MAX_BYTES:,} B |",
+        "",
+        "### File checks\n",
+        "`plugin_inspect` reads the wheel as an archive and imports nothing. Each problem has "
+        "one of these `check` values (`InspectProblem.check`).\n",
+        "| Check | The wheel is refused when |",
+        "|---|---|",
+    ]
+    lines += [f"| `{c}` | {_INSPECT_CHECKS[c]} |" for c in get_args(plugins.InspectCheck)]
+    lines += [
+        "",
+        "### Routes\n",
+        "| Method | Path | Success | Errors | Summary |",
+        "|---|---|---|---|---|",
+    ]
+    for e in V019_ENDPOINTS:
+        errors = ", ".join(f"`{c.value}`" for c in e.errors) or "-"
+        lines.append(f"| `{e.method}` | `{e.path}` | {e.success} | {errors} | {_cell(e.summary)} |")
+    lines += [
+        "",
+        "### Error codes\n",
+        "Plugin code can never raise these codes itself.\n",
+        "| Code | Status | Title |",
+        "|---|---|---|",
+    ]
+    lines += [f"| `{c.value}` | {ERROR_INFO[c].status} | {ERROR_INFO[c].title} |" for c in codes]
+    lines.append("")
+    return lines
+
+
 # ---------------------------------------------------------------------------------- driver
 
-PAGES = {"cli-reference.md": cli_page, "server-settings.md": settings_page}
+PAGES = {
+    "cli-reference.md": cli_page,
+    "server-settings.md": settings_page,
+    "extension-points.md": extension_points_page,
+}
 
 
 def generate(out: Path = OUT) -> list[Path]:

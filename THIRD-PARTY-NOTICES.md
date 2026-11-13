@@ -190,7 +190,7 @@ Shipped in the runner, worker, API and GCS-shim images (`uv.lock`).
 | `zarr` | 3.4.1 | MIT |
 | `zipp` | 4.1.1 | MIT |
 
-## JavaScript packages (244)
+## JavaScript packages (248)
 
 Bundled into the web image (`apps/web`, `apps/plot-sandbox`; `pnpm-lock.yaml`).
 
@@ -341,6 +341,7 @@ Bundled into the web image (`apps/web`, `apps/plot-sandbox`; `pnpm-lock.yaml`).
 | `fast-json-patch` | 3.1.1 | MIT |
 | `find-replace` | 5.0.2 | MIT |
 | `flatbuffers` | 25.9.23 | Apache-2.0 |
+| `framer-motion` | 12.43.0 | MIT |
 | `get-caller-file` | 2.0.5 | ISC |
 | `get-east-asian-width` | 1.7.0 | MIT |
 | `get-nonce` | 1.0.1 | MIT |
@@ -359,6 +360,9 @@ Bundled into the web image (`apps/web`, `apps/plot-sandbox`; `pnpm-lock.yaml`).
 | `monaco-types` | 0.1.2 | MIT |
 | `monaco-worker-manager` | 2.0.1 | MIT |
 | `monaco-yaml` | 5.5.1 | MIT |
+| `motion-dom` | 12.43.0 | MIT |
+| `motion-utils` | 12.39.0 | MIT |
+| `motion` | 12.43.0 | MIT |
 | `openapi-fetch` | 0.17.0 | MIT |
 | `openapi-typescript-helpers` | 0.1.0 | MIT |
 | `path-browserify` | 1.0.1 | MIT |
@@ -2836,6 +2840,35 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ~~~
 
+### framer-motion 12.43.0
+
+Used by `framer-motion` 12.43.0.
+
+<!-- licence: js:framer-motion@12.43.0 -->
+~~~text
+The MIT License (MIT)
+
+Copyright (c) 2018 Framer B.V.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+~~~
+
 ### get-caller-file 2.0.5
 
 Used by `get-caller-file` 2.0.5.
@@ -3306,6 +3339,35 @@ NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPO
 NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES
 OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+~~~
+
+### motion-dom 12.43.0
+
+Used by `motion-dom` 12.43.0, `motion-utils` 12.39.0, `motion` 12.43.0.
+
+<!-- licence: js:motion-dom@12.43.0 js:motion-utils@12.39.0 js:motion@12.43.0 -->
+~~~text
+The MIT License (MIT)
+
+Copyright (c) 2024 [Motion](https://motion.dev) B.V.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ~~~
 
 ### openapi-fetch 0.17.0

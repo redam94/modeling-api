@@ -1,23 +1,33 @@
-# Expert plugins and MCP <span class="mapi-badge mapi-badge--soon">planned</span>
+# Plugin upload, dashboard chat and MCP <span class="mapi-badge">v0.19</span> <span class="mapi-badge">v0.20</span>
 
-!!! abstract "Status: planned, no release number yet"
-    v0.4 opened the hosted platform to declarative specs and built-in models. v0.5 added
-    workflows, governance, the explorers and budget optimisation in the sandbox
-    ([what's new](../whats-new-0.5.md)). The plan before v0.5 put this work in v0.6 (M4).
-    The releases v0.6 to v0.15 gave other features: the spec builder, scientific models, tree
-    datasets (M4), the science gallery (M5), run tracking, the MMM pack, causal models, run
-    comparison, image data and deep learning. Thus the items on this page are not done yet. With them, **allow-listed experts can upload their own model plugins**. AI
-    assistants and agents also get a curated **MCP server**. Simulation-based calibration
-    becomes a single parent run. Sweeps are workflows with a `search.grid` node (v0.14
-    retired the `Sweep` document). Public code upload for all users comes after these
-    items, with its own controls (see the [roadmap](index.md#after-v06)).
+!!! abstract "Status: delivered. v0.18 delivered the first tiers, v0.19 the upload, and v0.20 the chat and MCP"
+    This page keeps the plan as it was written. The pages that it links describe what the
+    platform does now. v0.18 made the platform yours in tiers
+    ([what's new](../whats-new-0.18.md)):
 
-## Planned for v0.17 { #planned-for-v017 }
+    1. **No code, for every analyst** (delivered): model recipes, prep presets, chart
+       templates and team workflow templates in [Make your own](../extend/index.md). They are
+       data that trusted code compiles, so they need no sandbox for tenant code.
+    2. **Python plugins on a stack you run** (delivered): scaffolds and contract kits for
+       models, steps, plot recipes, workflow nodes and workflow templates, and three ways to
+       [run them on your stack](../extend/develop/run-on-your-stack.md).
+    3. **Upload to a shared deployment** (delivered in v0.19,
+       [what's new](../whats-new-0.19.md)): tenant admins and verified users upload a plugin.
+       The platform checks it in the sandbox, and a second person approves it before the
+       whole tenant can use it. The public tier stays blocked.
+       [Upload your own code](../extend/upload.md).
+
+    The dashboard chat and the MCP server, planned for v0.18 before, are delivered in v0.20.
+
+## Delivered in v0.20: dashboard chat and MCP { #planned-for-v020 }
+
+<span id="planned-for-v018"></span>
 
 v0.16 shipped client dashboards with a read-only tool surface
-(`mapi_spec.dashboard_tools.DASHBOARD_TOOLS`: `get_dashboard`, `get_latest_readout`,
-`list_readouts`, `get_readout`, `compare_readouts`, `get_channel`, `explain_metric` and
-`evaluate_whatif`). The member, client and share routes already call these tools. v0.17 adds:
+(`mapi_spec.dashboard_tools.DASHBOARD_TOOLS`). v0.17 made dashboards work for any model type
+and added six tools (`list_panels`, `get_panel`, `get_accuracy`, `list_inputs`,
+`get_prediction` and `get_batch_summary`), 14 in all. The member, client and share routes
+already call these tools. v0.20 adds ([what's new](../whats-new-0.20.md)):
 
 - **A chat explainer on a dashboard.** A Gemini flash-class model answers questions about a
   dashboard in plain words. The control plane is the proxy. The API keys stay on the server,
@@ -29,14 +39,17 @@ v0.16 shipped client dashboards with a read-only tool surface
 - **Spend caps for each dashboard.** The chat has its own limits, as the exact results of
   v0.16 have.
 
-See [Client dashboards: the tool surface](../concepts/client-dashboards.md#tools).
+See [Ask about your dashboard](../guides/ask-about-your-dashboard.md),
+[Connect a chat tool with MCP](../guides/connect-a-chat-tool-with-mcp.md) and
+[Client dashboards: the tool surface](../concepts/client-dashboards.md#tools).
 
-## Plugin upload for allow-listed experts
+## Delivered in v0.19: plugin upload { #plugin-upload-v019 }
 
-Now, a data scientist can run their own `PyMCModel` or `SklearnModel` only on a deployment
-that they control. They install it into the environment of the runner. This work makes it a
-product feature of a shared deployment. It is available to tenants that an operator put on
-the allow list:
+From v0.18, a developer could run their own plugin only on a deployment that they control
+([three ways](../extend/develop/run-on-your-stack.md)). v0.19 made upload a product
+feature of a shared deployment, for tenant admins and verified users, with a second person who
+approves. [Upload your own code](../extend/upload.md) describes the released flow. The plan
+was:
 
 ```mermaid
 flowchart LR
@@ -48,8 +61,9 @@ flowchart LR
 ```
 
 - **Overlays, not images.** The platform builds a plugin into a hash-pinned overlay on top
-  of one base-image version. The overlay has the source and wheels that were resolved
-  before, including native wheels from a curated mirror. Runs never install software.
+  of one base-image version. The overlay has the source and the wheels that were resolved
+  before, from a curated mirror. The first version takes pure Python packages only. Runs
+  never install software.
 - **The contract kit runs on upload.** The kit does the same checks as `mapi plugin test`
   on your computer. These checks decide if a version becomes runnable. The platform keeps
   the report with the version, next to its SBOM.
@@ -62,7 +76,11 @@ flowchart LR
 
 ## An MCP server for agents
 
-The MCP server gives a curated set of tools to AI assistants and agents. For example, the
+Status: v0.20 delivered an MCP server with the read-only dashboard tools
+([Connect a chat tool with MCP](../guides/connect-a-chat-tool-with-mcp.md)). The wider set
+of tools below is not delivered.
+
+The planned MCP server gives a curated set of tools to AI assistants and agents. For example, the
 tools list and describe models, score an endpoint, read a run and get a plot. The server
 returns each string from a user or a plugin as clearly delimited untrusted text. Thus a model
 name cannot put hidden instructions into an agent. Tokens and scopes work the same as for

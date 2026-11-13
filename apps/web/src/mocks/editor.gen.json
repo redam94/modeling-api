@@ -1,6 +1,6 @@
 {
  "catalog": {
-  "digest": "sha256:81f286bbc7d30abc714cf7e1282cd633b700f0787bceb1614c1e406118f4d222",
+  "digest": "sha256:f23335f5e6dddc46866ee0a85ee68e2b439c191e4b4a6623433c5583d293735c",
   "generated_at": "2026-10-14T09:00:00Z",
   "models": [
    {
@@ -356,6 +356,7 @@
        "dims": [
         "time"
        ],
+       "meaning": "effect",
        "units_of": "y"
       },
       "y_hat": {
@@ -937,12 +938,14 @@
      "id": "choice.multinomial_logit",
      "outputs": {
       "y_hat": {
+       "classes_dim": "product",
        "description": "Choice probability of each product per household and trip (predictive: one sampled choice, one-hot)",
        "dims": [
         "hh",
         "trip",
         "product"
        ],
+       "meaning": "class_probability",
        "units": "probability"
       }
      },
@@ -1172,11 +1175,13 @@
      "id": "dl.cnn_classifier",
      "outputs": {
       "y_hat": {
+       "classes_dim": "class",
        "description": "Probability of each class per image (sums to 1 over class)",
        "dims": [
         "class"
        ],
        "dims_of": "label",
+       "meaning": "class_probability",
        "units": "1"
       }
      },
@@ -1836,11 +1841,13 @@
      "id": "dl.finetune_classifier",
      "outputs": {
       "y_hat": {
+       "classes_dim": "class",
        "description": "Probability of each class per image (sums to 1 over class)",
        "dims": [
         "class"
        ],
        "dims_of": "label",
+       "meaning": "class_probability",
        "units": "1"
       }
      },
@@ -11567,11 +11574,13 @@
      "id": "sklearn.multiclass_classifier",
      "outputs": {
       "y_hat": {
+       "classes_dim": "class",
        "description": "Probability of each class (sums to 1 over class)",
        "dims": [
         "class"
        ],
        "dims_of": "y",
+       "meaning": "class_probability",
        "units": "1"
       }
      },
@@ -16292,6 +16301,7 @@
        "description": "Probability that the target equals the positive class",
        "dims": [],
        "dims_of": "y",
+       "meaning": "class_probability",
        "units": "1"
       }
      },
@@ -25555,6 +25565,427 @@
     "manifest": {
      "about": {
       "assumptions": [
+       "Effects add up on the scale of the model (after the link of the family)",
+       "Each driver has one effect for all rows, or one for each level of one group"
+      ],
+      "avoid_when": [
+       "The result depends on past values of itself (use a forecast model)",
+       "The effects change shape, for example they saturate (use a model with curves)"
+      ],
+      "data_needs": [
+       "One row for each observation, or a table over time and one group",
+       "A numeric result column and numeric driver columns"
+      ],
+      "difficulty": "intermediate",
+      "example": "Sales from price (expected to lower sales) and promotion (expected to raise them, more in some stores than in others). Each store gets its own baseline.",
+      "expert_notes": "Bayesian GLM (PyMC, NUTS) compiled from a declarative model recipe. Per-term priors: normal, Student-t, Laplace, half-normal, exponential, lognormal. A positive or negative sign truncates a symmetric prior at 0 (exact truncated density, log transform) or flips a positive prior. Up to three crossed, non-centred group intercepts; varying slopes by one group share that group's spread prior; up to 16 two-way interactions. Families as tabular.hierarchical_glm (normal, Student-t, Poisson, Bernoulli, negative binomial, zero-inflated Poisson and negative binomial, beta, gamma, ordinal). Group labels are encoded at fit; unseen labels are drawn from the fitted group spread.",
+      "fits": {
+       "data_shape": [
+        "table",
+        "panel"
+       ],
+       "goal": [
+        "explain_drivers",
+        "predict_values"
+       ]
+      },
+      "outputs": [
+       "The effect of each driver with its range and sign",
+       "Baselines for each group, and predictions for groups that the model did not see",
+       "Predictions for new rows"
+      ],
+      "references": [],
+      "related": [
+       "tabular.hierarchical_glm"
+      ],
+      "summary_plain": "Explains a number from the columns that you select, with the direction and size that you expect for each effect. Groups such as stores can have their own baseline and their own effects.",
+      "title": "Your own model, built from choices",
+      "typical_runtime": "minutes",
+      "use_when": [
+       "You know which columns drive the result and which way each one pushes it",
+       "You want to state what you expect before the data speaks, and see what changes",
+       "Groups such as stores or regions share most of their behaviour"
+      ]
+     },
+     "artifact_format": "zarr.zip/v1",
+     "capabilities": {
+      "checkpointable": true,
+      "contribution_scale": "none",
+      "decision": false,
+      "deterministic_given_seed": true,
+      "evidence": false,
+      "fast_score": false,
+      "identified_quantities": [],
+      "inference": "mcmc",
+      "loo_valid": true,
+      "owns": [],
+      "recommend": false,
+      "representation": "draws",
+      "score_modes": [
+       "counterfactual",
+       "evaluate",
+       "predict"
+      ]
+     },
+     "derived": [
+      {
+       "cache": "on_demand",
+       "description": "The effect of each term and interaction per row, on the scale of the linear predictor (before the link), per posterior draw",
+       "dims": [
+        "sample",
+        "term",
+        "obs"
+       ],
+       "name": "term_effects"
+      }
+     ],
+     "description": "A Bayesian GLM built from closed choices: a family, one prior and sign per term, up to three crossed group intercepts, slopes that vary by a group and two-way interactions. Group labels are encoded at fit; unseen groups are drawn from the fitted group spread.",
+     "fit_schema": {},
+     "id": "tabular.declarative_glm",
+     "outputs": {
+      "y_hat": {
+       "description": "Expected response (mean) or a predictive draw per observation",
+       "dims": [
+        "obs"
+       ],
+       "units_of": "y"
+      }
+     },
+     "plots": [
+      "core.ppc",
+      "core.convergence",
+      "core.posterior_forest",
+      "core.prior_posterior"
+     ],
+     "resources": {
+      "default_class": "S",
+      "gpu": false,
+      "min_class": "S"
+     },
+     "schema_template": {
+      "cases": [],
+      "params": {
+       "covariates": {
+        "default": [],
+        "required": false,
+        "type": "string_list"
+       }
+      },
+      "template": {
+       "dims": {
+        "obs": {
+         "kind": "integer",
+         "policy": "extend"
+        }
+       },
+       "layout": "long",
+       "vars": {
+        "y": {
+         "dims": [
+          "obs"
+         ],
+         "dtype": "float64",
+         "role": "target"
+        },
+        "{*covariates as v}": {
+         "dims": [
+          "obs"
+         ],
+         "dtype": "float64",
+         "role": "covariate"
+        }
+       }
+      }
+     },
+     "settings_schema": {
+      "$defs": {
+       "InteractionPrior": {
+        "additionalProperties": false,
+        "description": "A two-way interaction of two covariates (their values are multiplied).",
+        "properties": {
+         "a": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+          "title": "A",
+          "type": "string"
+         },
+         "b": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+          "title": "B",
+          "type": "string"
+         },
+         "prior": {
+          "$ref": "#/$defs/Prior",
+          "default": {
+           "dist": "normal",
+           "mu": 0.0,
+           "nu": null,
+           "sigma": 0.5
+          }
+         }
+        },
+        "required": [
+         "a",
+         "b"
+        ],
+        "title": "InteractionPrior",
+        "type": "object"
+       },
+       "Prior": {
+        "additionalProperties": false,
+        "description": "A prior from the closed set of :data:`PriorDist` with numeric parameters.",
+        "properties": {
+         "dist": {
+          "default": "normal",
+          "description": "Distribution of the prior",
+          "enum": [
+           "normal",
+           "student_t",
+           "laplace",
+           "half_normal",
+           "exponential",
+           "lognormal"
+          ],
+          "title": "Dist",
+          "type": "string"
+         },
+         "mu": {
+          "default": 0.0,
+          "description": "Location (log scale for lognormal; unused by half_normal and exponential)",
+          "maximum": 1000000.0,
+          "minimum": -1000000.0,
+          "title": "Mu",
+          "type": "number"
+         },
+         "nu": {
+          "anyOf": [
+           {
+            "exclusiveMinimum": 0,
+            "maximum": 1000,
+            "type": "number"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "description": "Degrees of freedom (student_t; default 3.0)",
+          "title": "Nu"
+         },
+         "sigma": {
+          "default": 1.0,
+          "description": "Scale",
+          "exclusiveMinimum": 0,
+          "maximum": 1000000.0,
+          "title": "Sigma",
+          "type": "number"
+         }
+        },
+        "title": "Prior",
+        "type": "object"
+       },
+       "TermPrior": {
+        "additionalProperties": false,
+        "description": "The prior, sign and optional varying group of one term.",
+        "properties": {
+         "dist": {
+          "default": "normal",
+          "description": "Distribution of the prior",
+          "enum": [
+           "normal",
+           "student_t",
+           "laplace",
+           "half_normal",
+           "exponential",
+           "lognormal"
+          ],
+          "title": "Dist",
+          "type": "string"
+         },
+         "mu": {
+          "default": 0.0,
+          "description": "Location (log scale for lognormal; unused by half_normal and exponential)",
+          "maximum": 1000000.0,
+          "minimum": -1000000.0,
+          "title": "Mu",
+          "type": "number"
+         },
+         "nu": {
+          "anyOf": [
+           {
+            "exclusiveMinimum": 0,
+            "maximum": 1000,
+            "type": "number"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "description": "Degrees of freedom (student_t; default 3.0)",
+          "title": "Nu"
+         },
+         "sigma": {
+          "default": 1.0,
+          "description": "Scale",
+          "exclusiveMinimum": 0,
+          "maximum": 1000000.0,
+          "title": "Sigma",
+          "type": "number"
+         },
+         "sign": {
+          "default": "any",
+          "description": "Allowed sign of the population effect",
+          "enum": [
+           "any",
+           "positive",
+           "negative"
+          ],
+          "title": "Sign",
+          "type": "string"
+         },
+         "varies_by": {
+          "anyOf": [
+           {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+            "type": "string"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "description": "A group in which the slope varies (partially pooled)",
+          "title": "Varies By"
+         }
+        },
+        "title": "TermPrior",
+        "type": "object"
+       }
+      },
+      "additionalProperties": false,
+      "description": "Settings of ``tabular.declarative_glm`` (the JSON that ``declarative_settings``\nwrites; every list and mapping is bounded).",
+      "properties": {
+       "covariates": {
+        "default": [],
+        "description": "Term variables over obs, in term order",
+        "items": {
+         "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+         "type": "string"
+        },
+        "maxItems": 64,
+        "title": "Covariates",
+        "type": "array"
+       },
+       "family": {
+        "default": "normal",
+        "description": "Likelihood family (its canonical link)",
+        "enum": [
+         "normal",
+         "student_t",
+         "poisson",
+         "bernoulli",
+         "negative_binomial",
+         "zero_inflated_poisson",
+         "zero_inflated_negative_binomial",
+         "beta",
+         "gamma",
+         "ordinal"
+        ],
+        "title": "Family",
+        "type": "string"
+       },
+       "group_sigma": {
+        "default": {},
+        "description": "Prior of the spread of each group's intercepts and slopes (default half_normal(1))",
+        "maxProperties": 3,
+        "patternProperties": {
+         "^[A-Za-z_][A-Za-z0-9_]{0,63}$": {
+          "$ref": "#/$defs/Prior"
+         }
+        },
+        "title": "Group Sigma",
+        "type": "object"
+       },
+       "groups": {
+        "default": [],
+        "description": "Groups with their own intercept (crossed)",
+        "items": {
+         "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+         "type": "string"
+        },
+        "maxItems": 3,
+        "title": "Groups",
+        "type": "array"
+       },
+       "interactions": {
+        "default": [],
+        "description": "Two-way interactions of covariates",
+        "items": {
+         "$ref": "#/$defs/InteractionPrior"
+        },
+        "maxItems": 16,
+        "title": "Interactions",
+        "type": "array"
+       },
+       "intercept": {
+        "$ref": "#/$defs/Prior",
+        "default": {
+         "dist": "normal",
+         "mu": 0.0,
+         "nu": null,
+         "sigma": 2.0
+        },
+        "description": "Prior of the intercept"
+       },
+       "n_categories": {
+        "anyOf": [
+         {
+          "maximum": 50,
+          "minimum": 2,
+          "type": "integer"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "Number of ordered categories (ordinal family only)",
+        "title": "N Categories"
+       },
+       "noise": {
+        "$ref": "#/$defs/Prior",
+        "default": {
+         "dist": "half_normal",
+         "mu": 0.0,
+         "nu": null,
+         "sigma": 1.0
+        },
+        "description": "Prior of the noise scale"
+       },
+       "terms": {
+        "default": {},
+        "description": "Prior, sign and varying group of each covariate",
+        "maxProperties": 64,
+        "patternProperties": {
+         "^[A-Za-z_][A-Za-z0-9_]{0,63}$": {
+          "$ref": "#/$defs/TermPrior"
+         }
+        },
+        "title": "Terms",
+        "type": "object"
+       }
+      },
+      "title": "DeclarativeGLMSettings",
+      "type": "object"
+     },
+     "version": "1.0.0"
+    },
+    "yanked": false
+   },
+   {
+    "manifest": {
+     "about": {
+      "assumptions": [
        "Groups are sufficiently similar to share information",
        "Effects are additive on the scale of the model"
       ],
@@ -25906,11 +26337,13 @@
      "id": "tabular.image_logistic",
      "outputs": {
       "y_hat": {
+       "classes_dim": "class",
        "description": "Probability of each class per image (sums to 1 over class)",
        "dims": [
         "class"
        ],
        "dims_of": "label",
+       "meaning": "class_probability",
        "units": "1"
       }
      },
@@ -29028,12 +29461,14 @@
      "id": "ts.gaussian_hmm",
      "outputs": {
       "state_prob": {
+       "classes_dim": "state",
        "description": "Hidden-state probabilities (predicted, or filtered in filter mode)",
        "dims": [
         "animal",
         "step",
         "state"
        ],
+       "meaning": "state_probability",
        "units": "probability"
       },
       "y_hat": {
@@ -31572,12 +32007,79 @@
      ]
     },
     "id": "causal.donor_weights",
+    "pack_label": "Causal inference",
     "persona": "both",
     "requires_groups": [
      "donor_weights"
     ],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "hdi_prob": {
+       "default": 0.9,
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0,
+       "title": "Hdi Prob",
+       "type": "number"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "top": {
+       "default": 15,
+       "description": "Donors to show; the rest are summed",
+       "maximum": 100,
+       "minimum": 1,
+       "title": "Top",
+       "type": "integer"
+      },
+      "unit": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "One treated unit (default: a panel per unit up to 4, else the first)",
+       "title": "Unit"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "DonorWeightSettings",
+     "type": "object"
+    },
     "summary": "The weight of each donor market in the synthetic copy of a treated market.",
+    "tags": [
+     "causal"
+    ],
     "title": "Donor weights",
     "version": "1.0.0",
     "yanked": false
@@ -31634,12 +32136,58 @@
      ]
     },
     "id": "causal.event_study",
+    "pack_label": "Causal inference",
     "persona": "both",
     "requires_groups": [
      "event_study"
     ],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "hdi_prob": {
+       "default": 0.9,
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0,
+       "title": "Hdi Prob",
+       "type": "number"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "EventStudySettings",
+     "type": "object"
+    },
     "summary": "The effect for each period before and after the start, with the reference period at zero.",
+    "tags": [
+     "causal"
+    ],
     "title": "Effect by period since the start",
     "version": "1.0.0",
     "yanked": false
@@ -31696,12 +32244,84 @@
      ]
     },
     "id": "causal.impact",
+    "pack_label": "Causal inference",
     "persona": "both",
     "requires_groups": [
      "impact"
     ],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "hdi_prob": {
+       "default": 0.9,
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0,
+       "title": "Hdi Prob",
+       "type": "number"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "panels": {
+       "items": {
+        "enum": [
+         "series",
+         "pointwise",
+         "cumulative"
+        ],
+        "type": "string"
+       },
+       "minItems": 1,
+       "title": "Panels",
+       "type": "array"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "unit": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "One treated unit (default: the sum over units)",
+       "title": "Unit"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "ImpactSettings",
+     "type": "object"
+    },
     "summary": "The actual values beside the values without the intervention, with the effect per period and the cumulative effect.",
+    "tags": [
+     "causal"
+    ],
     "title": "Effect of the intervention",
     "version": "1.0.0",
     "yanked": false
@@ -31756,12 +32376,71 @@
      ]
     },
     "id": "causal.pre_fit",
+    "pack_label": "Causal inference",
     "persona": "both",
     "requires_groups": [
      "impact"
     ],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "hdi_prob": {
+       "default": 0.9,
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0,
+       "title": "Hdi Prob",
+       "type": "number"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "unit": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "One treated unit (default: the sum over units)",
+       "title": "Unit"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "PreFitSettings",
+     "type": "object"
+    },
     "summary": "How well the values without the intervention follow the actual values in the period before the start.",
+    "tags": [
+     "causal"
+    ],
     "title": "Fit before the intervention",
     "version": "1.0.0",
     "yanked": false
@@ -31818,6 +32497,7 @@
      ]
     },
     "id": "core.calibration",
+    "pack_label": "Core",
     "persona": "expert",
     "requires_groups": [
      "observed_data"
@@ -31826,7 +32506,108 @@
      "draws",
      "point"
     ],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "bins": {
+       "default": 10,
+       "description": "Probability bins (binary targets)",
+       "maximum": 50,
+       "minimum": 3,
+       "title": "Bins",
+       "type": "integer"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "kind": {
+       "default": "auto",
+       "enum": [
+        "auto",
+        "continuous",
+        "binary"
+       ],
+       "title": "Kind",
+       "type": "string"
+      },
+      "n_sim": {
+       "default": 1000,
+       "description": "Simulations for the envelope",
+       "maximum": 10000,
+       "minimum": 100,
+       "title": "N Sim",
+       "type": "integer"
+      },
+      "observed_var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Observed Var"
+      },
+      "prob": {
+       "default": 0.95,
+       "description": "Envelope / band probability",
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0.5,
+       "title": "Prob",
+       "type": "number"
+      },
+      "seed": {
+       "default": 0,
+       "title": "Seed",
+       "type": "integer"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Var"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "CalibrationSettings",
+     "type": "object"
+    },
     "summary": "Checks if the predicted ranges and probabilities of the model agree with how often things happen in the data.",
+    "tags": [
+     "diagnostic"
+    ],
     "title": "Calibration",
     "version": "1.0.0",
     "yanked": false
@@ -31874,13 +32655,113 @@
      ]
     },
     "id": "core.confusion",
+    "pack_label": "Core",
     "persona": "both",
     "requires_groups": [],
     "requires_representation": [
      "draws",
      "point"
     ],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "height": {
+       "default": 240,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "normalize": {
+       "default": "none",
+       "description": "none: counts; true: the share of each observed class",
+       "enum": [
+        "none",
+        "true"
+       ],
+       "title": "Normalize",
+       "type": "string"
+      },
+      "observed_var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Observed Var"
+      },
+      "positive": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Observed value of the positive class (default: the larger value)",
+       "title": "Positive"
+      },
+      "threshold": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "const": "auto",
+         "type": "string"
+        }
+       ],
+       "default": 0.5,
+       "description": "Predicted probability at or above which a case is positive, or auto",
+       "title": "Threshold"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Var"
+      },
+      "width": {
+       "default": 260,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "ConfusionSettings",
+     "type": "object"
+    },
     "summary": "How many cases the model classifies correctly and wrongly: at a threshold on the predicted probability (binary), or by the most probable class (multiclass).",
+    "tags": [
+     "diagnostic"
+    ],
     "title": "Confusion matrix",
     "version": "1.0.0",
     "yanked": false
@@ -31933,6 +32814,7 @@
      ]
     },
     "id": "core.convergence",
+    "pack_label": "Core",
     "persona": "expert",
     "requires_groups": [
      "posterior"
@@ -31940,6 +32822,113 @@
     "requires_representation": [
      "draws"
     ],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "bins": {
+       "default": 20,
+       "maximum": 100,
+       "minimum": 4,
+       "title": "Bins",
+       "type": "integer"
+      },
+      "ess_per_chain": {
+       "default": 100.0,
+       "exclusiveMinimum": 0,
+       "maximum": 10000,
+       "title": "Ess Per Chain",
+       "type": "number"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "max_draws": {
+       "default": 400,
+       "maximum": 5000,
+       "minimum": 10,
+       "title": "Max Draws",
+       "type": "integer"
+      },
+      "max_elements": {
+       "default": 2000,
+       "maximum": 20000,
+       "minimum": 1,
+       "title": "Max Elements",
+       "type": "integer"
+      },
+      "max_parameters": {
+       "default": 40,
+       "maximum": 500,
+       "minimum": 1,
+       "title": "Max Parameters",
+       "type": "integer"
+      },
+      "max_traces": {
+       "default": 6,
+       "maximum": 24,
+       "minimum": 1,
+       "title": "Max Traces",
+       "type": "integer"
+      },
+      "rhat_threshold": {
+       "default": 1.01,
+       "exclusiveMinimum": 1.0,
+       "maximum": 2.0,
+       "title": "Rhat Threshold",
+       "type": "number"
+      },
+      "table_rows": {
+       "default": 15,
+       "maximum": 100,
+       "minimum": 1,
+       "title": "Table Rows",
+       "type": "integer"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "var_names": {
+       "anyOf": [
+        {
+         "items": {
+          "type": "string"
+         },
+         "maxItems": 200,
+         "type": "array"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Var Names"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "ConvergenceSettings",
+     "type": "object"
+    },
     "summary": "R-hat and ESS for each parameter, a table of the worst parameters, and trace and rank plots.",
     "title": "Sampler convergence",
     "version": "1.0.0",
@@ -31983,9 +32972,83 @@
      ]
     },
     "id": "core.counterfactual",
+    "pack_label": "Core",
     "persona": "both",
     "requires_groups": [],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "along": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Along"
+      },
+      "bins": {
+       "default": 30,
+       "maximum": 200,
+       "minimum": 5,
+       "title": "Bins",
+       "type": "integer"
+      },
+      "hdi_prob": {
+       "default": 0.9,
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0,
+       "title": "Hdi Prob",
+       "type": "number"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Var"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "CounterfactualSettings",
+     "type": "object"
+    },
     "summary": "The scenario and the baseline over time, and the distribution of the total difference.",
     "title": "Scenario vs baseline",
     "version": "1.0.0",
@@ -32028,9 +33091,121 @@
      ]
     },
     "id": "core.data_overview",
+    "pack_label": "Core",
     "persona": "both",
     "requires_groups": [],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "along": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Time-like dim (default: auto-detected)",
+       "title": "Along"
+      },
+      "facet": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Categorical dim to colour by (default: auto)",
+       "title": "Facet"
+      },
+      "group": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Group holding the data (default: auto)",
+       "title": "Group"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "max_levels": {
+       "default": 12,
+       "maximum": 64,
+       "minimum": 1,
+       "title": "Max Levels",
+       "type": "integer"
+      },
+      "max_rows": {
+       "default": 20000,
+       "maximum": 200000,
+       "minimum": 100,
+       "title": "Max Rows",
+       "type": "integer"
+      },
+      "max_vars": {
+       "default": 8,
+       "maximum": 32,
+       "minimum": 1,
+       "title": "Max Vars",
+       "type": "integer"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "vars": {
+       "anyOf": [
+        {
+         "items": {
+          "type": "string"
+         },
+         "maxItems": 32,
+         "type": "array"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Vars"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "DataOverviewSettings",
+     "type": "object"
+    },
     "summary": "Each variable over time for each group, the missing values and the size of each group.",
     "title": "Data overview",
     "version": "1.0.0",
@@ -32073,11 +33248,91 @@
      ]
     },
     "id": "core.decision_distribution",
+    "pack_label": "Core",
     "persona": "both",
     "requires_groups": [],
     "requires_representation": [
      "draws"
     ],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "candidate": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Dim enumerating decision options",
+       "title": "Candidate"
+      },
+      "hdi_prob": {
+       "default": 0.9,
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0,
+       "title": "Hdi Prob",
+       "type": "number"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "higher_is_better": {
+       "default": true,
+       "title": "Higher Is Better",
+       "type": "boolean"
+      },
+      "max_candidates": {
+       "default": 12,
+       "maximum": 64,
+       "minimum": 1,
+       "title": "Max Candidates",
+       "type": "integer"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Var"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "DecisionSettings",
+     "type": "object"
+    },
     "summary": "The distribution of a scalar decision objective, for each option when there is more than one.",
     "title": "Decision outcome",
     "version": "1.0.0",
@@ -32120,11 +33375,102 @@
      ]
     },
     "id": "core.decomposition",
+    "pack_label": "Core",
     "persona": "both",
     "requires_groups": [
      "contributions"
     ],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "along": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Along"
+      },
+      "component": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Component dim (default: auto)",
+       "title": "Component"
+      },
+      "hdi_prob": {
+       "default": 0.9,
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0,
+       "title": "Hdi Prob",
+       "type": "number"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "max_components": {
+       "default": 20,
+       "maximum": 100,
+       "minimum": 1,
+       "title": "Max Components",
+       "type": "integer"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "vars": {
+       "anyOf": [
+        {
+         "items": {
+          "type": "string"
+         },
+         "type": "array"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Variables to use (default: all)",
+       "title": "Vars"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "DecompositionSettings",
+     "type": "object"
+    },
     "summary": "Stacked contributions over time, and the total and the share of each component.",
     "title": "Decomposition",
     "version": "1.0.0",
@@ -32176,6 +33522,7 @@
      ]
     },
     "id": "core.energy",
+    "pack_label": "Core",
     "persona": "expert",
     "requires_groups": [
      "sample_stats"
@@ -32183,6 +33530,56 @@
     "requires_representation": [
      "draws"
     ],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "bfmi_threshold": {
+       "default": 0.3,
+       "description": "E-BFMI below this is a problem",
+       "exclusiveMinimum": 0,
+       "maximum": 2,
+       "title": "Bfmi Threshold",
+       "type": "number"
+      },
+      "bins": {
+       "default": 40,
+       "maximum": 200,
+       "minimum": 5,
+       "title": "Bins",
+       "type": "integer"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "EnergySettings",
+     "type": "object"
+    },
     "summary": "The energy of the sampler and its change between draws, and the E-BFMI of each chain against a threshold.",
     "title": "Sampler energy",
     "version": "1.0.0",
@@ -32229,9 +33626,109 @@
      ]
     },
     "id": "core.fit_vs_actual",
+    "pack_label": "Core",
     "persona": "both",
     "requires_groups": [],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "along": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Along"
+      },
+      "facet": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Facet"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "max_facets": {
+       "default": 12,
+       "maximum": 48,
+       "minimum": 1,
+       "title": "Max Facets",
+       "type": "integer"
+      },
+      "observed_var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Observed Var"
+      },
+      "point": {
+       "default": "median",
+       "enum": [
+        "median",
+        "mean"
+       ],
+       "title": "Point",
+       "type": "string"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Var"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "FitVsActualSettings",
+     "type": "object"
+    },
     "summary": "The predicted values against the actual values in a scatter plot, with the identity line.",
     "title": "Predicted vs actual",
     "version": "1.0.0",
@@ -32286,6 +33783,7 @@
      ]
     },
     "id": "core.loo_pit",
+    "pack_label": "Core",
     "persona": "expert",
     "requires_groups": [
      "log_likelihood"
@@ -32293,7 +33791,106 @@
     "requires_representation": [
      "draws"
     ],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "k_threshold": {
+       "default": 0.7,
+       "description": "Pareto k above which LOO fails",
+       "maximum": 1.0,
+       "minimum": 0.5,
+       "title": "K Threshold",
+       "type": "number"
+      },
+      "max_draws": {
+       "default": 2000,
+       "maximum": 20000,
+       "minimum": 100,
+       "title": "Max Draws",
+       "type": "integer"
+      },
+      "n_sim": {
+       "default": 1000,
+       "description": "Simulations for the envelope",
+       "maximum": 10000,
+       "minimum": 100,
+       "title": "N Sim",
+       "type": "integer"
+      },
+      "observed_var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Observed Var"
+      },
+      "prob": {
+       "default": 0.95,
+       "description": "Envelope probability",
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0.5,
+       "title": "Prob",
+       "type": "number"
+      },
+      "seed": {
+       "default": 0,
+       "title": "Seed",
+       "type": "integer"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "log_likelihood variable (default: the first)",
+       "title": "Var"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "LooPitSettings",
+     "type": "object"
+    },
     "summary": "Checks if the model predicts each observation well when that observation is left out, and shows where the leave-one-out estimate is not reliable.",
+    "tags": [
+     "diagnostic"
+    ],
     "title": "LOO-PIT and Pareto k",
     "version": "1.0.0",
     "yanked": false
@@ -32341,10 +33938,112 @@
      ]
     },
     "id": "core.loss_curve",
+    "pack_label": "Core",
     "persona": "expert",
     "requires_groups": [],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "along": {
+       "default": "step",
+       "title": "Along",
+       "type": "string"
+      },
+      "group": {
+       "default": "auto",
+       "enum": [
+        "auto",
+        "fit_history",
+        "metrics_history"
+       ],
+       "title": "Group",
+       "type": "string"
+      },
+      "height": {
+       "default": 220,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "log_y": {
+       "anyOf": [
+        {
+         "type": "boolean"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Log scale (default: when all values are > 0 and span > 50x)",
+       "title": "Log Y"
+      },
+      "max_points": {
+       "default": 2000,
+       "description": "Steps drawn per series",
+       "maximum": 20000,
+       "minimum": 20,
+       "title": "Max Points",
+       "type": "integer"
+      },
+      "smooth": {
+       "anyOf": [
+        {
+         "maximum": 100000,
+         "minimum": 1,
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Moving-average window (default: steps / 50)",
+       "title": "Smooth"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Var"
+      },
+      "width": {
+       "default": 560,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "LossCurveSettings",
+     "type": "object"
+    },
     "summary": "The loss of an iterative fit, such as ADVI, at each step, with a moving average. It shows if the fit converged.",
+    "tags": [
+     "diagnostic"
+    ],
     "title": "Loss curve",
     "version": "1.0.0",
     "yanked": false
@@ -32390,9 +34089,73 @@
      ]
     },
     "id": "core.model_comparison",
+    "pack_label": "Core",
     "persona": "expert",
     "requires_groups": [],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "ic": {
+       "default": "auto",
+       "description": "auto: use a precomputed 'comparison' group (e.g. PSIS-LOO from the runner) or else WAIC from each model's log_likelihood; waic: always compute WAIC",
+       "enum": [
+        "auto",
+        "waic"
+       ],
+       "title": "Ic",
+       "type": "string"
+      },
+      "model_dim": {
+       "default": "model",
+       "title": "Model Dim",
+       "type": "string"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "log_likelihood variable (default: first)",
+       "title": "Var"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "ComparisonSettings",
+     "type": "object"
+    },
     "summary": "The expected predictive accuracy (elpd) of each model, with standard errors.",
     "title": "Model comparison",
     "version": "1.0.0",
@@ -32446,6 +34209,7 @@
      ]
     },
     "id": "core.pair",
+    "pack_label": "Core",
     "persona": "expert",
     "requires_groups": [
      "posterior"
@@ -32453,7 +34217,82 @@
     "requires_representation": [
      "draws"
     ],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "bins": {
+       "default": 20,
+       "maximum": 80,
+       "minimum": 5,
+       "title": "Bins",
+       "type": "integer"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "max_draws": {
+       "default": 500,
+       "maximum": 4000,
+       "minimum": 20,
+       "title": "Max Draws",
+       "type": "integer"
+      },
+      "max_params": {
+       "default": 5,
+       "maximum": 8,
+       "minimum": 2,
+       "title": "Max Params",
+       "type": "integer"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "var_names": {
+       "anyOf": [
+        {
+         "items": {
+          "type": "string"
+         },
+         "maxItems": 200,
+         "type": "array"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Var Names"
+      },
+      "width": {
+       "default": 520,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "PairSettings",
+     "type": "object"
+    },
     "summary": "A grid of the draws of each pair of parameters, with a histogram of each parameter. Red points are divergent transitions.",
+    "tags": [
+     "diagnostic"
+    ],
     "title": "Pair plot",
     "version": "1.0.0",
     "yanked": false
@@ -32502,6 +34341,7 @@
      ]
     },
     "id": "core.posterior_forest",
+    "pack_label": "Core",
     "persona": "expert",
     "requires_groups": [
      "posterior"
@@ -32509,6 +34349,87 @@
     "requires_representation": [
      "draws"
     ],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "hdi_prob": {
+       "default": 0.94,
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0,
+       "title": "Hdi Prob",
+       "type": "number"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "inner_prob": {
+       "default": 0.5,
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0,
+       "title": "Inner Prob",
+       "type": "number"
+      },
+      "max_rows": {
+       "default": 60,
+       "maximum": 500,
+       "minimum": 1,
+       "title": "Max Rows",
+       "type": "integer"
+      },
+      "point": {
+       "default": "median",
+       "enum": [
+        "median",
+        "mean"
+       ],
+       "title": "Point",
+       "type": "string"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "var_names": {
+       "anyOf": [
+        {
+         "items": {
+          "type": "string"
+         },
+         "maxItems": 200,
+         "type": "array"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Var Names"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "ForestSettings",
+     "type": "object"
+    },
     "summary": "Point estimate, inner interval and HDI for every parameter element.",
     "title": "Posterior forest",
     "version": "1.0.0",
@@ -32561,6 +34482,7 @@
      ]
     },
     "id": "core.ppc",
+    "pack_label": "Core",
     "persona": "expert",
     "requires_groups": [
      "posterior_predictive",
@@ -32569,6 +34491,86 @@
     "requires_representation": [
      "draws"
     ],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "bins": {
+       "default": 20,
+       "maximum": 100,
+       "minimum": 4,
+       "title": "Bins",
+       "type": "integer"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "levels": {
+       "items": {
+        "type": "number"
+       },
+       "title": "Levels",
+       "type": "array"
+      },
+      "num_draws": {
+       "default": 50,
+       "maximum": 500,
+       "minimum": 1,
+       "title": "Num Draws",
+       "type": "integer"
+      },
+      "observed_var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Observed Var"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Var"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "PPCSettings",
+     "type": "object"
+    },
     "summary": "Predictive densities against the data, the PIT histogram and interval coverage.",
     "title": "Posterior predictive check",
     "version": "1.0.0",
@@ -32624,9 +34626,150 @@
      ]
     },
     "id": "core.ppc_fan",
+    "pack_label": "Core",
     "persona": "both",
     "requires_groups": [],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "along": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Along"
+      },
+      "columns": {
+       "default": 3,
+       "maximum": 8,
+       "minimum": 1,
+       "title": "Columns",
+       "type": "integer"
+      },
+      "facet": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Facet"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "levels": {
+       "items": {
+        "type": "number"
+       },
+       "title": "Levels",
+       "type": "array"
+      },
+      "max_facets": {
+       "default": 12,
+       "maximum": 48,
+       "minimum": 1,
+       "title": "Max Facets",
+       "type": "integer"
+      },
+      "max_rows": {
+       "default": 50000,
+       "maximum": 500000,
+       "minimum": 10,
+       "title": "Max Rows",
+       "type": "integer"
+      },
+      "observed_var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Observed variable (default: same name, or the only one)",
+       "title": "Observed Var"
+      },
+      "point": {
+       "default": "median",
+       "enum": [
+        "median",
+        "mean"
+       ],
+       "title": "Point",
+       "type": "string"
+      },
+      "split_at": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "number"
+        },
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Where training data ends (default: tree attr split_at, or auto)",
+       "title": "Split At"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Var"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "FanSettings",
+     "type": "object"
+    },
     "summary": "The model estimate over time with uncertainty bands, the actual values and the split line.",
     "title": "Fit and forecast",
     "version": "1.0.0",
@@ -32680,6 +34823,7 @@
      ]
     },
     "id": "core.prior_posterior",
+    "pack_label": "Core",
     "persona": "expert",
     "requires_groups": [
      "prior",
@@ -32688,6 +34832,89 @@
     "requires_representation": [
      "draws"
     ],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "little": {
+       "default": 0.8,
+       "description": "Overlap above which the data adds little",
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0,
+       "title": "Little",
+       "type": "number"
+      },
+      "max_cells": {
+       "default": 8,
+       "description": "Cells of one variable to show at most",
+       "maximum": 60,
+       "minimum": 1,
+       "title": "Max Cells",
+       "type": "integer"
+      },
+      "max_vars": {
+       "default": 12,
+       "description": "Variables to show at most",
+       "maximum": 60,
+       "minimum": 1,
+       "title": "Max Vars",
+       "type": "integer"
+      },
+      "points": {
+       "default": 80,
+       "description": "Density points per curve",
+       "maximum": 400,
+       "minimum": 20,
+       "title": "Points",
+       "type": "integer"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "var_names": {
+       "anyOf": [
+        {
+         "items": {
+          "type": "string"
+         },
+         "maxItems": 200,
+         "type": "array"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Var Names"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "PriorPosteriorSettings",
+     "type": "object"
+    },
     "summary": "The prior and the posterior of each parameter in one panel, sorted by how far the data moved the parameter.",
     "title": "Prior and posterior",
     "version": "1.0.0",
@@ -32738,11 +34965,86 @@
      ]
     },
     "id": "core.prior_predictive",
+    "pack_label": "Core",
     "persona": "expert",
     "requires_groups": [
      "prior_predictive"
     ],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "along": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Along"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "levels": {
+       "description": "Central interval levels to shade, e.g. [0.5, 0.9]",
+       "items": {
+        "type": "number"
+       },
+       "title": "Levels",
+       "type": "array"
+      },
+      "num_draws": {
+       "default": 50,
+       "maximum": 500,
+       "minimum": 1,
+       "title": "Num Draws",
+       "type": "integer"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Var"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "PriorPredictiveSettings",
+     "type": "object"
+    },
     "summary": "Datasets that the model can make before it sees data, compared with the observed data.",
     "title": "Prior predictive check",
     "version": "1.0.0",
@@ -32785,11 +35087,125 @@
      ]
     },
     "id": "core.rank_matrix",
+    "pack_label": "Core",
     "persona": "both",
     "requires_groups": [],
     "requires_representation": [
      "draws"
     ],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "descending": {
+       "default": true,
+       "description": "Rank 1 is the largest value",
+       "title": "Descending",
+       "type": "boolean"
+      },
+      "dim": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Dim"
+      },
+      "group": {
+       "default": "auto",
+       "enum": [
+        "auto",
+        "posterior",
+        "predictions",
+        "posterior_predictive"
+       ],
+       "title": "Group",
+       "type": "string"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "labels": {
+       "default": "auto",
+       "enum": [
+        "auto",
+        "always",
+        "never"
+       ],
+       "title": "Labels",
+       "type": "string"
+      },
+      "max_draws": {
+       "default": 4000,
+       "maximum": 20000,
+       "minimum": 50,
+       "title": "Max Draws",
+       "type": "integer"
+      },
+      "max_items": {
+       "default": 30,
+       "maximum": 60,
+       "minimum": 2,
+       "title": "Max Items",
+       "type": "integer"
+      },
+      "select": {
+       "anyOf": [
+        {
+         "additionalProperties": true,
+         "type": "object"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Select"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Var"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "RankMatrixSettings",
+     "type": "object"
+    },
     "summary": "The probability of each rank for each item, and the probability that one item is above another.",
     "title": "Rank matrix",
     "version": "1.0.0",
@@ -32834,9 +35250,109 @@
      ]
     },
     "id": "core.residuals_over_time",
+    "pack_label": "Core",
     "persona": "expert",
     "requires_groups": [],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "along": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Along"
+      },
+      "facet": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Facet"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "max_facets": {
+       "default": 12,
+       "maximum": 48,
+       "minimum": 1,
+       "title": "Max Facets",
+       "type": "integer"
+      },
+      "observed_var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Observed Var"
+      },
+      "point": {
+       "default": "median",
+       "enum": [
+        "median",
+        "mean"
+       ],
+       "title": "Point",
+       "type": "string"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Var"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "FitVsActualSettings",
+     "type": "object"
+    },
     "summary": "Actual minus predicted values over time. A pattern shows that the model does not capture some structure.",
     "title": "Residuals over time",
     "version": "1.0.0",
@@ -32884,11 +35400,135 @@
      ]
     },
     "id": "core.ridge",
+    "pack_label": "Core",
     "persona": "both",
     "requires_groups": [],
     "requires_representation": [
      "draws"
     ],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "descending": {
+       "default": true,
+       "title": "Descending",
+       "type": "boolean"
+      },
+      "dim": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Dim"
+      },
+      "group": {
+       "default": "auto",
+       "enum": [
+        "auto",
+        "posterior",
+        "predictions",
+        "posterior_predictive"
+       ],
+       "title": "Group",
+       "type": "string"
+      },
+      "hdi_prob": {
+       "default": 0.94,
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0,
+       "title": "Hdi Prob",
+       "type": "number"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "max_draws": {
+       "default": 4000,
+       "maximum": 20000,
+       "minimum": 50,
+       "title": "Max Draws",
+       "type": "integer"
+      },
+      "max_levels": {
+       "default": 30,
+       "maximum": 100,
+       "minimum": 2,
+       "title": "Max Levels",
+       "type": "integer"
+      },
+      "overlap": {
+       "default": 1.6,
+       "exclusiveMinimum": 0.2,
+       "maximum": 5.0,
+       "title": "Overlap",
+       "type": "number"
+      },
+      "points": {
+       "default": 100,
+       "maximum": 400,
+       "minimum": 20,
+       "title": "Points",
+       "type": "integer"
+      },
+      "select": {
+       "anyOf": [
+        {
+         "additionalProperties": true,
+         "type": "object"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Select"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Var"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "RidgeSettings",
+     "type": "object"
+    },
     "summary": "One curve of possible values for each level of a dimension, such as each group, sorted by the average.",
     "title": "Ridgeline",
     "version": "1.0.0",
@@ -32947,13 +35587,115 @@
      ]
     },
     "id": "core.roc_pr",
+    "pack_label": "Core",
     "persona": "both",
     "requires_groups": [],
     "requires_representation": [
      "draws",
      "point"
     ],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "classes": {
+       "anyOf": [
+        {
+         "items": {
+          "type": "string"
+         },
+         "maxItems": 12,
+         "minItems": 1,
+         "type": "array"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Multiclass: the classes to draw (default: the most frequent, at most 12)",
+       "title": "Classes"
+      },
+      "height": {
+       "default": 280,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "max_points": {
+       "default": 500,
+       "description": "Thresholds drawn per curve",
+       "maximum": 5000,
+       "minimum": 20,
+       "title": "Max Points",
+       "type": "integer"
+      },
+      "observed_var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Observed Var"
+      },
+      "positive": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Observed value of the positive class (default: the larger value)",
+       "title": "Positive"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Var"
+      },
+      "width": {
+       "default": 320,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "RocPrSettings",
+     "type": "object"
+    },
     "summary": "How well the predicted probabilities put the positive cases above the negative cases, at every threshold (binary or multiclass: one curve per class).",
+    "tags": [
+     "diagnostic"
+    ],
     "title": "ROC and precision-recall curves",
     "version": "1.0.0",
     "yanked": false
@@ -32996,9 +35738,136 @@
      ]
     },
     "id": "core.state_sequence",
+    "pack_label": "Core",
     "persona": "both",
     "requires_groups": [],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "along": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Along"
+      },
+      "group": {
+       "default": "auto",
+       "enum": [
+        "auto",
+        "posterior",
+        "predictions",
+        "posterior_predictive",
+        "summary",
+        "hidden_states",
+        "regimes",
+        "root"
+       ],
+       "title": "Group",
+       "type": "string"
+      },
+      "height": {
+       "default": 140,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "max_draws": {
+       "default": 4000,
+       "maximum": 20000,
+       "minimum": 10,
+       "title": "Max Draws",
+       "type": "integer"
+      },
+      "max_states": {
+       "default": 10,
+       "maximum": 30,
+       "minimum": 2,
+       "title": "Max States",
+       "type": "integer"
+      },
+      "max_times": {
+       "default": 2000,
+       "maximum": 20000,
+       "minimum": 10,
+       "title": "Max Times",
+       "type": "integer"
+      },
+      "observed_var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Observed Var"
+      },
+      "select": {
+       "anyOf": [
+        {
+         "additionalProperties": true,
+         "type": "object"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Select"
+      },
+      "state_dim": {
+       "default": "auto",
+       "description": "The state dim (auto: state, regime, ...)",
+       "title": "State Dim",
+       "type": "string"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Var"
+      },
+      "width": {
+       "default": 640,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "StateSequenceSettings",
+     "type": "object"
+    },
     "summary": "The data over time above the probability of each hidden state, such as a regime or a phase, at each time.",
     "title": "State sequence",
     "version": "1.0.0",
@@ -33045,10 +35914,93 @@
      ]
     },
     "id": "ml.confusion_epochs",
+    "pack_label": "Machine learning",
     "persona": "expert",
     "requires_groups": [],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "columns": {
+       "default": 3,
+       "maximum": 6,
+       "minimum": 1,
+       "title": "Columns",
+       "type": "integer"
+      },
+      "epochs": {
+       "anyOf": [
+        {
+         "items": {
+          "type": "integer"
+         },
+         "maxItems": 6,
+         "minItems": 1,
+         "type": "array"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Epochs to show (default: the first, best and last, and evenly spaced)",
+       "title": "Epochs"
+      },
+      "height": {
+       "default": 220,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "max_classes": {
+       "default": 20,
+       "description": "Other classes become (other)",
+       "maximum": 50,
+       "minimum": 2,
+       "title": "Max Classes",
+       "type": "integer"
+      },
+      "normalize": {
+       "default": "true",
+       "description": "true: the share of each true class (rows); none: counts",
+       "enum": [
+        "true",
+        "none"
+       ],
+       "title": "Normalize",
+       "type": "string"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "width": {
+       "default": 220,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "ConfusionEpochsSettings",
+     "type": "object"
+    },
     "summary": "The validation confusion matrix at some epochs of the training. It shows which classes the network learns first and which classes it mixes up.",
+    "tags": [
+     "ml",
+     "classification"
+    ],
     "title": "Confusion matrix over epochs",
     "version": "1.0.0",
     "yanked": false
@@ -33090,10 +36042,73 @@
      ]
     },
     "id": "ml.feature_importance",
+    "pack_label": "Machine learning",
     "persona": "expert",
     "requires_groups": [],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "feature_dim": {
+       "default": "feature",
+       "title": "Feature Dim",
+       "type": "string"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "source": {
+       "default": "auto",
+       "description": "Which group to plot (auto: importances, else coefficients)",
+       "enum": [
+        "auto",
+        "importance",
+        "coefficients"
+       ],
+       "title": "Source",
+       "type": "string"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "top": {
+       "default": 20,
+       "description": "Show at most this many features",
+       "maximum": 200,
+       "minimum": 1,
+       "title": "Top",
+       "type": "integer"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "FeatureImportanceSettings",
+     "type": "object"
+    },
     "summary": "The features that the tabular model uses most (importances or coefficients).",
+    "tags": [
+     "ml"
+    ],
     "title": "Feature importance",
     "version": "1.0.0",
     "yanked": false
@@ -33143,10 +36158,67 @@
      ]
     },
     "id": "ml.misclassified",
+    "pack_label": "Machine learning",
     "persona": "both",
     "requires_groups": [],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "columns": {
+       "default": 6,
+       "maximum": 12,
+       "minimum": 1,
+       "title": "Columns",
+       "type": "integer"
+      },
+      "height": {
+       "default": 160,
+       "description": "Height of each row of images",
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "max_items": {
+       "default": 24,
+       "description": "Show at most this many images",
+       "maximum": 32,
+       "minimum": 1,
+       "title": "Max Items",
+       "type": "integer"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "width": {
+       "default": 900,
+       "maximum": 2000,
+       "minimum": 200,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "MisclassifiedSettings",
+     "type": "object"
+    },
     "summary": "The validation images that the network classified wrong, with the true and the predicted class.",
+    "tags": [
+     "ml",
+     "classification",
+     "image"
+    ],
     "title": "Wrong validation images",
     "version": "1.0.0",
     "yanked": false
@@ -33193,10 +36265,120 @@
      ]
     },
     "id": "ml.training_curves",
+    "pack_label": "Machine learning",
     "persona": "both",
     "requires_groups": [],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "height": {
+       "default": 200,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "keys": {
+       "anyOf": [
+        {
+         "items": {
+          "type": "string"
+         },
+         "maxItems": 4,
+         "minItems": 1,
+         "type": "array"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Metrics to draw, one panel each (default: loss and accuracy or rmse)",
+       "title": "Keys"
+      },
+      "label": {
+       "default": "split",
+       "description": "The label dim whose levels get one colour each",
+       "title": "Label",
+       "type": "string"
+      },
+      "log_y": {
+       "anyOf": [
+        {
+         "type": "boolean"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Log y scale (default: when all values are > 0 and span > 50x)",
+       "title": "Log Y"
+      },
+      "max_points": {
+       "default": 2000,
+       "description": "Points drawn per series",
+       "maximum": 20000,
+       "minimum": 20,
+       "title": "Max Points",
+       "type": "integer"
+      },
+      "smooth": {
+       "anyOf": [
+        {
+         "maximum": 100000,
+         "minimum": 1,
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Moving-average window of dense series (default: n/50)",
+       "title": "Smooth"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "width": {
+       "default": 320,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      },
+      "x": {
+       "default": "step",
+       "description": "The x axis",
+       "enum": [
+        "step",
+        "epoch"
+       ],
+       "title": "X",
+       "type": "string"
+      }
+     },
+     "title": "TrainingCurvesSettings",
+     "type": "object"
+    },
     "summary": "The training and validation loss and accuracy of a network at each step. It shows if the training converged and if the model starts to overfit.",
+    "tags": [
+     "ml",
+     "diagnostic"
+    ],
     "title": "Training curves",
     "version": "1.0.0",
     "yanked": false
@@ -33245,12 +36427,64 @@
      ]
     },
     "id": "mmm.adstock",
+    "pack_label": "Marketing mix",
     "persona": "both",
     "requires_groups": [
      "adstock"
     ],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "facet": {
+       "default": false,
+       "description": "One panel per channel instead of colour",
+       "title": "Facet",
+       "type": "boolean"
+      },
+      "hdi_prob": {
+       "default": 0.9,
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0,
+       "title": "Hdi Prob",
+       "type": "number"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "AdstockSettings",
+     "type": "object"
+    },
     "summary": "How the effect of one unit of spend spreads over the periods after the spend, for each channel.",
+    "tags": [
+     "mmm"
+    ],
     "title": "Carry-over of the effect",
     "version": "1.0.0",
     "yanked": false
@@ -33298,6 +36532,7 @@
      ]
     },
     "id": "mmm.budget_plans",
+    "pack_label": "Marketing mix",
     "persona": "both",
     "requires_groups": [
      "plans"
@@ -33305,7 +36540,85 @@
     "requires_representation": [
      "draws"
     ],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "channel": {
+       "default": "channel",
+       "title": "Channel",
+       "type": "string"
+      },
+      "hdi_prob": {
+       "default": 0.9,
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0,
+       "title": "Hdi Prob",
+       "type": "number"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "outcome_var": {
+       "default": "outcome",
+       "title": "Outcome Var",
+       "type": "string"
+      },
+      "plan": {
+       "default": "plan",
+       "title": "Plan",
+       "type": "string"
+      },
+      "reference": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Plan to compare against (default: first)",
+       "title": "Reference"
+      },
+      "spend_var": {
+       "default": "spend",
+       "title": "Spend Var",
+       "type": "string"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "BudgetPlanSettings",
+     "type": "object"
+    },
     "summary": "The spend allocation and the expected outcome of different budget plans.",
+    "tags": [
+     "mmm"
+    ],
     "title": "Budget plan comparison",
     "version": "1.0.0",
     "yanked": false
@@ -33352,12 +36665,58 @@
      ]
     },
     "id": "mmm.cross_effects",
+    "pack_label": "Marketing mix",
     "persona": "both",
     "requires_groups": [
      "cross_effects"
     ],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "hdi_prob": {
+       "default": 0.9,
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0,
+       "title": "Hdi Prob",
+       "type": "number"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "CrossEffectsSettings",
+     "type": "object"
+    },
     "summary": "How a change in one outcome goes with a change in another outcome, for each pair that the model links.",
+    "tags": [
+     "mmm"
+    ],
     "title": "Effects between outcomes",
     "version": "1.0.0",
     "yanked": false
@@ -33404,12 +36763,120 @@
      ]
     },
     "id": "mmm.decomposition",
+    "pack_label": "Marketing mix",
     "persona": "both",
     "requires_groups": [
      "contributions"
     ],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "along": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Along"
+      },
+      "component": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": "channel",
+       "description": "Component dim",
+       "title": "Component"
+      },
+      "hdi_prob": {
+       "default": 0.9,
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0,
+       "title": "Hdi Prob",
+       "type": "number"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "max_components": {
+       "default": 20,
+       "maximum": 100,
+       "minimum": 1,
+       "title": "Max Components",
+       "type": "integer"
+      },
+      "outcome": {
+       "anyOf": [
+        {
+         "maxLength": 200,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Level of the outcome dim to show (default: attrs['primary_outcome'], else the first)",
+       "title": "Outcome"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "vars": {
+       "anyOf": [
+        {
+         "items": {
+          "type": "string"
+         },
+         "type": "array"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Variables to use (default: all)",
+       "title": "Vars"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "MMMDecompositionSettings",
+     "type": "object"
+    },
     "summary": "The baseline and channel contributions over time and in total.",
+    "tags": [
+     "mmm"
+    ],
     "title": "Contribution by component",
     "version": "1.0.0",
     "yanked": false
@@ -33455,12 +36922,64 @@
      ]
     },
     "id": "mmm.effectiveness",
+    "pack_label": "Marketing mix",
     "persona": "both",
     "requires_groups": [
      "effectiveness"
     ],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "hdi_prob": {
+       "default": 0.9,
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0,
+       "title": "Hdi Prob",
+       "type": "number"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "only_varying": {
+       "default": true,
+       "description": "Show only the time-varying channels",
+       "title": "Only Varying",
+       "type": "boolean"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "EffectivenessSettings",
+     "type": "object"
+    },
     "summary": "The effect of one unit of spend in each period, for channels whose effect changes over time.",
+    "tags": [
+     "mmm"
+    ],
     "title": "Effect of spend over time",
     "version": "1.0.0",
     "yanked": false
@@ -33507,12 +37026,66 @@
      ]
     },
     "id": "mmm.lift_tests",
+    "pack_label": "Marketing mix",
     "persona": "both",
     "requires_groups": [
      "lift_tests"
     ],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "hdi_prob": {
+       "default": 0.9,
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0,
+       "title": "Hdi Prob",
+       "type": "number"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      },
+      "z": {
+       "default": 1.96,
+       "description": "Standard errors on each side of a test",
+       "exclusiveMinimum": 0,
+       "maximum": 10,
+       "title": "Z",
+       "type": "number"
+      }
+     },
+     "title": "LiftTestSettings",
+     "type": "object"
+    },
     "summary": "The result of each lift test beside the value that the calibrated model gives for the same channel and period.",
+    "tags": [
+     "mmm"
+    ],
     "title": "Lift tests and the model",
     "version": "1.0.0",
     "yanked": false
@@ -33560,12 +37133,122 @@
      ]
     },
     "id": "mmm.marginal_cost",
+    "pack_label": "Marketing mix",
     "persona": "both",
     "requires_groups": [
      "response_curves"
     ],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "channel": {
+       "default": "channel",
+       "title": "Channel",
+       "type": "string"
+      },
+      "clip_quantile": {
+       "default": 0.98,
+       "exclusiveMinimum": 0.5,
+       "maximum": 1.0,
+       "title": "Clip Quantile",
+       "type": "number"
+      },
+      "current_var": {
+       "default": "current_spend",
+       "title": "Current Var",
+       "type": "string"
+      },
+      "facet": {
+       "default": false,
+       "description": "One panel per channel instead of colour",
+       "title": "Facet",
+       "type": "boolean"
+      },
+      "grid": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Spend-grid dim (default: the numeric dim)",
+       "title": "Grid"
+      },
+      "hdi_prob": {
+       "default": 0.9,
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0,
+       "title": "Hdi Prob",
+       "type": "number"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "metric": {
+       "default": "cost",
+       "description": "cost: spend per extra unit of outcome; roi: outcome per extra spend",
+       "enum": [
+        "cost",
+        "roi"
+       ],
+       "title": "Metric",
+       "type": "string"
+      },
+      "spend_var": {
+       "default": "spend",
+       "title": "Spend Var",
+       "type": "string"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Response variable (default: first)",
+       "title": "Var"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "MarginalCostSettings",
+     "type": "object"
+    },
     "summary": "The cost (or the return) of the next unit of outcome at each spend level in each channel.",
+    "tags": [
+     "mmm"
+    ],
     "title": "Marginal cost",
     "version": "1.0.0",
     "yanked": false
@@ -33613,12 +37296,58 @@
      ]
     },
     "id": "mmm.mediation",
+    "pack_label": "Marketing mix",
     "persona": "both",
     "requires_groups": [
      "mediation"
     ],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "hdi_prob": {
+       "default": 0.9,
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0,
+       "title": "Hdi Prob",
+       "type": "number"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "MediationSettings",
+     "type": "object"
+    },
     "summary": "How much of the effect of each channel comes directly, and how much comes through each mediator, such as visits or awareness.",
+    "tags": [
+     "mmm"
+    ],
     "title": "Direct and mediated effects",
     "version": "1.0.0",
     "yanked": false
@@ -33667,12 +37396,57 @@
      ]
     },
     "id": "mmm.prior_beliefs",
+    "pack_label": "Marketing mix",
     "persona": "guided",
     "requires_groups": [
      "prior_beliefs"
     ],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "channel": {
+       "default": "channel",
+       "title": "Channel",
+       "type": "string"
+      },
+      "height": {
+       "default": 26,
+       "description": "Height of one channel row",
+       "maximum": 200,
+       "minimum": 12,
+       "title": "Height",
+       "type": "integer"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "PriorBeliefSettings",
+     "type": "object"
+    },
     "summary": "The ROI or share of each channel in the translated priors before the model sees the KPI, compared with the range that you gave.",
+    "tags": [
+     "mmm"
+    ],
     "title": "Your beliefs and the priors",
     "version": "1.0.0",
     "yanked": false
@@ -33721,12 +37495,105 @@
      ]
     },
     "id": "mmm.response_curves",
+    "pack_label": "Marketing mix",
     "persona": "both",
     "requires_groups": [
      "response_curves"
     ],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "channel": {
+       "default": "channel",
+       "title": "Channel",
+       "type": "string"
+      },
+      "current_var": {
+       "default": "current_spend",
+       "title": "Current Var",
+       "type": "string"
+      },
+      "facet": {
+       "default": false,
+       "description": "One panel per channel instead of colour",
+       "title": "Facet",
+       "type": "boolean"
+      },
+      "grid": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Spend-grid dim (default: the numeric dim)",
+       "title": "Grid"
+      },
+      "hdi_prob": {
+       "default": 0.9,
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0,
+       "title": "Hdi Prob",
+       "type": "number"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "spend_var": {
+       "default": "spend",
+       "title": "Spend Var",
+       "type": "string"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Response variable (default: first)",
+       "title": "Var"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "ResponseCurveSettings",
+     "type": "object"
+    },
     "summary": "The expected outcome for each level of spend in each channel, with uncertainty.",
+    "tags": [
+     "mmm"
+    ],
     "title": "Response curves",
     "version": "1.0.0",
     "yanked": false
@@ -33778,12 +37645,76 @@
      ]
     },
     "id": "mmm.roi",
+    "pack_label": "Marketing mix",
     "persona": "both",
     "requires_groups": [
      "response_curves"
     ],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "breakeven": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": 1.0,
+       "description": "ROI at which a channel pays back its spend (None: no line)",
+       "title": "Breakeven"
+      },
+      "channel": {
+       "default": "channel",
+       "title": "Channel",
+       "type": "string"
+      },
+      "hdi_prob": {
+       "default": 0.9,
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0,
+       "title": "Hdi Prob",
+       "type": "number"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "ROISettings",
+     "type": "object"
+    },
     "summary": "The return of each channel for each unit of its current spend, and the return of the next unit of spend, with uncertainty.",
+    "tags": [
+     "mmm"
+    ],
     "title": "ROI and marginal ROI",
     "version": "1.0.0",
     "yanked": false
@@ -33830,12 +37761,63 @@
      ]
     },
     "id": "mmm.spend_effect",
+    "pack_label": "Marketing mix",
     "persona": "both",
     "requires_groups": [
      "response_curves"
     ],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "channel": {
+       "default": "channel",
+       "title": "Channel",
+       "type": "string"
+      },
+      "hdi_prob": {
+       "default": 0.9,
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0,
+       "title": "Hdi Prob",
+       "type": "number"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "SpendEffectSettings",
+     "type": "object"
+    },
     "summary": "The share of the media budget that each channel gets, beside its share of the effect of all channels.",
+    "tags": [
+     "mmm"
+    ],
     "title": "Share of spend and share of effect",
     "version": "1.0.0",
     "yanked": false
@@ -33883,12 +37865,72 @@
      ]
     },
     "id": "mmm.waterfall",
+    "pack_label": "Marketing mix",
     "persona": "both",
     "requires_groups": [
      "contributions"
     ],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "hdi_prob": {
+       "default": 0.9,
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0,
+       "title": "Hdi Prob",
+       "type": "number"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "outcome": {
+       "anyOf": [
+        {
+         "maxLength": 200,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Level of the outcome dim to show (default: attrs['primary_outcome'], else the first)",
+       "title": "Outcome"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "width": {
+       "default": 480,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "WaterfallSettings",
+     "type": "object"
+    },
     "summary": "How the baseline and each channel add up to the total KPI of the period, step by step.",
+    "tags": [
+     "mmm"
+    ],
     "title": "Contribution waterfall",
     "version": "1.0.0",
     "yanked": false
@@ -33932,10 +37974,221 @@
      ]
     },
     "id": "net.graph",
+    "pack_label": "Networks",
     "persona": "both",
     "requires_groups": [],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "directed": {
+       "anyOf": [
+        {
+         "type": "boolean"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Arrowheads from node to node_ (default: if the matrix is asymmetric)",
+       "title": "Directed"
+      },
+      "group": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": "auto",
+       "description": "Node variable for colours (auto: 'node_group' or 'group'; none: off)",
+       "title": "Group"
+      },
+      "height": {
+       "default": 440,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "labels": {
+       "anyOf": [
+        {
+         "type": "boolean"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Node names on the graph (default: \u2264 40 nodes)",
+       "title": "Labels"
+      },
+      "max_edges": {
+       "default": 2000,
+       "maximum": 20000,
+       "minimum": 1,
+       "title": "Max Edges",
+       "type": "integer"
+      },
+      "max_nodes": {
+       "default": 300,
+       "maximum": 600,
+       "minimum": 2,
+       "title": "Max Nodes",
+       "type": "integer"
+      },
+      "node_dim": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "The node dim (its pair is the same name + '_'; default: found)",
+       "title": "Node Dim"
+      },
+      "panels": {
+       "default": "both",
+       "enum": [
+        "graph",
+        "matrix",
+        "both"
+       ],
+       "title": "Panels",
+       "type": "string"
+      },
+      "positions": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": "auto",
+       "description": "Variable with node positions (\u2026, node, latent_dim); none: layout",
+       "title": "Positions"
+      },
+      "seed": {
+       "default": 0,
+       "title": "Seed",
+       "type": "integer"
+      },
+      "select": {
+       "anyOf": [
+        {
+         "additionalProperties": {
+          "anyOf": [
+           {
+            "type": "string"
+           },
+           {
+            "type": "integer"
+           },
+           {
+            "type": "number"
+           }
+          ]
+         },
+         "type": "object"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Pick one level of other dims, for example {layer: 0}",
+       "title": "Select"
+      },
+      "signed": {
+       "anyOf": [
+        {
+         "type": "boolean"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Colour by sign (default: if a value is < 0)",
+       "title": "Signed"
+      },
+      "threshold": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Draw edges with |value| above this (default: 0.5 for values in [0, 1], else 10% of the largest |value|)",
+       "title": "Threshold"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "truth": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": "auto",
+       "description": "True or observed adjacency to outline (auto: a (node, node_) variable in observed_data or constant_data; none: off)",
+       "title": "Truth"
+      },
+      "var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Edge variable with dims (\u2026, node, node_) (default: the first one)",
+       "title": "Var"
+      },
+      "width": {
+       "default": 900,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "GraphSettings",
+     "type": "object"
+    },
     "summary": "A network drawn as nodes and links, where thick links are strong and colours show the sign, next to the full matrix of links.",
+    "tags": [
+     "graph"
+    ],
     "title": "Network graph",
     "version": "1.0.0",
     "yanked": false
@@ -33981,10 +38234,212 @@
      ]
     },
     "id": "sci.area_map",
+    "pack_label": "Science",
     "persona": "both",
     "requires_groups": [],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "classes": {
+       "default": 9,
+       "description": "Colour classes of the area fills",
+       "maximum": 10,
+       "minimum": 3,
+       "title": "Classes",
+       "type": "integer"
+      },
+      "colormap": {
+       "default": "viridis",
+       "enum": [
+        "viridis",
+        "magma",
+        "cividis",
+        "gray",
+        "diverging"
+       ],
+       "title": "Colormap",
+       "type": "string"
+      },
+      "columns": {
+       "default": 2,
+       "maximum": 5,
+       "minimum": 1,
+       "title": "Columns",
+       "type": "integer"
+      },
+      "group": {
+       "default": "auto",
+       "description": "Group to read (auto: posterior, predictions, posterior_predictive)",
+       "enum": [
+        "auto",
+        "posterior",
+        "predictions",
+        "posterior_predictive"
+       ],
+       "title": "Group",
+       "type": "string"
+      },
+      "height": {
+       "default": 340,
+       "description": "Height of one row of panels",
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "log_scale": {
+       "default": false,
+       "description": "Colour the value panels by log10 of the value",
+       "title": "Log Scale",
+       "type": "boolean"
+      },
+      "mark_above": {
+       "default": 0.95,
+       "description": "Mark areas where P(value > threshold) is above this",
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0,
+       "title": "Mark Above",
+       "type": "number"
+      },
+      "max_draws": {
+       "default": 2000,
+       "maximum": 20000,
+       "minimum": 1,
+       "title": "Max Draws",
+       "type": "integer"
+      },
+      "max_vertices": {
+       "default": 40000,
+       "description": "Polygon points per panel before thinning",
+       "maximum": 200000,
+       "minimum": 200,
+       "title": "Max Vertices",
+       "type": "integer"
+      },
+      "observed": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Observed variable for an extra panel (default: var in observed_data)",
+       "title": "Observed"
+      },
+      "select": {
+       "anyOf": [
+        {
+         "additionalProperties": {
+          "anyOf": [
+           {
+            "type": "string"
+           },
+           {
+            "type": "integer"
+           },
+           {
+            "type": "number"
+           }
+          ]
+         },
+         "type": "object"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Select"
+      },
+      "show_edges": {
+       "default": false,
+       "description": "Draw lines between neighbours (adjacency)",
+       "title": "Show Edges",
+       "type": "boolean"
+      },
+      "stats": {
+       "anyOf": [
+        {
+         "items": {
+          "enum": [
+           "observed",
+           "mean",
+           "median",
+           "sd",
+           "exceedance"
+          ],
+          "type": "string"
+         },
+         "type": "array"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Panels: observed, mean, median, sd, exceedance (default: observed when there is one, mean, sd and exceedance)",
+       "title": "Stats"
+      },
+      "threshold": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Exceedance threshold (default: 1 for a positive output, else 0)",
+       "title": "Threshold"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Per-area output (default: one with the area dim)",
+       "title": "Var"
+      },
+      "width": {
+       "default": 760,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "AreaMapSettings",
+     "type": "object"
+    },
     "summary": "A map of areas coloured by the model's estimate, its uncertainty and the probability that it is above a threshold, next to the observed values.",
+    "tags": [
+     "sci",
+     "map"
+    ],
     "title": "Area map",
     "version": "1.0.0",
     "yanked": false
@@ -34029,10 +38484,168 @@
      ]
     },
     "id": "sci.ensemble",
+    "pack_label": "Science",
     "persona": "both",
     "requires_groups": [],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "along": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Dim along the x axis (default: time-like)",
+       "title": "Along"
+      },
+      "group": {
+       "default": "auto",
+       "description": "Group to read (auto: predictions, posterior_predictive, posterior)",
+       "enum": [
+        "auto",
+        "posterior",
+        "predictions",
+        "posterior_predictive"
+       ],
+       "title": "Group",
+       "type": "string"
+      },
+      "height": {
+       "default": 320,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "levels": {
+       "items": {
+        "type": "number"
+       },
+       "maxItems": 3,
+       "title": "Levels",
+       "type": "array"
+      },
+      "log": {
+       "default": false,
+       "description": "Log scale for the y axis",
+       "title": "Log",
+       "type": "boolean"
+      },
+      "max_draws": {
+       "default": 2000,
+       "description": "Draws used for the band",
+       "maximum": 20000,
+       "minimum": 1,
+       "title": "Max Draws",
+       "type": "integer"
+      },
+      "n_draws": {
+       "default": 40,
+       "description": "Draws in the spaghetti",
+       "maximum": 300,
+       "minimum": 1,
+       "title": "N Draws",
+       "type": "integer"
+      },
+      "observed_var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Observed Var"
+      },
+      "point": {
+       "default": "median",
+       "enum": [
+        "median",
+        "mean",
+        "none"
+       ],
+       "title": "Point",
+       "type": "string"
+      },
+      "seed": {
+       "default": 0,
+       "title": "Seed",
+       "type": "integer"
+      },
+      "select": {
+       "anyOf": [
+        {
+         "additionalProperties": {
+          "anyOf": [
+           {
+            "type": "string"
+           },
+           {
+            "type": "integer"
+           },
+           {
+            "type": "number"
+           }
+          ]
+         },
+         "type": "object"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Select"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Var"
+      },
+      "width": {
+       "default": 640,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "EnsembleSettings",
+     "type": "object"
+    },
     "summary": "Possible trajectories from the model with the 90% band and the actual values.",
+    "tags": [
+     "sci"
+    ],
     "title": "Ensemble of draws",
     "version": "1.0.0",
     "yanked": false
@@ -34076,10 +38689,254 @@
      ]
     },
     "id": "sci.field_map",
+    "pack_label": "Science",
     "persona": "both",
     "requires_groups": [],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "aspect": {
+       "default": "equal",
+       "enum": [
+        "equal",
+        "auto"
+       ],
+       "title": "Aspect",
+       "type": "string"
+      },
+      "colormap": {
+       "anyOf": [
+        {
+         "enum": [
+          "viridis",
+          "magma",
+          "cividis",
+          "gray",
+          "diverging"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Default: the grid's, else viridis",
+       "title": "Colormap"
+      },
+      "columns": {
+       "default": 3,
+       "maximum": 6,
+       "minimum": 1,
+       "title": "Columns",
+       "type": "integer"
+      },
+      "frame": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Dim with one raster per level (slider)",
+       "title": "Frame"
+      },
+      "group": {
+       "default": "auto",
+       "description": "Group to read (auto: posterior, predictions, posterior_predictive)",
+       "enum": [
+        "auto",
+        "posterior",
+        "predictions",
+        "posterior_predictive"
+       ],
+       "title": "Group",
+       "type": "string"
+      },
+      "height": {
+       "default": 280,
+       "description": "Height of one row of panels",
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "log": {
+       "anyOf": [
+        {
+         "type": "boolean"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Draw log10 of the value (default: the grid's)",
+       "title": "Log"
+      },
+      "max_cells": {
+       "default": 40000,
+       "description": "Cells per panel before block averaging",
+       "maximum": 200000,
+       "minimum": 16,
+       "title": "Max Cells",
+       "type": "integer"
+      },
+      "max_draws": {
+       "default": 400,
+       "description": "Draws used for the statistics",
+       "maximum": 10000,
+       "minimum": 1,
+       "title": "Max Draws",
+       "type": "integer"
+      },
+      "max_frames": {
+       "default": 24,
+       "maximum": 60,
+       "minimum": 1,
+       "title": "Max Frames",
+       "type": "integer"
+      },
+      "n_draws": {
+       "default": 3,
+       "description": "Panels for the 'draws' statistic",
+       "maximum": 12,
+       "minimum": 1,
+       "title": "N Draws",
+       "type": "integer"
+      },
+      "origin": {
+       "anyOf": [
+        {
+         "enum": [
+          "upper",
+          "lower"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Where row 0 is (default: the grid's, else upper)",
+       "title": "Origin"
+      },
+      "select": {
+       "anyOf": [
+        {
+         "additionalProperties": {
+          "anyOf": [
+           {
+            "type": "string"
+           },
+           {
+            "type": "integer"
+           },
+           {
+            "type": "number"
+           }
+          ]
+         },
+         "type": "object"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Pick one level of other dims, for example {species: 0}",
+       "title": "Select"
+      },
+      "stats": {
+       "description": "Panels: mean, median, sd, z (mean \u00f7 sd), q05, q95, draws",
+       "items": {
+        "enum": [
+         "mean",
+         "median",
+         "sd",
+         "z",
+         "q05",
+         "q95",
+         "draws"
+        ],
+        "type": "string"
+       },
+       "title": "Stats",
+       "type": "array"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Output to draw (default: a grid output)",
+       "title": "Var"
+      },
+      "width": {
+       "default": 760,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      },
+      "x": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Raster column dim (default: the output's grid)",
+       "title": "X"
+      },
+      "y": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Raster row dim (default: the output's grid)",
+       "title": "Y"
+      }
+     },
+     "title": "FieldMapSettings",
+     "type": "object"
+    },
     "summary": "Maps of a gridded output: the mean, the uncertainty and possible fields from the model.",
+    "tags": [
+     "sci"
+    ],
     "title": "Field map",
     "version": "1.0.0",
     "yanked": false
@@ -34131,12 +38988,281 @@
      ]
     },
     "id": "sci.image_residuals",
+    "pack_label": "Science",
     "persona": "both",
     "requires_groups": [
      "observed_data"
     ],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "aspect": {
+       "default": "equal",
+       "enum": [
+        "equal",
+        "auto"
+       ],
+       "title": "Aspect",
+       "type": "string"
+      },
+      "colormap": {
+       "anyOf": [
+        {
+         "enum": [
+          "viridis",
+          "magma",
+          "cividis",
+          "gray",
+          "diverging"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Default: the grid's, else viridis",
+       "title": "Colormap"
+      },
+      "columns": {
+       "default": 2,
+       "maximum": 4,
+       "minimum": 1,
+       "title": "Columns",
+       "type": "integer"
+      },
+      "frame": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Dim with one raster per level (slider)",
+       "title": "Frame"
+      },
+      "group": {
+       "default": "auto",
+       "description": "Group to read (auto: posterior_predictive, predictions, posterior)",
+       "enum": [
+        "auto",
+        "posterior",
+        "predictions",
+        "posterior_predictive"
+       ],
+       "title": "Group",
+       "type": "string"
+      },
+      "height": {
+       "default": 280,
+       "description": "Height of one row of panels",
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "hist_height": {
+       "default": 200,
+       "description": "Height of the histogram (0: none)",
+       "maximum": 800,
+       "minimum": 0,
+       "title": "Hist Height",
+       "type": "integer"
+      },
+      "log": {
+       "anyOf": [
+        {
+         "type": "boolean"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Draw log10 of the value (default: the grid's)",
+       "title": "Log"
+      },
+      "max_cells": {
+       "default": 40000,
+       "description": "Cells per panel before block averaging",
+       "maximum": 200000,
+       "minimum": 16,
+       "title": "Max Cells",
+       "type": "integer"
+      },
+      "max_draws": {
+       "default": 400,
+       "description": "Draws used for the statistics",
+       "maximum": 10000,
+       "minimum": 1,
+       "title": "Max Draws",
+       "type": "integer"
+      },
+      "max_frames": {
+       "default": 24,
+       "maximum": 60,
+       "minimum": 1,
+       "title": "Max Frames",
+       "type": "integer"
+      },
+      "observed_var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Observed image (default: same name)",
+       "title": "Observed Var"
+      },
+      "origin": {
+       "anyOf": [
+        {
+         "enum": [
+          "upper",
+          "lower"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Where row 0 is (default: the grid's, else upper)",
+       "title": "Origin"
+      },
+      "select": {
+       "anyOf": [
+        {
+         "additionalProperties": {
+          "anyOf": [
+           {
+            "type": "string"
+           },
+           {
+            "type": "integer"
+           },
+           {
+            "type": "number"
+           }
+          ]
+         },
+         "type": "object"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Pick one level of other dims, for example {species: 0}",
+       "title": "Select"
+      },
+      "sigma": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Noise of the data: a variable (posterior draws or a (y, x) map) or a number. Default: a variable named sigma, if there is one",
+       "title": "Sigma"
+      },
+      "sigma_kind": {
+       "default": "sd",
+       "description": "What the sigma values are",
+       "enum": [
+        "sd",
+        "variance",
+        "inverse_variance"
+       ],
+       "title": "Sigma Kind",
+       "type": "string"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Output to draw (default: a grid output)",
+       "title": "Var"
+      },
+      "width": {
+       "default": 760,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      },
+      "x": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Raster column dim (default: the output's grid)",
+       "title": "X"
+      },
+      "y": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Raster row dim (default: the output's grid)",
+       "title": "Y"
+      }
+     },
+     "title": "ImageResidualsSettings",
+     "type": "object"
+    },
     "summary": "The observed image, the model's image, the difference between them and the difference in units of the uncertainty, with a histogram to compare with a normal distribution.",
+    "tags": [
+     "sci",
+     "image",
+     "diagnostic"
+    ],
     "title": "Image residuals",
     "version": "1.0.0",
     "yanked": false
@@ -34182,10 +39308,184 @@
      ]
     },
     "id": "sci.phylogeny",
+    "pack_label": "Science",
     "persona": "both",
     "requires_groups": [],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "colormap": {
+       "default": "viridis",
+       "enum": [
+        "viridis",
+        "magma",
+        "cividis",
+        "gray",
+        "diverging"
+       ],
+       "title": "Colormap",
+       "type": "string"
+      },
+      "group": {
+       "default": "auto",
+       "description": "Group to read (auto: predictions, posterior_predictive, posterior)",
+       "enum": [
+        "auto",
+        "posterior",
+        "predictions",
+        "posterior_predictive"
+       ],
+       "title": "Group",
+       "type": "string"
+      },
+      "height": {
+       "default": 0,
+       "description": "0: from the number of tips",
+       "maximum": 4000,
+       "minimum": 0,
+       "title": "Height",
+       "type": "integer"
+      },
+      "interval": {
+       "default": 0.9,
+       "description": "Width of the interval in the strip",
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0,
+       "title": "Interval",
+       "type": "number"
+      },
+      "labels": {
+       "anyOf": [
+        {
+         "type": "boolean"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Tip labels (default: up to 80 tips)",
+       "title": "Labels"
+      },
+      "max_draws": {
+       "default": 2000,
+       "maximum": 20000,
+       "minimum": 1,
+       "title": "Max Draws",
+       "type": "integer"
+      },
+      "max_tips": {
+       "default": 400,
+       "description": "Tips shown (evenly spaced)",
+       "maximum": 5000,
+       "minimum": 2,
+       "title": "Max Tips",
+       "type": "integer"
+      },
+      "observed": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Observed trait (default: var in observed_data)",
+       "title": "Observed"
+      },
+      "point": {
+       "default": "mean",
+       "enum": [
+        "mean",
+        "median"
+       ],
+       "title": "Point",
+       "type": "string"
+      },
+      "select": {
+       "anyOf": [
+        {
+         "additionalProperties": {
+          "anyOf": [
+           {
+            "type": "string"
+           },
+           {
+            "type": "integer"
+           },
+           {
+            "type": "number"
+           }
+          ]
+         },
+         "type": "object"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Select"
+      },
+      "tip_dim": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Dim of the tips (default: found by size)",
+       "title": "Tip Dim"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Per-tip output (default: one with a tip dim)",
+       "title": "Var"
+      },
+      "width": {
+       "default": 780,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "PhylogenySettings",
+     "type": "object"
+    },
     "summary": "A tree of related species with the model's estimate for each tip, its interval and the observed trait, so that close relatives sit side by side.",
+    "tags": [
+     "sci",
+     "graph"
+    ],
     "title": "Phylogeny with tip estimates",
     "version": "1.0.0",
     "yanked": false
@@ -34229,10 +39529,246 @@
      ]
     },
     "id": "sci.point_pattern",
+    "pack_label": "Science",
     "persona": "both",
     "requires_groups": [],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "colormap": {
+       "anyOf": [
+        {
+         "enum": [
+          "viridis",
+          "magma",
+          "cividis",
+          "gray",
+          "diverging"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Field colours (default: grid's, gray)",
+       "title": "Colormap"
+      },
+      "ellipses": {
+       "anyOf": [
+        {
+         "type": "boolean"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Error ellipses (default: when known)",
+       "title": "Ellipses"
+      },
+      "field": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": "auto",
+       "description": "Background image or intensity (auto: a grid output; none: off)",
+       "title": "Field"
+      },
+      "field_stat": {
+       "default": "mean",
+       "enum": [
+        "mean",
+        "median",
+        "sd"
+       ],
+       "title": "Field Stat",
+       "type": "string"
+      },
+      "group": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": "auto",
+       "description": "Variable with a category per point (auto: 'group'; none: off)",
+       "title": "Group"
+      },
+      "height": {
+       "default": 560,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "level": {
+       "default": 0.9,
+       "description": "Probability inside each ellipse",
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0,
+       "title": "Level",
+       "type": "number"
+      },
+      "marker_size": {
+       "default": 6.0,
+       "exclusiveMinimum": 0,
+       "maximum": 30,
+       "title": "Marker Size",
+       "type": "number"
+      },
+      "max_cells": {
+       "default": 40000,
+       "maximum": 200000,
+       "minimum": 16,
+       "title": "Max Cells",
+       "type": "integer"
+      },
+      "max_ellipses": {
+       "default": 2000,
+       "maximum": 5000,
+       "minimum": 0,
+       "title": "Max Ellipses",
+       "type": "integer"
+      },
+      "max_points": {
+       "default": 20000,
+       "maximum": 100000,
+       "minimum": 1,
+       "title": "Max Points",
+       "type": "integer"
+      },
+      "observed": {
+       "default": true,
+       "description": "Also draw actual points from observed_data",
+       "title": "Observed",
+       "type": "boolean"
+      },
+      "origin": {
+       "anyOf": [
+        {
+         "enum": [
+          "upper",
+          "lower"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Where the smallest y is (default: the field grid's, else lower)",
+       "title": "Origin"
+      },
+      "points": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "The point dim (default: the dim of x)",
+       "title": "Points"
+      },
+      "radius": {
+       "default": "radius",
+       "description": "Variable with a credible radius per point",
+       "title": "Radius",
+       "type": "string"
+      },
+      "sd_x": {
+       "default": "sd_x",
+       "description": "Variable with the sd of x (used when it exists)",
+       "title": "Sd X",
+       "type": "string"
+      },
+      "sd_y": {
+       "default": "sd_y",
+       "description": "Variable with the sd of y (used when it exists)",
+       "title": "Sd Y",
+       "type": "string"
+      },
+      "select": {
+       "anyOf": [
+        {
+         "additionalProperties": {
+          "anyOf": [
+           {
+            "type": "string"
+           },
+           {
+            "type": "integer"
+           },
+           {
+            "type": "number"
+           }
+          ]
+         },
+         "type": "object"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Select"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "width": {
+       "default": 640,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      },
+      "x": {
+       "default": "x",
+       "description": "Variable with the x position of each point",
+       "title": "X",
+       "type": "string"
+      },
+      "y": {
+       "default": "y",
+       "description": "Variable with the y position of each point",
+       "title": "Y",
+       "type": "string"
+      }
+     },
+     "title": "PointPatternSettings",
+     "type": "object"
+    },
     "summary": "Points such as events or light sources at their positions, with an error ellipse for each point, over an image or an intensity map.",
+    "tags": [
+     "sci",
+     "image"
+    ],
     "title": "Point pattern",
     "version": "1.0.0",
     "yanked": false
@@ -34278,10 +39814,198 @@
      ]
     },
     "id": "sci.power_spectrum",
+    "pack_label": "Science",
     "persona": "expert",
     "requires_groups": [],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "along": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Bin dim (default: the only other dim)",
+       "title": "Along"
+      },
+      "error_var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Observed error bars (sd), default: <observed>_sd if it exists",
+       "title": "Error Var"
+      },
+      "group": {
+       "default": "auto",
+       "description": "Group to read (auto: posterior, predictions, posterior_predictive)",
+       "enum": [
+        "auto",
+        "posterior",
+        "predictions",
+        "posterior_predictive"
+       ],
+       "title": "Group",
+       "type": "string"
+      },
+      "height": {
+       "default": 360,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "levels": {
+       "items": {
+        "type": "number"
+       },
+       "maxItems": 3,
+       "title": "Levels",
+       "type": "array"
+      },
+      "log_x": {
+       "default": false,
+       "title": "Log X",
+       "type": "boolean"
+      },
+      "log_y": {
+       "default": false,
+       "title": "Log Y",
+       "type": "boolean"
+      },
+      "max_draws": {
+       "default": 2000,
+       "maximum": 20000,
+       "minimum": 1,
+       "title": "Max Draws",
+       "type": "integer"
+      },
+      "observed_var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Observed bandpowers (default: same name)",
+       "title": "Observed Var"
+      },
+      "point": {
+       "default": "median",
+       "enum": [
+        "median",
+        "mean"
+       ],
+       "title": "Point",
+       "type": "string"
+      },
+      "select": {
+       "anyOf": [
+        {
+         "additionalProperties": {
+          "anyOf": [
+           {
+            "type": "string"
+           },
+           {
+            "type": "integer"
+           },
+           {
+            "type": "number"
+           }
+          ]
+         },
+         "type": "object"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Select"
+      },
+      "theory": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Theory curve variable (draws or values)",
+       "title": "Theory"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Binned spectrum with draws (default: first 1-D)",
+       "title": "Var"
+      },
+      "width": {
+       "default": 640,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      },
+      "x_coord": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Coord on the bin dim for the x axis, for example ell (default: the first numeric coord)",
+       "title": "X Coord"
+      }
+     },
+     "title": "PowerSpectrumSettings",
+     "type": "object"
+    },
     "summary": "A binned spectrum against scale or frequency, with 50% and 90% bands, an optional theory curve and the observed points with error bars.",
+    "tags": [
+     "sci"
+    ],
     "title": "Power spectrum",
     "version": "1.0.0",
     "yanked": false
@@ -34329,12 +40053,265 @@
      ]
     },
     "id": "sci.ppc_image_grid",
+    "pack_label": "Science",
     "persona": "both",
     "requires_groups": [
      "observed_data"
     ],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "aspect": {
+       "default": "equal",
+       "enum": [
+        "equal",
+        "auto"
+       ],
+       "title": "Aspect",
+       "type": "string"
+      },
+      "colormap": {
+       "anyOf": [
+        {
+         "enum": [
+          "viridis",
+          "magma",
+          "cividis",
+          "gray",
+          "diverging"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Default: the grid's, else viridis",
+       "title": "Colormap"
+      },
+      "columns": {
+       "default": 3,
+       "maximum": 6,
+       "minimum": 1,
+       "title": "Columns",
+       "type": "integer"
+      },
+      "frame": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Dim with one raster per level (slider)",
+       "title": "Frame"
+      },
+      "group": {
+       "default": "auto",
+       "description": "Group to read (auto: posterior_predictive, predictions, posterior)",
+       "enum": [
+        "auto",
+        "posterior",
+        "predictions",
+        "posterior_predictive"
+       ],
+       "title": "Group",
+       "type": "string"
+      },
+      "height": {
+       "default": 280,
+       "description": "Height of one row of panels",
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "log": {
+       "anyOf": [
+        {
+         "type": "boolean"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Draw log10 of the value (default: the grid's)",
+       "title": "Log"
+      },
+      "max_cells": {
+       "default": 40000,
+       "description": "Cells per panel before block averaging",
+       "maximum": 200000,
+       "minimum": 16,
+       "title": "Max Cells",
+       "type": "integer"
+      },
+      "max_draws": {
+       "default": 400,
+       "description": "Draws used for the statistics",
+       "maximum": 10000,
+       "minimum": 1,
+       "title": "Max Draws",
+       "type": "integer"
+      },
+      "max_frames": {
+       "default": 24,
+       "maximum": 60,
+       "minimum": 1,
+       "title": "Max Frames",
+       "type": "integer"
+      },
+      "n_draws": {
+       "default": 5,
+       "description": "Predictive draws next to the observed",
+       "maximum": 11,
+       "minimum": 1,
+       "title": "N Draws",
+       "type": "integer"
+      },
+      "observed_var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Observed image (default: same name)",
+       "title": "Observed Var"
+      },
+      "origin": {
+       "anyOf": [
+        {
+         "enum": [
+          "upper",
+          "lower"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Where row 0 is (default: the grid's, else upper)",
+       "title": "Origin"
+      },
+      "seed": {
+       "default": 0,
+       "title": "Seed",
+       "type": "integer"
+      },
+      "select": {
+       "anyOf": [
+        {
+         "additionalProperties": {
+          "anyOf": [
+           {
+            "type": "string"
+           },
+           {
+            "type": "integer"
+           },
+           {
+            "type": "number"
+           }
+          ]
+         },
+         "type": "object"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Pick one level of other dims, for example {species: 0}",
+       "title": "Select"
+      },
+      "shuffle": {
+       "default": false,
+       "description": "Hide which panel is the observed image",
+       "title": "Shuffle",
+       "type": "boolean"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Output to draw (default: a grid output)",
+       "title": "Var"
+      },
+      "width": {
+       "default": 760,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      },
+      "x": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Raster column dim (default: the output's grid)",
+       "title": "X"
+      },
+      "y": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Raster row dim (default: the output's grid)",
+       "title": "Y"
+      }
+     },
+     "title": "PpcImageGridSettings",
+     "type": "object"
+    },
     "summary": "The observed image next to images that the model makes, on one colour scale. If the model fits, the observed image looks like one of them.",
+    "tags": [
+     "sci",
+     "image",
+     "diagnostic"
+    ],
     "title": "Predictive image grid",
     "version": "1.0.0",
     "yanked": false
@@ -34379,10 +40356,186 @@
      ]
     },
     "id": "sci.profile_bands",
+    "pack_label": "Science",
     "persona": "both",
     "requires_groups": [],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "along": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Dim along the x axis (default: the grid's x)",
+       "title": "Along"
+      },
+      "by": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Dim with one curve per level (default: the other)",
+       "title": "By"
+      },
+      "colormap": {
+       "default": "viridis",
+       "enum": [
+        "viridis",
+        "magma",
+        "cividis",
+        "gray",
+        "diverging"
+       ],
+       "title": "Colormap",
+       "type": "string"
+      },
+      "group": {
+       "default": "auto",
+       "description": "Group to read (auto: predictions, posterior_predictive, posterior)",
+       "enum": [
+        "auto",
+        "posterior",
+        "predictions",
+        "posterior_predictive"
+       ],
+       "title": "Group",
+       "type": "string"
+      },
+      "height": {
+       "default": 360,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "levels": {
+       "items": {
+        "type": "number"
+       },
+       "maxItems": 3,
+       "title": "Levels",
+       "type": "array"
+      },
+      "log": {
+       "default": false,
+       "description": "Log scale for the y axis",
+       "title": "Log",
+       "type": "boolean"
+      },
+      "max_curves": {
+       "default": 12,
+       "maximum": 24,
+       "minimum": 1,
+       "title": "Max Curves",
+       "type": "integer"
+      },
+      "max_draws": {
+       "default": 1000,
+       "maximum": 20000,
+       "minimum": 1,
+       "title": "Max Draws",
+       "type": "integer"
+      },
+      "observed_var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Observed variable (default: same name)",
+       "title": "Observed Var"
+      },
+      "point": {
+       "default": "median",
+       "enum": [
+        "median",
+        "mean"
+       ],
+       "title": "Point",
+       "type": "string"
+      },
+      "select": {
+       "anyOf": [
+        {
+         "additionalProperties": {
+          "anyOf": [
+           {
+            "type": "string"
+           },
+           {
+            "type": "integer"
+           },
+           {
+            "type": "number"
+           }
+          ]
+         },
+         "type": "object"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Select"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Var"
+      },
+      "width": {
+       "default": 640,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "ProfileBandsSettings",
+     "type": "object"
+    },
     "summary": "The model estimate along one dim with 50% and 90% bands, one curve per level of a second dim and the actual values.",
+    "tags": [
+     "sci"
+    ],
     "title": "Profiles with bands",
     "version": "1.0.0",
     "yanked": false
@@ -34427,10 +40580,217 @@
      ]
     },
     "id": "sci.rose",
+    "pack_label": "Science",
     "persona": "both",
     "requires_groups": [],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "angle_dim": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Dim along the circle: draws a density curve (default: found by name)",
+       "title": "Angle Dim"
+      },
+      "bins": {
+       "default": 24,
+       "maximum": 360,
+       "minimum": 4,
+       "title": "Bins",
+       "type": "integer"
+      },
+      "clockwise": {
+       "anyOf": [
+        {
+         "type": "boolean"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Direction (default: clockwise from the top, except for radians)",
+       "title": "Clockwise"
+      },
+      "frame": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Dim with one chart per level (slider)",
+       "title": "Frame"
+      },
+      "group": {
+       "default": "auto",
+       "description": "Group to read (auto: posterior_predictive, predictions, posterior)",
+       "enum": [
+        "auto",
+        "posterior",
+        "predictions",
+        "posterior_predictive"
+       ],
+       "title": "Group",
+       "type": "string"
+      },
+      "height": {
+       "default": 520,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "interval": {
+       "default": 0.9,
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0,
+       "title": "Interval",
+       "type": "number"
+      },
+      "max_draws": {
+       "default": 1000,
+       "maximum": 20000,
+       "minimum": 1,
+       "title": "Max Draws",
+       "type": "integer"
+      },
+      "max_frames": {
+       "default": 24,
+       "maximum": 60,
+       "minimum": 1,
+       "title": "Max Frames",
+       "type": "integer"
+      },
+      "observed": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Observed angles (default: var in observed_data)",
+       "title": "Observed"
+      },
+      "period": {
+       "anyOf": [
+        {
+         "exclusiveMinimum": 0,
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Length of the circle (default: units)",
+       "title": "Period"
+      },
+      "scale": {
+       "default": "auto",
+       "description": "Bar heights (auto: share with a frame, else count)",
+       "enum": [
+        "auto",
+        "count",
+        "share"
+       ],
+       "title": "Scale",
+       "type": "string"
+      },
+      "select": {
+       "anyOf": [
+        {
+         "additionalProperties": {
+          "anyOf": [
+           {
+            "type": "string"
+           },
+           {
+            "type": "integer"
+           },
+           {
+            "type": "number"
+           }
+          ]
+         },
+         "type": "object"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Select"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "units": {
+       "default": "radians",
+       "description": "Units of the angles",
+       "enum": [
+        "radians",
+        "degrees",
+        "hours",
+        "days"
+       ],
+       "title": "Units",
+       "type": "string"
+      },
+      "var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Angles with draws, or a density over an angle dim (default: found)",
+       "title": "Var"
+      },
+      "width": {
+       "default": 560,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "RoseSettings",
+     "type": "object"
+    },
     "summary": "A polar chart of directions or times of day: a rose of the observed angles with the model's range for each sector, or a curve around the circle with bands.",
+    "tags": [
+     "sci",
+     "polar"
+    ],
     "title": "Rose of angles",
     "version": "1.0.0",
     "yanked": false
@@ -34477,10 +40837,222 @@
      ]
     },
     "id": "sci.swatches",
+    "pack_label": "Science",
     "persona": "both",
     "requires_groups": [],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "arrange": {
+       "default": "auto",
+       "description": "auto: a map when the item dim has row and col coords",
+       "enum": [
+        "auto",
+        "list",
+        "map"
+       ],
+       "title": "Arrange",
+       "type": "string"
+      },
+      "channel": {
+       "default": "rgb",
+       "description": "Dim of length 3 with the r, g, b values",
+       "title": "Channel",
+       "type": "string"
+      },
+      "col": {
+       "default": "col",
+       "description": "Coord on the item dim with the map column",
+       "title": "Col",
+       "type": "string"
+      },
+      "columns": {
+       "default": 2,
+       "description": "Map panels per row",
+       "maximum": 6,
+       "minimum": 1,
+       "title": "Columns",
+       "type": "integer"
+      },
+      "group": {
+       "default": "auto",
+       "description": "Group to read (auto: posterior, predictions, posterior_predictive)",
+       "enum": [
+        "auto",
+        "posterior",
+        "predictions",
+        "posterior_predictive"
+       ],
+       "title": "Group",
+       "type": "string"
+      },
+      "height": {
+       "default": 180,
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "item": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Dim with one swatch per level (default: other)",
+       "title": "Item"
+      },
+      "max_draws": {
+       "default": 400,
+       "description": "Draws used for the mean",
+       "maximum": 10000,
+       "minimum": 1,
+       "title": "Max Draws",
+       "type": "integer"
+      },
+      "max_items": {
+       "default": 60,
+       "description": "Swatches in a list",
+       "maximum": 5000,
+       "minimum": 1,
+       "title": "Max Items",
+       "type": "integer"
+      },
+      "n_draws": {
+       "default": 3,
+       "description": "Panels of single draws",
+       "maximum": 8,
+       "minimum": 0,
+       "title": "N Draws",
+       "type": "integer"
+      },
+      "observed_var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Observed sRGB (default: same name)",
+       "title": "Observed Var"
+      },
+      "prob": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Variable (\u2026, item) with a probability in [0, 1]",
+       "title": "Prob"
+      },
+      "prob_as": {
+       "default": "border",
+       "enum": [
+        "border",
+        "opacity"
+       ],
+       "title": "Prob As",
+       "type": "string"
+      },
+      "row": {
+       "default": "row",
+       "description": "Coord on the item dim with the map row",
+       "title": "Row",
+       "type": "string"
+      },
+      "seed": {
+       "default": 0,
+       "title": "Seed",
+       "type": "integer"
+      },
+      "select": {
+       "anyOf": [
+        {
+         "additionalProperties": {
+          "anyOf": [
+           {
+            "type": "string"
+           },
+           {
+            "type": "integer"
+           },
+           {
+            "type": "number"
+           }
+          ]
+         },
+         "type": "object"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Select"
+      },
+      "tile": {
+       "default": 20,
+       "description": "Size of one swatch in pixels",
+       "maximum": 80,
+       "minimum": 4,
+       "title": "Tile",
+       "type": "integer"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "sRGB output in [0, 1] with a channel dim",
+       "title": "Var"
+      },
+      "width": {
+       "default": 640,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      }
+     },
+     "title": "SwatchesSettings",
+     "type": "object"
+    },
     "summary": "Squares painted in the colours that the model gives: the observed colour, the mean colour and a few possible colours for each item, as a list or as a map.",
+    "tags": [
+     "sci",
+     "colour"
+    ],
     "title": "Colour swatches",
     "version": "1.0.0",
     "yanked": false
@@ -34522,10 +41094,264 @@
      ]
     },
     "id": "sci.vector_field",
+    "pack_label": "Science",
     "persona": "both",
     "requires_groups": [],
     "requires_representation": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "arrows": {
+       "default": 20,
+       "description": "Arrows along the longer side",
+       "maximum": 60,
+       "minimum": 2,
+       "title": "Arrows",
+       "type": "integer"
+      },
+      "aspect": {
+       "default": "equal",
+       "enum": [
+        "equal",
+        "auto"
+       ],
+       "title": "Aspect",
+       "type": "string"
+      },
+      "colormap": {
+       "anyOf": [
+        {
+         "enum": [
+          "viridis",
+          "magma",
+          "cividis",
+          "gray",
+          "diverging"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Default: the grid's, else viridis",
+       "title": "Colormap"
+      },
+      "columns": {
+       "default": 3,
+       "maximum": 6,
+       "minimum": 1,
+       "title": "Columns",
+       "type": "integer"
+      },
+      "component": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Dim of length 2 with the (x, y) components (default: the grid's)",
+       "title": "Component"
+      },
+      "frame": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Dim with one raster per level (slider)",
+       "title": "Frame"
+      },
+      "group": {
+       "default": "auto",
+       "description": "Group to read (auto: posterior, predictions, posterior_predictive)",
+       "enum": [
+        "auto",
+        "posterior",
+        "predictions",
+        "posterior_predictive"
+       ],
+       "title": "Group",
+       "type": "string"
+      },
+      "height": {
+       "default": 280,
+       "description": "Height of one row of panels",
+       "maximum": 2000,
+       "minimum": 60,
+       "title": "Height",
+       "type": "integer"
+      },
+      "log": {
+       "anyOf": [
+        {
+         "type": "boolean"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Draw log10 of the value (default: the grid's)",
+       "title": "Log"
+      },
+      "max_cells": {
+       "default": 40000,
+       "description": "Cells per panel before block averaging",
+       "maximum": 200000,
+       "minimum": 16,
+       "title": "Max Cells",
+       "type": "integer"
+      },
+      "max_draws": {
+       "default": 400,
+       "description": "Draws used for the statistics",
+       "maximum": 10000,
+       "minimum": 1,
+       "title": "Max Draws",
+       "type": "integer"
+      },
+      "max_frames": {
+       "default": 24,
+       "maximum": 60,
+       "minimum": 1,
+       "title": "Max Frames",
+       "type": "integer"
+      },
+      "origin": {
+       "anyOf": [
+        {
+         "enum": [
+          "upper",
+          "lower"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Where row 0 is (default: the grid's, else upper)",
+       "title": "Origin"
+      },
+      "select": {
+       "anyOf": [
+        {
+         "additionalProperties": {
+          "anyOf": [
+           {
+            "type": "string"
+           },
+           {
+            "type": "integer"
+           },
+           {
+            "type": "number"
+           }
+          ]
+         },
+         "type": "object"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Pick one level of other dims, for example {species: 0}",
+       "title": "Select"
+      },
+      "stats": {
+       "description": "Panels of the vector length: mean, sd, q05, q95",
+       "items": {
+        "enum": [
+         "mean",
+         "sd",
+         "q05",
+         "q95"
+        ],
+        "type": "string"
+       },
+       "title": "Stats",
+       "type": "array"
+      },
+      "title": {
+       "anyOf": [
+        {
+         "maxLength": 300,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Override the plot title",
+       "title": "Title"
+      },
+      "var": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Output to draw (default: a grid output)",
+       "title": "Var"
+      },
+      "width": {
+       "default": 760,
+       "maximum": 2000,
+       "minimum": 80,
+       "title": "Width",
+       "type": "integer"
+      },
+      "x": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Raster column dim (default: the output's grid)",
+       "title": "X"
+      },
+      "y": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Raster row dim (default: the output's grid)",
+       "title": "Y"
+      }
+     },
+     "title": "VectorFieldSettings",
+     "type": "object"
+    },
     "summary": "The length of a vector field as colours, arrows of the mean direction and the uncertainty of the length.",
+    "tags": [
+     "sci"
+    ],
     "title": "Vector field",
     "version": "1.0.0",
     "yanked": false

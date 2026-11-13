@@ -127,6 +127,33 @@ class ErrorCode(StrEnum):
     SHARE_PASSCODE_INVALID = "SHARE_PASSCODE_INVALID"
     SHARE_LOCKED = "SHARE_LOCKED"
     INVALID_ROLE_SCOPE = "INVALID_ROLE_SCOPE"
+    # --- v0.17: dashboards for any model type -------------------------------------------
+    DASHBOARD_INPUT_INVALID = "DASHBOARD_INPUT_INVALID"
+    DASHBOARD_BATCH_TOO_LARGE = "DASHBOARD_BATCH_TOO_LARGE"
+    DASHBOARD_DOWNLOAD_GONE = "DASHBOARD_DOWNLOAD_GONE"
+    DASHBOARD_LAYOUT_RETIRED = "DASHBOARD_LAYOUT_RETIRED"
+    # --- v0.18: extensions, the library, samples and recipe previews ----------------------
+    LIBRARY_INVALID = "LIBRARY_INVALID"
+    LIBRARY_DATA_SHAPE = "LIBRARY_DATA_SHAPE"
+    SCHEMA_UNSAFE = "SCHEMA_UNSAFE"
+    EXTENSION_UNAVAILABLE = "EXTENSION_UNAVAILABLE"
+    SAMPLES_DISABLED = "SAMPLES_DISABLED"
+    PREVIEW_DISABLED = "PREVIEW_DISABLED"
+    # --- v0.19: uploaded code ------------------------------------------------------------
+    PLUGIN_REFUSED = "PLUGIN_REFUSED"
+    PLUGIN_NAMESPACE_TAKEN = "PLUGIN_NAMESPACE_TAKEN"
+    PLUGIN_VERSION_EXISTS = "PLUGIN_VERSION_EXISTS"
+    PLUGIN_STATE_CONFLICT = "PLUGIN_STATE_CONFLICT"
+    PLUGIN_UNAVAILABLE = "PLUGIN_UNAVAILABLE"
+    UPLOADED_CODE_NOT_SHAREABLE = "UPLOADED_CODE_NOT_SHAREABLE"
+    UNTRUSTED_PLACEMENT_UNAVAILABLE = "UNTRUSTED_PLACEMENT_UNAVAILABLE"
+    REAUTH_REQUIRED = "REAUTH_REQUIRED"
+    # --- v0.20: dashboard chat and read tokens ------------------------------------------
+    CHAT_DISABLED = "CHAT_DISABLED"
+    CHAT_UNAVAILABLE = "CHAT_UNAVAILABLE"
+    CHAT_BUDGET_EXHAUSTED = "CHAT_BUDGET_EXHAUSTED"
+    CHAT_HISTORY_INVALID = "CHAT_HISTORY_INVALID"
+    READ_TOKEN_LIMIT = "READ_TOKEN_LIMIT"
 
 
 Category = Literal["spec", "coords", "capability", "quota", "api", "run", "internal"]
@@ -274,6 +301,67 @@ ERROR_INFO: dict[ErrorCode, ErrorInfo] = {
     ),
     ErrorCode.INVALID_ROLE_SCOPE: ErrorInfo(
         422, "The role cannot be granted on the whole tenant", "api"
+    ),
+    # v0.17: dashboards for any model type
+    ErrorCode.DASHBOARD_INPUT_INVALID: ErrorInfo(
+        422, "One or more values are not valid for this dashboard", "api"
+    ),
+    ErrorCode.DASHBOARD_BATCH_TOO_LARGE: ErrorInfo(
+        409, "The file has too many rows or results for one batch", "quota"
+    ),
+    ErrorCode.DASHBOARD_DOWNLOAD_GONE: ErrorInfo(410, "The download is no longer available", "api"),
+    ErrorCode.DASHBOARD_LAYOUT_RETIRED: ErrorInfo(
+        422, "New dashboards use layout 2: layout 1 can no longer be created", "spec"
+    ),
+    # v0.18: extensions, the library, samples and recipe previews
+    ErrorCode.LIBRARY_INVALID: ErrorInfo(422, "The library document is not valid", "spec"),
+    ErrorCode.LIBRARY_DATA_SHAPE: ErrorInfo(
+        422, "The dataset does not have the shape that the library item needs", "spec"
+    ),
+    ErrorCode.SCHEMA_UNSAFE: ErrorInfo(
+        422, "The JSON Schema uses a feature that is not safe", "spec"
+    ),
+    ErrorCode.EXTENSION_UNAVAILABLE: ErrorInfo(
+        409, "An extension that the item needs is not in the current catalog", "api"
+    ),
+    ErrorCode.SAMPLES_DISABLED: ErrorInfo(404, "Sample projects are turned off", "api"),
+    ErrorCode.PREVIEW_DISABLED: ErrorInfo(409, "Live chart previews are turned off", "api"),
+    # v0.19: uploaded code (category "api": plugin code can never raise these itself)
+    ErrorCode.PLUGIN_REFUSED: ErrorInfo(422, "The uploaded package was refused", "api"),
+    ErrorCode.PLUGIN_NAMESPACE_TAKEN: ErrorInfo(
+        409, "The plugin name is already used in this workspace", "api"
+    ),
+    ErrorCode.PLUGIN_VERSION_EXISTS: ErrorInfo(
+        409, "This version of the plugin was already uploaded", "api"
+    ),
+    ErrorCode.PLUGIN_STATE_CONFLICT: ErrorInfo(
+        409, "The plugin version is not in a state that allows this", "api"
+    ),
+    ErrorCode.PLUGIN_UNAVAILABLE: ErrorInfo(
+        409, "An uploaded plugin that the item needs is not available to you", "api"
+    ),
+    ErrorCode.UPLOADED_CODE_NOT_SHAREABLE: ErrorInfo(
+        403, "Results made with uploaded code cannot be shared outside the workspace", "api"
+    ),
+    ErrorCode.UNTRUSTED_PLACEMENT_UNAVAILABLE: ErrorInfo(
+        409, "No executor in this deployment can run uploaded code", "api"
+    ),
+    ErrorCode.REAUTH_REQUIRED: ErrorInfo(401, "Sign in again to do this", "api"),
+    # v0.20: dashboard chat and read tokens. CHAT_DISABLED carries details.reason (off,
+    # audience, layout, region, provider, killswitch, budget); CHAT_UNAVAILABLE never echoes
+    # the model provider's text
+    ErrorCode.CHAT_DISABLED: ErrorInfo(409, "Chat is off for this dashboard", "api"),
+    ErrorCode.CHAT_UNAVAILABLE: ErrorInfo(
+        503, "The chat assistant is not available now. Try again later", "api", retryable=True
+    ),
+    ErrorCode.CHAT_BUDGET_EXHAUSTED: ErrorInfo(
+        429, "The chat budget of this dashboard is spent for today", "quota"
+    ),
+    ErrorCode.CHAT_HISTORY_INVALID: ErrorInfo(
+        400, "The conversation history was changed or is not from this chat", "api"
+    ),
+    ErrorCode.READ_TOKEN_LIMIT: ErrorInfo(
+        409, "You have the maximum number of active read tokens for this dashboard", "quota"
     ),
 }
 

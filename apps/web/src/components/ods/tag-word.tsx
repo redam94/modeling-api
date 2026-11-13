@@ -1,5 +1,5 @@
 /**
- * Tag words: a 24px ODS tag that names a state in words. Zone colours never stand alone on a
+ * Tag words: a 24px soft pill (as `Badge`) that names a state in words. Zone colours never stand alone on a
  * readout; each zone comes with its tag word ("More room", "Within range", ...).
  */
 import type * as React from "react";
@@ -26,7 +26,7 @@ export function TagWord({
     <span
       data-slot="tag-word"
       data-tone={tone}
-      className={cn("inline-flex h-6 flex-none items-center gap-1 rounded-sm px-2 text-xs font-medium whitespace-nowrap", TONE_CLASS[tone], className)}
+      className={cn("inline-flex h-6 flex-none items-center gap-1 rounded-full px-2.5 text-xs font-medium whitespace-nowrap", TONE_CLASS[tone], className)}
       {...props}
     />
   );

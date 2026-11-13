@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Path, Query, Request, status
@@ -17,13 +16,12 @@ from mapi_spec.api import (
     StageSchema,
     ValidateRequest,
     ValidateResponse,
-    new_id,
 )
-from mapi_spec.errors import ErrorCode, Issue, MapiError, json_pointer
+from mapi_spec.errors import Issue, json_pointer
 from mapi_spec.executor import RunKind
 from pydantic import BaseModel, Field
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError as DBIntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.api.common import (
     DEFAULT_LIMIT,
@@ -36,11 +34,21 @@ from mapi_server.api.common import (
     encode_cursor,
 )
 from mapi_server.api.runs import render_run
+from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.errors import Conflict, NotFoundError
+from mapi_server.services.catalog import CatalogService
 from mapi_server.services.guided import enforce_guided_lock
+from mapi_server.services.plugins.view import view_catalogs, view_owner
 from mapi_server.services.runs import now
-from mapi_server.services.specs import Validation, refuse_retired_kind, validate_document
+from mapi_server.services.specs import (
+    Validation,
+    create_spec_row,
+    refuse_retired_kind,
+    spec_name_and_kind,
+    spec_revision_row,
+    validate_document,
+)
 from mapi_server.services.submit import submit_spec_run
 
 __all__ = ["DiffEntry", "SpecDiff", "diff_documents", "router"]
@@ -48,7 +56,14 @@ __all__ = ["DiffEntry", "SpecDiff", "diff_documents", "router"]
 router = APIRouter(prefix="/v1/specs", tags=["specs"])
 
 SpecId = Annotated[str, Path(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.\-]{0,127}$")]
-_SLUG = re.compile(r"^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$")
+
+
+async def _catalogs(ctx: ServerContext, session: AsyncSession) -> CatalogService:
+    """The caller's tenant catalog view (v0.19): specs may name the uploads they can use."""
+    tenant, user = view_owner(ctx)
+    if tenant is None:
+        return ctx.catalogs
+    return await view_catalogs(ctx, session, tenant_id=tenant, user_id=user)
 
 
 def _validate_response(v: Validation) -> ValidateResponse:
@@ -69,7 +84,7 @@ async def validate_spec(ctx: Ctx, session: Session, body: ValidateRequest) -> Va
     v = await validate_document(
         session,
         ctx.scope,
-        ctx.catalogs,
+        await _catalogs(ctx, session),
         text=body.yaml,
         document=dict(body.document) if body.document is not None else None,
         dataset_override=body.dataset,
@@ -111,52 +126,8 @@ def _spec_dto(spec: m.Spec, latest: m.SpecRevision | None) -> SpecDoc:
     )
 
 
-def _name_and_kind(v: Validation) -> tuple[str, str]:
-    meta = v.document.get("metadata")
-    name = meta.get("name") if isinstance(meta, dict) else None
-    if v.kind is None:
-        raise MapiError(
-            "the document has no valid kind",
-            code=ErrorCode.SCHEMA_INVALID,
-            issues=[Issue(code=ErrorCode.SCHEMA_INVALID, pointer="/kind", message="unknown kind")],
-        )
-    if not isinstance(name, str) or not _SLUG.match(name):
-        raise MapiError(
-            "stored specs need metadata.name (a slug)",
-            code=ErrorCode.SCHEMA_INVALID,
-            issues=[
-                Issue(
-                    code=ErrorCode.SCHEMA_INVALID,
-                    pointer="/metadata/name",
-                    message="metadata.name is required to store a spec",
-                )
-            ],
-        )
-    return name, v.kind
-
-
-def _revision_row(
-    spec: m.Spec, revision: int, yaml: str, v: Validation, parent: int | None, message: str | None
-) -> m.SpecRevision:
-    return m.SpecRevision(
-        spec_id=spec.id,
-        revision=revision,
-        tenant_id=spec.tenant_id,
-        project_id=spec.project_id,
-        kind=v.kind or spec.kind,
-        hash=v.hash or "",
-        yaml=yaml,
-        document=v.document,
-        valid=v.valid,
-        issues=[i.model_dump(mode="json") for i in v.issues],
-        resolved=v.resolved.model_dump(mode="json") if v.resolved else None,
-        catalog_digest=v.catalog.digest if v.catalog else None,
-        dataset_id=v.dataset.dataset_id if v.dataset else None,
-        dataset_version=v.dataset.version if v.dataset else None,
-        parent_revision=parent,
-        message=message,
-        created_at=now(),
-    )
+_name_and_kind = spec_name_and_kind
+_revision_row = spec_revision_row
 
 
 @router.post(
@@ -167,29 +138,11 @@ async def create_spec(ctx: Ctx, session: Session, body: SpecCreate) -> SpecDoc:
 
     In a Guided-locked project, members below admin may store Guided specs only (``403``
     with the offending pointers otherwise; see ``Project.guided_locked``)."""
-    v = await validate_document(session, ctx.scope, ctx.catalogs, text=body.yaml)
+    v = await validate_document(session, ctx.scope, await _catalogs(ctx, session), text=body.yaml)
     refuse_retired_kind(v)
-    name, kind = _name_and_kind(v)
+    _name_and_kind(v)  # a missing name or kind is refused before the lock check
     await enforce_guided_lock(session, ctx.scope, ctx.request, v.document)
-    ts = now()
-    spec = m.Spec(
-        id=new_id("spc"),
-        tenant_id=ctx.scope.tenant_id,
-        project_id=ctx.scope.project_id,
-        name=name,
-        kind=kind,
-        latest_revision=1,
-        created_at=ts,
-        updated_at=ts,
-    )
-    try:
-        async with session.begin_nested():
-            session.add(spec)
-    except DBIntegrityError:
-        raise Conflict(f"a spec named {name!r} already exists; add a revision instead") from None
-    rev = _revision_row(spec, 1, body.yaml, v, None, body.message)
-    session.add(rev)
-    await session.flush()
+    spec, rev = await create_spec_row(session, ctx.scope, v, yaml=body.yaml, message=body.message)
     return _spec_dto(spec, rev)
 
 
@@ -252,7 +205,7 @@ async def create_spec_revision(
             f"{spec.latest_revision}",
             pointer="/body/parent_revision",
         )
-    v = await validate_document(session, ctx.scope, ctx.catalogs, text=body.yaml)
+    v = await validate_document(session, ctx.scope, await _catalogs(ctx, session), text=body.yaml)
     refuse_retired_kind(v)
     name, kind = _name_and_kind(v)
     parent = await _rev(session, spec, spec.latest_revision)

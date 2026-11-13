@@ -37,6 +37,8 @@ class FakeExecutor:
 
     name: str = "fake"
     isolation: Isolation = Isolation.PROCESS
+    runs_untrusted_code: bool = True
+    """v0.19 (D6): the dispatcher only leases untrusted runs to executors that say so."""
     fail_submit: Exception | None = None
     on_submit: Callable[[RunSubmit, str], None] | None = None
     executions: dict[str, FakeExecution] = field(default_factory=dict)
@@ -49,6 +51,7 @@ class FakeExecutor:
         return ExecutorCaps(
             isolation=self.isolation,
             classes=[ResourceClass.S, ResourceClass.M, ResourceClass.L],
+            runs_untrusted_code=self.runs_untrusted_code,
         )
 
     async def submit(self, rs: RunSubmit, nonce: str) -> Handle:

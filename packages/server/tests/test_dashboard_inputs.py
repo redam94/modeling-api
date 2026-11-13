@@ -24,7 +24,7 @@ from mapi_spec.dashboards import DashboardSpec
 from mapi_spec.views import ResponseGridView
 from mapi_spec.whatif import WhatIfScenario, evaluate_scenario
 from sqlalchemy import select, update
-from test_dashboards_crud import GRID, create_published, dashboard_kit, dashboard_spec
+from test_dashboards_crud import GRID, LAYOUT1, create_published, dashboard_kit, dashboard_spec
 
 pytestmark = pytest.mark.integration
 
@@ -34,7 +34,7 @@ REAL_EXACT = inputs.exact_request
 @pytest.fixture
 def settings(settings: Settings) -> Settings:
     return settings.model_copy(
-        update={"profile": Profile.MULTI_TENANT, "client_run_rate_per_hour": 2}
+        update={"profile": Profile.MULTI_TENANT, "client_run_rate_per_hour": 2, **LAYOUT1}
     )
 
 
@@ -239,12 +239,13 @@ async def test_run_caps_answer_429_with_retry_after(
     r = await kit["cleo"].post(base, json={"multipliers": {"tv": 0.9}, "exact": True})
     assert r.status_code == 429 and r.json()["code"] == "DASHBOARD_RUN_LIMIT", r.text
     assert int(r.headers["retry-after"]) >= 1
-    assert "today's limit" in r.json()["detail"]
+    assert "this hour's limit" in r.json()["detail"]  # B13 (live): never "tomorrow"
     # the dashboard's daily cap (3) counts every caller
     r = await kit["carl"].post(base, json={"multipliers": {"tv": 1.2}, "exact": True})
     assert r.status_code == 202, r.text
     r = await kit["carl"].post(base, json={"multipliers": {"tv": 1.3}, "exact": True})
     assert r.status_code == 429 and r.json()["code"] == "DASHBOARD_RUN_LIMIT"
+    assert "today's limit" in r.json()["detail"]
     assert len(await score_runs(ctx)) == 3
     # grid scenarios are free: never capped
     r = await kit["carl"].post(base, json={"multipliers": {"tv": 1.3}})

@@ -9,8 +9,9 @@ RunSpec built later signs exactly what was validated.
 from __future__ import annotations
 
 import copy
+from collections.abc import Sequence
 from datetime import timedelta
-from typing import Any
+from typing import Any, Final
 
 from mapi_spec._types import Duration
 from mapi_spec.api import RunCreate, RunRetry
@@ -32,7 +33,7 @@ from mapi_spec.collection import (
 )
 from mapi_spec.coords import DataSummary
 from mapi_spec.errors import ErrorCode, Issue, MapiError, ValidationFailed
-from mapi_spec.executor import RunKind
+from mapi_spec.executor import PLUGIN_KINDS, RunKind
 from mapi_spec.ingest import IngestAssembly
 from mapi_spec.jobs import (
     BUNDLE_MANIFEST_OUTPUT,
@@ -58,13 +59,15 @@ from mapi_spec.jobs import (
     side_table_input,
     upload_input,
 )
+from mapi_spec.library import LABEL_MODEL, LABEL_PREP, LABEL_TEMPLATE
 from mapi_spec.loader import spec_hash
+from mapi_spec.plugins import OverlayPin
 from mapi_spec.quotas import QuotaDemand, default_priority
 from mapi_spec.refs import DatasetRef
 from mapi_spec.resources import RESOURCE_CLASSES, ResourceClass
 from mapi_spec.run import Actor, RunState, RunTrigger
 from mapi_spec.spec import DEFAULT_FIT_SEED, FutureCovariates, ModelSpec, ScoreRequest
-from mapi_spec.tenancy import ResourceKind, TrustTier
+from mapi_spec.tenancy import ResourceKind, TrustTier, untrusted_placement_problem
 from pydantic import JsonValue
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -75,13 +78,20 @@ from mapi_server.errors import Conflict, NotFoundError, ProblemWithHeaders
 from mapi_server.executors import PlacementRefused, placement_refusal, reported_caps
 from mapi_server.services.audit import write_audit
 from mapi_server.services.bundles import verified_bundle_object, verify_bundle_inputs
-from mapi_server.services.catalog import CatalogSnapshot
 from mapi_server.services.cost import run_estimate
 from mapi_server.services.evidence import placement_problem
 from mapi_server.services.experiments import check_run_experiment
+from mapi_server.services.plugins.gate import pins_problem
+from mapi_server.services.plugins.refs import (
+    document_ids,
+    merge_pins,
+    model_version_pins,
+    spec_catalog_ids,
+)
+from mapi_server.services.plugins.view import pins_from, resolve_pins, view_catalogs
 from mapi_server.services.quotas import admit_run
 from mapi_server.services.runs import Scope, apply_transition, create_run, now
-from mapi_server.services.runspec import StoredRef
+from mapi_server.services.runspec import StoredRef, run_pins
 from mapi_server.services.specs import (
     COLLECTION_REFUSED,
     Validation,
@@ -94,15 +104,18 @@ from mapi_server.services.specs import (
     validate_document,
 )
 from mapi_server.services.verification import require_uploaded_code_allowed
+from mapi_server.settings import Profile
 
 __all__ = [
     "COLLECTION_REFUSED",
     "DEFAULT_TIMEOUT_S",
+    "LINEAGE_LABELS",
     "admit",
     "collection_ingest_timeout_s",
     "data_object_name",
     "data_ref",
     "dataset_inputs",
+    "lineage_labels",
     "refuse_collection",
     "submit_collection_ingest",
     "submit_describe",
@@ -180,12 +193,22 @@ def dataset_inputs(dv: m.DatasetVersion, prefix: str = INPUT_DATASET) -> dict[st
 
 
 async def _accept(
-    session: AsyncSession, ctx: ServerContext, run: m.Run, *, untrusted: bool = False
+    session: AsyncSession,
+    ctx: ServerContext,
+    run: m.Run,
+    *,
+    untrusted: bool = False,
+    overlays: Sequence[OverlayPin] | None = None,
 ) -> m.Run:
-    """Admit (priority, estimate, kill switches, quotas) and queue a ``CREATED`` run."""
-    await admit(session, ctx, run, untrusted=untrusted)
+    """Admit (priority, estimate, kill switches, quotas, uploaded code) and queue a
+    ``CREATED`` run; ``overlays`` as in :func:`admit`."""
+    await admit(session, ctx, run, untrusted=untrusted, overlays=overlays)
     await apply_transition(session, run, RunTrigger.ACCEPT, Actor.API)
     return run
+
+
+_NO_OVERLAY_KINDS: Final = frozenset({RunKind.INGEST, RunKind.INSPECT, RunKind.DESCRIBE})
+"""Kinds that never run plugin code (v0.19, D9): an overlay pin on them is refused."""
 
 
 async def admit(
@@ -194,11 +217,29 @@ async def admit(
     run: m.Run,
     *,
     untrusted: bool = False,
+    overlays: Sequence[OverlayPin] | None = None,
     audit_action: AuditAction | None = AuditAction.RUN_CREATE,
 ) -> None:
-    """Stamp scheduling and accounting fields, then check kill switches and quotas.
+    """Stamp scheduling and accounting fields, then check uploaded code, kill switches and
+    quotas.
 
-    Runs created by a request are checked against placement (an executor that reported
+    v0.19 (D9): ``overlays`` are the pins of the uploaded plugin versions the run uses
+    (computed from every catalog ref it resolved, and inherited from a model version's
+    lineage). ``None`` keeps what the row holds (a resumed run; a pipeline run that set
+    its own pin); a sequence replaces ``runs.overlays``. A run with pins, a plugin pipeline
+    run or an ``untrusted`` caller is marked ``untrusted_code`` and must pass, before
+    anything else and whether or not a request is behind it:
+
+    * the tenant's uploaded-code rule (``IDENTITY_VERIFICATION_REQUIRED``; the public tier
+      is refused in v0.19 whatever ``public_code_upload_enabled`` says);
+    * every pin's gate (:func:`~mapi_server.services.plugins.gate.pins_problem`,
+      ``PLUGIN_UNAVAILABLE``), checked for the person the run acts for: the caller of a
+      new run or a retry, the original creator of a resumed run, the workflow run's creator
+      for a node run;
+    * the untrusted placement rule against the executors that reported recently
+      (``UNTRUSTED_PLACEMENT_UNAVAILABLE``, 409).
+
+    Runs created by a request are then checked against placement (an executor that reported
     recently must be able to take the tenant's tier: ``INFRA_ERROR``/503 otherwise), the kill
     switches and the token, tenant and global quotas (``QUOTA_EXCEEDED``/429, audited; no run
     is created). Platform runs (``describe``) are only stamped.
@@ -206,22 +247,51 @@ async def admit(
     settings = ctx.settings
     kind = RunKind(run.kind)
     rc = ResourceClass(run.resource_class)
+    auth = ctx.request
+    # the person the pins are checked for: decided before created_by is stamped below
+    acting_for = auth.user_id if overlays is not None and auth is not None else run.created_by
+    if overlays is not None:
+        if overlays and kind in _NO_OVERLAY_KINDS:
+            raise MapiError(
+                f"{kind.value} runs cannot use uploaded code. Use built-in steps only.",
+                code=ErrorCode.PLUGIN_UNAVAILABLE,
+            )
+        run.overlays = [p.model_dump(mode="json") for p in merge_pins(overlays)]
+    pins = run_pins(run)
+    untrusted = untrusted or bool(pins) or kind in PLUGIN_KINDS
     run.priority = default_priority(kind).value
     run.untrusted_code = untrusted
     wall = min(settings.estimate_wall_s.get(kind.value, 300.0), float(run.timeout_s))
     estimate = run_estimate(ctx.price_table, rc, wall, max(1, run.task_count or 1))
     run.estimate = estimate.model_dump(mode="json") if estimate is not None else None
-    auth = ctx.request
     if untrusted:  # cut line A: uploaded code needs a trusted tier or identity verification
         try:
             await require_uploaded_code_allowed(session, ctx, run.tenant_id)
+            await _refuse_public_tier(session, run.tenant_id)
+            if pins and kind not in PLUGIN_KINDS:
+                refused = await pins_problem(
+                    session, tenant_id=run.tenant_id, created_by=acting_for, pins=pins
+                )
+                if refused is not None:
+                    raise MapiError(
+                        refused.detail or refused.title, code=ErrorCode.PLUGIN_UNAVAILABLE
+                    )
+            elif pins and kind is RunKind.PLUGIN_DESCRIBE:
+                # a describe run mounts the version it checks (not mountable for anyone
+                # yet): its pin is checked against the version itself, for its uploader
+                from mapi_server.services.plugins.pipeline import describe_pin_problem
+
+                reason = await describe_pin_problem(session, run, pins, created_by=acting_for)
+                if reason is not None:
+                    raise MapiError(reason, code=ErrorCode.PLUGIN_UNAVAILABLE)
+            await _check_untrusted_placement(ctx)
         except MapiError as exc:
             if auth is not None:
                 await write_audit(
                     ctx.db,
                     [auth.audit(ctx, AuditAction.RUN_CREATE, ResourceKind.RUN,
                                 AuditOutcome.DENIED, code=exc.code,
-                                details={"kind": kind.value, "untrusted_code": True})],
+                                details=_untrusted_details(ctx, kind, pins))],
                 )  # fmt: skip
             raise
     if auth is None:
@@ -261,7 +331,7 @@ async def admit(
         )
     if not decision.allowed:
         assert decision.code is not None
-        details: dict[str, JsonValue] = {
+        denied: dict[str, JsonValue] = {
             "kind": kind.value,
             "resource_class": rc.value,
             "scope": decision.scope.value if decision.scope else None,
@@ -276,7 +346,7 @@ async def admit(
                     ResourceKind.RUN,
                     AuditOutcome.DENIED,
                     code=decision.code,
-                    details=details,
+                    details=denied,
                 )
             ],
         )
@@ -285,19 +355,52 @@ async def admit(
         )
     if audit_action is None:
         return
+    details: dict[str, JsonValue] = {"kind": kind.value, "resource_class": rc.value}
+    if untrusted:
+        details.update(_untrusted_details(ctx, kind, pins))
     await write_audit(
         ctx.db,
-        [
-            auth.audit(
-                ctx,
-                audit_action,
-                ResourceKind.RUN,
-                resource_id=run.id,
-                details={"kind": kind.value, "resource_class": rc.value},
-            )
-        ],
+        [auth.audit(ctx, audit_action, ResourceKind.RUN, resource_id=run.id, details=details)],
         session=session,
     )
+
+
+def _untrusted_details(
+    ctx: ServerContext, kind: RunKind, pins: Sequence[OverlayPin]
+) -> dict[str, JsonValue]:
+    """Audit details of an untrusted run: ids and digests only, never uploaded text."""
+    out: dict[str, JsonValue] = {"kind": kind.value, "untrusted_code": True}
+    if pins:
+        out["overlays"] = [p.plugin_version_id for p in pins]
+    if ctx.settings.dev_untrusted_code:
+        out["dev_untrusted"] = True
+    return out
+
+
+async def _refuse_public_tier(session: AsyncSession, tenant_id: str) -> None:
+    """v0.19 (D1): public-tier tenants never run uploaded code, whatever cut line B says."""
+    tenant = await session.get(m.Tenant, tenant_id)
+    if tenant is not None and tenant.trust_tier == TrustTier.PUBLIC.value:
+        raise MapiError(
+            "Public workspaces cannot run uploaded code. Built-in models and declarative "
+            "specs are always available.",
+            code=ErrorCode.IDENTITY_VERIFICATION_REQUIRED,
+        )
+
+
+async def _check_untrusted_placement(ctx: ServerContext) -> None:
+    """``UNTRUSTED_PLACEMENT_UNAVAILABLE`` (409) when no executor that reported recently may
+    run uploaded code (D6; the dispatcher checks again at every pick). Without any report
+    the dispatcher decides."""
+    max_age = timedelta(seconds=6 * ctx.settings.executor_report_interval_s)
+    async with ctx.db.session() as system:
+        offered = await reported_caps(system, max_age=max_age)
+    if not offered:
+        return
+    multi = ctx.settings.profile is Profile.MULTI_TENANT
+    reasons = [untrusted_placement_problem(caps, multi_tenant=multi) for caps in offered]
+    if all(r is not None for r in reasons):
+        raise MapiError(str(reasons[0]), code=ErrorCode.UNTRUSTED_PLACEMENT_UNAVAILABLE)
 
 
 async def _check_placement(
@@ -328,16 +431,6 @@ async def _check_placement(
         )
 
 
-def _overlay(snapshot: CatalogSnapshot | None, model_ref: str | None) -> bool:
-    """Does the resolved model plugin ship tenant code (an overlay tarball)?"""
-    if snapshot is None or not model_ref:
-        return False
-    for entry in snapshot.catalog.models:
-        if entry.ref == model_ref:
-            return entry.overlay_hash is not None
-    return False
-
-
 async def load_revision(
     session: AsyncSession, scope: Scope, spec_id: str, revision: int
 ) -> tuple[m.Spec, m.SpecRevision]:
@@ -348,6 +441,14 @@ async def load_revision(
     if rev is None:
         raise NotFoundError("spec revision", f"{spec_id}@r{revision}")
     return spec, rev
+
+
+LINEAGE_LABELS: Final = (LABEL_MODEL, LABEL_PREP, LABEL_TEMPLATE)
+
+
+def lineage_labels(spec: ModelSpec) -> dict[str, str]:
+    """The library lineage labels (:data:`LINEAGE_LABELS`) of a spec's ``metadata.labels``."""
+    return {k: v for k, v in spec.metadata.labels.items() if k in LINEAGE_LABELS}
 
 
 async def submit_spec_run(
@@ -361,13 +462,19 @@ async def submit_spec_run(
     timeout: Duration | None = None,
     labels: dict[str, str] | None = None,
 ) -> m.Run:
-    """``fit`` or ``validate`` (dry-run) from a stored revision, re-validated now."""
+    """``fit`` or ``validate`` (dry-run) from a stored revision, re-validated now.
+
+    The revision's library lineage labels (``mapi.library/*`` in ``metadata.labels``, put
+    there by "Use in Build") go on the run too, under the caller's own ``labels``, so a fit
+    started from Build is labelled like one from "Fit now"."""
     scope = ctx.scope
     _, rev = await load_revision(session, scope, spec_id, revision)
+    # v0.19: validated against the caller's tenant catalog view (their visible uploads)
+    catalogs = await view_catalogs(ctx, session, tenant_id=scope.tenant_id, user_id=_caller(ctx))
     v: Validation = await validate_document(
         session,
         scope,
-        ctx.catalogs,
+        catalogs,
         document=copy.deepcopy(rev.document),
         resource_class=resource_class,
     )
@@ -375,9 +482,13 @@ async def submit_spec_run(
         raise MapiError(
             f"{kind.value} runs need a ModelSpec revision", code=ErrorCode.SCHEMA_INVALID
         )
+    # an upload the caller may not use is PLUGIN_UNAVAILABLE (409, with why), not an
+    # unknown id; the pins of the run come from the same view
+    pins = pins_from(catalogs, spec_catalog_ids(v.typed))
     if not v.valid or v.resolved is None or v.dataset is None:
         raise ValidationFailed(v.issues)
     spec = v.typed
+    labels = {**lineage_labels(spec), **(labels or {})}
     caps: Capabilities = v.resolved.model.capabilities
     payload = pin_document(rev.document, v)
     if isinstance(payload.get("model"), dict):
@@ -411,9 +522,12 @@ async def submit_spec_run(
         catalog_digest=v.catalog.digest if v.catalog else None,
         checkpointable=checkpointable,
     )
-    return await _accept(
-        session, ctx, run, untrusted=_overlay(v.catalog, v.resolved.model.resolved)
-    )
+    return await _accept(session, ctx, run, overlays=pins)
+
+
+def _caller(ctx: ServerContext) -> str | None:
+    """The person a request acts for (``None`` outside requests)."""
+    return ctx.request.user_id if ctx.request is not None else None
 
 
 async def _ready_model_version(session: AsyncSession, scope: Scope, mv_id: str) -> m.ModelVersion:
@@ -605,7 +719,11 @@ async def submit_model_run(
         model_version_id=mv.id,
         catalog_digest=mv.manifest.get("catalog_digest"),
     )
-    return await _accept(session, ctx, run, untrusted=bool((mv.lineage or {}).get("overlay_hash")))
+    # v0.19: the version's code again (its lineage pins) plus any uploaded id the job names
+    pins = await resolve_pins(
+        ctx, session, ids=document_ids(payload), inherited=model_version_pins(mv.lineage)
+    )
+    return await _accept(session, ctx, run, overlays=pins)
 
 
 def _needs_history(request: ScoreRequest) -> bool:
@@ -653,8 +771,9 @@ async def submit_run(session: AsyncSession, ctx: ServerContext, body: RunCreate)
 
 
 async def _refuse_orchestrated_retry(session: AsyncSession, old: m.Run) -> None:
-    """Workflow runs, their node runs, governance runs and (M4) inspect runs are driven by
-    their owner (the workflow orchestrator, a validation, an upload): a stand-alone retry
+    """Workflow runs, their node runs, governance runs, (M4) inspect runs and (v0.19) plugin
+    check runs are driven by their owner (the workflow orchestrator, a validation, an
+    upload): a stand-alone retry
     would be a run nobody collects, so it is refused (``CONFLICT``) with where to start
     again instead."""
     kind = RunKind(old.kind)
@@ -675,6 +794,13 @@ async def _refuse_orchestrated_retry(session: AsyncSession, old: m.Run) -> None:
         raise Conflict(
             "inspect runs are not retried one by one: inspect the upload again "
             f"(POST /v1/datasets/{old.dataset_id or '{dataset_id}'}/uploads/{upload}/inspect)"
+        )
+    if kind in (RunKind.PLUGIN_INSPECT, RunKind.PLUGIN_DESCRIBE):
+        # v0.19: the pipeline queues these for the uploader (and the rekit sweep queues a
+        # describe again by itself); a retry by anyone else would run the upload as theirs
+        raise Conflict(
+            f"{kind.value} runs are not retried one by one: upload the plugin again "
+            "(a new version), or wait for the platform to check it again"
         )
     if kind is RunKind.GOVERNANCE:
         validation = (old.labels or {}).get("validation")
@@ -727,7 +853,9 @@ async def submit_retry(
         checkpointable=old.checkpointable,
         experiment_id=old.experiment_id,  # v0.14: a retry stays in its run's experiment
     )
-    return await _accept(session, ctx, run, untrusted=old.untrusted_code)
+    # v0.19: the same pins, gated again for the person retrying (a teammate cannot retry
+    # someone's run of a private upload)
+    return await _accept(session, ctx, run, untrusted=old.untrusted_code, overlays=run_pins(old))
 
 
 async def submit_ingest(

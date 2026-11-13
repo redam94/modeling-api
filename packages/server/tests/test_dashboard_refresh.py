@@ -30,7 +30,7 @@ from mapi_spec.api import new_id
 from mapi_spec.dashboards import SHARE_SESSION_HEADER
 from mapi_spec.xrjson import XrJsonDataset
 from sqlalchemy import func, select, update
-from test_dashboards_crud import GRID, create_published, dashboard_kit, dashboard_spec
+from test_dashboards_crud import GRID, LAYOUT1, create_published, dashboard_kit, dashboard_spec
 
 pytestmark = pytest.mark.integration
 
@@ -51,7 +51,7 @@ UPLOAD = {
 
 @pytest.fixture
 def settings(settings: Settings) -> Settings:
-    return settings.model_copy(update={"profile": Profile.MULTI_TENANT})
+    return settings.model_copy(update={"profile": Profile.MULTI_TENANT, **LAYOUT1})
 
 
 @pytest.fixture
@@ -211,6 +211,24 @@ async def test_an_endpoint_promotion_follows_or_flags(
         assert body["published_revision"]["model_version_id"] == kit["model"]["mv_id"]
         assert len(revs) == 1 and body["problem"] == "new_version_available"
         assert body["latest_readout"]["kind"] == "baseline"
+
+
+async def test_a_followed_promotion_keeps_the_upgrade_review_flag(
+    kit: dict[str, Any], ctx: ServerContext
+) -> None:
+    """The new revision carries the same layout 1 spec: it still needs the editor's review."""
+    from mapi_spec.dashboards import UPGRADE_NEEDS_REVIEW
+
+    dash_id = await _endpoint_dashboard(kit, True)
+    async with ctx.db.session() as s:
+        row = await s.get(m.Dashboard, dash_id)
+        assert row is not None
+        row.problem = UPGRADE_NEEDS_REVIEW
+    v2 = await refit_version(ctx, await _version(ctx, kit["model"]["mv_id"]), add=_GRID_OBJECT)
+    await _promote(kit, v2.version)
+    body = (await kit["ana"].get(f"/v1/dashboards/{dash_id}")).json()
+    assert body["published_revision"]["model_version_id"] == v2.id
+    assert body["problem"] == UPGRADE_NEEDS_REVIEW
 
 
 async def _refreshes(ctx: ServerContext, dash_id: str) -> list[m.DashboardReadout]:

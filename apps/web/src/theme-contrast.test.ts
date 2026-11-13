@@ -5,10 +5,13 @@
  * - form field borders (`--input`), the focus ring and chart series are non-text UI and need 3:1
  *   against what they sit on;
  * - every foreground / background pair the primitives use (primary buttons, accent, tooltips,
- *   destructive fills, hint text) needs 4.5:1.
+ *   destructive fills, hint text) needs 4.5:1;
+ * - the role tokens: text on the ink block, the orange highlight and the red tints needs 4.5:1,
+ *   the highlight as a mark on the block and the red fill on a card need 3:1.
+ * The orange `--highlight` is a fill only (about 2.1:1 on a card): a lint below refuses it as text.
  */
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
@@ -103,6 +106,49 @@ describe.each([
     expect(on(fg, bg)).toBeGreaterThanOrEqual(4.5);
   });
 
+  it.each([
+    ["foreground", "card"],
+    ["foreground", "background"],
+    ["secondary-foreground", "secondary"],
+    // A pressed filter pill (bg-foreground text-background).
+    ["background", "foreground"],
+    ["muted-foreground", "muted"],
+  ])("--%s reads at 4.5:1 on --%s", (fg, bg) => {
+    expect(on(fg, bg)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it.each([
+    // The call to action on a block, the "up" delta pill, the active tour dot.
+    ["highlight-foreground", "highlight"],
+    // Highlight words: the current step, "new" chips.
+    ["highlight-ink", "highlight-soft"],
+    ["highlight-ink", "card"],
+    ["highlight-ink", "background"],
+    ["muted-foreground", "highlight-soft"],
+    // The one ink block per page and the tiles inside it.
+    ["block-foreground", "block"],
+    ["block-foreground", "block-raised"],
+    ["block-muted", "block"],
+    ["block-muted", "block-raised"],
+    // Attention words: down deltas, "needs a look" chips.
+    ["attention", "attention-soft"],
+    ["attention", "card"],
+    ["attention", "background"],
+  ])("role text --%s reads at 4.5:1 on --%s", (fg, bg) => {
+    expect(on(fg, bg)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it.each([
+    // The active nav icon, the coach-mark's active dot and the CTA edge on a block.
+    ["highlight", "block"],
+    ["highlight", "block-raised"],
+    // The response curve and accent dots.
+    ["attention-fill", "card"],
+    ["attention-fill", "background"],
+  ])("role mark --%s reaches 3:1 on --%s", (fg, bg) => {
+    expect(on(fg, bg)).toBeGreaterThanOrEqual(3);
+  });
+
   it("--ring reaches 3:1 against the card and the page", () => {
     expect(on("ring", "card")).toBeGreaterThanOrEqual(3);
     expect(on("ring", "background")).toBeGreaterThanOrEqual(3);
@@ -135,5 +181,45 @@ describe("the keyboard highlight of menus and the command palette", () => {
     expect(contrast(rgb(t.ring!), rgb(t.popover!))).toBeGreaterThanOrEqual(3);
     expect(contrast(rgb(t.ring!), rgb(t.accent!))).toBeGreaterThanOrEqual(3);
     expect(contrast(rgb(t["accent-foreground"]!), rgb(t.accent!))).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe("the highlight fill is never a text colour", () => {
+  const root = dirname(fileURLToPath(import.meta.url));
+  const self = fileURLToPath(import.meta.url);
+  const files = (dir: string): string[] =>
+    readdirSync(dir).flatMap((name) => {
+      const path = join(dir, name);
+      return statSync(path).isDirectory() ? files(path) : /\.(tsx?|css)$/.test(name) ? [path] : [];
+    });
+  // `text-highlight` alone (any variant, any opacity) and `text-highlight-soft` are highlight text;
+  // `text-highlight-foreground` (ink on the fill) and `text-highlight-ink` are the text roles.
+  // Icons on a block take `stroke-highlight` (lucide strokes in currentColor otherwise).
+  const misuse = [
+    /(?<![\w-])text-highlight(?!-(?:foreground|ink)(?![\w-]))(?!\w)/,
+    /text-\[(?:color:)?var\(--highlight\)\]/,
+    /(?<![\w-])color:\s*var\(--highlight\)/,
+  ];
+
+  it("no source file colours text with --highlight", () => {
+    const offenders: string[] = [];
+    for (const path of files(root)) {
+      if (path === self) continue;
+      const text = readFileSync(path, "utf8");
+      text.split("\n").forEach((line, i) => {
+        if (misuse.some((re) => re.test(line))) offenders.push(`${relative(root, path)}:${i + 1}: ${line.trim()}`);
+      });
+    }
+    expect(offenders, "use text-highlight-ink for highlight words, text-highlight-foreground on the highlight fill").toEqual([]);
+  });
+
+  it("the lint catches the misuse and lets the text roles through", () => {
+    const hits = (line: string) => misuse.some((re) => re.test(line));
+    for (const bad of ['"text-highlight"', "hover:text-highlight", "text-highlight/80", "text-highlight-soft", "color: var(--highlight);"]) {
+      expect(hits(bad), bad).toBe(true);
+    }
+    for (const good of ["text-highlight-foreground", "text-highlight-ink", "bg-highlight", "stroke-highlight", "--highlight-ink: #9f4500;"]) {
+      expect(hits(good), good).toBe(false);
+    }
   });
 });

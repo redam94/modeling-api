@@ -1,0 +1,606 @@
+{
+  "about": "mapi_spec.schema_safety.sanitize_schema(mode='strip') on each input; the web mirror (features/forms/schema-sanitize.ts) must give the same output for the checks it implements ('regex' needs is_safe_regex; the web may drop every pattern instead).",
+  "allowed_keywords": [
+    "$comment",
+    "$defs",
+    "$ref",
+    "$schema",
+    "additionalProperties",
+    "allOf",
+    "anyOf",
+    "const",
+    "contains",
+    "default",
+    "dependentRequired",
+    "dependentSchemas",
+    "deprecated",
+    "description",
+    "discriminator",
+    "else",
+    "enum",
+    "examples",
+    "exclusiveMaximum",
+    "exclusiveMinimum",
+    "format",
+    "if",
+    "items",
+    "maxContains",
+    "maxItems",
+    "maxLength",
+    "maxProperties",
+    "maximum",
+    "minContains",
+    "minItems",
+    "minLength",
+    "minProperties",
+    "minimum",
+    "multipleOf",
+    "not",
+    "oneOf",
+    "pattern",
+    "patternProperties",
+    "prefixItems",
+    "properties",
+    "propertyNames",
+    "readOnly",
+    "required",
+    "then",
+    "title",
+    "type",
+    "unevaluatedItems",
+    "unevaluatedProperties",
+    "uniqueItems",
+    "writeOnly",
+    "x-ui-group",
+    "x-ui-level",
+    "x-ui-order",
+    "x-ui-widget"
+  ],
+  "cases": [
+    {
+      "name": "plain object",
+      "checks": [
+        "keyword"
+      ],
+      "input": {
+        "type": "object",
+        "properties": {
+          "n": {
+            "type": "integer"
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "n": {
+            "type": "integer"
+          }
+        }
+      },
+      "removed": []
+    },
+    {
+      "name": "unknown keyword",
+      "checks": [
+        "keyword"
+      ],
+      "input": {
+        "type": "string",
+        "contentEncoding": "base64"
+      },
+      "output": {
+        "type": "string"
+      },
+      "removed": [
+        "/contentEncoding"
+      ]
+    },
+    {
+      "name": "remote id",
+      "checks": [
+        "keyword"
+      ],
+      "input": {
+        "$id": "https://x.example/s",
+        "type": "object"
+      },
+      "output": {
+        "type": "object"
+      },
+      "removed": [
+        "/$id"
+      ]
+    },
+    {
+      "name": "dynamic ref",
+      "checks": [
+        "keyword",
+        "ref"
+      ],
+      "input": {
+        "properties": {
+          "x": {
+            "$dynamicRef": "#a"
+          }
+        }
+      },
+      "output": {
+        "properties": {
+          "x": {}
+        }
+      },
+      "removed": [
+        "/properties/x/$dynamicRef"
+      ]
+    },
+    {
+      "name": "remote ref",
+      "checks": [
+        "ref"
+      ],
+      "input": {
+        "properties": {
+          "x": {
+            "$ref": "https://x.example/s"
+          }
+        }
+      },
+      "output": {
+        "properties": {
+          "x": {}
+        }
+      },
+      "removed": [
+        "/properties/x/$ref"
+      ]
+    },
+    {
+      "name": "local ref",
+      "checks": [
+        "ref"
+      ],
+      "input": {
+        "$defs": {
+          "A": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "x": {
+            "$ref": "#/$defs/A"
+          }
+        }
+      },
+      "output": {
+        "$defs": {
+          "A": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "x": {
+            "$ref": "#/$defs/A"
+          }
+        }
+      },
+      "removed": []
+    },
+    {
+      "name": "missing ref",
+      "checks": [
+        "ref"
+      ],
+      "input": {
+        "properties": {
+          "x": {
+            "$ref": "#/$defs/B"
+          }
+        }
+      },
+      "output": {
+        "properties": {
+          "x": {}
+        }
+      },
+      "removed": [
+        "/properties/x/$ref"
+      ]
+    },
+    {
+      "name": "ref cycle",
+      "checks": [
+        "ref"
+      ],
+      "input": {
+        "$defs": {
+          "A": {
+            "items": {
+              "$ref": "#/$defs/A"
+            }
+          }
+        },
+        "properties": {
+          "x": {
+            "$ref": "#/$defs/A"
+          }
+        }
+      },
+      "output": {
+        "$defs": {
+          "A": {
+            "items": {}
+          }
+        },
+        "properties": {
+          "x": {}
+        }
+      },
+      "removed": [
+        "/$defs/A/items/$ref",
+        "/properties/x/$ref"
+      ]
+    },
+    {
+      "name": "formats",
+      "checks": [
+        "format"
+      ],
+      "input": {
+        "properties": {
+          "a": {
+            "type": "string",
+            "format": "date"
+          },
+          "b": {
+            "type": "string",
+            "format": "email"
+          }
+        }
+      },
+      "output": {
+        "properties": {
+          "a": {
+            "type": "string",
+            "format": "date"
+          },
+          "b": {
+            "type": "string"
+          }
+        }
+      },
+      "removed": [
+        "/properties/b/format"
+      ]
+    },
+    {
+      "name": "ui keywords",
+      "checks": [
+        "ui"
+      ],
+      "input": {
+        "properties": {
+          "a": {
+            "type": "number",
+            "x-ui-widget": "slider",
+            "x-ui-group": "Basics",
+            "x-ui-order": 1,
+            "x-ui-level": "basic"
+          },
+          "b": {
+            "type": "string",
+            "x-ui-widget": "iframe"
+          },
+          "c": {
+            "type": "string",
+            "x-ui-live": true
+          }
+        }
+      },
+      "output": {
+        "properties": {
+          "a": {
+            "type": "number",
+            "x-ui-widget": "slider",
+            "x-ui-group": "Basics",
+            "x-ui-order": 1,
+            "x-ui-level": "basic"
+          },
+          "b": {
+            "type": "string"
+          },
+          "c": {
+            "type": "string"
+          }
+        }
+      },
+      "removed": [
+        "/properties/b/x-ui-widget",
+        "/properties/c/x-ui-live"
+      ]
+    },
+    {
+      "name": "text",
+      "checks": [
+        "text"
+      ],
+      "input": {
+        "title": "Ok",
+        "description": "Line one\nline two",
+        "properties": {
+          "a": {
+            "type": "string",
+            "description": "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+          },
+          "b": {
+            "type": "string",
+            "title": "nul\u0000"
+          }
+        }
+      },
+      "output": {
+        "title": "Ok",
+        "description": "Line one\nline two",
+        "properties": {
+          "a": {
+            "type": "string"
+          },
+          "b": {
+            "type": "string"
+          }
+        }
+      },
+      "removed": [
+        "/properties/a/description",
+        "/properties/b/title"
+      ]
+    },
+    {
+      "name": "html is text",
+      "checks": [
+        "text"
+      ],
+      "input": {
+        "title": "<script>alert(1)</script>",
+        "type": "string"
+      },
+      "output": {
+        "title": "<script>alert(1)</script>",
+        "type": "string"
+      },
+      "removed": []
+    },
+    {
+      "name": "enum caps",
+      "checks": [
+        "enum"
+      ],
+      "input": {
+        "properties": {
+          "a": {
+            "enum": [
+              "0",
+              "1",
+              "2",
+              "3",
+              "4",
+              "5",
+              "6",
+              "7",
+              "8",
+              "9",
+              "10",
+              "11",
+              "12",
+              "13",
+              "14",
+              "15",
+              "16",
+              "17",
+              "18",
+              "19",
+              "20",
+              "21",
+              "22",
+              "23",
+              "24",
+              "25",
+              "26",
+              "27",
+              "28",
+              "29",
+              "30",
+              "31",
+              "32",
+              "33",
+              "34",
+              "35",
+              "36",
+              "37",
+              "38",
+              "39",
+              "40",
+              "41",
+              "42",
+              "43",
+              "44",
+              "45",
+              "46",
+              "47",
+              "48",
+              "49",
+              "50",
+              "51",
+              "52",
+              "53",
+              "54",
+              "55",
+              "56",
+              "57",
+              "58",
+              "59",
+              "60",
+              "61",
+              "62",
+              "63",
+              "64"
+            ]
+          },
+          "b": {
+            "enum": [
+              "ok",
+              "fine"
+            ]
+          }
+        }
+      },
+      "output": {
+        "properties": {
+          "a": {},
+          "b": {
+            "enum": [
+              "ok",
+              "fine"
+            ]
+          }
+        }
+      },
+      "removed": [
+        "/properties/a/enum"
+      ]
+    },
+    {
+      "name": "unsafe pattern",
+      "checks": [
+        "regex"
+      ],
+      "input": {
+        "properties": {
+          "a": {
+            "type": "string",
+            "pattern": "(a+)+$"
+          },
+          "b": {
+            "type": "string",
+            "pattern": "^[a-z]+$"
+          }
+        }
+      },
+      "output": {
+        "properties": {
+          "a": {
+            "type": "string"
+          },
+          "b": {
+            "type": "string",
+            "pattern": "^[a-z]+$"
+          }
+        }
+      },
+      "removed": [
+        "/properties/a/pattern"
+      ]
+    },
+    {
+      "name": "pattern properties",
+      "checks": [
+        "regex"
+      ],
+      "input": {
+        "patternProperties": {
+          "(a|aa)*": {
+            "type": "string"
+          },
+          "^x_": {
+            "type": "number"
+          }
+        }
+      },
+      "output": {
+        "patternProperties": {
+          "^x_": {
+            "type": "number"
+          }
+        }
+      },
+      "removed": [
+        "/patternProperties/(a|aa)*"
+      ]
+    },
+    {
+      "name": "nested defs",
+      "checks": [
+        "keyword"
+      ],
+      "input": {
+        "properties": {
+          "a": {
+            "$defs": {
+              "b": {}
+            }
+          }
+        }
+      },
+      "output": {
+        "properties": {
+          "a": {}
+        }
+      },
+      "removed": [
+        "/properties/a/$defs"
+      ]
+    },
+    {
+      "name": "discriminator",
+      "checks": [
+        "keyword",
+        "ref"
+      ],
+      "input": {
+        "$defs": {
+          "A": {
+            "properties": {
+              "k": {
+                "const": "a"
+              }
+            }
+          }
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/A"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "k",
+          "mapping": {
+            "a": "#/$defs/A"
+          }
+        }
+      },
+      "output": {
+        "$defs": {
+          "A": {
+            "properties": {
+              "k": {
+                "const": "a"
+              }
+            }
+          }
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/A"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "k",
+          "mapping": {
+            "a": "#/$defs/A"
+          }
+        }
+      },
+      "removed": []
+    }
+  ]
+}

@@ -2,17 +2,19 @@ import type { Theme } from "./protocol";
 
 /** Shared chart palette; mirrors the web app's `--series-*` tokens. */
 export const SERIES: Record<Theme, string[]> = {
-  light: ["#2954ff", "#0068ad", "#12871c", "#cc4b00", "#b41880", "#832eea", "#646c72", "#0e8a6a"],
-  dark: ["#85a3ff", "#7ab6ff", "#6ce07b", "#ff9e66", "#ed78c6", "#b794ff", "#a2a9b0", "#45e4b6"],
+  light: ["#0072b2", "#d55e00", "#00865f", "#c8102e", "#a23aa8", "#1d93a5", "#8f5600", "#6e6e73"],
+  dark: ["#56b4e9", "#ff9a52", "#34d399", "#ff6b6b", "#f58fc8", "#5fe8f2", "#ffc929", "#8e8e93"],
 };
 
+/** Mirrors `--foreground`, `--muted-foreground`, `--chart-grid` and `--chart-base`. */
 export const INK: Record<Theme, { text: string; muted: string; grid: string; domain: string }> = {
-  light: { text: "#121619", muted: "#4d5358", grid: "#e7eaee", domain: "#c1c7cd" },
-  dark: { text: "#f4f5f7", muted: "#a2a9b0", grid: "#2c3440", domain: "#3c4552" },
+  light: { text: "#1d1d1f", muted: "#68686d", grid: "#e8e8ed", domain: "#d2d2d7" },
+  dark: { text: "#f5f5f7", muted: "#a1a1a6", grid: "#2a2a2c", domain: "#424245" },
 };
 
-// The sandbox loads no web font of its own: Inter only shows where the viewer has it installed.
-const FONT = "'Inter Variable', Inter, ui-sans-serif, system-ui, sans-serif";
+// The app's text stack. The sandbox loads no web font of its own: the system face draws the
+// plot, and Inter only shows where the viewer has it installed.
+const FONT = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter Variable', Inter, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif";
 
 /** Vega-Lite config merged under the spec's own config. */
 export function vegaConfig(theme: Theme): Record<string, unknown> {

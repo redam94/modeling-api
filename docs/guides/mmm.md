@@ -1,4 +1,4 @@
-# Marketing-mix models
+# Marketing-mix models (MMM)
 
 `mapi-plugin-mmm` contains the marketing-mix models (MMMs) of the platform. The four models
 use [mmm-framework](../models/mmm-framework.md):

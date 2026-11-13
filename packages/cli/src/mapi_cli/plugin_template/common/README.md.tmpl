@@ -1,0 +1,50 @@
+# {{dist}}
+
+Extensions for modeling-api, scaffolded by `mapi plugin init`. Every id lives in the
+`{{namespace}}` namespace.
+
+## What is inside
+
+{{readme_inside}}
+
+Each kind has its own module, entry point and contract-kit test. Replace the example code
+with yours and keep `mapi plugin test` green.
+
+## Test it
+
+```bash
+mapi plugin test                 # the contract kits (tests/), with this interpreter
+mapi plugin validate             # load the entry points, run every check, print the catalog
+mapi --json plugin validate      # the same as one JSON document (for CI)
+```
+
+`validate` exits 0 when every check passes, 1 when a check fails and 2 when an entry point
+cannot be loaded.
+
+## See it on your stack (3 ways)
+
+1. **In the platform checkout** (a workspace member): copy this folder to `plugins/`, run
+   `make install` (`uv sync --all-packages`: it locks the new member and installs it, so its
+   entry points exist), then `make dev`. The catalog is described again on the next start.
+2. **Out of tree, while you develop it:** `make plugin-dev PLUGIN=path/to/{{dist}}` installs
+   it in editable mode and adds it to the image digest, so `make dev` describes it again
+   after every change. `make plugin-undev PLUGIN=...` removes it.
+3. **A custom runner image:** build a wheel here (`uv build --wheel`), then, from the
+   modeling-api checkout (`plugin-image` is a target of its Makefile),
+   `make plugin-image BASE=base-bayes NAME={{dist}} WHEELS="path/to/{{dist}}/dist/*.whl"`
+   and route its namespace to the image with
+   `MAPI_DOCKER_IMAGES='{"{{namespace}}": "<image>"}'`.
+
+Then run `mapi plugin doctor --server`: it lists every installed extension, the load
+problems, the image routing and whether the server has described the current code.
+
+{{readme_upload}}## Use it
+
+{{readme_use}}
+
+## See it in the app
+
+{{readme_app}}
+
+If something is missing, a tenant admin sees why in Catalog › Yours (or run
+`mapi plugin doctor`): nothing an entry point exports is dropped silently.

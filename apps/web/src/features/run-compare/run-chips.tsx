@@ -31,7 +31,7 @@ export function RunChips({ runs, labels, onRemove, onAdd }: { runs: readonly Run
       {runs.map((r, i) => (
         <span key={r.id} role="listitem" className="inline-flex max-w-full items-center gap-2 rounded-full border bg-card py-1 pr-1 pl-3 text-sm">
           <RunSwatch index={i} />
-          <Link to="/runs/$runId" params={{ runId: r.id }} className="max-w-64 truncate hover:underline" title={r.id}>
+          <Link to="/runs/$runId" params={{ runId: r.id }} className="link max-w-64 truncate" title={r.id}>
             {labels[i] ?? shortId(r.id)}
           </Link>
           <StateBadge state={r.state} />

@@ -126,9 +126,14 @@ async def test_share_routes_take_no_credential_and_need_a_share_session(
         assert access_for(op).scope is RouteScope.PUBLIC, op
         r = await signed_in.request(method, path, json={})
         want = {404} if op == "create_share_session" else {401}
-        if op == "submit_shared_actuals":  # its body is validated first
+        if op in {
+            "submit_shared_actuals",
+            "submit_shared_predictions",
+            "submit_shared_batch",
+            "get_shared_asset",
+        }:  # their bodies (or the asset id's pattern) are validated first
             want.add(422)
         assert r.status_code in want, f"{method} {path} ({op}) -> {r.status_code} {r.text}"
         assert r.headers["cache-control"] == "private, no-store"
         checked += 1
-    assert checked == 10
+    assert checked == 17  # v0.17: predictions, batches, downloads and assets; v0.20: shared chat

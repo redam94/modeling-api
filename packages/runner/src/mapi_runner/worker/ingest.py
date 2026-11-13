@@ -56,7 +56,7 @@ import difflib
 import hashlib
 import math
 import warnings
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -1104,10 +1104,18 @@ def _preview_dataset(ds: xr.Dataset) -> xr.Dataset:
     return ds.drop_vars(images).drop_dims(sorted(other, key=str), errors="ignore")
 
 
-def preview(ds: xr.Dataset, rows: int) -> dict[str, Any]:
-    """``preview.json`` (:class:`~mapi_spec.views.PreviewView`): dim columns, then vars."""
+def preview(ds: xr.Dataset, rows: int, dim_order: Sequence[str] = ()) -> dict[str, Any]:
+    """``preview.json`` (:class:`~mapi_spec.views.PreviewView`): dim columns, then vars.
+
+    The dim columns follow ``dim_order`` (the schema's), then the other dims by name: the
+    order of ``ds.dims`` depends on how the dataset was built, and the same upload must
+    always give the same preview (a second ingest of identical data writes the same
+    content-addressed objects, which must match)."""
     ds = _preview_dataset(ds)
-    df = ds.to_dataframe().reset_index() if ds.dims else pd.DataFrame()
+    have = [str(d) for d in ds.dims]
+    order = [d for d in dict.fromkeys(dim_order) if d in have]
+    order += sorted(d for d in have if d not in order)
+    df = ds.to_dataframe(dim_order=order).reset_index() if ds.dims else pd.DataFrame()
     head = df.head(min(rows, MAX_PREVIEW_ROWS))
     dims = {str(d) for d in ds.dims}
     columns = [
@@ -1413,7 +1421,7 @@ def run_ingest(ctx: WorkerContext, job: IngestJob) -> DataSchema:
     ctx.write_output("summary.json", data_summary(ds, schema).model_dump_json(indent=2).encode())
     ctx.write_json("profile.json", profile(ds, schema, issues, raw))
     view = _view_dataset(ds)
-    ctx.write_json("preview.json", preview(view, job.preview_rows))
+    ctx.write_json("preview.json", preview(view, job.preview_rows, list(schema.dims)))
     if columns is not None:
         ctx.write_output(INGEST_COLUMNS, write_profiles(columns))
     # M3.5: the cheap Data Explorer sections (ui/explore/); never fails the ingest
@@ -1477,7 +1485,8 @@ def _write_tree(
     default = schema.default_node()
     dds, dschema = datasets[default], schema.nodes[default]
     ctx.write_json("profile.json", {**profile(dds, dschema, issues, raw), "node": default})
-    ctx.write_json("preview.json", {**preview(dds, job.preview_rows), "node": default})
+    preview_json = preview(dds, job.preview_rows, list(dschema.dims))
+    ctx.write_json("preview.json", {**preview_json, "node": default})
     if columns is not None:
         ctx.write_output(INGEST_COLUMNS, write_profiles(columns))
     from mapi_runner.worker.explore import write_data_explorer

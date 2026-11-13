@@ -49,13 +49,18 @@ v0.16 adds **client dashboards**: analysts publish a dashboard from a model or a
 client users (the new `client` role) see only the dashboards granted to them, and other
 persons open revocable share links with an expiry and an optional passcode. Clients try other
 spend, upload new numbers and ask for a refit, and each dashboard keeps a history of
-readouts. The web app has a new MEI / ODS look in light and dark.
+readouts.
 
-The built-in catalog has 50 models: marketing mix (mmm-framework), statsmodels and Bayesian time
+v0.21 (not released yet) gives the web app and the documentation one look, with
+monochrome controls and colour for data, in light and dark. The web app has a search that
+finds pages, your items by name and pages of the documentation.
+
+The built-in catalog has 51 models: marketing mix (mmm-framework), statsmodels and Bayesian time
 series, causal models, tabular and classification models (scikit-learn, xgboost, LightGBM,
 CatBoost, hierarchical GLMs), customer choice, science models and neural networks. The
 documentation (`make docs-serve`) starts at `docs/index.md`. See
-`docs/whats-new-0.16.md` and `docs/whats-new-0.15.md` for the details of v0.10 to v0.16.
+`docs/whats-new-0.21.md` for the newest changes, and the other `docs/whats-new-*.md` pages
+for the details of v0.10 to v0.20.
 
 > Status: under active development. The latest release is v0.16.0 (Client dashboards and a new look). See [CHANGELOG.md](CHANGELOG.md).
 

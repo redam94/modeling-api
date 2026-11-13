@@ -2,9 +2,15 @@
  * The About card of a catalog item (M3.5): plain language first (what it does, when to use it
  * and when not, what it needs and gives, how hard and how long), the expert detail (maths and
  * references) one click away. Every field is untrusted catalog text, rendered as text only.
+ *
+ * v0.19 (D19): an uploaded entry (`t_<code>_<short>` id) always shows an "Uploaded by" chip,
+ * and its references are links only when they pass the upload URL rules (https, a DNS host,
+ * no `user@`), with the punycode host beside the link, an external-link marker and
+ * `rel="noopener noreferrer nofollow ugc"`. The checks are inline string tests: this module
+ * never imports `features/plugins` (the catalog, workflows and guided pages use it).
  */
 import { Link } from "@tanstack/react-router";
-import { BookOpen, CheckCircle2, Clock, Database, Info, Lightbulb, PackageOpen, Scale, XCircle } from "lucide-react";
+import { BookOpen, CheckCircle2, Clock, Database, ExternalLink, Info, Lightbulb, PackageOpen, Scale, Upload, XCircle } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -38,7 +44,7 @@ function Section({ icon, title, items, tone }: { icon: ReactNode; title: string;
   if (!items.length) return null;
   return (
     <section className="grid content-start gap-1.5">
-      <h4 className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase [&_svg]:size-3.5">
+      <h4 className="flex items-center gap-1.5 kicker [&_svg]:size-3.5">
         <span aria-hidden className={cn(tone === "good" && "text-success", tone === "bad" && "text-destructive")}>
           {icon}
         </span>
@@ -66,12 +72,49 @@ function safeHttps(url: string | null | undefined): string | null {
   }
 }
 
+/**
+ * `mapi_spec.plugins.is_uploaded_id`: models/steps/plots `t_<code>_<short>.x`, workflow nodes
+ * `<kind>.t_<code>_<short>_x`, templates `t_<code>_<short>_x`.
+ */
+export function isUploadedCatalogId(id: string | null | undefined): boolean {
+  return typeof id === "string" && /^(?:[a-z]+\.)?t_[a-z2-7]{6}_[a-z][a-z0-9]{1,15}(?:[._][a-z0-9_.]*)?$/.test(id) && id.length <= 128;
+}
+
+/** An uploaded entry's reference (D19): `{href, host}` when it may be a link, else `null`. */
+export function uploadedReferenceLink(url: string | null | undefined): { href: string; host: string } | null {
+  if (!url || url.length > 500 || !url.toLowerCase().startsWith("https://")) return null;
+  for (const ch of url) {
+    const c = ch.codePointAt(0) ?? 0;
+    if (c <= 0x20 || (c >= 0x7f && c <= 0x9f) || (c >= 0x200b && c <= 0x200f) || (c >= 0x202a && c <= 0x202e) || (c >= 0x2066 && c <= 0x2069) || c === 0xfeff) return null;
+  }
+  const authority = url.slice(8).split(/[/?#\\]/, 1)[0] ?? "";
+  if (authority.includes("@") || /[^\x21-\x7e]/.test(authority)) return null;
+  try {
+    const u = new URL(url);
+    const host = u.hostname.toLowerCase();
+    if (u.protocol !== "https:" || u.username || u.password || !host.includes(".") || /^[\d.]+$/.test(host) || host.startsWith("[")) return null;
+    return { href: u.href, host };
+  } catch {
+    return null;
+  }
+}
+
+/** The always-visible chip of an uploaded entry (D19). */
+export function UploadedChip({ by }: { by?: string | null | undefined }) {
+  return (
+    <span data-testid="uploaded-by-chip" className="inline-flex items-center gap-1 rounded-full bg-accent px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap text-accent-foreground">
+      <Upload aria-hidden className="size-3" />
+      Uploaded by {by || "your team"}
+    </span>
+  );
+}
+
 function RelatedChips({ ids, onRelated }: { ids: readonly string[]; onRelated?: ((id: string) => void) | undefined }) {
   const index = useAboutIndex();
   if (!ids.length) return null;
   return (
     <section className="grid gap-1.5">
-      <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Related</h4>
+      <h4 className="kicker">Related</h4>
       <ul className="flex flex-wrap gap-1.5" aria-label="Related items">
         {ids.map((id) => {
           const entry = index.data?.byId.get(id);
@@ -121,6 +164,8 @@ export interface AboutCardProps {
   /** Draw the card's own border and padding (lists of cards); off inside dialogs and panels. */
   framed?: boolean;
   className?: string;
+  /** v0.19: who uploaded it (an uploaded entry shows "Uploaded by your team" without it). */
+  uploadedBy?: string | null | undefined;
 }
 
 const HEADING_TAG = { 2: "h2", 3: "h3", 4: "h4" } as const;
@@ -140,16 +185,22 @@ export function AboutCard({
   compact = false,
   framed = false,
   className,
+  uploadedBy,
 }: AboutCardProps) {
   const titleId = useId();
   const Heading = as ?? (headingLevel ? HEADING_TAG[headingLevel] : "h3");
-  const refs = (about.references ?? []).map((r) => ({ ...r, href: safeHttps(r.url) }));
+  const uploaded = isUploadedCatalogId(id) || Boolean(uploadedBy);
+  const refs = (about.references ?? []).map((r) => {
+    if (!uploaded) return { ...r, href: safeHttps(r.url), host: null as string | null };
+    const link = uploadedReferenceLink(r.url);
+    return { ...r, href: link?.href ?? null, host: link?.host ?? null };
+  });
   const hasExpert = Boolean(about.expert_notes) || refs.length > 0 || (compact && about.assumptions.length > 0);
   return (
     <article
       aria-labelledby={titleId}
       data-testid="about-card"
-      className={cn(compact ? "grid gap-3" : "grid gap-4", framed && "rounded-lg border bg-card p-4", className)}
+      className={cn(compact ? "grid gap-3" : "grid gap-4", framed && "rounded-2xl border bg-card p-5", className)}
       data-about={id}
     >
       <header className="grid gap-2">
@@ -159,6 +210,7 @@ export function AboutCard({
             {heading ?? about.title}
           </Heading>
           <div className="flex flex-wrap items-center gap-1.5">
+            {uploaded ? <UploadedChip by={uploadedBy} /> : null}
             <DifficultyBadge difficulty={about.difficulty} />
             <RuntimeBadge runtime={about.typical_runtime} />
           </div>
@@ -175,7 +227,7 @@ export function AboutCard({
         <Section icon={<PackageOpen />} title="What you get" items={about.outputs} />
         <Section icon={<Scale />} title="It assumes" items={about.assumptions} />
         <section className="grid content-start gap-1.5">
-          <h4 className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase [&_svg]:size-3.5">
+          <h4 className="flex items-center gap-1.5 kicker [&_svg]:size-3.5">
             <Lightbulb aria-hidden /> For example
           </h4>
           <p className="rounded-md border-l-2 border-primary/50 bg-muted/40 px-3 py-2 text-sm italic">{about.example}</p>
@@ -206,8 +258,16 @@ export function AboutCard({
                 <ul className="grid gap-1 text-sm">
                   {refs.map((r) => (
                     <li key={r.title}>
-                      {r.href ? (
-                        <a href={r.href} target="_blank" rel="noopener noreferrer" className="text-primary underline-offset-2 hover:underline">
+                      {r.href && uploaded ? (
+                        <>
+                          <a href={r.href} target="_blank" rel="noopener noreferrer nofollow ugc" referrerPolicy="no-referrer" className="link inline-flex items-center gap-1">
+                            {r.title}
+                            <ExternalLink aria-label="(opens an outside site)" className="size-3" />
+                          </a>{" "}
+                          <span className="font-mono text-xs text-muted-foreground">{r.host}</span>
+                        </>
+                      ) : r.href ? (
+                        <a href={r.href} target="_blank" rel="noopener noreferrer" className="link">
                           {r.title}
                         </a>
                       ) : (
@@ -226,29 +286,85 @@ export function AboutCard({
   );
 }
 
-/** A compact tile: title, one-line summary and the badges (lists, pickers). */
-export function AboutTile({ about, kind, id, onOpen, selected, children }: { about: About; kind?: AboutKind; id?: string; onOpen?: () => void; selected?: boolean; children?: ReactNode }) {
+/** "Beginner" (the highlight tint), "Some experience", "For experts": the chip of a difficulty. */
+export function DifficultyChip({ difficulty, onBlock = false }: { difficulty: About["difficulty"]; onBlock?: boolean }) {
+  const meta = DIFFICULTY_META[difficulty];
+  return (
+    <span
+      title={meta.description}
+      data-difficulty={difficulty}
+      className={cn(
+        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap",
+        onBlock ? "bg-block-raised text-block-foreground" : difficulty === "beginner" ? "bg-highlight-soft text-highlight-ink" : difficulty === "expert" ? "bg-attention-soft text-attention" : "bg-muted text-muted-foreground",
+      )}
+    >
+      {meta.label}
+    </span>
+  );
+}
+
+/** How long it usually takes, as a quiet chip. */
+export function RuntimeChip({ runtime, onBlock = false }: { runtime: About["typical_runtime"]; onBlock?: boolean }) {
+  const meta = RUNTIME_META[runtime];
+  return (
+    <span title={`Typical runtime: ${meta.description}`} className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap", onBlock ? "bg-block-raised text-block-foreground" : "bg-muted text-muted-foreground")}>
+      <Clock aria-hidden className="size-3" /> {meta.label}
+    </span>
+  );
+}
+
+/**
+ * A compact tile (the Catalog grid, lists, pickers): kind, title, the plain summary, what it is
+ * good for and the difficulty and runtime chips. `glyph` is the kind's drawing (passed in, so
+ * this module never imports the illustrations).
+ */
+export function AboutTile({
+  about,
+  kind,
+  id,
+  onOpen,
+  selected,
+  glyph,
+  children,
+}: {
+  about: About;
+  kind?: AboutKind;
+  id?: string;
+  onOpen?: () => void;
+  selected?: boolean;
+  glyph?: ReactNode;
+  children?: ReactNode;
+}) {
+  const goodFor = about.use_when[0];
   const body = (
     <>
-      <span className="flex flex-wrap items-start justify-between gap-2">
-        <span className="min-w-0">
-          {kind ? <span className="block text-xs font-medium text-muted-foreground">{KIND_META[kind].label}</span> : null}
-          <span className="block font-semibold tracking-tight">{about.title}</span>
+      {kind || glyph ? (
+        <span className="flex items-center gap-2.5 text-xs font-semibold text-muted-foreground">
+          {glyph}
+          {kind ? KIND_META[kind].label : null}
         </span>
-        <DifficultyBadge difficulty={about.difficulty} />
-      </span>
+      ) : null}
+      <span className="block font-display text-xl leading-tight font-semibold tracking-[-0.02em] [overflow-wrap:anywhere]">{about.title}</span>
       <span className="line-clamp-3 text-sm text-muted-foreground">{about.summary_plain}</span>
+      {goodFor ? (
+        <span className="line-clamp-2 text-sm">
+          <span className="font-semibold">Good for: </span>
+          {goodFor}
+        </span>
+      ) : null}
       <span className="mt-auto flex flex-wrap items-center gap-1.5 pt-1">
-        <RuntimeBadge runtime={about.typical_runtime} />
-        {id ? <span className="truncate font-mono text-xs text-muted-foreground">{id}</span> : null}
+        {isUploadedCatalogId(id) ? <UploadedChip /> : null}
+        <DifficultyChip difficulty={about.difficulty} />
+        <RuntimeChip runtime={about.typical_runtime} />
+        {id ? <span className="min-w-0 truncate font-mono text-xs text-hint">{id}</span> : null}
       </span>
       {children}
     </>
   );
   const cls = cn(
-    "flex h-full flex-col gap-2 rounded-xl border bg-card p-4 text-left transition-colors",
-    onOpen && "hover:border-primary/40 hover:bg-accent/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-    selected && "border-primary/60 bg-accent/50",
+    "flex h-full w-full flex-col gap-3 rounded-2xl border bg-card p-5 text-left transition-colors sm:p-[22px]",
+    onOpen && "focus-ring hover:border-primary",
+    selected && "border-primary bg-accent/50",
   );
   return onOpen ? (
     <button type="button" className={cls} onClick={onOpen} aria-pressed={selected} aria-label={`${about.title}: ${about.summary_plain}`}>

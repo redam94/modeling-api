@@ -804,11 +804,13 @@ export function useRunCompare(q: CompareQuery, enabled = true) {
 
 // ------------------------------------------------------------------------- experiments (v0.14)
 
-export function useExperiments(f: ExperimentFilters = {}) {
+/** `keepPrevious`: a list page keeps its rows while the answer for a new text loads (v0.21). */
+export function useExperiments(f: ExperimentFilters = {}, opts: { keepPrevious?: boolean } = {}) {
   const s = useProjectScope();
   return useQuery({
     queryKey: qk.experimentList(s.key, f),
     queryFn: ({ signal }) => fetchExperiments(f, { headers: s.headers, signal }),
+    ...(opts.keepPrevious ? { placeholderData: keepPreviousData } : {}),
   });
 }
 

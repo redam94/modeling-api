@@ -1,0 +1,13 @@
+# A declarative model recipe (docs/extend/your-model.md). `make docs-test` compiles it
+# (docs/snippets/extend_library.py and conformance/tests/test_docs_extend.py).
+apiVersion: mapi/v1
+kind: ModelRecipe
+metadata: {name: store-sales, title: "Store sales with promo lift", tags: [retail]}
+base: declarative
+declarative:
+  outcome: {var: sales, family: negative_binomial}
+  terms:
+    - {var: price, transform: [{use: log1p}, {use: standardize, with: {over: [obs]}}], prior: {dist: normal, sigma: 0.5}, sign: negative}
+    - {var: promo, prior: {dist: normal, sigma: 1}, sign: positive, varies_by: store}
+  groups: [{dim: store}]
+plots: [core.ppc]

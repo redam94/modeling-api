@@ -1,0 +1,11 @@
+{
+  "_source": "Built from the generateContent API reference representations (ai.google.dev/api/generate-content, docs/api-errors) recorded in plans/v020-probe.md (c); no API call was made.",
+  "_note": "Rate limit.",
+  "status": 429,
+  "body": {
+    "error": {
+      "code": "rate_limit_exceeded",
+      "message": "Resource has been exhausted (e.g. check quota). SECRET-ECHO-429"
+    }
+  }
+}

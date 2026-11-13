@@ -109,7 +109,7 @@ function PendingScore({
     <div className="grid gap-4">
       <div className="flex items-center gap-3">
         <StateBadge state={current.state} />
-        <Link to="/runs/$runId" params={{ runId: current.id }} className="text-xs text-muted-foreground hover:underline">
+        <Link to="/runs/$runId" params={{ runId: current.id }} className="link text-xs text-muted-foreground">
           <Mono>{current.id}</Mono>
         </Link>
       </div>

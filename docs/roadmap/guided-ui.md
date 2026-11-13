@@ -32,7 +32,7 @@ journey
 
 | Shipped | Where to read about it |
 |---|---|
-| Four templates (geo marketing mix, weekly forecast, demand by store, customer choice) and a question flow with role detection | [Your first analysis in Guided mode](../guides/guided-tutorial.md) |
+| Four templates (geo marketing mix, weekly forecast, demand by store, customer choice) and a question flow with role detection | [Your first MMM in Guided mode](../guides/guided-tutorial.md) |
 | Sandboxed ingest of CSV, Parquet, MFF and Meridian-shaped tables | [From a spreadsheet to a Guided draft](../guides/guided-data.md) |
 | Business priors (ROI or share ranges) translated in a sandbox, lift tests as calibration | [Guided modelling](../guides/guided-modelling.md) |
 | The sanity scorecard and the promotion gate | [Guided mode](../concepts/guided-mode.md#scorecard), [Integrations](../concepts/integrations.md#promotion-gate) |

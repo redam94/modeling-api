@@ -54,6 +54,39 @@ async def test_create_fit_run_pins_inputs_and_queues(
         assert row.checkpointable is False
 
 
+async def test_a_fit_from_build_carries_the_specs_library_lineage(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    """v0.18 live: "Use in Build" puts ``mapi.library/*`` in the spec's ``metadata.labels``;
+    a fit of that revision gets them as run labels (as "Fit now" does), under the caller's
+    own labels; other spec labels stay on the spec."""
+    lineage = {"mapi.library/model": "lib_01jaf3q2x8m9v7k5h4g3f2e1d0-r2"}
+    yaml = TREND_SPEC.replace(
+        "metadata: {name: trend, project: default}",
+        "metadata:\n  name: trend\n  project: default\n  labels:\n"
+        "    mapi.library/model: lib_01jaf3q2x8m9v7k5h4g3f2e1d0-r2\n"
+        "    mapi.library/prep: lib_01jaf3q2x8m9v7k5h4g3f2e1d1-r1\n"
+        "    team: growth\n",
+    )
+    spec_id = await _spec(client, ctx, yaml)
+    r = await client.post("/v1/runs", json={"kind": "fit", "spec_id": spec_id, "revision": 1})
+    assert r.status_code == 201, r.text
+    assert r.json()["labels"] == {
+        **lineage,
+        "mapi.library/prep": "lib_01jaf3q2x8m9v7k5h4g3f2e1d1-r1",
+    }
+    # the caller's own labels win
+    own = {"mapi.library/model": "lib_01jaf3q2x8m9v7k5h4g3f2e1d0-r3", "a": "b"}
+    r = await client.post(
+        "/v1/runs", json={"kind": "fit", "spec_id": spec_id, "revision": 1, "labels": own}
+    )
+    assert r.status_code == 201, r.text
+    assert r.json()["labels"] == {
+        **own,
+        "mapi.library/prep": "lib_01jaf3q2x8m9v7k5h4g3f2e1d1-r1",
+    }
+
+
 async def test_idempotency_key_replays_or_conflicts(
     client: httpx.AsyncClient, ctx: ServerContext
 ) -> None:

@@ -9,11 +9,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shlex
 import sys
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Final, Literal
 from urllib.parse import urlsplit
 
 from mapi_spec.executor import RunKind
@@ -26,19 +27,34 @@ from mapi_spec.localdev import (
     WEB_PORT,
 )
 from mapi_spec.storage import Buckets
-from mapi_spec.tenancy import DEFAULT_RESIDENCY, TrustTier, residency_of_region
+from mapi_spec.tenancy import (
+    DEFAULT_RESIDENCY,
+    ResidencyRegion,
+    TrustTier,
+    residency_of_region,
+)
 from mapi_spec.trust import SHARED_EMAIL_DOMAINS
-from pydantic import AliasChoices, Field, field_validator, model_validator
+from pydantic import (
+    AliasChoices,
+    Field,
+    SecretStr,
+    TypeAdapter,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 from mapi_server import __version__
 from mapi_server.clientaddr import normalise_trusted_proxies
 
 __all__ = [
+    "CHECKOUT_EXTRA_LIST",
     "DEFAULT_CLOUDRUN_BASES",
     "DEFAULT_DEV_USERS",
     "DEFAULT_DOCKER_IMAGES",
     "DEFAULT_ESTIMATE_WALL_S",
+    "GEMINI_DEFAULT_ENDPOINT",
     "ExecutorName",
     "MailerKind",
     "ObjectStoreKind",
@@ -71,6 +87,11 @@ DEFAULT_DOCKER_IMAGES: dict[str, str] = {
 }
 """Plugin namespace → the runner image ``make docker-build`` tags that ships it."""
 
+GEMINI_DEFAULT_ENDPOINT: Final = "https://generativelanguage.googleapis.com"
+"""The Gemini Developer API (``MAPI_GEMINI_ENDPOINT`` default; the only one multi-tenant)."""
+
+_RESIDENCY: TypeAdapter[str] = TypeAdapter(ResidencyRegion)
+
 DEFAULT_DEV_USERS: tuple[str, ...] = ("admin@dev.local", "analyst@dev.local", "viewer@dev.local")
 """Accounts of the development identity provider: the first is a platform operator and the
 admin of the ``default`` tenant, the second a ``runner`` and the third a ``viewer`` of the
@@ -90,6 +111,10 @@ DEFAULT_ESTIMATE_WALL_S: dict[str, float] = {
     RunKind.EXPLORE.value: 60.0,
     RunKind.GOVERNANCE.value: 900.0,
     RunKind.INSPECT.value: 15.0,
+    # v0.19: measured by the WP0 probe (inspect ~0.2 s of work, describe of a five-kind
+    # package ~10 s plus run overhead); batch priority, so the estimate only drives quotas
+    RunKind.PLUGIN_INSPECT.value: 15.0,
+    RunKind.PLUGIN_DESCRIBE.value: 60.0,
 }
 """Wall-time estimate per run kind (seconds, capped at the run's timeout): what a run is
 charged against vCPU-second quotas until its attempts are metered into the cost ledger."""
@@ -140,39 +165,101 @@ class ObjectStoreKind(StrEnum):
     GCS = "gcs"  # real Cloud Storage (mapi_gcs_shim.GcsObjectStore; the `gcp` extra)
 
 
-def local_image_digest(lock_path: Path) -> str:
-    """``sha256:<hex>`` of ``uv.lock``: the image digest of an environment built from it."""
-    return "sha256:" + hashlib.sha256(lock_path.read_bytes()).hexdigest()
+_EXTENSIONS_SEPARATOR = b"\0ext\0"
+"""Separates ``uv.lock`` from the extensions lock in the digest (v0.18)."""
+
+
+def local_image_digest(lock_path: Path, extensions_lock: Path | None = None) -> str:
+    """``sha256:<hex>`` of ``uv.lock``: the image digest of an environment built from it.
+
+    v0.18: an image built from ``images/extend`` (a base image plus operator-installed plugin
+    wheels) also has an extensions lock; its bytes are folded in
+    (``sha256(uv.lock ‖ "\\0ext\\0" ‖ extensions.lock)``), so the extended image gets its own
+    catalog. Without one the digest is that of ``uv.lock`` alone (unchanged)."""
+    h = hashlib.sha256(lock_path.read_bytes())
+    if extensions_lock is not None:
+        h.update(_EXTENSIONS_SEPARATOR)
+        h.update(extensions_lock.read_bytes())
+    return "sha256:" + h.hexdigest()
 
 
 CHECKOUT_SOURCES = ("packages/*/src", "plugins/*/src")
 """The workspace sources a source checkout's catalog is made from (steps, models, plots and
 the runner that describes them), relative to the directory of ``uv.lock``."""
 
+CHECKOUT_EXTRA_LIST = ".local/extra-plugins.txt"
+"""v0.18: the out-of-tree plugins installed into a source checkout (``make plugin-dev``), one
+plugin directory per line (relative to the directory of ``uv.lock`` or absolute; ``#``
+comments and blank lines are ignored). :func:`checkout_image_digest` hashes the ``src/``
+of each, so installing, changing or removing one describes the catalog again."""
 
-def checkout_image_digest(lock_path: Path) -> str:
-    """The image digest of a source checkout (``make dev``): ``uv.lock`` plus every file
-    under :data:`CHECKOUT_SOURCES` (path and content).
 
-    A code change that leaves ``uv.lock`` alone (a new recipe, an About card, a fixed step)
-    changes the catalog, so it must change the digest too, or the catalog cached under the
-    old digest is served forever. Without workspace sources next to the lock this is
-    :func:`local_image_digest`."""
-    root = lock_path.parent
-    files = sorted(
+def _source_files(src: Path) -> list[Path]:
+    return sorted(
         p
-        for pattern in CHECKOUT_SOURCES
-        for src in root.glob(pattern)
         for p in src.rglob("*")
         if p.is_file() and "__pycache__" not in p.parts and p.suffix not in {".pyc", ".pyo"}
     )
-    if not files:
-        return local_image_digest(lock_path)
+
+
+def _extra_plugin_dirs(root: Path) -> list[str]:
+    """The entries of :data:`CHECKOUT_EXTRA_LIST` (sorted, without duplicates)."""
+    path = root / CHECKOUT_EXTRA_LIST
+    if not path.is_file():
+        return []
+    entries = {
+        line.strip()
+        for line in path.read_text(encoding="utf-8", errors="replace").splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    }
+    return sorted(entries)
+
+
+_PLUGIN_METADATA: Final = ("pyproject.toml", "setup.cfg", "setup.py")
+"""The files of an extra plugin that declare its entry points (hashed with its ``src/``)."""
+
+
+def checkout_image_digest(lock_path: Path, extensions_lock: Path | None = None) -> str:
+    """The image digest of a source checkout (``make dev``): ``uv.lock`` plus every file
+    under :data:`CHECKOUT_SOURCES` (path and content), plus the ``src/`` and the
+    :data:`_PLUGIN_METADATA` files (entry points) of every plugin listed in
+    :data:`CHECKOUT_EXTRA_LIST` (v0.18), plus ``extensions_lock`` when given.
+
+    A code change that leaves ``uv.lock`` alone (a new recipe, an About card, a fixed step)
+    changes the catalog, so it must change the digest too, or the catalog cached under the
+    old digest is served forever. Without workspace sources or extra plugins next to the
+    lock this is :func:`local_image_digest`."""
+    root = lock_path.parent
+    files = sorted(
+        p for pattern in CHECKOUT_SOURCES for src in root.glob(pattern) for p in _source_files(src)
+    )
+    extras = _extra_plugin_dirs(root)
+    if not files and not extras:
+        return local_image_digest(lock_path, extensions_lock)
     h = hashlib.sha256(lock_path.read_bytes())
     for p in files:
         h.update(p.relative_to(root).as_posix().encode())
         h.update(b"\0")
         h.update(hashlib.sha256(p.read_bytes()).digest())
+    for entry in extras:
+        # keyed by the entry as listed (not the absolute path): the digest does not depend
+        # on where the checkout lives; a listed directory that is gone still counts
+        h.update(b"\0extra\0" + entry.encode())
+        for name in _PLUGIN_METADATA:  # entry points live here, outside src/
+            meta = (root / entry / name).resolve()
+            if meta.is_file():
+                h.update(b"\0meta\0" + name.encode() + b"\0")
+                h.update(hashlib.sha256(meta.read_bytes()).digest())
+        src = (root / entry / "src").resolve()
+        if not src.is_dir():
+            h.update(b"\0missing")
+            continue
+        for p in _source_files(src):
+            h.update(b"\0" + p.relative_to(src).as_posix().encode() + b"\0")
+            h.update(hashlib.sha256(p.read_bytes()).digest())
+    if extensions_lock is not None:
+        h.update(_EXTENSIONS_SEPARATOR)
+        h.update(extensions_lock.read_bytes())
     return "sha256:" + h.hexdigest()
 
 
@@ -440,6 +527,12 @@ class Settings(BaseSettings):
     )
     image_digest: str | None = Field(None, pattern=r"^sha256:[0-9a-f]{64}$")
     uv_lock_path: Path | None = None
+    extensions_lock_path: Path | None = Field(
+        None,
+        description="v0.18: the extensions lock of an image built from images/extend "
+        "(/opt/mapi/extensions.lock), folded into the image digest; mount the same file into "
+        "the api and the worker so both key the catalog alike",
+    )
     signing_key_path: Path | None = Field(
         None,
         description="PEM of the bundle-signing key (default: data_dir/keys/"
@@ -649,6 +742,75 @@ class Settings(BaseSettings):
     dashboard_refresh_debounce_s: int = Field(
         60, ge=0, description="Least time between two refresh readouts of one dashboard"
     )
+    # ------------------------------------------------------------- any-model dashboards (v0.17)
+    share_batch_per_day: int = Field(
+        2,
+        ge=0,
+        le=1000,
+        description="Batch scores (files of new cases) a share link may send per day",
+    )
+    client_batch_per_day: int = Field(
+        4,
+        ge=0,
+        le=1000,
+        description="Batch scores a client user may send per day and dashboard",
+    )
+    batch_rows_per_day: int = Field(
+        20_000,
+        ge=0,
+        le=10_000_000,
+        description="Rows of batch files one dashboard scores per day, all callers together",
+    )
+    dashboard_auto_upgrade: bool = Field(
+        True,
+        description="Move every layout 1 dashboard to layout 2 once per worker start (an "
+        "idempotent pass under a Postgres advisory lock; a dashboard that needs review keeps "
+        "layout 1 and is flagged)",
+    )
+    dashboard_layout1_create: bool = Field(
+        False,
+        description="Accept new layout 1 (media planner only) dashboard specs on create and "
+        "on a layout 2 draft's save (off, the default from v0.17: new dashboards are layout 2 "
+        "and a layout 1 spec is refused with DASHBOARD_LAYOUT_RETIRED)",
+    )
+
+    # ------------------------------------------- the library, samples, recipe previews (v0.18)
+    library_items_per_tenant: int = Field(
+        500, ge=1, le=100_000, description="Library items (archived included) one tenant may have"
+    )
+    library_revisions_per_item: int = Field(
+        200, ge=1, le=10_000, description="Revisions one library item may have"
+    )
+    library_validate_per_minute: int = Field(
+        60, ge=1, le=10_000, description="Library document checks one user may ask for a minute"
+    )
+    library_chart_preview_per_minute: int = Field(
+        60, ge=1, le=10_000, description="Chart template previews one user may ask for a minute"
+    )
+    samples_enabled: bool = Field(
+        True, description="Offer the one-click sample project (off: the samples list is empty)"
+    )
+    sample_max_attempts: int = Field(
+        3,
+        ge=1,
+        le=20,
+        description="Attempts one sample project may take in all (the first install included)",
+    )
+    plot_preview_enabled: bool = Field(
+        True,
+        description="Live recipe previews (a render run on a recipe's example data). Default: "
+        "on, except with the cloudrun-jobs executor, where a job start is too slow for a live "
+        "control (set it explicitly to override)",
+    )
+    plot_preview_per_minute: int = Field(
+        20, ge=1, le=10_000, description="Recipe preview runs one user may start a minute"
+    )
+    plot_preview_per_day: int = Field(
+        200, ge=1, le=1_000_000, description="Recipe preview runs one tenant may start in 24 hours"
+    )
+    plot_preview_wait_s: float = Field(
+        15.0, ge=0, le=15, description="Longest Prefer: wait a recipe preview request may hold"
+    )
 
     # ------------------------------------------------------------------- observability
     log_json: bool = Field(
@@ -827,6 +989,163 @@ class Settings(BaseSettings):
         description="Cut line B: let identity-verified public tenants run uploaded code "
         "(off through M4: public tenants run built-ins and declarative specs only)",
     )
+    # ------------------------------------------------------------- uploaded code (v0.19)
+    plugins_enabled: bool = Field(
+        True,
+        description="Accept uploaded plugins (wheels) on tiers that allow uploaded code; off: "
+        "the plugin routes refuse uploads and the catalog shows no uploaded entries",
+    )
+    dev_allow_local_untrusted: bool = Field(
+        False,
+        description="DEVELOPMENT ONLY: let the local-process executor run uploaded code "
+        "without a sandbox. Refused in the multi-tenant profile, with the cloudrun-jobs "
+        "executor, with the gcs object store and on Cloud Run (K_SERVICE/CLOUD_RUN_JOB)",
+    )
+    plugin_upload_max_bytes: int = Field(
+        20_971_520, ge=1, le=20_971_520, description="Largest uploaded wheel (bytes)"
+    )
+    plugin_uncompressed_max_bytes: int = Field(
+        104_857_600, ge=1, description="Largest total uncompressed size of a wheel's members"
+    )
+    plugin_member_max_bytes: int = Field(
+        20_971_520, ge=1, description="Largest uncompressed size of one wheel member"
+    )
+    plugin_max_members: int = Field(2000, ge=1, le=2000, description="Most members of a wheel")
+    plugin_max_ratio: int = Field(
+        100, ge=1, description="Highest compression ratio of a wheel member (zip bombs)"
+    )
+    plugin_uploads_per_user_per_day: int = Field(
+        20, ge=1, description="Upload tickets one user may take per day (429 beyond)"
+    )
+    plugin_pipeline_concurrency_per_tenant: int = Field(
+        2,
+        ge=1,
+        le=100,
+        description="Plugin check runs (inspect, describe) of one tenant dispatched at the "
+        "same time; the others stay queued",
+    )
+    plugin_inspect_timeout_s: int = Field(
+        60, ge=10, le=3600, description="Wall-clock limit of a plugin_inspect run"
+    )
+    plugin_describe_timeout_s: int = Field(
+        600, ge=30, le=7200, description="Wall-clock limit of a plugin_describe run"
+    )
+    plugin_data_check_timeout_s: int = Field(
+        120, ge=1, le=3600, description="Limit of one data kit check inside a describe run"
+    )
+    plugin_ticket_ttl_s: int = Field(
+        900, ge=60, le=86400, description="Lifetime of a plugin upload ticket (POST policy)"
+    )
+    plugin_retention_days: int = Field(
+        30,
+        ge=0,
+        description="How long the objects of refused, failed, rejected and withdrawn versions "
+        "are kept before the purge sweep deletes them (the rows stay). Applied when a version "
+        "fails or is withdrawn: its purge date is stored then, and a later change does not "
+        "move it",
+    )
+    plugin_approve_max_auth_age_s: int = Field(
+        900,
+        ge=60,
+        le=86400,
+        description="An approval or rejection needs a sign-in at most this old",
+    )
+    plugin_approver_min_membership_age_days: int = Field(
+        7,
+        ge=0,
+        description="An approver whose membership the uploader created more recently than "
+        "this may not approve the uploader's versions",
+    )
+    # ------------------------------------------------- dashboard chat and MCP (v0.20)
+    chat_provider: Literal["off", "gemini", "fake"] = Field(
+        "off",
+        description="The chat model: off (no dashboard chat), gemini (needs "
+        "MAPI_GEMINI_API_KEY) or fake (a fixed local model for development and tests; "
+        "refused in the multi-tenant profile, with cloudrun-jobs, with gcs and on Cloud Run)",
+    )
+    gemini_api_key: SecretStr | None = Field(
+        None,
+        repr=False,
+        description="Gemini Developer API key (a paid-tier key). Sent only in the "
+        "x-goog-api-key header; never logged, stored or shown",
+    )
+    gemini_endpoint: str = Field(
+        GEMINI_DEFAULT_ENDPOINT,
+        description="Base URL of the Gemini API (the multi-tenant profile allows only the default)",
+    )
+    chat_model: str = Field(
+        "gemini-3.1-flash-lite",
+        pattern=r"^[a-z0-9][a-z0-9.\-]{1,62}$",
+        description="The pinned Gemini model id",
+    )
+    chat_thinking_level: Literal["omit", "minimal", "low"] = Field(
+        "omit",
+        description="Thinking level sent to the model; omit sends none (the model default, "
+        "minimal for gemini-3.1-flash-lite)",
+    )
+    chat_function_mode: Literal["VALIDATED", "AUTO"] = Field(
+        "VALIDATED",
+        description="Function-calling mode: VALIDATED (calls follow the tool schemas) or AUTO",
+    )
+    chat_max_output_tokens: int = Field(
+        1024, ge=64, le=8192, description="Most answer tokens of one model call"
+    )
+    chat_temperature: float = Field(0.2, ge=0, le=2, description="Sampling temperature")
+    chat_request_timeout_s: float = Field(
+        20.0, gt=0, le=120, description="Time limit of one model call (seconds)"
+    )
+    chat_turn_deadline_s: float = Field(
+        45.0,
+        gt=0,
+        le=300,
+        description="Time limit of one chat turn, all model and tool calls included (seconds)",
+    )
+    chat_allowed_residencies: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: [DEFAULT_RESIDENCY],
+        description="Tenant data residencies that may use chat (comma-separated; exact "
+        "match). The Gemini Developer API is a global endpoint",
+    )
+    chat_price_in_micros_per_mtok: int = Field(
+        250_000, ge=0, description="Price of one million input tokens (micro-dollars)"
+    )
+    chat_price_out_micros_per_mtok: int = Field(
+        1_500_000,
+        ge=0,
+        description="Price of one million output tokens, thoughts included (micro-dollars)",
+    )
+    chat_price_version: str = Field(
+        "gemini-3.1-flash-lite@2026-10-22",
+        min_length=1,
+        max_length=64,
+        description="Name of the price table above (stored on each usage row)",
+    )
+    chat_member_turns_per_minute: int = Field(
+        10, ge=1, description="Chat turns per minute of one member or client on one dashboard"
+    )
+    chat_share_turns_per_minute: int = Field(
+        6, ge=1, description="Chat turns per minute of one share link"
+    )
+    chat_share_ip_turns_per_minute: int = Field(
+        12, ge=1, description="Share-link chat turns per minute from one client address"
+    )
+    chat_transcript_ttl_days: int = Field(
+        30, ge=1, le=365, description="Days a kept chat transcript is stored"
+    )
+    mcp_enabled: bool = Field(True, description="Serve the MCP endpoint POST /v1/mcp")
+    mcp_allowed_origins: Annotated[list[str], NoDecode] = Field(
+        default_factory=list,
+        description="Browser origins allowed to call /v1/mcp (comma-separated; empty: a "
+        "request with an Origin header is refused)",
+    )
+    mcp_rate_per_minute: int = Field(
+        120, ge=1, description="MCP requests per minute of one read token or share link"
+    )
+    dashboard_read_token_max_days: int = Field(
+        90, ge=1, le=90, description="Longest lifetime of a dashboard read token (days)"
+    )
+    dashboard_read_tokens_per_user: int = Field(
+        5, ge=1, le=100, description="Active read tokens of one user on one dashboard"
+    )
     tenant_deletion_grace_s: float = Field(
         7 * 86400.0,
         ge=0,
@@ -918,6 +1237,8 @@ class Settings(BaseSettings):
         "webhook_dev_allowlist",
         "signup_blocked_domains",
         "signup_shared_email_domains",
+        "chat_allowed_residencies",
+        "mcp_allowed_origins",
         mode="before",
     )
     @classmethod
@@ -1000,6 +1321,111 @@ class Settings(BaseSettings):
             )
         return self
 
+    @model_validator(mode="after")
+    def _dev_untrusted(self) -> Settings:
+        # D7 (T19.24): the development allowance runs uploaded code with no sandbox, so it
+        # must never be honoured where other people's code or data could be reached
+        if not self.dev_allow_local_untrusted:
+            return self
+        reasons = self._cloud_deployment_reasons()
+        if reasons:
+            raise ValueError(
+                "MAPI_DEV_ALLOW_LOCAL_UNTRUSTED is for local development only and runs "
+                "uploaded code without a sandbox. It is refused because "
+                + "; ".join(reasons)
+                + ". Remove MAPI_DEV_ALLOW_LOCAL_UNTRUSTED."
+            )
+        return self
+
+    def _cloud_deployment_reasons(self) -> list[str]:
+        """Why this server may be a shared or cloud deployment (empty: a local one). The
+        development-only allowances (v0.19 D7, v0.20 fake chat model) are refused then."""
+        reasons: list[str] = []
+        if self.profile is Profile.MULTI_TENANT:
+            reasons.append("the profile is multi-tenant")
+        if self.executor is ExecutorName.CLOUDRUN_JOBS:
+            reasons.append("the executor is cloudrun-jobs")
+        if self.object_store is ObjectStoreKind.GCS:
+            reasons.append("the object store is gcs")
+        cloud = [k for k in ("K_SERVICE", "CLOUD_RUN_JOB") if os.environ.get(k)]
+        if cloud:
+            reasons.append(f"the server runs on Cloud Run ({', '.join(cloud)} is set)")
+        return reasons
+
+    @model_validator(mode="after")
+    def _chat(self) -> Settings:
+        # v0.20 D2/D20: the model provider, its secret and endpoint, and the chat limits
+        if self.chat_provider == "fake":
+            reasons = self._cloud_deployment_reasons()
+            if reasons:
+                raise ValueError(
+                    "MAPI_CHAT_PROVIDER=fake is for local development and tests only. It is "
+                    "refused because " + "; ".join(reasons) + ". Use gemini or off."
+                )
+        if self.chat_provider == "gemini" and (
+            self.gemini_api_key is None or not self.gemini_api_key.get_secret_value().strip()
+        ):
+            raise ValueError("MAPI_CHAT_PROVIDER=gemini needs MAPI_GEMINI_API_KEY")
+        endpoint = urlsplit(self.gemini_endpoint)
+        if (
+            endpoint.scheme not in ("https", "http")
+            or not endpoint.hostname
+            or endpoint.username is not None
+            or endpoint.password is not None
+            or endpoint.path not in ("", "/")
+            or endpoint.query
+            or endpoint.fragment
+        ):
+            raise ValueError(
+                "MAPI_GEMINI_ENDPOINT must be a base URL (scheme and host only, no path, "
+                "query or credentials)"
+            )
+        if self.profile is Profile.MULTI_TENANT and (
+            self.gemini_endpoint.rstrip("/") != GEMINI_DEFAULT_ENDPOINT
+        ):
+            raise ValueError(
+                "the multi-tenant profile allows only the default MAPI_GEMINI_ENDPOINT "
+                f"({GEMINI_DEFAULT_ENDPOINT})"
+            )
+        if self.chat_request_timeout_s > self.chat_turn_deadline_s:
+            raise ValueError(
+                "MAPI_CHAT_REQUEST_TIMEOUT_S must not exceed MAPI_CHAT_TURN_DEADLINE_S"
+            )
+        try:
+            for residency in self.chat_allowed_residencies:
+                _RESIDENCY.validate_python(residency)
+        except ValidationError:
+            raise ValueError(
+                "MAPI_CHAT_ALLOWED_RESIDENCIES takes residencies such as us, eu or europe-west1"
+            ) from None
+        for origin in self.mcp_allowed_origins:
+            parts = urlsplit(origin)
+            if (
+                parts.scheme not in ("https", "http")
+                or not parts.hostname
+                or parts.path
+                or parts.query
+                or parts.fragment
+                or parts.username is not None
+                or origin == "*"
+            ):
+                raise ValueError(
+                    "MAPI_MCP_ALLOWED_ORIGINS takes origins such as https://app.example.com "
+                    "(scheme, host and port only)"
+                )
+        return self
+
+    @model_validator(mode="after")
+    def _preview_default(self) -> Settings:
+        # live recipe previews wait on a render run: a Cloud Run Jobs start is too slow for
+        # a live control, so they are off there unless the operator turns them on
+        if (
+            "plot_preview_enabled" not in self.model_fields_set
+            and self.executor is ExecutorName.CLOUDRUN_JOBS
+        ):
+            self.plot_preview_enabled = False
+        return self
+
     # ------------------------------------------------------------------------- derived
     @property
     def effective_mailer(self) -> MailerKind:
@@ -1046,6 +1472,12 @@ class Settings(BaseSettings):
         return self.profile is not Profile.SINGLE_TENANT
 
     @property
+    def dev_untrusted_code(self) -> bool:
+        """Does this server run uploaded code without a sandbox (the development allowance
+        with the local-process executor)? ``GET /v1/meta`` and the web banner show it."""
+        return self.dev_allow_local_untrusted and self.executor is ExecutorName.LOCAL_PROCESS
+
+    @property
     def requires_auth(self) -> bool:
         """Must every non-public request carry a session or an API token?"""
         if self.auth_required is not None:
@@ -1076,6 +1508,11 @@ class Settings(BaseSettings):
         if self.executor is ExecutorName.CLOUDRUN_JOBS:
             return residency_of_region(self.cloudrun_region)
         return DEFAULT_RESIDENCY
+
+    def chat_residency_allowed(self, residency: str) -> bool:
+        """May a tenant with this data residency use chat (``chat_allowed_residencies``,
+        exact match: a single-region residency is not covered by its multi-region)?"""
+        return residency in self.chat_allowed_residencies
 
     def effective_operator_emails(self) -> list[str]:
         """``operator_emails`` plus, in the dev profile, the first development account."""
@@ -1144,17 +1581,22 @@ class Settings(BaseSettings):
         """The image digest the catalog is cached under: ``image_digest``, else the
         ``sha256`` of ``uv_lock_path`` (the images bake their lock), else the source
         checkout's digest (:func:`checkout_image_digest` of the ``uv.lock`` above the
-        working directory: ``make dev`` describes again after a code change)."""
+        working directory: ``make dev`` describes again after a code change). v0.18: the
+        ``extensions_lock_path`` of an extended image is folded into the last two (never into
+        a literal ``image_digest``)."""
         if self.image_digest:
             return self.image_digest
+        ext = self.extensions_lock_path
+        if ext is not None and not ext.is_file():
+            raise RuntimeError(f"MAPI_EXTENSIONS_LOCK_PATH {ext} is not a file")
         if self.uv_lock_path is not None:
             if not self.uv_lock_path.is_file():
                 raise RuntimeError(f"MAPI_UV_LOCK_PATH {self.uv_lock_path} is not a file")
-            return local_image_digest(self.uv_lock_path)
+            return local_image_digest(self.uv_lock_path, ext)
         lock = _find_uv_lock(Path.cwd())
         if lock is None:
             raise RuntimeError(
                 "cannot determine the local image digest: set MAPI_IMAGE_DIGEST or "
                 "MAPI_UV_LOCK_PATH (no uv.lock found above the working directory)"
             )
-        return checkout_image_digest(lock)
+        return checkout_image_digest(lock, ext)

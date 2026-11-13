@@ -31,6 +31,7 @@ from mapi_spec.tokens import looks_like_token
 
 __all__ = [
     "AUDIT_DETAILS_MAX_KEYS",
+    "SYSTEM_ACTOR_ID",
     "AuditAction",
     "AuditEvent",
     "AuditOutcome",
@@ -40,6 +41,9 @@ __all__ = [
 ]
 
 AUDIT_DETAILS_MAX_KEYS: Final = 32
+SYSTEM_ACTOR_ID: Final = "system"
+"""``actor_id`` of rows that the platform writes by itself (``actor_kind="service"``), for
+example the automatic dashboard upgrade at start-up."""
 _FINGERPRINT = r"^hmac-sha256:[0-9a-f]{32}$"
 
 
@@ -184,6 +188,72 @@ class AuditAction(StrEnum):
     """An actuals upload asked the analyst for a refit (a client, a share link or a member)."""
     DASHBOARD_REFIT_DECIDE = "dashboard.refit_decide"
     """An editor approved (and started the refit workflow) or rejected a refit request."""
+    # --- v0.17 (additive) --------------------------------------------------------------------
+    DASHBOARD_UPGRADED = "dashboard.upgraded"
+    """A layout 1 dashboard moved to layout 2. The automatic pass at start-up writes it with
+    ``actor_kind="service"`` and ``actor_id`` :data:`SYSTEM_ACTOR_ID`; an editor's
+    ``:upgrade`` writes it as that user. Details ``{"from_revision": seq | None,
+    "to_revision": seq | None, "draft": bool, "preset": key, "notes": [...]}``; when the
+    upgrade needs review the outcome is ``error`` with ``{"issues": [...]}`` (codes and
+    pointers only)."""
+    DASHBOARD_READOUT_KEEP = "dashboard.readout_keep"
+    """A tried case (a private prediction readout) was kept by its owner or an editor: it no
+    longer expires and waits for review (details ``{"seq": n, "from": visibility, "to":
+    "pending_review"}``; a share link's keep adds ``"share_id"``)."""
+    DASHBOARD_BATCH_DOWNLOAD = "dashboard.batch_download"
+    """A predictions CSV of a batch readout was downloaded (details ``{"seq": n, "rows": n,
+    "bytes": n}``)."""
+    # --- v0.18 (additive) --------------------------------------------------------------------
+    LIBRARY_ITEM_CREATED = "library.create"
+    """A library item (model recipe, prep preset, chart template, workflow template) was
+    created with its first revision (details ``{"kind": k, "scope": s, "name": n, "valid":
+    bool}``; the sample seed writes it with ``actor_kind="service"``)."""
+    LIBRARY_ITEM_REVISED = "library.revise"
+    """A revision was added to a library item (details ``{"revision": n, "valid": bool}``)."""
+    LIBRARY_ITEM_ARCHIVED = "library.archive"
+    """A library item was archived or unarchived (details ``{"archived": bool}``)."""
+    LIBRARY_ITEM_PROMOTED = "library.promote"
+    """A tenant admin copied a project item's latest revision into a tenant item (details
+    ``{"from_item": id, "revision": n}``)."""
+    CATALOG_DESCRIBE_REQUESTED = "catalog.describe"
+    """An operator asked for a new catalog ``describe`` run (details ``{"run_id": id,
+    "pending": bool}``; ``pending`` when one was already queued)."""
+    SAMPLE_INSTALL = "sample.install"
+    """A member installed a tenant's sample project (it spends their compute)."""
+    SAMPLE_JOIN = "sample.join"
+    """A member joined an installed sample project (a project membership capped at
+    ``runner``; details ``{"sample": id, "role": r}``)."""
+    SAMPLE_RETRY = "sample.retry"
+    """The installer or a tenant admin retried a failed sample (details ``{"attempt": n}``)."""
+    SAMPLE_RETIRE = "sample.retire"
+    """A tenant admin retired a sample: it is hidden and its sample grants are removed."""
+    # --- v0.19 (additive; details carry ids, digests and ``dev_untrusted``, never file
+    # contents or uploaded text). PLUGIN_PUBLISH (a version uploaded) and PLUGIN_YANK are reused
+    PLUGIN_CLAIM = "plugin.claim"
+    """A plugin short name was claimed (details ``{"plugin_id": id, "namespace": ns}``)."""
+    PLUGIN_APPROVAL_REQUEST = "plugin.approval_request"
+    PLUGIN_APPROVE = "plugin.approve"
+    """A tenant admin approved a version (details: version id, uploader and approver ids,
+    ``overlay_sha256``, ``describe_digest``, ``base_image_digest``)."""
+    PLUGIN_REJECT = "plugin.reject"
+    PLUGIN_PURGE = "plugin.purge"
+    """The purge sweep deleted a refused, rejected or yanked version's stored wheel."""
+    PLUGIN_SETTINGS_UPDATE = "plugin.settings_update"
+    PLUGIN_UPLOADER_ATTEST = "plugin.uploader_attest"
+    """A tenant admin attested an editor's identity for uploads."""
+    PLUGIN_UPLOADER_REVOKE = "plugin.uploader_revoke"
+    # --- v0.20 (additive). Chat turns and MCP calls are not audited (usage rows and rate
+    # counters only); details never contain prompt or answer text
+    DASHBOARD_CHAT_SETTINGS = "dashboard.chat_settings"
+    """An editor changed a dashboard's chat settings (details: the new ``enabled``,
+    ``audiences``, ``keep_transcripts``, budgets and ``version``)."""
+    DASHBOARD_CHAT_TRANSCRIPT_DELETE = "dashboard.chat_transcript_delete"
+    """An editor deleted a kept conversation (details ``{"conversation_id": id, "turns": n}``)."""
+    DASHBOARD_READ_TOKEN_CREATE = "dashboard.read_token_create"
+    """A member or client minted a dashboard read token (details: token id, prefix,
+    ``expires_at``; never the secret)."""
+    DASHBOARD_READ_TOKEN_REVOKE = "dashboard.read_token_revoke"
+    """A read token was revoked by its owner or an editor (details: token id, owner id)."""
 
 
 class AuditEvent(ResponseModel):

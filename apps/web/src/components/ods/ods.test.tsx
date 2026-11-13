@@ -1,11 +1,13 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+import { CountUp } from "./count-up";
 import { acceptsFile, FileDrop } from "./file-drop";
 import { dm, dmy, fixed, grouped, MINUS, signed } from "./format";
 import { InlineMessage } from "./inline-message";
 import { Legend, ZoneLegend } from "./legend";
+import { ProgressRing } from "./progress-ring";
 import { StatTile } from "./stat-tile";
 import { SummaryStrip } from "./summary-strip";
 import { ZoneTag } from "./tag-word";
@@ -118,5 +120,83 @@ describe("tags, legends and strips", () => {
     const strip = screen.getByLabelText("This week");
     expect(strip.querySelectorAll("dt")).toHaveLength(2);
     expect(strip).toHaveTextContent("£42,000");
+  });
+});
+
+describe("axisDate", () => {
+  it("keeps DD/MM while the labels differ, and adds the year when they would repeat", async () => {
+    const { axisDate } = await import("./format");
+    expect(axisDate(["2026-01-05", "2026-01-12"])("2026-01-12")).toBe("12/01");
+    const quarters = ["2011-10-01", "2012-10-01", "2013-10-01", "2014-10-01"];
+    expect(quarters.map(axisDate(quarters))).toEqual(["10/2011", "10/2012", "10/2013", "10/2014"]);
+    const days = ["2011-03-05", "2012-03-05"];
+    expect(days.map(axisDate(days))).toEqual(["05/03/11", "05/03/12"]);
+    expect(axisDate(["case 1", "case 2"])("case 2")).toBe("case 2");
+  });
+});
+
+describe("ProgressRing", () => {
+  it("is a progressbar that says how far along it is", () => {
+    const { rerender } = render(<ProgressRing value={2} max={5} label="Getting started" />);
+    const ring = screen.getByRole("progressbar", { name: "Getting started" });
+    expect(ring).toHaveAttribute("aria-valuenow", "2");
+    expect(ring).toHaveAttribute("aria-valuemax", "5");
+    expect(ring).toHaveAttribute("aria-valuetext", "2 of 5");
+    expect(ring.querySelector("text")?.textContent).toBe("2/5");
+    rerender(<ProgressRing value={9} max={5} label="Getting started" showText={false} />);
+    expect(ring).toHaveAttribute("aria-valuenow", "5");
+    expect(ring.querySelector("text")).toBeNull();
+    expect(ring.querySelectorAll("circle")).toHaveLength(2);
+    rerender(<ProgressRing value={0} max={5} label="Getting started" />);
+    // No round-capped dot for nothing done: only the track.
+    expect(ring.querySelectorAll("circle")).toHaveLength(1);
+  });
+});
+
+describe("CountUp", () => {
+  function reducedMotion(on: boolean) {
+    const original = window.matchMedia;
+    window.matchMedia = (query: string) => ({ ...original(query), matches: on && query.includes("reduce") });
+    return () => {
+      window.matchMedia = original;
+    };
+  }
+
+  it("always has the final text in the DOM, also while the number moves", () => {
+    vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame", "performance"] });
+    try {
+      const format = (v: number) => grouped(Math.round(v));
+      const { container, rerender } = render(<CountUp value={1000} format={format} />);
+      const root = container.querySelector("[data-slot=count-up]")!;
+      expect(root.textContent).toBe("1,000");
+      rerender(<CountUp value={12400} format={format} />);
+      act(() => {
+        vi.advanceTimersByTime(100);
+      });
+      // Final text present and readable; the moving copy is hidden from assistive tech.
+      expect(screen.getByText("12,400")).toBeInTheDocument();
+      const moving = root.querySelector("[aria-hidden]");
+      expect(moving).not.toBeNull();
+      expect(moving?.textContent).not.toBe("12,400");
+      act(() => {
+        vi.advanceTimersByTime(1000);
+      });
+      expect(root.textContent).toBe("12,400");
+      expect(root.querySelector("[aria-hidden]")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("jumps straight to the end value under reduced motion", () => {
+    const restore = reducedMotion(true);
+    try {
+      const { container } = render(<CountUp value={42} from={0} />);
+      const root = container.querySelector("[data-slot=count-up]")!;
+      expect(root.textContent).toBe("42");
+      expect(root.querySelector("[aria-hidden]")).toBeNull();
+    } finally {
+      restore();
+    }
   });
 });

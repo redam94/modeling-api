@@ -1,0 +1,4131 @@
+{
+ "actuals": {
+  "against": "baseline",
+  "expected": {
+   "accuracy": 0.7777777777777778,
+   "auc": 0.868,
+   "brier": 0.15747421682689736,
+   "confusion": {
+    "counts": [
+     [
+      18,
+      2
+     ],
+     [
+      8,
+      17
+     ]
+    ],
+    "labels": [
+     0,
+     1
+    ]
+   },
+   "log_score": -0.48088181881843967,
+   "n": 45,
+   "rate_obs": 0.5555555555555556,
+   "rate_pred": 0.4222222222222222,
+   "threshold": 0.5
+  },
+  "inputs": {
+   "coords": {
+    "row": {
+     "data": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44
+     ],
+     "dims": [
+      "row"
+     ]
+    }
+   },
+   "data_vars": {
+    "sku": {
+     "data": [
+      "k0",
+      "k0",
+      "k0",
+      "k1",
+      "k1",
+      "k1",
+      "k2",
+      "k2",
+      "k2",
+      "k0",
+      "k0",
+      "k0",
+      "k1",
+      "k1",
+      "k1",
+      "k2",
+      "k2",
+      "k2",
+      "k0",
+      "k0",
+      "k0",
+      "k1",
+      "k1",
+      "k1",
+      "k2",
+      "k2",
+      "k2",
+      "k0",
+      "k0",
+      "k0",
+      "k1",
+      "k1",
+      "k1",
+      "k2",
+      "k2",
+      "k2",
+      "k0",
+      "k0",
+      "k0",
+      "k1",
+      "k1",
+      "k1",
+      "k2",
+      "k2",
+      "k2"
+     ],
+     "dims": [
+      "row"
+     ]
+    },
+    "store": {
+     "data": [
+      "s0",
+      "s0",
+      "s0",
+      "s0",
+      "s0",
+      "s0",
+      "s0",
+      "s0",
+      "s0",
+      "s1",
+      "s1",
+      "s1",
+      "s1",
+      "s1",
+      "s1",
+      "s1",
+      "s1",
+      "s1",
+      "s2",
+      "s2",
+      "s2",
+      "s2",
+      "s2",
+      "s2",
+      "s2",
+      "s2",
+      "s2",
+      "s3",
+      "s3",
+      "s3",
+      "s3",
+      "s3",
+      "s3",
+      "s3",
+      "s3",
+      "s3",
+      "s4",
+      "s4",
+      "s4",
+      "s4",
+      "s4",
+      "s4",
+      "s4",
+      "s4",
+      "s4"
+     ],
+     "dims": [
+      "row"
+     ]
+    },
+    "time": {
+     "data": [
+      "2024-09-22",
+      "2024-09-29",
+      "2024-10-06",
+      "2024-09-22",
+      "2024-09-29",
+      "2024-10-06",
+      "2024-09-22",
+      "2024-09-29",
+      "2024-10-06",
+      "2024-09-22",
+      "2024-09-29",
+      "2024-10-06",
+      "2024-09-22",
+      "2024-09-29",
+      "2024-10-06",
+      "2024-09-22",
+      "2024-09-29",
+      "2024-10-06",
+      "2024-09-22",
+      "2024-09-29",
+      "2024-10-06",
+      "2024-09-22",
+      "2024-09-29",
+      "2024-10-06",
+      "2024-09-22",
+      "2024-09-29",
+      "2024-10-06",
+      "2024-09-22",
+      "2024-09-29",
+      "2024-10-06",
+      "2024-09-22",
+      "2024-09-29",
+      "2024-10-06",
+      "2024-09-22",
+      "2024-09-29",
+      "2024-10-06",
+      "2024-09-22",
+      "2024-09-29",
+      "2024-10-06",
+      "2024-09-22",
+      "2024-09-29",
+      "2024-10-06",
+      "2024-09-22",
+      "2024-09-29",
+      "2024-10-06"
+     ],
+     "dims": [
+      "row"
+     ]
+    },
+    "y": {
+     "data": [
+      1,
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      1,
+      1,
+      0,
+      1,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      1
+     ],
+     "dims": [
+      "row"
+     ]
+    }
+   }
+  },
+  "label_column": "y",
+  "match": "row",
+  "names": {
+   "sku": "sku",
+   "store": "store",
+   "week": "time"
+  },
+  "positive_label": "1",
+  "table": {
+   "columns": [
+    "store",
+    "sku",
+    "week",
+    "actual"
+   ],
+   "rows": [
+    [
+     "s0",
+     "k0",
+     "2024-09-22",
+     1
+    ],
+    [
+     "s0",
+     "k0",
+     "2024-09-29",
+     0
+    ],
+    [
+     "s0",
+     "k0",
+     "2024-10-06",
+     0
+    ],
+    [
+     "s0",
+     "k1",
+     "2024-09-22",
+     1
+    ],
+    [
+     "s0",
+     "k1",
+     "2024-09-29",
+     1
+    ],
+    [
+     "s0",
+     "k1",
+     "2024-10-06",
+     1
+    ],
+    [
+     "s0",
+     "k2",
+     "2024-09-22",
+     1
+    ],
+    [
+     "s0",
+     "k2",
+     "2024-09-29",
+     1
+    ],
+    [
+     "s0",
+     "k2",
+     "2024-10-06",
+     1
+    ],
+    [
+     "s1",
+     "k0",
+     "2024-09-22",
+     1
+    ],
+    [
+     "s1",
+     "k0",
+     "2024-09-29",
+     1
+    ],
+    [
+     "s1",
+     "k0",
+     "2024-10-06",
+     0
+    ],
+    [
+     "s1",
+     "k1",
+     "2024-09-22",
+     1
+    ],
+    [
+     "s1",
+     "k1",
+     "2024-09-29",
+     1
+    ],
+    [
+     "s1",
+     "k1",
+     "2024-10-06",
+     0
+    ],
+    [
+     "s1",
+     "k2",
+     "2024-09-22",
+     1
+    ],
+    [
+     "s1",
+     "k2",
+     "2024-09-29",
+     0
+    ],
+    [
+     "s1",
+     "k2",
+     "2024-10-06",
+     1
+    ],
+    [
+     "s2",
+     "k0",
+     "2024-09-22",
+     0
+    ],
+    [
+     "s2",
+     "k0",
+     "2024-09-29",
+     0
+    ],
+    [
+     "s2",
+     "k0",
+     "2024-10-06",
+     0
+    ],
+    [
+     "s2",
+     "k1",
+     "2024-09-22",
+     1
+    ],
+    [
+     "s2",
+     "k1",
+     "2024-09-29",
+     1
+    ],
+    [
+     "s2",
+     "k1",
+     "2024-10-06",
+     1
+    ],
+    [
+     "s2",
+     "k2",
+     "2024-09-22",
+     1
+    ],
+    [
+     "s2",
+     "k2",
+     "2024-09-29",
+     1
+    ],
+    [
+     "s2",
+     "k2",
+     "2024-10-06",
+     1
+    ],
+    [
+     "s3",
+     "k0",
+     "2024-09-22",
+     0
+    ],
+    [
+     "s3",
+     "k0",
+     "2024-09-29",
+     0
+    ],
+    [
+     "s3",
+     "k0",
+     "2024-10-06",
+     0
+    ],
+    [
+     "s3",
+     "k1",
+     "2024-09-22",
+     0
+    ],
+    [
+     "s3",
+     "k1",
+     "2024-09-29",
+     1
+    ],
+    [
+     "s3",
+     "k1",
+     "2024-10-06",
+     0
+    ],
+    [
+     "s3",
+     "k2",
+     "2024-09-22",
+     1
+    ],
+    [
+     "s3",
+     "k2",
+     "2024-09-29",
+     1
+    ],
+    [
+     "s3",
+     "k2",
+     "2024-10-06",
+     1
+    ],
+    [
+     "s4",
+     "k0",
+     "2024-09-22",
+     0
+    ],
+    [
+     "s4",
+     "k0",
+     "2024-09-29",
+     0
+    ],
+    [
+     "s4",
+     "k0",
+     "2024-10-06",
+     0
+    ],
+    [
+     "s4",
+     "k1",
+     "2024-09-22",
+     0
+    ],
+    [
+     "s4",
+     "k1",
+     "2024-09-29",
+     0
+    ],
+    [
+     "s4",
+     "k1",
+     "2024-10-06",
+     0
+    ],
+    [
+     "s4",
+     "k2",
+     "2024-09-22",
+     1
+    ],
+    [
+     "s4",
+     "k2",
+     "2024-09-29",
+     0
+    ],
+    [
+     "s4",
+     "k2",
+     "2024-10-06",
+     1
+    ]
+   ]
+  }
+ },
+ "capabilities": {
+  "checkpointable": false,
+  "contribution_scale": "none",
+  "decision": false,
+  "deterministic_given_seed": true,
+  "evidence": false,
+  "fast_score": false,
+  "identified_quantities": [],
+  "inference": "point",
+  "loo_invalid_reason": "scikit-learn and xgboost estimators provide no pointwise log-likelihood",
+  "loo_valid": false,
+  "owns": [],
+  "recommend": false,
+  "representation": "point",
+  "score_modes": [
+   "counterfactual",
+   "evaluate",
+   "forecast",
+   "predict"
+  ]
+ },
+ "case": "classifier_binary",
+ "derived_from": [
+  "sklearn.tabular_classifier/inline_new_store.result.json",
+  "sklearn.tabular_classifier/inline_new_store.summary.json",
+  "sklearn.tabular_classifier/inline_next_week.result.json",
+  "sklearn.tabular_classifier/inline_next_week.summary.json",
+  "sklearn.tabular_classifier/inline_two_rows.result.json",
+  "sklearn.tabular_classifier/inline_two_rows.summary.json",
+  "sklearn.tabular_classifier/predict_sum_store.result.json",
+  "sklearn.tabular_classifier/predict_sum_store.summary.json",
+  "sklearn.tabular_classifier/predict_tail__readout.result.json",
+  "sklearn.tabular_classifier/predict_tail__readout.summary.json",
+  "sklearn.tabular_classifier/probe.json"
+ ],
+ "facts": {
+  "aggregates": {
+   "aggregate.aggregate": {
+    "aggregation_flagged": true,
+    "over": [
+     "store"
+    ],
+    "tables": {
+     "y_hat": {
+      "columns": [
+       "sku",
+       "week",
+       "point"
+      ],
+      "rows": [
+       [
+        "k0",
+        "2024-09-22",
+        1.406712518725756
+       ],
+       [
+        "k0",
+        "2024-09-29",
+        1.0963151141853282
+       ],
+       [
+        "k0",
+        "2024-10-06",
+        0.8494465184378291
+       ],
+       [
+        "k1",
+        "2024-09-22",
+        1.920899770796977
+       ],
+       [
+        "k1",
+        "2024-09-29",
+        2.364592770810192
+       ],
+       [
+        "k1",
+        "2024-10-06",
+        2.663166406015492
+       ],
+       [
+        "k2",
+        "2024-09-22",
+        3.576757638428032
+       ],
+       [
+        "k2",
+        "2024-09-29",
+        3.749144067743102
+       ],
+       [
+        "k2",
+        "2024-10-06",
+        3.624123207642905
+       ]
+      ]
+     }
+    }
+   }
+  },
+  "predictive": {},
+  "scalar_fit_metrics": {
+   "accuracy": 0.5666666666666667,
+   "auc": 0.8673469387755102,
+   "brier": 0.25698969410483236
+  },
+  "tables": {
+   "aggregate": {
+    "y_hat": {
+     "band": null,
+     "centre": "point",
+     "dims": [
+      "sku",
+      "week"
+     ],
+     "n_rows": 9,
+     "sum_centre": 21.251158012785613,
+     "time_dim": "week"
+    }
+   },
+   "baseline": {
+    "y_hat": {
+     "band": null,
+     "centre": "mean",
+     "dims": [
+      "store",
+      "sku",
+      "week"
+     ],
+     "n_rows": 45,
+     "sum_centre": 21.251158012785613,
+     "time_dim": "week"
+    }
+   },
+   "rows_new_store": {
+    "y_hat": {
+     "band": null,
+     "centre": "mean",
+     "dims": [
+      "store",
+      "sku",
+      "week"
+     ],
+     "n_rows": 1,
+     "sum_centre": 0.12759134587359658,
+     "time_dim": "week"
+    }
+   },
+   "rows_next_week": {
+    "y_hat": {
+     "band": null,
+     "centre": "mean",
+     "dims": [
+      "store",
+      "sku",
+      "week"
+     ],
+     "n_rows": 1,
+     "sum_centre": 0.1536941905214257,
+     "time_dim": "week"
+    }
+   },
+   "rows_two": {
+    "y_hat": {
+     "band": null,
+     "centre": "mean",
+     "dims": [
+      "store",
+      "sku",
+      "week"
+     ],
+     "n_rows": 2,
+     "sum_centre": 0.6361146548818513,
+     "time_dim": "week"
+    }
+   }
+  }
+ },
+ "fit_metrics": [
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:36:36.668935-04:00",
+   "key": "accuracy",
+   "labels": {},
+   "last": 0.5666666666666667,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:36:36.668935-04:00",
+   "max": 0.5666666666666667,
+   "min": 0.5666666666666667
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:36:36.669039-04:00",
+   "key": "auc",
+   "labels": {},
+   "last": 0.8673469387755102,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:36:36.669039-04:00",
+   "max": 0.8673469387755102,
+   "min": 0.8673469387755102
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:36:36.669079-04:00",
+   "key": "brier",
+   "labels": {},
+   "last": 0.25698969410483236,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:36:36.669079-04:00",
+   "max": 0.25698969410483236,
+   "min": 0.25698969410483236
+  }
+ ],
+ "format": "mapi.test.dashboard-material/v1",
+ "input_contract": {
+  "input_table": {
+   "columns": [
+    {
+     "description": "The period (yyyy-MM-dd)",
+     "dims": [],
+     "freq": "W-SUN",
+     "name": "time",
+     "role": "coord"
+    },
+    {
+     "description": "A level of sku",
+     "dims": [],
+     "freq": null,
+     "name": "sku",
+     "role": "coord"
+    },
+    {
+     "description": "A level of store",
+     "dims": [],
+     "freq": null,
+     "name": "store",
+     "role": "coord"
+    },
+    {
+     "description": "Leave empty. This model forecasts from the end of its fitted history",
+     "dims": [
+      "store",
+      "sku",
+      "time"
+     ],
+     "freq": null,
+     "name": "y",
+     "role": "target"
+    },
+    {
+     "description": "An input",
+     "dims": [
+      "store",
+      "sku",
+      "time"
+     ],
+     "freq": null,
+     "name": "price",
+     "role": "input"
+    },
+    {
+     "description": "An input",
+     "dims": [
+      "store",
+      "sku",
+      "time"
+     ],
+     "freq": null,
+     "name": "promo",
+     "role": "input"
+    }
+   ],
+   "conditions_on_actuals": false,
+   "horizon_dim": "time",
+   "rows": [
+    [
+     "2024-10-13",
+     "k0",
+     "s0",
+     null,
+     null,
+     null
+    ],
+    [
+     "2024-10-13",
+     "k0",
+     "s1",
+     null,
+     null,
+     null
+    ],
+    [
+     "2024-10-13",
+     "k1",
+     "s0",
+     null,
+     null,
+     null
+    ],
+    [
+     "2024-10-13",
+     "k1",
+     "s1",
+     null,
+     null,
+     null
+    ],
+    [
+     "2024-10-20",
+     "k0",
+     "s0",
+     null,
+     null,
+     null
+    ],
+    [
+     "2024-10-20",
+     "k0",
+     "s1",
+     null,
+     null,
+     null
+    ],
+    [
+     "2024-10-20",
+     "k1",
+     "s0",
+     null,
+     null,
+     null
+    ],
+    [
+     "2024-10-20",
+     "k1",
+     "s1",
+     null,
+     null,
+     null
+    ]
+   ]
+  },
+  "max_inline_bytes": 5242880,
+  "model_ref": "model://default/v017-classifier-88c784@v1",
+  "snapshot": {
+   "conditions_on_actuals": false,
+   "fit_coords": {
+    "sku": {
+     "contiguous": true,
+     "end": null,
+     "freq": null,
+     "kind": "categorical",
+     "size": 3,
+     "start": null,
+     "step": null,
+     "values": [
+      "k0",
+      "k1",
+      "k2"
+     ]
+    },
+    "store": {
+     "contiguous": true,
+     "end": null,
+     "freq": null,
+     "kind": "categorical",
+     "size": 5,
+     "start": null,
+     "step": null,
+     "values": [
+      "s0",
+      "s1",
+      "s2",
+      "s3",
+      "s4"
+     ]
+    },
+    "time": {
+     "contiguous": true,
+     "end": "2024-10-06T00:00:00",
+     "freq": "W-SUN",
+     "kind": "time",
+     "size": 40,
+     "start": "2024-01-07T00:00:00",
+     "step": null,
+     "values": null
+    }
+   },
+   "future_required": [],
+   "horizon_dim": "time",
+   "input_schema": {
+    "dims": {
+     "sku": {
+      "description": null,
+      "freq": null,
+      "kind": "categorical",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "fixed"
+     },
+     "store": {
+      "description": null,
+      "freq": null,
+      "kind": "categorical",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "new_levels"
+     },
+     "time": {
+      "description": null,
+      "freq": "W-SUN",
+      "kind": "time",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "extend"
+     }
+    },
+    "layout": "dense",
+    "ragged": [],
+    "vars": {
+     "price": {
+      "bounds": null,
+      "description": null,
+      "dims": [
+       "store",
+       "sku",
+       "time"
+      ],
+      "dtype": "float64",
+      "future_required": false,
+      "index_of": null,
+      "missing": "forbid",
+      "missing_sentinel": null,
+      "role": "covariate",
+      "units": "EUR"
+     },
+     "promo": {
+      "bounds": null,
+      "description": null,
+      "dims": [
+       "store",
+       "sku",
+       "time"
+      ],
+      "dtype": "float64",
+      "future_required": false,
+      "index_of": null,
+      "missing": "forbid",
+      "missing_sentinel": null,
+      "role": "covariate",
+      "units": null
+     },
+     "y": {
+      "bounds": null,
+      "description": null,
+      "dims": [
+       "store",
+       "sku",
+       "time"
+      ],
+      "dtype": "int64",
+      "future_required": false,
+      "index_of": null,
+      "missing": "forbid",
+      "missing_sentinel": null,
+      "role": "target",
+      "units": "units"
+     }
+    }
+   },
+   "inputs_stage": "raw",
+   "representation": "point",
+   "schema_hash": "sha256:307537c2511e82f12b7812a855c592c0bf5ff8a2a31b0c05f1356f7de977cb79",
+   "score_modes": [
+    "counterfactual",
+    "evaluate",
+    "forecast",
+    "predict"
+   ]
+  }
+ },
+ "manifest": {
+  "about": {
+   "assumptions": [
+    "The rows that you score are similar to the rows that the model learned from"
+   ],
+   "avoid_when": [
+    "The result is a number",
+    "The result has more than two classes (use the multiclass classifier)"
+   ],
+   "data_needs": [
+    "A table with a yes/no column and the columns that explain it"
+   ],
+   "difficulty": "beginner",
+   "example": "The probability that each customer orders again next month, to decide who gets a voucher.",
+   "expert_notes": "An allow-listed scikit-learn, xgboost, LightGBM or CatBoost binary classifier on stacked rows (LightGBM and CatBoost need the mapi-sklearn[gbm] extra, which the base-ml image has). Point representation of the positive-class probability.",
+   "fits": {
+    "data_shape": [
+     "table",
+     "panel",
+     "choices"
+    ],
+    "drivers": [
+     "yes"
+    ],
+    "goal": [
+     "predict_values",
+     "understand_choices",
+     "classify"
+    ]
+   },
+   "outputs": [
+    "The probability of 'yes' for each row"
+   ],
+   "related": [
+    "sklearn.multiclass_classifier",
+    "sklearn.tabular_regressor",
+    "choice.multinomial_logit"
+   ],
+   "summary_plain": "Estimates the probability that something occurs for each row of a table. For example, a customer buys again or an order arrives late.",
+   "title": "Predict yes or no",
+   "typical_runtime": "seconds",
+   "use_when": [
+    "The result is yes or no for each row",
+    "You want a probability to put rows in order or to select rows"
+   ]
+  },
+  "capabilities": {
+   "inference": "point",
+   "loo_invalid_reason": "scikit-learn and xgboost estimators provide no pointwise log-likelihood",
+   "loo_valid": false,
+   "representation": "point",
+   "score_modes": [
+    "counterfactual",
+    "evaluate",
+    "forecast",
+    "predict"
+   ]
+  },
+  "description": "Binary classification: the probability that the target is the positive class (scikit-learn, xgboost, LightGBM or CatBoost classifiers).",
+  "id": "sklearn.tabular_classifier",
+  "outputs": {
+   "contributions": {
+    "description": "Counterfactual-zeroing contributions to the probability",
+    "dims": [
+     "component"
+    ],
+    "dims_of": "y"
+   },
+   "y_hat": {
+    "description": "Probability that the target equals the positive class",
+    "dims": [],
+    "dims_of": "y",
+    "units": "1"
+   }
+  },
+  "plots": [
+   "core.calibration",
+   "core.roc_pr",
+   "core.confusion",
+   "ml.feature_importance"
+  ],
+  "schema_template": {
+   "cases": [
+    {
+     "merge": {
+      "dims": {
+       "{time_dim}": {
+        "kind": "time",
+        "new_level_strategy": "error",
+        "policy": "extend"
+       }
+      }
+     },
+     "when": {
+      "time_kind": "time"
+     }
+    },
+    {
+     "merge": {
+      "dims": {
+       "{time_dim}": {
+        "kind": "integer",
+        "new_level_strategy": "error",
+        "policy": "extend"
+       }
+      }
+     },
+     "when": {
+      "time_kind": "integer"
+     }
+    },
+    {
+     "merge": {
+      "dims": {
+       "{time_dim}": {
+        "kind": "index",
+        "new_level_strategy": "error",
+        "policy": "extend"
+       }
+      }
+     },
+     "when": {
+      "time_kind": "index"
+     }
+    }
+   ],
+   "params": {
+    "new_levels": {
+     "default": "pooled",
+     "enum": [
+      "pooled",
+      "zero",
+      "error"
+     ],
+     "type": "string"
+    },
+    "rows": {
+     "required": true,
+     "type": "string_list"
+    },
+    "target": {
+     "default": "y",
+     "type": "string"
+    },
+    "time_dim": {
+     "default": "time",
+     "type": "string"
+    },
+    "time_kind": {
+     "default": "time",
+     "enum": [
+      "time",
+      "integer",
+      "index",
+      "none"
+     ],
+     "type": "string"
+    }
+   },
+   "template": {
+    "dims": {
+     "{*rows as d}": {
+      "kind": "categorical",
+      "new_level_strategy": "{new_levels}",
+      "policy": "new_levels"
+     }
+    },
+    "vars": {
+     "{target}": {
+      "dims": "{rows}",
+      "dtype": "float64",
+      "missing": "allow",
+      "role": "target"
+     }
+    }
+   }
+  },
+  "settings_schema": {
+   "$defs": {
+    "CatBoostClassifierChoice": {
+     "additionalProperties": false,
+     "properties": {
+      "kind": {
+       "const": "catboost.CatBoostClassifier",
+       "title": "Kind",
+       "type": "string"
+      },
+      "params": {
+       "$ref": "#/$defs/CatBoostClassifierParams",
+       "default": {
+        "auto_class_weights": null,
+        "border_count": 254,
+        "depth": 6,
+        "iterations": 500,
+        "l2_leaf_reg": 3.0,
+        "learning_rate": null,
+        "min_data_in_leaf": 1,
+        "random_strength": 1.0,
+        "rsm": 1.0
+       }
+      }
+     },
+     "required": [
+      "kind"
+     ],
+     "title": "CatBoostClassifierChoice",
+     "type": "object"
+    },
+    "CatBoostClassifierParams": {
+     "additionalProperties": false,
+     "properties": {
+      "auto_class_weights": {
+       "anyOf": [
+        {
+         "enum": [
+          "Balanced",
+          "SqrtBalanced"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Auto Class Weights"
+      },
+      "border_count": {
+       "default": 254,
+       "maximum": 65535,
+       "minimum": 1,
+       "title": "Border Count",
+       "type": "integer"
+      },
+      "depth": {
+       "default": 6,
+       "maximum": 16,
+       "minimum": 1,
+       "title": "Depth",
+       "type": "integer"
+      },
+      "iterations": {
+       "default": 500,
+       "maximum": 10000,
+       "minimum": 1,
+       "title": "Iterations",
+       "type": "integer"
+      },
+      "l2_leaf_reg": {
+       "default": 3.0,
+       "minimum": 0,
+       "title": "L2 Leaf Reg",
+       "type": "number"
+      },
+      "learning_rate": {
+       "anyOf": [
+        {
+         "exclusiveMinimum": 0,
+         "maximum": 1,
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Learning Rate"
+      },
+      "min_data_in_leaf": {
+       "default": 1,
+       "maximum": 1000000,
+       "minimum": 1,
+       "title": "Min Data In Leaf",
+       "type": "integer"
+      },
+      "random_strength": {
+       "default": 1.0,
+       "minimum": 0,
+       "title": "Random Strength",
+       "type": "number"
+      },
+      "rsm": {
+       "default": 1.0,
+       "exclusiveMinimum": 0,
+       "maximum": 1,
+       "title": "Rsm",
+       "type": "number"
+      }
+     },
+     "title": "CatBoostClassifierParams",
+     "type": "object"
+    },
+    "ColumnsSettings": {
+     "additionalProperties": false,
+     "description": "Which variables become feature columns.\n\n``vars`` (explicit list) wins over ``roles``; ``exclude`` removes names from either.\nVariables with dims beyond ``rows`` are flattened into one column per label\n(``spend[tv]``, ``promo_lag[1]``).",
+     "properties": {
+      "exclude": {
+       "items": {
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+        "type": "string"
+       },
+       "maxItems": 1024,
+       "title": "Exclude",
+       "type": "array"
+      },
+      "roles": {
+       "items": {
+        "$ref": "#/$defs/Role"
+       },
+       "maxItems": 16,
+       "title": "Roles",
+       "type": "array"
+      },
+      "vars": {
+       "anyOf": [
+        {
+         "items": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+          "type": "string"
+         },
+         "maxItems": 1024,
+         "type": "array"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Vars"
+      }
+     },
+     "title": "ColumnsSettings",
+     "type": "object"
+    },
+    "ElasticNetChoice": {
+     "additionalProperties": false,
+     "properties": {
+      "kind": {
+       "const": "sklearn.ElasticNet",
+       "title": "Kind",
+       "type": "string"
+      },
+      "params": {
+       "$ref": "#/$defs/ElasticNetParams",
+       "default": {
+        "alpha": 1.0,
+        "fit_intercept": true,
+        "l1_ratio": 0.5,
+        "max_iter": 1000,
+        "positive": false,
+        "selection": "cyclic",
+        "tol": 0.0001
+       }
+      }
+     },
+     "required": [
+      "kind"
+     ],
+     "title": "ElasticNetChoice",
+     "type": "object"
+    },
+    "ElasticNetParams": {
+     "additionalProperties": false,
+     "properties": {
+      "alpha": {
+       "default": 1.0,
+       "exclusiveMinimum": 0,
+       "maximum": 1000000000000.0,
+       "title": "Alpha",
+       "type": "number"
+      },
+      "fit_intercept": {
+       "default": true,
+       "title": "Fit Intercept",
+       "type": "boolean"
+      },
+      "l1_ratio": {
+       "default": 0.5,
+       "maximum": 1,
+       "minimum": 0,
+       "title": "L1 Ratio",
+       "type": "number"
+      },
+      "max_iter": {
+       "default": 1000,
+       "maximum": 1000000,
+       "minimum": 1,
+       "title": "Max Iter",
+       "type": "integer"
+      },
+      "positive": {
+       "default": false,
+       "title": "Positive",
+       "type": "boolean"
+      },
+      "selection": {
+       "default": "cyclic",
+       "enum": [
+        "cyclic",
+        "random"
+       ],
+       "title": "Selection",
+       "type": "string"
+      },
+      "tol": {
+       "default": 0.0001,
+       "exclusiveMinimum": 0,
+       "maximum": 1,
+       "title": "Tol",
+       "type": "number"
+      }
+     },
+     "title": "ElasticNetParams",
+     "type": "object"
+    },
+    "GradientBoostingRegressorChoice": {
+     "additionalProperties": false,
+     "properties": {
+      "kind": {
+       "const": "sklearn.GradientBoostingRegressor",
+       "title": "Kind",
+       "type": "string"
+      },
+      "params": {
+       "$ref": "#/$defs/GradientBoostingRegressorParams",
+       "default": {
+        "alpha": 0.9,
+        "learning_rate": 0.1,
+        "loss": "squared_error",
+        "max_depth": 3,
+        "max_features": null,
+        "min_samples_leaf": 1,
+        "min_samples_split": 2,
+        "n_estimators": 100,
+        "n_iter_no_change": null,
+        "subsample": 1.0,
+        "tol": 0.0001,
+        "validation_fraction": 0.1
+       }
+      }
+     },
+     "required": [
+      "kind"
+     ],
+     "title": "GradientBoostingRegressorChoice",
+     "type": "object"
+    },
+    "GradientBoostingRegressorParams": {
+     "additionalProperties": false,
+     "properties": {
+      "alpha": {
+       "default": 0.9,
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0,
+       "title": "Alpha",
+       "type": "number"
+      },
+      "learning_rate": {
+       "default": 0.1,
+       "exclusiveMinimum": 0,
+       "maximum": 10,
+       "title": "Learning Rate",
+       "type": "number"
+      },
+      "loss": {
+       "default": "squared_error",
+       "enum": [
+        "squared_error",
+        "absolute_error",
+        "huber",
+        "quantile"
+       ],
+       "title": "Loss",
+       "type": "string"
+      },
+      "max_depth": {
+       "anyOf": [
+        {
+         "maximum": 64,
+         "minimum": 1,
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": 3,
+       "title": "Max Depth"
+      },
+      "max_features": {
+       "anyOf": [
+        {
+         "enum": [
+          "sqrt",
+          "log2"
+         ],
+         "type": "string"
+        },
+        {
+         "exclusiveMinimum": 0,
+         "maximum": 1,
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Max Features"
+      },
+      "min_samples_leaf": {
+       "default": 1,
+       "maximum": 1000000,
+       "minimum": 1,
+       "title": "Min Samples Leaf",
+       "type": "integer"
+      },
+      "min_samples_split": {
+       "default": 2,
+       "maximum": 1000000,
+       "minimum": 2,
+       "title": "Min Samples Split",
+       "type": "integer"
+      },
+      "n_estimators": {
+       "default": 100,
+       "maximum": 10000,
+       "minimum": 1,
+       "title": "N Estimators",
+       "type": "integer"
+      },
+      "n_iter_no_change": {
+       "anyOf": [
+        {
+         "maximum": 10000,
+         "minimum": 1,
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "N Iter No Change"
+      },
+      "subsample": {
+       "default": 1.0,
+       "exclusiveMinimum": 0,
+       "maximum": 1,
+       "title": "Subsample",
+       "type": "number"
+      },
+      "tol": {
+       "default": 0.0001,
+       "exclusiveMinimum": 0,
+       "maximum": 1,
+       "title": "Tol",
+       "type": "number"
+      },
+      "validation_fraction": {
+       "default": 0.1,
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0,
+       "title": "Validation Fraction",
+       "type": "number"
+      }
+     },
+     "title": "GradientBoostingRegressorParams",
+     "type": "object"
+    },
+    "HistGradientBoostingClassifierChoice": {
+     "additionalProperties": false,
+     "properties": {
+      "kind": {
+       "const": "sklearn.HistGradientBoostingClassifier",
+       "title": "Kind",
+       "type": "string"
+      },
+      "params": {
+       "$ref": "#/$defs/HistGradientBoostingClassifierParams",
+       "default": {
+        "class_weight": null,
+        "early_stopping": false,
+        "l2_regularization": 0.0,
+        "learning_rate": 0.1,
+        "max_bins": 255,
+        "max_depth": null,
+        "max_features": 1.0,
+        "max_iter": 100,
+        "max_leaf_nodes": 31,
+        "min_samples_leaf": 20,
+        "n_iter_no_change": 10,
+        "tol": 1e-07,
+        "validation_fraction": 0.1
+       }
+      }
+     },
+     "required": [
+      "kind"
+     ],
+     "title": "HistGradientBoostingClassifierChoice",
+     "type": "object"
+    },
+    "HistGradientBoostingClassifierParams": {
+     "additionalProperties": false,
+     "properties": {
+      "class_weight": {
+       "anyOf": [
+        {
+         "const": "balanced",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Class Weight"
+      },
+      "early_stopping": {
+       "default": false,
+       "title": "Early Stopping",
+       "type": "boolean"
+      },
+      "l2_regularization": {
+       "default": 0.0,
+       "minimum": 0,
+       "title": "L2 Regularization",
+       "type": "number"
+      },
+      "learning_rate": {
+       "default": 0.1,
+       "exclusiveMinimum": 0,
+       "maximum": 10,
+       "title": "Learning Rate",
+       "type": "number"
+      },
+      "max_bins": {
+       "default": 255,
+       "maximum": 255,
+       "minimum": 2,
+       "title": "Max Bins",
+       "type": "integer"
+      },
+      "max_depth": {
+       "anyOf": [
+        {
+         "maximum": 256,
+         "minimum": 1,
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Max Depth"
+      },
+      "max_features": {
+       "default": 1.0,
+       "exclusiveMinimum": 0,
+       "maximum": 1,
+       "title": "Max Features",
+       "type": "number"
+      },
+      "max_iter": {
+       "default": 100,
+       "maximum": 10000,
+       "minimum": 1,
+       "title": "Max Iter",
+       "type": "integer"
+      },
+      "max_leaf_nodes": {
+       "anyOf": [
+        {
+         "maximum": 65536,
+         "minimum": 2,
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": 31,
+       "title": "Max Leaf Nodes"
+      },
+      "min_samples_leaf": {
+       "default": 20,
+       "maximum": 1000000,
+       "minimum": 1,
+       "title": "Min Samples Leaf",
+       "type": "integer"
+      },
+      "n_iter_no_change": {
+       "default": 10,
+       "maximum": 10000,
+       "minimum": 1,
+       "title": "N Iter No Change",
+       "type": "integer"
+      },
+      "tol": {
+       "default": 1e-07,
+       "maximum": 1,
+       "minimum": 0,
+       "title": "Tol",
+       "type": "number"
+      },
+      "validation_fraction": {
+       "default": 0.1,
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0,
+       "title": "Validation Fraction",
+       "type": "number"
+      }
+     },
+     "title": "HistGradientBoostingClassifierParams",
+     "type": "object"
+    },
+    "HistGradientBoostingRegressorChoice": {
+     "additionalProperties": false,
+     "properties": {
+      "kind": {
+       "const": "sklearn.HistGradientBoostingRegressor",
+       "title": "Kind",
+       "type": "string"
+      },
+      "params": {
+       "$ref": "#/$defs/HistGradientBoostingRegressorParams",
+       "default": {
+        "early_stopping": false,
+        "l2_regularization": 0.0,
+        "learning_rate": 0.1,
+        "loss": "squared_error",
+        "max_bins": 255,
+        "max_depth": null,
+        "max_features": 1.0,
+        "max_iter": 100,
+        "max_leaf_nodes": 31,
+        "min_samples_leaf": 20,
+        "n_iter_no_change": 10,
+        "quantile": null,
+        "tol": 1e-07,
+        "validation_fraction": 0.1
+       }
+      }
+     },
+     "required": [
+      "kind"
+     ],
+     "title": "HistGradientBoostingRegressorChoice",
+     "type": "object"
+    },
+    "HistGradientBoostingRegressorParams": {
+     "additionalProperties": false,
+     "properties": {
+      "early_stopping": {
+       "default": false,
+       "title": "Early Stopping",
+       "type": "boolean"
+      },
+      "l2_regularization": {
+       "default": 0.0,
+       "minimum": 0,
+       "title": "L2 Regularization",
+       "type": "number"
+      },
+      "learning_rate": {
+       "default": 0.1,
+       "exclusiveMinimum": 0,
+       "maximum": 10,
+       "title": "Learning Rate",
+       "type": "number"
+      },
+      "loss": {
+       "default": "squared_error",
+       "enum": [
+        "squared_error",
+        "absolute_error",
+        "gamma",
+        "poisson",
+        "quantile"
+       ],
+       "title": "Loss",
+       "type": "string"
+      },
+      "max_bins": {
+       "default": 255,
+       "maximum": 255,
+       "minimum": 2,
+       "title": "Max Bins",
+       "type": "integer"
+      },
+      "max_depth": {
+       "anyOf": [
+        {
+         "maximum": 256,
+         "minimum": 1,
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Max Depth"
+      },
+      "max_features": {
+       "default": 1.0,
+       "exclusiveMinimum": 0,
+       "maximum": 1,
+       "title": "Max Features",
+       "type": "number"
+      },
+      "max_iter": {
+       "default": 100,
+       "maximum": 10000,
+       "minimum": 1,
+       "title": "Max Iter",
+       "type": "integer"
+      },
+      "max_leaf_nodes": {
+       "anyOf": [
+        {
+         "maximum": 65536,
+         "minimum": 2,
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": 31,
+       "title": "Max Leaf Nodes"
+      },
+      "min_samples_leaf": {
+       "default": 20,
+       "maximum": 1000000,
+       "minimum": 1,
+       "title": "Min Samples Leaf",
+       "type": "integer"
+      },
+      "n_iter_no_change": {
+       "default": 10,
+       "maximum": 10000,
+       "minimum": 1,
+       "title": "N Iter No Change",
+       "type": "integer"
+      },
+      "quantile": {
+       "anyOf": [
+        {
+         "exclusiveMaximum": 1,
+         "exclusiveMinimum": 0,
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Quantile"
+      },
+      "tol": {
+       "default": 1e-07,
+       "maximum": 1,
+       "minimum": 0,
+       "title": "Tol",
+       "type": "number"
+      },
+      "validation_fraction": {
+       "default": 0.1,
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0,
+       "title": "Validation Fraction",
+       "type": "number"
+      }
+     },
+     "title": "HistGradientBoostingRegressorParams",
+     "type": "object"
+    },
+    "LGBMClassifierChoice": {
+     "additionalProperties": false,
+     "properties": {
+      "kind": {
+       "const": "lightgbm.LGBMClassifier",
+       "title": "Kind",
+       "type": "string"
+      },
+      "params": {
+       "$ref": "#/$defs/LGBMClassifierParams",
+       "default": {
+        "class_weight": null,
+        "colsample_bytree": 1.0,
+        "learning_rate": 0.1,
+        "max_bin": 255,
+        "max_depth": -1,
+        "min_child_samples": 20,
+        "min_child_weight": 0.001,
+        "min_split_gain": 0.0,
+        "n_estimators": 100,
+        "num_leaves": 31,
+        "reg_alpha": 0.0,
+        "reg_lambda": 0.0,
+        "subsample": 1.0,
+        "subsample_freq": 0
+       }
+      }
+     },
+     "required": [
+      "kind"
+     ],
+     "title": "LGBMClassifierChoice",
+     "type": "object"
+    },
+    "LGBMClassifierParams": {
+     "additionalProperties": false,
+     "properties": {
+      "class_weight": {
+       "anyOf": [
+        {
+         "const": "balanced",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Class Weight"
+      },
+      "colsample_bytree": {
+       "default": 1.0,
+       "exclusiveMinimum": 0,
+       "maximum": 1,
+       "title": "Colsample Bytree",
+       "type": "number"
+      },
+      "learning_rate": {
+       "default": 0.1,
+       "exclusiveMinimum": 0,
+       "maximum": 1,
+       "title": "Learning Rate",
+       "type": "number"
+      },
+      "max_bin": {
+       "default": 255,
+       "maximum": 4096,
+       "minimum": 2,
+       "title": "Max Bin",
+       "type": "integer"
+      },
+      "max_depth": {
+       "default": -1,
+       "maximum": 64,
+       "minimum": -1,
+       "title": "Max Depth",
+       "type": "integer"
+      },
+      "min_child_samples": {
+       "default": 20,
+       "maximum": 1000000,
+       "minimum": 1,
+       "title": "Min Child Samples",
+       "type": "integer"
+      },
+      "min_child_weight": {
+       "default": 0.001,
+       "minimum": 0,
+       "title": "Min Child Weight",
+       "type": "number"
+      },
+      "min_split_gain": {
+       "default": 0.0,
+       "minimum": 0,
+       "title": "Min Split Gain",
+       "type": "number"
+      },
+      "n_estimators": {
+       "default": 100,
+       "maximum": 10000,
+       "minimum": 1,
+       "title": "N Estimators",
+       "type": "integer"
+      },
+      "num_leaves": {
+       "default": 31,
+       "maximum": 131072,
+       "minimum": 2,
+       "title": "Num Leaves",
+       "type": "integer"
+      },
+      "reg_alpha": {
+       "default": 0.0,
+       "minimum": 0,
+       "title": "Reg Alpha",
+       "type": "number"
+      },
+      "reg_lambda": {
+       "default": 0.0,
+       "minimum": 0,
+       "title": "Reg Lambda",
+       "type": "number"
+      },
+      "subsample": {
+       "default": 1.0,
+       "exclusiveMinimum": 0,
+       "maximum": 1,
+       "title": "Subsample",
+       "type": "number"
+      },
+      "subsample_freq": {
+       "default": 0,
+       "maximum": 1000,
+       "minimum": 0,
+       "title": "Subsample Freq",
+       "type": "integer"
+      }
+     },
+     "title": "LGBMClassifierParams",
+     "type": "object"
+    },
+    "LassoChoice": {
+     "additionalProperties": false,
+     "properties": {
+      "kind": {
+       "const": "sklearn.Lasso",
+       "title": "Kind",
+       "type": "string"
+      },
+      "params": {
+       "$ref": "#/$defs/LassoParams",
+       "default": {
+        "alpha": 1.0,
+        "fit_intercept": true,
+        "max_iter": 1000,
+        "positive": false,
+        "selection": "cyclic",
+        "tol": 0.0001
+       }
+      }
+     },
+     "required": [
+      "kind"
+     ],
+     "title": "LassoChoice",
+     "type": "object"
+    },
+    "LassoParams": {
+     "additionalProperties": false,
+     "properties": {
+      "alpha": {
+       "default": 1.0,
+       "exclusiveMinimum": 0,
+       "maximum": 1000000000000.0,
+       "title": "Alpha",
+       "type": "number"
+      },
+      "fit_intercept": {
+       "default": true,
+       "title": "Fit Intercept",
+       "type": "boolean"
+      },
+      "max_iter": {
+       "default": 1000,
+       "maximum": 1000000,
+       "minimum": 1,
+       "title": "Max Iter",
+       "type": "integer"
+      },
+      "positive": {
+       "default": false,
+       "title": "Positive",
+       "type": "boolean"
+      },
+      "selection": {
+       "default": "cyclic",
+       "enum": [
+        "cyclic",
+        "random"
+       ],
+       "title": "Selection",
+       "type": "string"
+      },
+      "tol": {
+       "default": 0.0001,
+       "exclusiveMinimum": 0,
+       "maximum": 1,
+       "title": "Tol",
+       "type": "number"
+      }
+     },
+     "title": "LassoParams",
+     "type": "object"
+    },
+    "LinearRegressionChoice": {
+     "additionalProperties": false,
+     "properties": {
+      "kind": {
+       "const": "sklearn.LinearRegression",
+       "title": "Kind",
+       "type": "string"
+      },
+      "params": {
+       "$ref": "#/$defs/LinearRegressionParams",
+       "default": {
+        "fit_intercept": true,
+        "positive": false
+       }
+      }
+     },
+     "required": [
+      "kind"
+     ],
+     "title": "LinearRegressionChoice",
+     "type": "object"
+    },
+    "LinearRegressionParams": {
+     "additionalProperties": false,
+     "properties": {
+      "fit_intercept": {
+       "default": true,
+       "title": "Fit Intercept",
+       "type": "boolean"
+      },
+      "positive": {
+       "default": false,
+       "title": "Positive",
+       "type": "boolean"
+      }
+     },
+     "title": "LinearRegressionParams",
+     "type": "object"
+    },
+    "LogisticRegressionChoice": {
+     "additionalProperties": false,
+     "properties": {
+      "kind": {
+       "const": "sklearn.LogisticRegression",
+       "title": "Kind",
+       "type": "string"
+      },
+      "params": {
+       "$ref": "#/$defs/LogisticRegressionParams",
+       "default": {
+        "C": 1.0,
+        "class_weight": null,
+        "fit_intercept": true,
+        "l1_ratio": 0.0,
+        "max_iter": 100,
+        "solver": "lbfgs",
+        "tol": 0.0001
+       }
+      }
+     },
+     "required": [
+      "kind"
+     ],
+     "title": "LogisticRegressionChoice",
+     "type": "object"
+    },
+    "LogisticRegressionParams": {
+     "additionalProperties": false,
+     "properties": {
+      "C": {
+       "default": 1.0,
+       "exclusiveMinimum": 0,
+       "maximum": 1000000000000.0,
+       "title": "C",
+       "type": "number"
+      },
+      "class_weight": {
+       "anyOf": [
+        {
+         "const": "balanced",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Class Weight"
+      },
+      "fit_intercept": {
+       "default": true,
+       "title": "Fit Intercept",
+       "type": "boolean"
+      },
+      "l1_ratio": {
+       "default": 0.0,
+       "maximum": 1,
+       "minimum": 0,
+       "title": "L1 Ratio",
+       "type": "number"
+      },
+      "max_iter": {
+       "default": 100,
+       "maximum": 100000,
+       "minimum": 1,
+       "title": "Max Iter",
+       "type": "integer"
+      },
+      "solver": {
+       "default": "lbfgs",
+       "enum": [
+        "lbfgs",
+        "liblinear",
+        "newton-cg",
+        "newton-cholesky",
+        "sag",
+        "saga"
+       ],
+       "title": "Solver",
+       "type": "string"
+      },
+      "tol": {
+       "default": 0.0001,
+       "exclusiveMinimum": 0,
+       "maximum": 1,
+       "title": "Tol",
+       "type": "number"
+      }
+     },
+     "title": "LogisticRegressionParams",
+     "type": "object"
+    },
+    "NoUncertainty": {
+     "additionalProperties": false,
+     "description": "Point predictions (representation ``point``).",
+     "properties": {
+      "kind": {
+       "const": "none",
+       "default": "none",
+       "title": "Kind",
+       "type": "string"
+      }
+     },
+     "title": "NoUncertainty",
+     "type": "object"
+    },
+    "QuantileRegressorChoice": {
+     "additionalProperties": false,
+     "properties": {
+      "kind": {
+       "const": "sklearn.QuantileRegressor",
+       "title": "Kind",
+       "type": "string"
+      },
+      "params": {
+       "$ref": "#/$defs/QuantileRegressorParams",
+       "default": {
+        "alpha": 1.0,
+        "fit_intercept": true,
+        "quantile": 0.5,
+        "solver": "highs"
+       }
+      }
+     },
+     "required": [
+      "kind"
+     ],
+     "title": "QuantileRegressorChoice",
+     "type": "object"
+    },
+    "QuantileRegressorParams": {
+     "additionalProperties": false,
+     "properties": {
+      "alpha": {
+       "default": 1.0,
+       "maximum": 1000000000000.0,
+       "minimum": 0,
+       "title": "Alpha",
+       "type": "number"
+      },
+      "fit_intercept": {
+       "default": true,
+       "title": "Fit Intercept",
+       "type": "boolean"
+      },
+      "quantile": {
+       "default": 0.5,
+       "exclusiveMaximum": 1,
+       "exclusiveMinimum": 0,
+       "title": "Quantile",
+       "type": "number"
+      },
+      "solver": {
+       "default": "highs",
+       "enum": [
+        "highs",
+        "highs-ds",
+        "highs-ipm"
+       ],
+       "title": "Solver",
+       "type": "string"
+      }
+     },
+     "title": "QuantileRegressorParams",
+     "type": "object"
+    },
+    "RandomForestClassifierChoice": {
+     "additionalProperties": false,
+     "properties": {
+      "kind": {
+       "const": "sklearn.RandomForestClassifier",
+       "title": "Kind",
+       "type": "string"
+      },
+      "params": {
+       "$ref": "#/$defs/RandomForestClassifierParams",
+       "default": {
+        "bootstrap": true,
+        "ccp_alpha": 0.0,
+        "class_weight": null,
+        "criterion": "gini",
+        "max_depth": null,
+        "max_features": "sqrt",
+        "max_samples": null,
+        "min_impurity_decrease": 0.0,
+        "min_samples_leaf": 1,
+        "min_samples_split": 2,
+        "n_estimators": 100
+       }
+      }
+     },
+     "required": [
+      "kind"
+     ],
+     "title": "RandomForestClassifierChoice",
+     "type": "object"
+    },
+    "RandomForestClassifierParams": {
+     "additionalProperties": false,
+     "properties": {
+      "bootstrap": {
+       "default": true,
+       "title": "Bootstrap",
+       "type": "boolean"
+      },
+      "ccp_alpha": {
+       "default": 0.0,
+       "minimum": 0,
+       "title": "Ccp Alpha",
+       "type": "number"
+      },
+      "class_weight": {
+       "anyOf": [
+        {
+         "enum": [
+          "balanced",
+          "balanced_subsample"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Class Weight"
+      },
+      "criterion": {
+       "default": "gini",
+       "enum": [
+        "gini",
+        "entropy",
+        "log_loss"
+       ],
+       "title": "Criterion",
+       "type": "string"
+      },
+      "max_depth": {
+       "anyOf": [
+        {
+         "maximum": 256,
+         "minimum": 1,
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Max Depth"
+      },
+      "max_features": {
+       "anyOf": [
+        {
+         "enum": [
+          "sqrt",
+          "log2"
+         ],
+         "type": "string"
+        },
+        {
+         "exclusiveMinimum": 0,
+         "maximum": 1,
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": "sqrt",
+       "title": "Max Features"
+      },
+      "max_samples": {
+       "anyOf": [
+        {
+         "exclusiveMinimum": 0,
+         "maximum": 1,
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Max Samples"
+      },
+      "min_impurity_decrease": {
+       "default": 0.0,
+       "minimum": 0,
+       "title": "Min Impurity Decrease",
+       "type": "number"
+      },
+      "min_samples_leaf": {
+       "default": 1,
+       "maximum": 1000000,
+       "minimum": 1,
+       "title": "Min Samples Leaf",
+       "type": "integer"
+      },
+      "min_samples_split": {
+       "default": 2,
+       "maximum": 1000000,
+       "minimum": 2,
+       "title": "Min Samples Split",
+       "type": "integer"
+      },
+      "n_estimators": {
+       "default": 100,
+       "maximum": 5000,
+       "minimum": 1,
+       "title": "N Estimators",
+       "type": "integer"
+      }
+     },
+     "title": "RandomForestClassifierParams",
+     "type": "object"
+    },
+    "RandomForestRegressorChoice": {
+     "additionalProperties": false,
+     "properties": {
+      "kind": {
+       "const": "sklearn.RandomForestRegressor",
+       "title": "Kind",
+       "type": "string"
+      },
+      "params": {
+       "$ref": "#/$defs/RandomForestRegressorParams",
+       "default": {
+        "bootstrap": true,
+        "ccp_alpha": 0.0,
+        "criterion": "squared_error",
+        "max_depth": null,
+        "max_features": 1.0,
+        "max_samples": null,
+        "min_impurity_decrease": 0.0,
+        "min_samples_leaf": 1,
+        "min_samples_split": 2,
+        "n_estimators": 100
+       }
+      }
+     },
+     "required": [
+      "kind"
+     ],
+     "title": "RandomForestRegressorChoice",
+     "type": "object"
+    },
+    "RandomForestRegressorParams": {
+     "additionalProperties": false,
+     "properties": {
+      "bootstrap": {
+       "default": true,
+       "title": "Bootstrap",
+       "type": "boolean"
+      },
+      "ccp_alpha": {
+       "default": 0.0,
+       "minimum": 0,
+       "title": "Ccp Alpha",
+       "type": "number"
+      },
+      "criterion": {
+       "default": "squared_error",
+       "enum": [
+        "squared_error",
+        "absolute_error",
+        "friedman_mse",
+        "poisson"
+       ],
+       "title": "Criterion",
+       "type": "string"
+      },
+      "max_depth": {
+       "anyOf": [
+        {
+         "maximum": 256,
+         "minimum": 1,
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Max Depth"
+      },
+      "max_features": {
+       "anyOf": [
+        {
+         "enum": [
+          "sqrt",
+          "log2"
+         ],
+         "type": "string"
+        },
+        {
+         "exclusiveMinimum": 0,
+         "maximum": 1,
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": 1.0,
+       "title": "Max Features"
+      },
+      "max_samples": {
+       "anyOf": [
+        {
+         "exclusiveMinimum": 0,
+         "maximum": 1,
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Max Samples"
+      },
+      "min_impurity_decrease": {
+       "default": 0.0,
+       "minimum": 0,
+       "title": "Min Impurity Decrease",
+       "type": "number"
+      },
+      "min_samples_leaf": {
+       "default": 1,
+       "maximum": 1000000,
+       "minimum": 1,
+       "title": "Min Samples Leaf",
+       "type": "integer"
+      },
+      "min_samples_split": {
+       "default": 2,
+       "maximum": 1000000,
+       "minimum": 2,
+       "title": "Min Samples Split",
+       "type": "integer"
+      },
+      "n_estimators": {
+       "default": 100,
+       "maximum": 5000,
+       "minimum": 1,
+       "title": "N Estimators",
+       "type": "integer"
+      }
+     },
+     "title": "RandomForestRegressorParams",
+     "type": "object"
+    },
+    "RidgeChoice": {
+     "additionalProperties": false,
+     "properties": {
+      "kind": {
+       "const": "sklearn.Ridge",
+       "title": "Kind",
+       "type": "string"
+      },
+      "params": {
+       "$ref": "#/$defs/RidgeParams",
+       "default": {
+        "alpha": 1.0,
+        "fit_intercept": true,
+        "max_iter": null,
+        "positive": false,
+        "solver": "auto",
+        "tol": 0.0001
+       }
+      }
+     },
+     "required": [
+      "kind"
+     ],
+     "title": "RidgeChoice",
+     "type": "object"
+    },
+    "RidgeParams": {
+     "additionalProperties": false,
+     "properties": {
+      "alpha": {
+       "default": 1.0,
+       "maximum": 1000000000000.0,
+       "minimum": 0,
+       "title": "Alpha",
+       "type": "number"
+      },
+      "fit_intercept": {
+       "default": true,
+       "title": "Fit Intercept",
+       "type": "boolean"
+      },
+      "max_iter": {
+       "anyOf": [
+        {
+         "maximum": 1000000,
+         "minimum": 1,
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Max Iter"
+      },
+      "positive": {
+       "default": false,
+       "title": "Positive",
+       "type": "boolean"
+      },
+      "solver": {
+       "default": "auto",
+       "enum": [
+        "auto",
+        "svd",
+        "cholesky",
+        "lsqr",
+        "sparse_cg",
+        "sag",
+        "saga",
+        "lbfgs"
+       ],
+       "title": "Solver",
+       "type": "string"
+      },
+      "tol": {
+       "default": 0.0001,
+       "exclusiveMinimum": 0,
+       "maximum": 1,
+       "title": "Tol",
+       "type": "number"
+      }
+     },
+     "title": "RidgeParams",
+     "type": "object"
+    },
+    "Role": {
+     "description": "What a variable means to a model.",
+     "enum": [
+      "target",
+      "covariate",
+      "media",
+      "spend",
+      "control",
+      "index",
+      "mask",
+      "constant",
+      "weight",
+      "exposure"
+     ],
+     "title": "Role",
+     "type": "string"
+    },
+    "XGBClassifierChoice": {
+     "additionalProperties": false,
+     "properties": {
+      "kind": {
+       "const": "xgboost.XGBClassifier",
+       "title": "Kind",
+       "type": "string"
+      },
+      "params": {
+       "$ref": "#/$defs/XGBClassifierParams",
+       "default": {
+        "colsample_bylevel": 1.0,
+        "colsample_bynode": 1.0,
+        "colsample_bytree": 1.0,
+        "gamma": 0.0,
+        "grow_policy": "depthwise",
+        "learning_rate": 0.3,
+        "max_bin": 256,
+        "max_cat_to_onehot": null,
+        "max_depth": 6,
+        "max_leaves": 0,
+        "min_child_weight": 1.0,
+        "n_estimators": 100,
+        "objective": "binary:logistic",
+        "reg_alpha": 0.0,
+        "reg_lambda": 1.0,
+        "scale_pos_weight": 1.0,
+        "subsample": 1.0,
+        "tree_method": "hist"
+       }
+      }
+     },
+     "required": [
+      "kind"
+     ],
+     "title": "XGBClassifierChoice",
+     "type": "object"
+    },
+    "XGBClassifierParams": {
+     "additionalProperties": false,
+     "properties": {
+      "colsample_bylevel": {
+       "default": 1.0,
+       "exclusiveMinimum": 0,
+       "maximum": 1,
+       "title": "Colsample Bylevel",
+       "type": "number"
+      },
+      "colsample_bynode": {
+       "default": 1.0,
+       "exclusiveMinimum": 0,
+       "maximum": 1,
+       "title": "Colsample Bynode",
+       "type": "number"
+      },
+      "colsample_bytree": {
+       "default": 1.0,
+       "exclusiveMinimum": 0,
+       "maximum": 1,
+       "title": "Colsample Bytree",
+       "type": "number"
+      },
+      "gamma": {
+       "default": 0.0,
+       "minimum": 0,
+       "title": "Gamma",
+       "type": "number"
+      },
+      "grow_policy": {
+       "default": "depthwise",
+       "enum": [
+        "depthwise",
+        "lossguide"
+       ],
+       "title": "Grow Policy",
+       "type": "string"
+      },
+      "learning_rate": {
+       "default": 0.3,
+       "exclusiveMinimum": 0,
+       "maximum": 1,
+       "title": "Learning Rate",
+       "type": "number"
+      },
+      "max_bin": {
+       "default": 256,
+       "maximum": 4096,
+       "minimum": 2,
+       "title": "Max Bin",
+       "type": "integer"
+      },
+      "max_cat_to_onehot": {
+       "anyOf": [
+        {
+         "maximum": 1024,
+         "minimum": 1,
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Max Cat To Onehot"
+      },
+      "max_depth": {
+       "default": 6,
+       "maximum": 64,
+       "minimum": 0,
+       "title": "Max Depth",
+       "type": "integer"
+      },
+      "max_leaves": {
+       "default": 0,
+       "maximum": 1000000,
+       "minimum": 0,
+       "title": "Max Leaves",
+       "type": "integer"
+      },
+      "min_child_weight": {
+       "default": 1.0,
+       "minimum": 0,
+       "title": "Min Child Weight",
+       "type": "number"
+      },
+      "n_estimators": {
+       "default": 100,
+       "maximum": 10000,
+       "minimum": 1,
+       "title": "N Estimators",
+       "type": "integer"
+      },
+      "objective": {
+       "const": "binary:logistic",
+       "default": "binary:logistic",
+       "title": "Objective",
+       "type": "string"
+      },
+      "reg_alpha": {
+       "default": 0.0,
+       "minimum": 0,
+       "title": "Reg Alpha",
+       "type": "number"
+      },
+      "reg_lambda": {
+       "default": 1.0,
+       "minimum": 0,
+       "title": "Reg Lambda",
+       "type": "number"
+      },
+      "scale_pos_weight": {
+       "default": 1.0,
+       "exclusiveMinimum": 0,
+       "title": "Scale Pos Weight",
+       "type": "number"
+      },
+      "subsample": {
+       "default": 1.0,
+       "exclusiveMinimum": 0,
+       "maximum": 1,
+       "title": "Subsample",
+       "type": "number"
+      },
+      "tree_method": {
+       "default": "hist",
+       "enum": [
+        "hist",
+        "approx",
+        "exact"
+       ],
+       "title": "Tree Method",
+       "type": "string"
+      }
+     },
+     "title": "XGBClassifierParams",
+     "type": "object"
+    },
+    "XGBRegressorChoice": {
+     "additionalProperties": false,
+     "properties": {
+      "kind": {
+       "const": "xgboost.XGBRegressor",
+       "title": "Kind",
+       "type": "string"
+      },
+      "params": {
+       "$ref": "#/$defs/XGBRegressorParams",
+       "default": {
+        "colsample_bylevel": 1.0,
+        "colsample_bynode": 1.0,
+        "colsample_bytree": 1.0,
+        "gamma": 0.0,
+        "grow_policy": "depthwise",
+        "huber_slope": null,
+        "learning_rate": 0.3,
+        "max_bin": 256,
+        "max_cat_to_onehot": null,
+        "max_depth": 6,
+        "max_leaves": 0,
+        "min_child_weight": 1.0,
+        "n_estimators": 100,
+        "objective": "reg:squarederror",
+        "quantile_alpha": null,
+        "reg_alpha": 0.0,
+        "reg_lambda": 1.0,
+        "subsample": 1.0,
+        "tree_method": "hist",
+        "tweedie_variance_power": null
+       }
+      }
+     },
+     "required": [
+      "kind"
+     ],
+     "title": "XGBRegressorChoice",
+     "type": "object"
+    },
+    "XGBRegressorParams": {
+     "additionalProperties": false,
+     "properties": {
+      "colsample_bylevel": {
+       "default": 1.0,
+       "exclusiveMinimum": 0,
+       "maximum": 1,
+       "title": "Colsample Bylevel",
+       "type": "number"
+      },
+      "colsample_bynode": {
+       "default": 1.0,
+       "exclusiveMinimum": 0,
+       "maximum": 1,
+       "title": "Colsample Bynode",
+       "type": "number"
+      },
+      "colsample_bytree": {
+       "default": 1.0,
+       "exclusiveMinimum": 0,
+       "maximum": 1,
+       "title": "Colsample Bytree",
+       "type": "number"
+      },
+      "gamma": {
+       "default": 0.0,
+       "minimum": 0,
+       "title": "Gamma",
+       "type": "number"
+      },
+      "grow_policy": {
+       "default": "depthwise",
+       "enum": [
+        "depthwise",
+        "lossguide"
+       ],
+       "title": "Grow Policy",
+       "type": "string"
+      },
+      "huber_slope": {
+       "anyOf": [
+        {
+         "exclusiveMinimum": 0,
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Huber Slope"
+      },
+      "learning_rate": {
+       "default": 0.3,
+       "exclusiveMinimum": 0,
+       "maximum": 1,
+       "title": "Learning Rate",
+       "type": "number"
+      },
+      "max_bin": {
+       "default": 256,
+       "maximum": 4096,
+       "minimum": 2,
+       "title": "Max Bin",
+       "type": "integer"
+      },
+      "max_cat_to_onehot": {
+       "anyOf": [
+        {
+         "maximum": 1024,
+         "minimum": 1,
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Max Cat To Onehot"
+      },
+      "max_depth": {
+       "default": 6,
+       "maximum": 64,
+       "minimum": 0,
+       "title": "Max Depth",
+       "type": "integer"
+      },
+      "max_leaves": {
+       "default": 0,
+       "maximum": 1000000,
+       "minimum": 0,
+       "title": "Max Leaves",
+       "type": "integer"
+      },
+      "min_child_weight": {
+       "default": 1.0,
+       "minimum": 0,
+       "title": "Min Child Weight",
+       "type": "number"
+      },
+      "n_estimators": {
+       "default": 100,
+       "maximum": 10000,
+       "minimum": 1,
+       "title": "N Estimators",
+       "type": "integer"
+      },
+      "objective": {
+       "default": "reg:squarederror",
+       "enum": [
+        "reg:squarederror",
+        "reg:squaredlogerror",
+        "reg:absoluteerror",
+        "reg:pseudohubererror",
+        "reg:quantileerror",
+        "count:poisson",
+        "reg:gamma",
+        "reg:tweedie"
+       ],
+       "title": "Objective",
+       "type": "string"
+      },
+      "quantile_alpha": {
+       "anyOf": [
+        {
+         "exclusiveMaximum": 1,
+         "exclusiveMinimum": 0,
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Quantile Alpha"
+      },
+      "reg_alpha": {
+       "default": 0.0,
+       "minimum": 0,
+       "title": "Reg Alpha",
+       "type": "number"
+      },
+      "reg_lambda": {
+       "default": 1.0,
+       "minimum": 0,
+       "title": "Reg Lambda",
+       "type": "number"
+      },
+      "subsample": {
+       "default": 1.0,
+       "exclusiveMinimum": 0,
+       "maximum": 1,
+       "title": "Subsample",
+       "type": "number"
+      },
+      "tree_method": {
+       "default": "hist",
+       "enum": [
+        "hist",
+        "approx",
+        "exact"
+       ],
+       "title": "Tree Method",
+       "type": "string"
+      },
+      "tweedie_variance_power": {
+       "anyOf": [
+        {
+         "exclusiveMaximum": 2,
+         "minimum": 1,
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Tweedie Variance Power"
+      }
+     },
+     "title": "XGBRegressorParams",
+     "type": "object"
+    }
+   },
+   "additionalProperties": false,
+   "description": "Settings of ``sklearn.tabular_classifier``.",
+   "properties": {
+    "columns": {
+     "$ref": "#/$defs/ColumnsSettings"
+    },
+    "contributions": {
+     "default": "none",
+     "enum": [
+      "none",
+      "zeroing"
+     ],
+     "title": "Contributions",
+     "type": "string"
+    },
+    "coord_features": {
+     "maxProperties": 8,
+     "patternProperties": {
+      "^[A-Za-z_][A-Za-z0-9_]{0,63}$": {
+       "enum": [
+        "category",
+        "onehot",
+        "ordinal",
+        "numeric"
+       ],
+       "type": "string"
+      }
+     },
+     "title": "Coord Features",
+     "type": "object"
+    },
+    "estimator": {
+     "discriminator": {
+      "mapping": {
+       "catboost.CatBoostClassifier": "#/$defs/CatBoostClassifierChoice",
+       "lightgbm.LGBMClassifier": "#/$defs/LGBMClassifierChoice",
+       "sklearn.ElasticNet": "#/$defs/ElasticNetChoice",
+       "sklearn.GradientBoostingRegressor": "#/$defs/GradientBoostingRegressorChoice",
+       "sklearn.HistGradientBoostingClassifier": "#/$defs/HistGradientBoostingClassifierChoice",
+       "sklearn.HistGradientBoostingRegressor": "#/$defs/HistGradientBoostingRegressorChoice",
+       "sklearn.Lasso": "#/$defs/LassoChoice",
+       "sklearn.LinearRegression": "#/$defs/LinearRegressionChoice",
+       "sklearn.LogisticRegression": "#/$defs/LogisticRegressionChoice",
+       "sklearn.QuantileRegressor": "#/$defs/QuantileRegressorChoice",
+       "sklearn.RandomForestClassifier": "#/$defs/RandomForestClassifierChoice",
+       "sklearn.RandomForestRegressor": "#/$defs/RandomForestRegressorChoice",
+       "sklearn.Ridge": "#/$defs/RidgeChoice",
+       "xgboost.XGBClassifier": "#/$defs/XGBClassifierChoice",
+       "xgboost.XGBRegressor": "#/$defs/XGBRegressorChoice"
+      },
+      "propertyName": "kind"
+     },
+     "oneOf": [
+      {
+       "$ref": "#/$defs/LinearRegressionChoice"
+      },
+      {
+       "$ref": "#/$defs/RidgeChoice"
+      },
+      {
+       "$ref": "#/$defs/LassoChoice"
+      },
+      {
+       "$ref": "#/$defs/ElasticNetChoice"
+      },
+      {
+       "$ref": "#/$defs/QuantileRegressorChoice"
+      },
+      {
+       "$ref": "#/$defs/LogisticRegressionChoice"
+      },
+      {
+       "$ref": "#/$defs/RandomForestRegressorChoice"
+      },
+      {
+       "$ref": "#/$defs/RandomForestClassifierChoice"
+      },
+      {
+       "$ref": "#/$defs/GradientBoostingRegressorChoice"
+      },
+      {
+       "$ref": "#/$defs/HistGradientBoostingRegressorChoice"
+      },
+      {
+       "$ref": "#/$defs/XGBRegressorChoice"
+      },
+      {
+       "$ref": "#/$defs/XGBClassifierChoice"
+      },
+      {
+       "$ref": "#/$defs/HistGradientBoostingClassifierChoice"
+      },
+      {
+       "$ref": "#/$defs/LGBMClassifierChoice"
+      },
+      {
+       "$ref": "#/$defs/CatBoostClassifierChoice"
+      }
+     ],
+     "title": "Estimator"
+    },
+    "forecast_strategy": {
+     "default": "direct",
+     "enum": [
+      "direct",
+      "recursive"
+     ],
+     "title": "Forecast Strategy",
+     "type": "string"
+    },
+    "mask": {
+     "anyOf": [
+      {
+       "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Mask"
+    },
+    "n_jobs": {
+     "default": 1,
+     "maximum": 64,
+     "minimum": 1,
+     "title": "N Jobs",
+     "type": "integer"
+    },
+    "new_levels": {
+     "default": "pooled",
+     "enum": [
+      "pooled",
+      "zero",
+      "error"
+     ],
+     "title": "New Levels",
+     "type": "string"
+    },
+    "pooled_max_levels": {
+     "default": 256,
+     "maximum": 10000,
+     "minimum": 1,
+     "title": "Pooled Max Levels",
+     "type": "integer"
+    },
+    "positive_class": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Positive Class"
+    },
+    "retransform": {
+     "default": "median",
+     "enum": [
+      "median",
+      "smearing"
+     ],
+     "title": "Retransform",
+     "type": "string"
+    },
+    "rows": {
+     "items": {
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+      "type": "string"
+     },
+     "maxItems": 8,
+     "minItems": 1,
+     "title": "Rows",
+     "type": "array"
+    },
+    "target": {
+     "default": "y",
+     "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+     "title": "Target",
+     "type": "string"
+    },
+    "time_dim": {
+     "default": "time",
+     "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+     "title": "Time Dim",
+     "type": "string"
+    },
+    "time_kind": {
+     "default": "time",
+     "enum": [
+      "time",
+      "integer",
+      "index",
+      "none"
+     ],
+     "title": "Time Kind",
+     "type": "string"
+    },
+    "uncertainty": {
+     "$ref": "#/$defs/NoUncertainty"
+    },
+    "weight": {
+     "anyOf": [
+      {
+       "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Weight"
+    }
+   },
+   "required": [
+    "estimator",
+    "rows"
+   ],
+   "title": "TabularClassifierSettings",
+   "type": "object"
+  },
+  "version": "1.0.0"
+ },
+ "note": "point: y_hat = P(positive), no class dim, no `meaning` in the manifest",
+ "plugin": "sklearn.tabular_classifier",
+ "preset": "classifier",
+ "primary_output": "y_hat",
+ "refusals": [
+  {
+   "code": "NON_CONTIGUOUS_EXTENSION",
+   "inline": true,
+   "issues": [
+    {
+     "code": "NON_CONTIGUOUS_EXTENSION",
+     "context": {},
+     "message": "input coords of 'time' leave a gap of 9 period(s) after the fitted range",
+     "pointer": "/data",
+     "severity": "error",
+     "suggested_action": null,
+     "untrusted_text": "fit ends 2024-10-06T00:00:00; input starts 2024-12-15T00:00:00"
+    }
+   ],
+   "output": {
+    "summary": [
+     "mean"
+    ]
+   },
+   "probe_case": "inline_gap_week",
+   "refused": "CoordPlanError: validation failed with 1 error. The first error is at /data: input coords of 'time' leave a gap of 9 period(s) after the fitted range"
+  },
+  {
+   "code": "CAPABILITY_UNSUPPORTED",
+   "inline": false,
+   "issues": [
+    {
+     "code": "CAPABILITY_UNSUPPORTED",
+     "context": {},
+     "message": "predictive output (with observation noise) needs an uncertainty representation. This model gives point predictions",
+     "pointer": "/output/kind",
+     "severity": "error",
+     "suggested_action": null,
+     "untrusted_text": null
+    }
+   ],
+   "output": {
+    "kind": "predictive",
+    "summary": [
+     "mean"
+    ]
+   },
+   "probe_case": "predict_tail__predictive",
+   "refused": "CapabilityError: validation failed with 1 error. The first error is at /output/kind: predictive output (with observation noise) needs an uncertainty representation. This model gives point predictions"
+  },
+  {
+   "code": "CAPABILITY_UNSUPPORTED",
+   "inline": true,
+   "issues": [
+    {
+     "code": "CAPABILITY_UNSUPPORTED",
+     "context": {},
+     "message": "predictive output (with observation noise) needs an uncertainty representation. This model gives point predictions",
+     "pointer": "/output/kind",
+     "severity": "error",
+     "suggested_action": null,
+     "untrusted_text": null
+    }
+   ],
+   "output": {
+    "kind": "predictive",
+    "summary": [
+     "mean"
+    ]
+   },
+   "probe_case": "inline_two_rows__predictive",
+   "refused": "CapabilityError: validation failed with 1 error. The first error is at /output/kind: predictive output (with observation noise) needs an uncertainty representation. This model gives point predictions"
+  }
+ ],
+ "representation": "point",
+ "scorecard": {
+  "items": [
+   {
+    "category": "data",
+    "check": "data.missing",
+    "code": "DATA_MISSING",
+    "docs_anchor": "check-data-missing",
+    "message_expert": "0 of 1800 values missing",
+    "message_plain": "Only 0% of the values are missing.",
+    "metric": "missing_fraction",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 0.05,
+    "title": "Few missing values",
+    "value": 0.0
+   },
+   {
+    "category": "data",
+    "check": "data.history",
+    "code": "DATA_HISTORY",
+    "docs_anchor": "check-data-history",
+    "message_expert": "40 periods at W-SUN (52 per year) along 'time' at the model stage",
+    "message_plain": "There are only 0.8 years of history. This is not sufficient to separate media from seasonality.",
+    "metric": "history_years",
+    "status": "fail",
+    "suggested_action": "If you have more history, add it.",
+    "threshold": 1.0,
+    "title": "Enough history",
+    "value": 0.7692307692307693
+   }
+  ],
+  "overall": "fail",
+  "skipped": {
+   "convergence.divergences": "the model has no posterior draws (the fit did not use MCMC)",
+   "convergence.ess": "the model has no posterior draws (the fit did not use MCMC)",
+   "convergence.rhat": "the model has no posterior draws (the fit did not use MCMC)",
+   "data.spend_variation": "the dataset has no spend variable along time",
+   "holdout.coverage_90": "the spec does not evaluate it (evaluate.metrics) or has no holdout split",
+   "holdout.hit_rate": "only models of a categorical target (choice models) report a hit rate. Evaluate accuracy_lift on one of these models",
+   "holdout.mape": "the spec does not evaluate it (evaluate.metrics) or has no holdout split",
+   "plausibility.baseline_share": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.negative_roi": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.prior_overlap": "the fit kept no prior draws (set fit.prior_predictive or fit.keep.prior)",
+   "plausibility.roi_absurd": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.share_outlier": "the model has no response curves (outputs.derived: response_curves)"
+  }
+ },
+ "scores": {
+  "aggregate": {
+   "counterfactual": null,
+   "fields": null,
+   "forecast": null,
+   "horizon": null,
+   "inline": false,
+   "mode": "predict",
+   "output": {
+    "aggregate": {
+     "over": [
+      "store"
+     ]
+    }
+   },
+   "probe_case": "predict_sum_store",
+   "result": {
+    "aggregation_flagged": true,
+    "bundle_id": "9242a3dec11a69aeeaf93e3f0beb693b",
+    "groups": [
+     "/summary"
+    ],
+    "issues": [
+     {
+      "code": "CAPABILITY_UNSUPPORTED",
+      "context": {},
+      "message": "point predictions aggregated linearly; no uncertainty attached",
+      "pointer": "/output/aggregate",
+      "severity": "warning",
+      "suggested_action": null,
+      "untrusted_text": null
+     }
+    ],
+    "kind": "expected",
+    "mode": "predict",
+    "names": "dataset",
+    "output_space": {},
+    "representation": "point",
+    "retransform": {},
+    "units": "original"
+   },
+   "summary": {
+    "tables": [
+     {
+      "columns": [
+       "sku",
+       "week",
+       "point"
+      ],
+      "dims": [
+       "sku",
+       "week"
+      ],
+      "rows": [
+       [
+        "k0",
+        "2024-09-22",
+        1.406712518725756
+       ],
+       [
+        "k0",
+        "2024-09-29",
+        1.0963151141853282
+       ],
+       [
+        "k0",
+        "2024-10-06",
+        0.8494465184378291
+       ],
+       [
+        "k1",
+        "2024-09-22",
+        1.920899770796977
+       ],
+       [
+        "k1",
+        "2024-09-29",
+        2.364592770810192
+       ],
+       [
+        "k1",
+        "2024-10-06",
+        2.663166406015492
+       ],
+       [
+        "k2",
+        "2024-09-22",
+        3.576757638428032
+       ],
+       [
+        "k2",
+        "2024-09-29",
+        3.749144067743102
+       ],
+       [
+        "k2",
+        "2024-10-06",
+        3.624123207642905
+       ]
+      ],
+      "time_dim": "week",
+      "variable": "y_hat"
+     }
+    ],
+    "truncated": false
+   },
+   "trimmed": null
+  },
+  "baseline": {
+   "counterfactual": null,
+   "fields": null,
+   "forecast": null,
+   "horizon": null,
+   "inline": false,
+   "mode": "predict",
+   "output": {
+    "summary": [
+     "mean"
+    ]
+   },
+   "probe_case": "predict_tail__readout",
+   "result": {
+    "aggregation_flagged": false,
+    "bundle_id": "9242a3dec11a69aeeaf93e3f0beb693b",
+    "groups": [
+     "/summary"
+    ],
+    "issues": [],
+    "kind": "expected",
+    "mode": "predict",
+    "names": "dataset",
+    "output_space": {},
+    "representation": "point",
+    "retransform": {},
+    "units": "original"
+   },
+   "summary": {
+    "tables": [
+     {
+      "columns": [
+       "store",
+       "sku",
+       "week",
+       "mean"
+      ],
+      "dims": [
+       "store",
+       "sku",
+       "week"
+      ],
+      "rows": [
+       [
+        "s0",
+        "k0",
+        "2024-09-22",
+        0.5468910259296506
+       ],
+       [
+        "s0",
+        "k0",
+        "2024-09-29",
+        0.16230879462806866
+       ],
+       [
+        "s0",
+        "k0",
+        "2024-10-06",
+        0.1536941905214257
+       ],
+       [
+        "s0",
+        "k1",
+        "2024-09-22",
+        0.4628074515640738
+       ],
+       [
+        "s0",
+        "k1",
+        "2024-09-29",
+        0.4810227110910162
+       ],
+       [
+        "s0",
+        "k1",
+        "2024-10-06",
+        0.48242046436042557
+       ],
+       [
+        "s0",
+        "k2",
+        "2024-09-22",
+        0.712665494465267
+       ],
+       [
+        "s0",
+        "k2",
+        "2024-09-29",
+        0.7861360220645115
+       ],
+       [
+        "s0",
+        "k2",
+        "2024-10-06",
+        0.710518186725197
+       ],
+       [
+        "s1",
+        "k0",
+        "2024-09-22",
+        0.12059327978493924
+       ],
+       [
+        "s1",
+        "k0",
+        "2024-09-29",
+        0.1542928586472919
+       ],
+       [
+        "s1",
+        "k0",
+        "2024-10-06",
+        0.13538188721631256
+       ],
+       [
+        "s1",
+        "k1",
+        "2024-09-22",
+        0.2909987696792894
+       ],
+       [
+        "s1",
+        "k1",
+        "2024-09-29",
+        0.7734568181131334
+       ],
+       [
+        "s1",
+        "k1",
+        "2024-10-06",
+        0.18825495092799857
+       ],
+       [
+        "s1",
+        "k2",
+        "2024-09-22",
+        0.6244298210938577
+       ],
+       [
+        "s1",
+        "k2",
+        "2024-09-29",
+        0.6525290379385073
+       ],
+       [
+        "s1",
+        "k2",
+        "2024-10-06",
+        0.5484650795465529
+       ],
+       [
+        "s2",
+        "k0",
+        "2024-09-22",
+        0.38192861255242955
+       ],
+       [
+        "s2",
+        "k0",
+        "2024-09-29",
+        0.3990896565929522
+       ],
+       [
+        "s2",
+        "k0",
+        "2024-10-06",
+        0.37552371368829845
+       ],
+       [
+        "s2",
+        "k1",
+        "2024-09-22",
+        0.5331071260837795
+       ],
+       [
+        "s2",
+        "k1",
+        "2024-09-29",
+        0.45880217014951474
+       ],
+       [
+        "s2",
+        "k1",
+        "2024-10-06",
+        0.907496711226188
+       ],
+       [
+        "s2",
+        "k2",
+        "2024-09-22",
+        0.8942267599597926
+       ],
+       [
+        "s2",
+        "k2",
+        "2024-09-29",
+        0.9858003513382831
+       ],
+       [
+        "s2",
+        "k2",
+        "2024-10-06",
+        0.8918368800551202
+       ],
+       [
+        "s3",
+        "k0",
+        "2024-09-22",
+        0.12859551462704902
+       ],
+       [
+        "s3",
+        "k0",
+        "2024-09-29",
+        0.12507796705245822
+       ],
+       [
+        "s3",
+        "k0",
+        "2024-10-06",
+        0.14168215226076106
+       ],
+       [
+        "s3",
+        "k1",
+        "2024-09-22",
+        0.48057487086390493
+       ],
+       [
+        "s3",
+        "k1",
+        "2024-09-29",
+        0.5021526748766209
+       ],
+       [
+        "s3",
+        "k1",
+        "2024-10-06",
+        0.48747925392232283
+       ],
+       [
+        "s3",
+        "k2",
+        "2024-09-22",
+        0.937662432079877
+       ],
+       [
+        "s3",
+        "k2",
+        "2024-09-29",
+        0.9509845249216075
+       ],
+       [
+        "s3",
+        "k2",
+        "2024-10-06",
+        0.6623323102907434
+       ],
+       [
+        "s4",
+        "k0",
+        "2024-09-22",
+        0.22870408583168772
+       ],
+       [
+        "s4",
+        "k0",
+        "2024-09-29",
+        0.25554583726455726
+       ],
+       [
+        "s4",
+        "k0",
+        "2024-10-06",
+        0.043164574751031415
+       ],
+       [
+        "s4",
+        "k1",
+        "2024-09-22",
+        0.15341155260592937
+       ],
+       [
+        "s4",
+        "k1",
+        "2024-09-29",
+        0.14915839657990707
+       ],
+       [
+        "s4",
+        "k1",
+        "2024-10-06",
+        0.5975150255785572
+       ],
+       [
+        "s4",
+        "k2",
+        "2024-09-22",
+        0.4077731308292376
+       ],
+       [
+        "s4",
+        "k2",
+        "2024-09-29",
+        0.37369413148019226
+       ],
+       [
+        "s4",
+        "k2",
+        "2024-10-06",
+        0.8109707510252916
+       ]
+      ],
+      "time_dim": "week",
+      "variable": "y_hat"
+     }
+    ],
+    "truncated": false
+   },
+   "trimmed": null
+  },
+  "rows_new_store": {
+   "counterfactual": null,
+   "fields": null,
+   "forecast": null,
+   "horizon": null,
+   "inline": true,
+   "mode": "predict",
+   "output": {
+    "summary": [
+     "mean"
+    ]
+   },
+   "probe_case": "inline_new_store",
+   "result": {
+    "aggregation_flagged": false,
+    "bundle_id": "9242a3dec11a69aeeaf93e3f0beb693b",
+    "groups": [
+     "/summary"
+    ],
+    "issues": [
+     {
+      "code": "UNSEEN_LEVELS",
+      "context": {},
+      "message": "1 new level(s) of 'store' will use strategy 'pooled'",
+      "pointer": "/data",
+      "severity": "info",
+      "suggested_action": null,
+      "untrusted_text": "s_new"
+     }
+    ],
+    "kind": "expected",
+    "mode": "predict",
+    "names": "dataset",
+    "output_space": {},
+    "representation": "point",
+    "retransform": {},
+    "units": "original"
+   },
+   "summary": {
+    "tables": [
+     {
+      "columns": [
+       "store",
+       "sku",
+       "week",
+       "mean"
+      ],
+      "dims": [
+       "store",
+       "sku",
+       "week"
+      ],
+      "rows": [
+       [
+        "s_new",
+        "k0",
+        "2024-10-06",
+        0.12759134587359658
+       ]
+      ],
+      "time_dim": "week",
+      "variable": "y_hat"
+     }
+    ],
+    "truncated": false
+   },
+   "trimmed": null
+  },
+  "rows_next_week": {
+   "counterfactual": null,
+   "fields": null,
+   "forecast": null,
+   "horizon": null,
+   "inline": true,
+   "mode": "predict",
+   "output": {
+    "summary": [
+     "mean"
+    ]
+   },
+   "probe_case": "inline_next_week",
+   "result": {
+    "aggregation_flagged": false,
+    "bundle_id": "9242a3dec11a69aeeaf93e3f0beb693b",
+    "groups": [
+     "/summary"
+    ],
+    "issues": [],
+    "kind": "expected",
+    "mode": "predict",
+    "names": "dataset",
+    "output_space": {},
+    "representation": "point",
+    "retransform": {},
+    "units": "original"
+   },
+   "summary": {
+    "tables": [
+     {
+      "columns": [
+       "store",
+       "sku",
+       "week",
+       "mean"
+      ],
+      "dims": [
+       "store",
+       "sku",
+       "week"
+      ],
+      "rows": [
+       [
+        "s0",
+        "k0",
+        "2024-10-13",
+        0.1536941905214257
+       ]
+      ],
+      "time_dim": "week",
+      "variable": "y_hat"
+     }
+    ],
+    "truncated": false
+   },
+   "trimmed": null
+  },
+  "rows_two": {
+   "counterfactual": null,
+   "fields": null,
+   "forecast": null,
+   "horizon": null,
+   "inline": true,
+   "mode": "predict",
+   "output": {
+    "summary": [
+     "mean"
+    ]
+   },
+   "probe_case": "inline_two_rows",
+   "result": {
+    "aggregation_flagged": false,
+    "bundle_id": "9242a3dec11a69aeeaf93e3f0beb693b",
+    "groups": [
+     "/summary"
+    ],
+    "issues": [],
+    "kind": "expected",
+    "mode": "predict",
+    "names": "dataset",
+    "output_space": {},
+    "representation": "point",
+    "retransform": {},
+    "units": "original"
+   },
+   "summary": {
+    "tables": [
+     {
+      "columns": [
+       "store",
+       "sku",
+       "week",
+       "mean"
+      ],
+      "dims": [
+       "store",
+       "sku",
+       "week"
+      ],
+      "rows": [
+       [
+        "s0",
+        "k0",
+        "2024-10-06",
+        0.1536941905214257
+       ],
+       [
+        "s0",
+        "k1",
+        "2024-10-06",
+        0.48242046436042557
+       ]
+      ],
+      "time_dim": "week",
+      "variable": "y_hat"
+     }
+    ],
+    "truncated": false
+   },
+   "trimmed": null
+  }
+ }
+}

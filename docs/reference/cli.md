@@ -174,11 +174,13 @@ mapi score request.yaml --remote @ --model MODEL_ID --version 1 -o result.zarr.z
 mapi catalog [models|steps|plots] [--remote @]
 
 mapi plugin init acme-demand && mapi plugin test acme-demand   # scaffold + contract kit
+mapi plugin init acme-lab --kind recipe --kind node   # one scaffold per extension kind
+mapi [--json] plugin validate acme-lab | mapi plugin doctor [--server]   # check a package / the install
 mapi spec upgrade spec.yaml --check
 mapi config show | path | set KEY VALUE | unset KEY
 ```
 
-Multi-tenant commands (v0.3). [Authentication](../guides/authentication.md#the-command-line)
+Multi-tenant commands (v0.3). [Sign in](../guides/authentication.md#the-command-line)
 and [Administration](../guides/administration.md) show these commands step by step. The test
 suite runs the two guides:
 

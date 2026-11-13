@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import type { ColumnDef } from "@tanstack/react-table";
 import { CheckCircle2, FileCode2, Plus, XCircle } from "lucide-react";
 
@@ -6,6 +6,7 @@ import { useSpecs } from "@/api/queries";
 import type { SpecDoc } from "@/api/types";
 import { EmptyState, Mono, PageHeader, QueryView } from "@/components/common";
 import { DataTable } from "@/components/data-table";
+import { ListNoMatches, ListToolbar, matchesQuery, toolbarShown } from "@/components/list-toolbar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/primitives";
 import { relativeTime } from "@/lib/format";
@@ -39,9 +40,16 @@ const columns: ColumnDef<SpecDoc, unknown>[] = [
   { accessorKey: "updated_at", header: "Updated", cell: ({ row }) => relativeTime(row.original.updated_at) },
 ];
 
+const listRoute = getRouteApi("/build");
+
 export function BuildPage() {
   const specs = useSpecs();
   const navigate = useNavigate();
+  const q = listRoute.useSearch().q ?? "";
+  const setQuery = (next: string) => void navigate({ to: "/build", search: { q: next || undefined }, replace: true });
+  const items = specs.data?.items;
+  const more = Boolean(specs.data?.next_cursor);
+  const rows = q && items ? items.filter((s) => matchesQuery(q, [s.name], [s.ref, s.kind])) : (items ?? []);
   return (
     <>
       <PageHeader
@@ -55,34 +63,44 @@ export function BuildPage() {
           </Button>
         }
       />
-      <QueryView query={specs}>
-        {(page) =>
-          page.items.length ? (
-            <DataTable
-              label="Specs"
-              data={page.items}
-              columns={columns}
-              getRowId={(s) => s.id}
-              filterPlaceholder="Filter specs"
-              onRowClick={(s) => void navigate({ to: "/build/$specId", params: { specId: s.id } })}
-            />
-          ) : (
-            <EmptyState
-              icon={<FileCode2 />}
-              title="No specs yet"
-              action={
-                <Button asChild>
-                  <Link to="/build/new">
-                    <Plus /> Start from the geo MMM template
-                  </Link>
-                </Button>
-              }
-            >
-              A spec names a dataset, a preprocessing pipeline and a model plugin. The app does a check of the spec while you type.
-            </EmptyState>
-          )
-        }
-      </QueryView>
+      {/* A block, not a grid: a grid item around the table would take the width of the table on a phone. */}
+      <div className="space-y-3">
+        {/* Outside the query view: a link with ?q= shows its text while the list loads and when the project has no spec. */}
+        {toolbarShown(q, items?.length) ? <ListToolbar things="specs" value={q} onChange={setQuery} count={items ? { shown: rows.length, total: items.length, more } : undefined} /> : null}
+        <QueryView query={specs}>
+          {(page) => {
+            return page.items.length ? (
+              <div className="grid gap-3">
+                {rows.length ? (
+                  <DataTable
+                    label="Specs"
+                    data={rows}
+                    columns={columns}
+                    getRowId={(s) => s.id}
+                    onRowClick={(s) => void navigate({ to: "/build/$specId", params: { specId: s.id } })}
+                  />
+                ) : (
+                  <ListNoMatches things="specs" query={q} firstPage={more ? page.items.length : undefined} onClear={() => setQuery("")} />
+                )}
+              </div>
+            ) : (
+              <EmptyState
+                icon={<FileCode2 />}
+                title="No specs yet"
+                action={
+                  <Button asChild>
+                    <Link to="/build/new">
+                      <Plus /> Start from the geo MMM template
+                    </Link>
+                  </Button>
+                }
+              >
+                A spec names a dataset, a preprocessing pipeline and a model plugin. The app does a check of the spec while you type.
+              </EmptyState>
+            );
+          }}
+        </QueryView>
+      </div>
     </>
   );
 }

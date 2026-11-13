@@ -10,6 +10,7 @@ const route = getRouteApi("/runs");
 /**
  * The runs workspace (v0.14): every run of the project with tracked columns, filters, saved
  * views, and the selection that opens the compare page. The table's state is the URL search.
+ * The list header (kicker, title, description); the table itself stays calm.
  */
 export function RunsPage() {
   const search = route.useSearch();
@@ -17,10 +18,11 @@ export function RunsPage() {
   return (
     <>
       <PageHeader
+        eyebrow="Everything that ran"
         title="Runs"
         description="All the fit, dry-run, ingest and score runs. Add metric, param and tag columns, filter and sort them, and select runs to compare. The page updates active runs live."
         actions={
-          <Button asChild variant="outline" size="sm">
+          <Button asChild variant="outline" className="rounded-full">
             <Link to="/experiments">
               <FlaskConical /> Experiments
             </Link>

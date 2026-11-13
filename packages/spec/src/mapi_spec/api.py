@@ -18,7 +18,9 @@ optimisation and About cards, v0.5), :data:`M4_ENDPOINTS` (tree datasets) and
 :data:`V011_ENDPOINTS` (run tracking, v0.11) and :data:`V014_ENDPOINTS` (media, run
 comparison, experiments and saved views, v0.14) and :data:`V015_ENDPOINTS` (resumable uploads and
 image collections, v0.15) and :data:`V016_ENDPOINTS` (client dashboards and share links, v0.16)
-are the machine-readable endpoint tables;
+and :data:`V017_ENDPOINTS` (dashboards for any model type, v0.17) and :data:`V018_ENDPOINTS`
+(the library, catalog extensions, recipe previews, onboarding and samples, v0.18) and
+:data:`V019_ENDPOINTS` (uploaded code, v0.19) are the machine-readable endpoint tables;
 :data:`ENDPOINTS` (= :data:`ALL_ENDPOINTS`) is all of them. The server's route table and the
 reference docs are tested against them. :data:`ROUTE_ACCESS` gives every operation its
 tenant/project scope and the permission it checks. From v0.3 every M1 resource is
@@ -90,10 +92,36 @@ from mapi_spec.calibration import (
     PriorTranslationResult,
 )
 from mapi_spec.capabilities import Capabilities, Diagnostic
-from mapi_spec.catalog import ModelCatalogEntry, PlotCatalogEntry, StepCatalogEntry
+from mapi_spec.catalog import (
+    CatalogDiagnostic,
+    ModelCatalogEntry,
+    PlotCatalogEntry,
+    StepCatalogEntry,
+)
+from mapi_spec.chat import (
+    ChatAvailability,
+    ChatRequest,
+    ChatResponse,
+    ChatSettingsUpdate,
+    ChatSettingsView,
+    ChatTranscript,
+    ChatTranscriptSummary,
+    ReadToken,
+    ReadTokenCreate,
+    ReadTokenCreated,
+)
 from mapi_spec.collection import MAX_BLOB_QUERY, CollectionInfo, CollectionSource
 from mapi_spec.coords import DataSummary
 from mapi_spec.cost import CostTotals, RunCost
+from mapi_spec.dashboard_v2 import (
+    BatchSubmit,
+    BatchTemplate,
+    DashboardPresets,
+    DashboardSpecV2,
+    DashboardUpgrade,
+    ScenarioRowsRequest,
+    SourceCatalog,
+)
 from mapi_spec.dashboards import (
     SHARE_SESSION_HEADER,
     ActualsSubmit,
@@ -169,6 +197,18 @@ from mapi_spec.ingest import (
     VarMapping,
     WideVarMapping,
 )
+from mapi_spec.library import (
+    ChartPreview,
+    ChartPreviewRequest,
+    LibraryCreate,
+    LibraryItem,
+    LibraryRevision,
+    LibraryRevisionCreate,
+    LibraryUseRequest,
+    LibraryUseResult,
+    LibraryValidateRequest,
+    LibraryValidation,
+)
 from mapi_spec.media import (
     MAX_API_MEDIA_BYTES,
     MAX_MEDIA_CAPTION_CHARS,
@@ -176,11 +216,30 @@ from mapi_spec.media import (
     MediaKind,
     check_media,
 )
+from mapi_spec.onboarding import OnboardingPatch, OnboardingState
 from mapi_spec.optimize import OptimizeRequest, OptimizeResult
 from mapi_spec.plots import PlotSpec
+from mapi_spec.plugins import (
+    OverlayPin,
+    Plugin,
+    PluginClaim,
+    PluginDecision,
+    PluginDecisionRecord,
+    PluginSettings,
+    PluginSettingsPatch,
+    PluginUploadComplete,
+    PluginUploadTicket,
+    PluginUploadTicketRequest,
+    PluginUsage,
+    PluginVersion,
+    PluginVersionSummary,
+    PluginYank,
+    VerifiedUploader,
+)
 from mapi_spec.quotas import QuotaLimitStatus, QuotaPolicy, QuotaPolicyUpsert
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import BundleManifest, ChainProgress, FailureClass, RunnerPhase, RunState
+from mapi_spec.samples import SampleInfo
 from mapi_spec.schema import DataSchema
 from mapi_spec.scorecard import PromotionGateDecision, Scorecard, ScorecardItem
 from mapi_spec.sharing import (
@@ -295,6 +354,7 @@ __all__ = [
     "API_PREFIX",
     "ARTIFACT_LINK_TTL",
     "CLIENT_OPERATIONS",
+    "DASHBOARD_TOKEN_ROUTES",
     "DEFAULT_PROJECT_ID",
     "DEFAULT_TENANT_ID",
     "ENDPOINTS",
@@ -318,6 +378,7 @@ __all__ = [
     "SCORE_SUMMARY_MAX_BYTES",
     "SCORE_SUMMARY_MAX_CELLS",
     "SCORE_SUMMARY_OUTPUT",
+    "SESSION_ONLY_OPERATIONS",
     "SSE_HEARTBEAT",
     "SSE_HEARTBEAT_SECONDS",
     "SSE_RETRY_MS",
@@ -326,6 +387,10 @@ __all__ = [
     "V014_ENDPOINTS",
     "V015_ENDPOINTS",
     "V016_ENDPOINTS",
+    "V017_ENDPOINTS",
+    "V018_ENDPOINTS",
+    "V019_ENDPOINTS",
+    "V020_ENDPOINTS",
     "V03_ENDPOINTS",
     "V04_ENDPOINTS",
     "About",
@@ -338,10 +403,22 @@ __all__ = [
     "ArtifactLink",
     "AssemblySource",
     "AuditEvent",
+    "BatchSubmit",
+    "BatchTemplate",
     "BlobMissing",
     "BlobQuery",
     "CatalogAbout",
+    "CatalogDiagnostic",
     "CatalogResponse",
+    "ChartPreview",
+    "ChartPreviewRequest",
+    "ChatAvailability",
+    "ChatRequest",
+    "ChatResponse",
+    "ChatSettingsUpdate",
+    "ChatSettingsView",
+    "ChatTranscript",
+    "ChatTranscriptSummary",
     "CheckResult",
     "ChooserQuestionnaire",
     "ChooserResult",
@@ -359,12 +436,15 @@ __all__ = [
     "DashboardDraftUpdate",
     "DashboardGrant",
     "DashboardGrid",
+    "DashboardPresets",
     "DashboardRefitRequest",
     "DashboardRevision",
     "DashboardShare",
     "DashboardShareCreate",
     "DashboardShareCreated",
+    "DashboardSpecV2",
     "DashboardSummary",
+    "DashboardUpgrade",
     "DashboardValidation",
     "DataExploreRequest",
     "Dataset",
@@ -421,6 +501,14 @@ __all__ = [
     "InspectedArray",
     "KillSwitchUpdate",
     "KillSwitches",
+    "LibraryCreate",
+    "LibraryItem",
+    "LibraryRevision",
+    "LibraryRevisionCreate",
+    "LibraryUseRequest",
+    "LibraryUseResult",
+    "LibraryValidateRequest",
+    "LibraryValidation",
     "Lineage",
     "LogLine",
     "Me",
@@ -446,9 +534,12 @@ __all__ = [
     "NodeImplementation",
     "NodeRun",
     "ObjectRef",
+    "OnboardingPatch",
+    "OnboardingState",
     "Optimization",
     "OptimizeRequest",
     "OptimizeResult",
+    "OverlayPin",
     "Page",
     "ParamsWrite",
     "ParamsWriteResult",
@@ -460,6 +551,19 @@ __all__ = [
     "PlotRenderRequest",
     "PlotSpec",
     "PlotValidateResponse",
+    "Plugin",
+    "PluginClaim",
+    "PluginDecision",
+    "PluginDecisionRecord",
+    "PluginSettings",
+    "PluginSettingsPatch",
+    "PluginUploadComplete",
+    "PluginUploadTicket",
+    "PluginUploadTicketRequest",
+    "PluginUsage",
+    "PluginVersion",
+    "PluginVersionSummary",
+    "PluginYank",
     "PriorTranslation",
     "PriorTranslationRequest",
     "ProgressSnapshot",
@@ -471,6 +575,9 @@ __all__ = [
     "QuotaLimitStatus",
     "QuotaPolicy",
     "QuotaPolicyUpsert",
+    "ReadToken",
+    "ReadTokenCreate",
+    "ReadTokenCreated",
     "Readout",
     "ReadoutHeader",
     "ReadoutList",
@@ -493,8 +600,10 @@ __all__ = [
     "RunViewCreate",
     "RunViewPatch",
     "RunViewQuery",
+    "SampleInfo",
     "SavedPlot",
     "SavedPlotCreate",
+    "ScenarioRowsRequest",
     "ScenarioSave",
     "ScheduleCreate",
     "ScheduleUpdate",
@@ -514,6 +623,7 @@ __all__ = [
     "SignupReviewDecision",
     "Snippet",
     "SnippetSet",
+    "SourceCatalog",
     "SpecCreate",
     "SpecDoc",
     "SpecRevision",
@@ -543,6 +653,7 @@ __all__ = [
     "VerificationResult",
     "VerificationStatus",
     "VerificationUpdate",
+    "VerifiedUploader",
     "Webhook",
     "WebhookCreate",
     "WebhookCreated",
@@ -1578,6 +1689,13 @@ class Lineage(_Response):
     evaluation_of: Id | None = Field(
         None, description="evaluate_then_refit: the evaluation model version this refit pairs"
     )
+    overlays: list[OverlayPin] = Field(
+        default_factory=list,
+        max_length=8,
+        description="v0.19: the uploaded plugin versions the run used (from the control "
+        "plane's runs.overlays; overlay_hash is deprecated and always null for new rows)",
+        exclude_if=lambda v: not v,
+    )
 
     model_config = _examples(
         {
@@ -2273,6 +2391,14 @@ class Me(_Response):
     operator: bool = False
     tenants: list[MeTenant] = Field(default_factory=list)
     token: ApiToken | None = None
+    # v0.19: whether this deployment accepts uploaded code at all, and whether it runs it on
+    # local-process because the dev-only MAPI_DEV_ALLOW_LOCAL_UNTRUSTED flag is set (the web
+    # then shows a dev banner: that isolation is a process, not a sandbox)
+    plugins_enabled: bool = True
+    dev_untrusted_code: bool = False
+    # v0.19: the operator paused uploaded code (kill switch "Allow uploaded code to run" off):
+    # checks of uploads stay queued, and the web and the CLI say "Paused by the platform"
+    plugins_paused: bool = False
 
     model_config = _examples(
         {
@@ -4512,7 +4638,10 @@ _DASH_RUN_ERRORS = (
     _E.QUOTA_EXCEEDED,
     _E.IDEMPOTENCY_CONFLICT,
 )
-_SHARE_ERRORS = (_E.UNAUTHENTICATED, _E.LINK_EXPIRED, _E.RATE_LIMITED)
+# v0.19 (D16): a dashboard whose readouts or model used uploaded code is refused (403) on
+# share links, share sessions and every client-reachable read or input
+_UC = _E.UPLOADED_CODE_NOT_SHAREABLE
+_SHARE_ERRORS = (_E.UNAUTHENTICATED, _E.LINK_EXPIRED, _E.RATE_LIMITED, _UC)
 _RQ = ("kind", "before_seq", "limit")
 
 V016_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
@@ -4524,18 +4653,20 @@ V016_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
     ),
     EndpointDecl(
         "POST", "/v1/dashboards", "create_dashboard", "Create a dashboard draft", "Dashboard",
-        201, request="DashboardCreate", errors=(*_BODY, _E.CONFLICT), headers=_PH,
+        201, request="DashboardCreate",
+        errors=(*_BODY, _E.CONFLICT, _E.DASHBOARD_LAYOUT_RETIRED), headers=_PH,
     ),
     EndpointDecl(
         "GET", _DSH, "get_dashboard",
         "A dashboard (viewers and up: Dashboard; a client: ClientDashboard)", "Dashboard", 200,
-        errors=_NF, headers=_PH,
+        errors=(*_NF, _UC), headers=_PH,
     ),
     EndpointDecl(
         "PUT", _DSH + "/draft", "update_dashboard_draft",
         "Replace the draft spec (If-Match: the draft_etag)", "Dashboard", 200,
         request="DashboardDraftUpdate",
-        errors=(*_BODY, *_NF, _E.DASHBOARD_SPEC_STALE, _E.PRECONDITION_FAILED),
+        errors=(*_BODY, *_NF, _E.DASHBOARD_SPEC_STALE, _E.PRECONDITION_FAILED,
+                _E.DASHBOARD_LAYOUT_RETIRED),
         headers=(*_PH, _IF_MATCH),
     ),
     EndpointDecl(
@@ -4568,7 +4699,7 @@ V016_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
     EndpointDecl(
         "PUT", _DSH + "/grants/{user_id}", "put_dashboard_grant",
         "Grant the dashboard to a member of the project (idempotent)", "DashboardGrant", 200,
-        errors=(*_NF, _E.CONFLICT), headers=_PH,
+        errors=(*_NF, _E.CONFLICT, _UC), headers=_PH,
     ),
     EndpointDecl(
         "DELETE", _DSH + "/grants/{user_id}", "delete_dashboard_grant",
@@ -4582,7 +4713,7 @@ V016_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
         "POST", _DSH + "/shares", "create_dashboard_share",
         "Create a share link (its token is shown once)", "DashboardShareCreated", 201,
         request="DashboardShareCreate",
-        errors=(*_BODY, *_NF, *_FB, _E.DASHBOARD_NOT_PUBLISHED), headers=_PH,
+        errors=(*_BODY, *_NF, *_FB, _E.DASHBOARD_NOT_PUBLISHED, _UC), headers=_PH,
     ),
     EndpointDecl(
         "POST", _DSH + "/shares/{share_id}:revoke", "revoke_dashboard_share",
@@ -4593,13 +4724,13 @@ V016_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
     EndpointDecl(
         "GET", _DSH + "/grid", "get_dashboard_grid",
         "The response grid of the pinned version, clipped to the dashboard's channels",
-        "DashboardGrid", 200, errors=(*_NF, _E.DASHBOARD_INPUT_DISABLED), headers=_PH,
+        "DashboardGrid", 200, errors=(*_NF, _E.DASHBOARD_INPUT_DISABLED, _UC), headers=_PH,
     ),
     EndpointDecl(
         "POST", _DSH + "/whatif:evaluate", "evaluate_dashboard_whatif",
         "Evaluate a spend plan on the grid (no run, nothing saved)", "WhatIfResult", 200,
         request="WhatIfRequest",
-        errors=(*_BODY, *_NF, _E.SCENARIO_OUT_OF_RANGE, _E.DASHBOARD_INPUT_DISABLED),
+        errors=(*_BODY, *_NF, _E.SCENARIO_OUT_OF_RANGE, _E.DASHBOARD_INPUT_DISABLED, _UC),
         headers=_PH,
     ),
     EndpointDecl(
@@ -4607,32 +4738,32 @@ V016_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
         "Save a scenario as a private readout (exact: a score run; Prefer: wait=N -> 200 "
         "with the readout if done, else 202 with its header)", "Readout", 200,
         request="ScenarioSave",
-        errors=(*_BODY, *_NF, _E.SCENARIO_OUT_OF_RANGE, *_DASH_RUN_ERRORS),
+        errors=(*_BODY, *_NF, _E.SCENARIO_OUT_OF_RANGE, *_DASH_RUN_ERRORS, _UC),
         headers=(*_PH, IDEMPOTENCY_KEY_HEADER, PREFER_HEADER),
     ),
     EndpointDecl(
         "GET", _DSH + "/actuals/template", "get_dashboard_actuals_template",
         "The table an actuals upload fills in, and what happens to the numbers",
-        "ActualsTemplate", 200, errors=(*_NF, _E.DASHBOARD_INPUT_DISABLED), headers=_PH,
+        "ActualsTemplate", 200, errors=(*_NF, _E.DASHBOARD_INPUT_DISABLED, _UC), headers=_PH,
     ),
     EndpointDecl(
         "POST", _DSH + "/actuals", "submit_dashboard_actuals",
         "Send new actuals: a readout compares (or conditions) the model on them; optionally "
         "ask the analyst for a refit", "ReadoutHeader", 202, request="ActualsSubmit",
         errors=(*_BODY, *_NF, _E.ACTUALS_INVALID, _E.ACTUALS_NOT_SUPPORTED,
-                _E.PAYLOAD_TOO_LARGE, *_DASH_RUN_ERRORS),
+                _E.PAYLOAD_TOO_LARGE, *_DASH_RUN_ERRORS, _UC),
         headers=(*_PH, IDEMPOTENCY_KEY_HEADER),
     ),
     # readouts
     EndpointDecl(
         "GET", _DSH + "/readouts", "list_dashboard_readouts",
         "Readouts newest first (published, plus the caller's private ones; analysts: all)",
-        "ReadoutList", 200, errors=_NF, headers=_PH, query=(*_RQ, "visibility"),
+        "ReadoutList", 200, errors=(*_NF, _UC), headers=_PH, query=(*_RQ, "visibility"),
     ),
     EndpointDecl(
         "GET", _DSH + "/readouts/{seq}", "get_dashboard_readout",
         "One readout with its snapshot (poll it while it is being built)", "Readout", 200,
-        errors=_NF, headers=_PH,
+        errors=(*_NF, _UC), headers=_PH,
     ),
     EndpointDecl(
         "POST", _DSH + "/readouts/{seq}:publish", "publish_dashboard_readout",
@@ -4677,7 +4808,7 @@ V016_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
         "Public: exchange a share token (and its passcode) for a short-lived session",
         "ShareSession", 200, request="ShareSessionCreate",
         errors=(*_BODY, *_NF, _E.LINK_EXPIRED, _E.SHARE_PASSCODE_REQUIRED,
-                _E.SHARE_PASSCODE_INVALID, _E.SHARE_LOCKED, _E.RATE_LIMITED),
+                _E.SHARE_PASSCODE_INVALID, _E.SHARE_LOCKED, _E.RATE_LIMITED, _UC),
     ),
     EndpointDecl(
         "POST", "/v1/share-sessions:refresh", "refresh_share_session",
@@ -4734,6 +4865,496 @@ V016_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
 """The v0.16 endpoint table (client dashboards, readouts, refit requests and share links;
 part of :data:`ENDPOINTS`)."""
 
+# ======================================================== v0.17: dashboards for any model type
+#
+# Layout 2 DTOs live in mapi_spec.dashboard_v2 (re-exported here). The existing actuals routes
+# dispatch on the layout; /grid, /whatif:evaluate and /scenarios answer
+# DASHBOARD_INPUT_DISABLED on layout 2 presets other than mmm_planner.
+
+_V017_RUN_ERRORS = (*_DASH_RUN_ERRORS, _E.DASHBOARD_INPUT_INVALID, _E.PAYLOAD_TOO_LARGE)
+
+V017_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
+    # analyst: presets, the source catalog and the layout 2 upgrade
+    EndpointDecl(
+        "GET", "/v1/dashboards:presets", "list_dashboard_presets",
+        "Presets that fit a model version (or an endpoint), best first, and the compiled "
+        "layout 2 spec of the first (nothing is saved)", "DashboardPresets", 200,
+        errors=(*_NF, *_BODY), headers=_PH, query=("model_id", "version", "alias"),
+    ),
+    EndpointDecl(
+        "GET", _DSH + "/sources", "get_dashboard_sources",
+        "What the draft's model version offers to panels and inputs (outputs, metrics, "
+        "scorecard checks, pictures, inputs)", "SourceCatalog", 200, errors=_NF, headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _DSH + ":upgrade", "upgrade_dashboard",
+        "Convert a layout 1 draft to layout 2 and save it as the draft (If-Match: the "
+        "draft_etag; SCHEMA_INVALID with the issues when it cannot be converted); publish it "
+        "as usual", "DashboardUpgrade", 200,
+        errors=(*_NF, *_BODY, _E.DASHBOARD_SPEC_STALE, _E.PRECONDITION_FAILED, _E.CONFLICT),
+        headers=(*_PH, _IF_MATCH),
+    ),
+    # inputs (clients too): scenario rows, batch scoring, downloads, pictures
+    EndpointDecl(
+        "POST", _DSH + "/predictions", "submit_dashboard_predictions",
+        "Score scenario rows (values checked against the published revision): a private "
+        "prediction readout (Prefer: wait=N -> 200 with the readout if done, else 202 with "
+        "its header)", "Readout", 202, request="ScenarioRowsRequest",
+        errors=(*_BODY, *_NF, *_V017_RUN_ERRORS, _UC),
+        headers=(*_PH, IDEMPOTENCY_KEY_HEADER, PREFER_HEADER),
+    ),
+    EndpointDecl(
+        "POST", _DSH + "/readouts/{seq}:keep", "keep_dashboard_readout",
+        "Keep a tried case (a private prediction readout): it no longer expires and waits "
+        "for an editor's review before it can enter the history (its owner or an editor)",
+        "ReadoutHeader", 200, errors=(*_NF, _E.CONFLICT), headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _DSH + "/batch/template", "get_dashboard_batch_template",
+        "The columns of a batch file, an example CSV and the row cap", "BatchTemplate", 200,
+        errors=(*_NF, _E.DASHBOARD_INPUT_DISABLED, _UC), headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _DSH + "/batch", "submit_dashboard_batch",
+        "Score a file of new cases: a private batch readout with a summary and a "
+        "predictions download (Prefer: wait=N -> 200 with the readout if done, else 202 "
+        "with its header)", "Readout", 202, request="BatchSubmit",
+        errors=(*_BODY, *_NF, *_V017_RUN_ERRORS, _E.DASHBOARD_BATCH_TOO_LARGE, _UC),
+        headers=(*_PH, IDEMPOTENCY_KEY_HEADER, PREFER_HEADER),
+    ),
+    EndpointDecl(
+        "GET", _DSH + "/readouts/{seq}/predictions.csv", "download_dashboard_predictions",
+        "The predictions of a batch readout as CSV (its owner or an editor)", None, 200,
+        errors=(*_NF, _E.DASHBOARD_DOWNLOAD_GONE), headers=_PH, streaming=True,
+    ),
+    EndpointDecl(
+        "GET", _DSH + "/assets/{asset_id}", "get_dashboard_asset",
+        "A picture of the dashboard (PNG): a client reads only those of the published "
+        "revision, members those of any revision", None, 200, errors=(*_NF, _UC), headers=_PH,
+    ),
+    # share links (public; the session in X-Mapi-Share authorises)
+    EndpointDecl(
+        "POST", "/v1/shared/predictions", "submit_shared_predictions",
+        "Public: score scenario rows as this link's private readout (Prefer: wait=N -> 200 "
+        "with the readout if done, else 202 with its header)", "Readout", 202,
+        request="ScenarioRowsRequest",
+        errors=(*_BODY, *_SHARE_ERRORS, *_V017_RUN_ERRORS),
+        headers=(*_SH, IDEMPOTENCY_KEY_HEADER, PREFER_HEADER),
+    ),
+    EndpointDecl(
+        "GET", "/v1/shared/batch/template", "get_shared_batch_template",
+        "Public: the batch file template (the link must allow batch scoring)",
+        "BatchTemplate", 200, errors=(*_SHARE_ERRORS, _E.DASHBOARD_INPUT_DISABLED),
+        headers=_SH,
+    ),
+    EndpointDecl(
+        "POST", "/v1/shared/batch", "submit_shared_batch",
+        "Public: score a file of new cases as this link's private readout (Prefer: wait=N "
+        "-> 200 with the readout if done, else 202 with its header)", "Readout", 202,
+        request="BatchSubmit",
+        errors=(*_BODY, *_SHARE_ERRORS, *_V017_RUN_ERRORS, _E.DASHBOARD_BATCH_TOO_LARGE),
+        headers=(*_SH, IDEMPOTENCY_KEY_HEADER, PREFER_HEADER),
+    ),
+    EndpointDecl(
+        "GET", "/v1/shared/readouts/{seq}/predictions.csv", "download_shared_predictions",
+        "Public: the predictions CSV of this link's own batch readout", None, 200,
+        errors=(*_NF, *_SHARE_ERRORS, _E.DASHBOARD_DOWNLOAD_GONE), headers=_SH,
+        streaming=True,
+    ),
+    EndpointDecl(
+        "GET", "/v1/shared/assets/{asset_id}", "get_shared_asset",
+        "Public: a picture of the shared dashboard (PNG)", None, 200,
+        errors=(*_NF, *_SHARE_ERRORS), headers=_SH,
+    ),
+)  # fmt: skip
+"""The v0.17 endpoint table (layout 2 presets, the source catalog, the upgrade, scenario rows,
+batch scoring, predictions downloads and pictures; part of :data:`ENDPOINTS`)."""
+
+# ===================================== v0.18: the library, catalog extensions, onboarding, samples
+#
+# DTOs: the library documents and their DTOs live in mapi_spec.library (LibraryItem, ...),
+# onboarding and samples in mapi_spec.onboarding / mapi_spec.samples and CatalogDiagnostic in
+# mapi_spec.catalog; all are re-exported above. The recipe preview DTOs stay in mapi_spec.jobs
+# only (jobs imports this module, so a re-export here would be an import cycle).
+
+_LIB = "/v1/library/{item_id}"
+_LIB_ERRORS = (_E.LIBRARY_INVALID, _E.SCHEMA_UNSAFE, _E.PAYLOAD_TOO_LARGE)
+_ONB = _TEN + "/me/onboarding"
+_SMP = _TEN + "/samples/{sample_id}"
+_PREVIEW_ERRORS = (_E.PREVIEW_DISABLED, _E.RATE_LIMITED, _E.QUOTA_EXCEEDED, _E.MODE_NOT_SUPPORTED)
+
+V018_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
+    # the library: model recipes, prep presets, chart templates, workflow templates
+    EndpointDecl(
+        "GET", "/v1/library", "list_library_items",
+        "Library items of the project and of the tenant (archived items only with "
+        "include_archived)", "Page[LibraryItem]", 200, headers=_PH, paginated=True,
+        query=("kind", "scope", "q", "include_archived", *_PAGE),
+    ),
+    EndpointDecl(
+        "POST", "/v1/library", "create_library_item",
+        "Create a library item and its revision 1 (scope tenant: tenant admins). An invalid "
+        "document is stored with valid=false, except a workflow template, which is refused",
+        "LibraryItem", 201, request="LibraryCreate",
+        errors=(*_BODY, *_LIB_ERRORS, _E.CONFLICT, _E.FORBIDDEN, _E.SPEC_PARSE_ERROR),
+        headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _LIB, "get_library_item", "One library item (ETag: its latest revision)",
+        "LibraryItem", 200, errors=_NF, headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _LIB + "/revisions", "list_library_revisions",
+        "The revisions of a library item, newest first", "Page[LibraryRevision]", 200,
+        errors=_NF, headers=_PH, paginated=True, query=_PAGE,
+    ),
+    EndpointDecl(
+        "GET", _LIB + "/revisions/{revision}", "get_library_revision",
+        "One revision: the document, its issues and the compiled output",
+        "LibraryRevision", 200, errors=_NF, headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _LIB + "/revisions", "create_library_revision",
+        "Add an immutable revision (If-Match: the item's ETag; 412 when stale)",
+        "LibraryRevision", 201, request="LibraryRevisionCreate",
+        errors=(*_NF, *_BODY, *_LIB_ERRORS, _E.PRECONDITION_FAILED, _E.CONFLICT,
+                _E.SPEC_PARSE_ERROR),
+        headers=(*_PH, _IF_MATCH),
+    ),
+    EndpointDecl(
+        "POST", _LIB + ":archive", "archive_library_item",
+        "Archive a library item (it is hidden from lists and pickers; nothing is deleted)",
+        "LibraryItem", 200, errors=_NF, headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _LIB + ":unarchive", "unarchive_library_item", "Unarchive a library item",
+        "LibraryItem", 200, errors=(*_NF, _E.CONFLICT), headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _LIB + ":promote", "promote_library_item",
+        "Copy the latest revision of a project item into a tenant item (tenant admins)",
+        "LibraryItem", 201, errors=(*_NF, _E.CONFLICT, _E.FORBIDDEN), headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", "/v1/library:validate", "validate_library_document",
+        "Check a library document (and, with a dataset, its slots and variables) and return "
+        "the issues with JSON pointers and the compiled output; nothing is saved",
+        "LibraryValidation", 200, request="LibraryValidateRequest",
+        errors=(*_BODY, *_LIB_ERRORS, _E.RATE_LIMITED, _E.SPEC_PARSE_ERROR), headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _LIB + ":use", "use_library_item",
+        "Compile a library item for use: a spec fragment, prep steps, a chart applied to a "
+        "model version or a workflow document, with lineage labels; nothing is saved",
+        "LibraryUseResult", 200, request="LibraryUseRequest",
+        errors=(*_NF, *_BODY, _E.LIBRARY_INVALID, _E.LIBRARY_DATA_SHAPE,
+                _E.EXTENSION_UNAVAILABLE, _E.PLOT_UNSAFE),
+        headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", "/v1/library/charts:preview", "preview_library_chart",
+        "Preview a chart template on its source recipe's example data (JSON only, no run)",
+        "ChartPreview", 200, request="ChartPreviewRequest",
+        errors=(*_BODY, _E.LIBRARY_INVALID, _E.EXTENSION_UNAVAILABLE, _E.PLOT_UNSAFE,
+                _E.RATE_LIMITED, _E.PAYLOAD_TOO_LARGE),
+        headers=_PH,
+    ),
+    # catalog extensions
+    EndpointDecl(
+        "GET", "/v1/catalog/diagnostics", "list_catalog_diagnostics",
+        "Problems found while the current catalog was built: load errors, reserved "
+        "namespaces, unsafe schemas, invalid plugin nodes and templates (tenant admins and "
+        "operators)", "list[CatalogDiagnostic]", 200, errors=(_E.FORBIDDEN,),
+    ),
+    EndpointDecl(
+        "POST", "/v1/admin/catalog:describe", "admin_describe_catalog",
+        "Operators: queue a describe run that rebuilds the catalog of the current image "
+        "digest (returns the pending run when one is already queued)", "Run", 202,
+        errors=(_E.FORBIDDEN,),
+    ),
+    # live recipe previews (a render run on the recipe's example data)
+    EndpointDecl(
+        "POST", "/v1/catalog/plots/{plot_id}/{version}:preview", "preview_catalog_plot",
+        "Render a plot recipe's example with these settings (Prefer: wait=N, at most 15: "
+        "200 with the plot when done or cached, else 202 with the run id)",
+        "RecipePreviewResult", 202, request="RecipePreviewRequest",
+        errors=(*_NF, *_BODY, *_PREVIEW_ERRORS), headers=(*_PH, PREFER_HEADER),
+    ),
+    EndpointDecl(
+        "GET", "/v1/catalog/plots/previews/{run_id}", "get_catalog_plot_preview",
+        "The result of a recipe preview run", "RecipePreviewResult", 200, errors=_NF,
+        headers=_PH,
+    ),
+    # onboarding progress (per user, per tenant; signed-in sessions only)
+    EndpointDecl(
+        "GET", _ONB, "get_onboarding", "Your tour and checklist progress in this tenant "
+        "(ETag: its version)", "OnboardingState", 200, errors=(*_NF, _E.FORBIDDEN),
+    ),
+    EndpointDecl(
+        "PATCH", _ONB, "update_onboarding",
+        "Merge progress (completed steps never revert; If-Match: the ETag, 412 when stale)",
+        "OnboardingState", 200, request="OnboardingPatch",
+        errors=(*_NF, *_BODY, _E.FORBIDDEN, _E.PRECONDITION_FAILED, _E.PAYLOAD_TOO_LARGE),
+        headers=(_IF_MATCH,),
+    ),
+    EndpointDecl(
+        "POST", _ONB + ":reset", "reset_onboarding",
+        "Start the tours and the checklist again", "OnboardingState", 200,
+        errors=(*_NF, _E.FORBIDDEN),
+    ),
+    # sample projects
+    EndpointDecl(
+        "GET", _TEN + "/samples", "list_samples",
+        "The sample projects of the tenant and their state (empty when samples are off)",
+        "list[SampleInfo]", 200, errors=(*_NF, _E.FORBIDDEN),
+    ),
+    EndpointDecl(
+        "POST", _SMP + ":install", "install_sample",
+        "Install a sample project (an editor somewhere in the tenant: it spends compute), or "
+        "join the one already installed (a viewer)", "SampleInfo", 202,
+        errors=(*_NF, _E.FORBIDDEN, _E.SAMPLES_DISABLED, _E.QUOTA_EXCEEDED, _E.CONFLICT),
+    ),
+    EndpointDecl(
+        "POST", _SMP + ":retry", "retry_sample",
+        "Retry a failed sample (its installer or a tenant admin; at most 3 attempts)",
+        "SampleInfo", 202,
+        errors=(*_NF, _E.FORBIDDEN, _E.SAMPLES_DISABLED, _E.CONFLICT, _E.QUOTA_EXCEEDED),
+    ),
+    EndpointDecl(
+        "POST", _SMP + ":retire", "retire_sample",
+        "Retire a sample (tenant admins): it is hidden and its sample grants are removed; "
+        "nothing is deleted", "SampleInfo", 200,
+        errors=(*_NF, _E.FORBIDDEN, _E.SAMPLES_DISABLED),
+    ),
+)  # fmt: skip
+"""The v0.18 endpoint table (the library, catalog diagnostics and refresh, recipe previews,
+onboarding progress and sample projects; part of :data:`ENDPOINTS`)."""
+
+# ==================================================================================== v0.19 table
+# DTOs: mapi_spec.plugins (Plugin, PluginVersion, ...), re-exported here. Plugins are tenant
+# resources reached from a project (X-Mapi-Project): reads from any project the caller can
+# read, writes need an editor plus the handler's checks (D1/D2: tenant admin or an attested
+# editor on an allowed tier; the public tier is refused on every route).
+
+_PLG = "/v1/plugins/{plugin_id}"
+_PLV = _PLG + "/versions/{version_id}"
+_PLUGIN_GATE = (_E.FORBIDDEN, _E.IDENTITY_VERIFICATION_REQUIRED)
+_DECIDE_ERRORS = (
+    *_NF, *_BODY, _E.FORBIDDEN, _E.SELF_APPROVAL_FORBIDDEN, _E.PLUGIN_STATE_CONFLICT,
+    _E.REAUTH_REQUIRED,
+)  # fmt: skip
+
+V019_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
+    EndpointDecl(
+        "GET", "/v1/plugins", "list_plugins",
+        "Uploaded plugins of the tenant (private versions of other people are hidden)",
+        "Page[Plugin]", 200, headers=_PH, paginated=True, query=("state", "mine", *_PAGE),
+    ),
+    EndpointDecl(
+        "POST", "/v1/plugins", "claim_plugin",
+        "Claim a short name for uploaded code: the namespace is t_<tenant code>_<short name> "
+        "(the tenant code is assigned on the first claim)", "Plugin", 201,
+        request="PluginClaim",
+        errors=(*_BODY, *_PLUGIN_GATE, _E.PLUGIN_NAMESPACE_TAKEN, _E.PAYLOAD_TOO_LARGE),
+        headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _PLG, "get_plugin", "One uploaded plugin and its latest version", "Plugin", 200,
+        errors=_NF, headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _PLG + "/versions", "list_plugin_versions",
+        "The versions of an uploaded plugin, newest first (private versions only for the "
+        "uploader and tenant admins)", "Page[PluginVersionSummary]", 200, errors=_NF,
+        headers=_PH, paginated=True, query=_PAGE,
+    ),
+    EndpointDecl(
+        "GET", _PLV, "get_plugin_version",
+        "One version: inspect facts, SBOM, kit report, exports, decisions (ETag)",
+        "PluginVersion", 200, errors=_NF, headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _PLG + "/uploads", "create_plugin_upload",
+        "Get an upload ticket: a POST policy for one wheel in the quarantine bucket "
+        "(at most 20 per user per day)", "PluginUploadTicket", 201,
+        request="PluginUploadTicketRequest",
+        errors=(*_NF, *_BODY, *_PLUGIN_GATE, _E.PAYLOAD_TOO_LARGE, _E.RATE_LIMITED),
+        headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _PLG + "/uploads/{upload_id}:complete", "complete_plugin_upload",
+        "The wheel is uploaded: hash it and start the checks (202, state inspecting)",
+        "PluginVersion", 202, request="PluginUploadComplete",
+        errors=(*_NF, *_BODY, *_PLUGIN_GATE, _E.PLUGIN_REFUSED, _E.PLUGIN_VERSION_EXISTS,
+                _E.PRECONDITION_FAILED, _E.UNTRUSTED_PLACEMENT_UNAVAILABLE, _E.PAYLOAD_TOO_LARGE),
+        headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _PLV + ":request-approval", "request_plugin_approval",
+        "Ask the tenant admins to review a version that passed its tests",
+        "PluginVersion", 200, errors=(*_NF, _E.FORBIDDEN, _E.PLUGIN_STATE_CONFLICT),
+        headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _PLV + ":approve", "approve_plugin_version",
+        "Approve a version for the whole tenant (a second tenant admin, signed in to the web "
+        "app in the last 15 minutes; the body repeats the digests the page showed)",
+        "PluginVersion", 200, request="PluginDecision", errors=_DECIDE_ERRORS, headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _PLV + ":reject", "reject_plugin_version",
+        "Reject a version (same rules as approve; a note is required)",
+        "PluginVersion", 200, request="PluginDecision", errors=_DECIDE_ERRORS, headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _PLV + ":yank", "yank_plugin_version",
+        "Withdraw a version (its uploader or a tenant admin, web session only); 'security' "
+        "also cancels the queued and running runs that use it", "PluginVersion", 200,
+        request="PluginYank",
+        errors=(*_NF, *_BODY, _E.FORBIDDEN, _E.PLUGIN_STATE_CONFLICT), headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _PLV + "/usage", "get_plugin_usage",
+        "What uses a version: runs in the last 30 days, model versions, endpoints and "
+        "dashboards", "PluginUsage", 200, errors=_NF, headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _PLV + "/examples/{plot_id}", "get_plugin_example",
+        "The example of an uploaded plot recipe (a re-sanitized PlotSpec)", "PlotSpec", 200,
+        errors=_NF, headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _TEN + "/plugin-settings", "get_plugin_settings",
+        "The tenant's uploaded-code settings and whether uploads are allowed (tenant admins)",
+        "PluginSettings", 200, errors=(*_NF, _E.FORBIDDEN),
+    ),
+    EndpointDecl(
+        "PATCH", _TEN + "/plugin-settings", "update_plugin_settings",
+        "Turn private use of uploads that passed their tests on or off (tenant admins)",
+        "PluginSettings", 200, request="PluginSettingsPatch",
+        errors=(*_NF, *_BODY, _E.FORBIDDEN),
+    ),
+    EndpointDecl(
+        "GET", _TEN + "/plugin-uploaders", "list_plugin_uploaders",
+        "Editors a tenant admin attested for uploads (tenant admins)",
+        "list[VerifiedUploader]", 200, errors=(*_NF, _E.FORBIDDEN),
+    ),
+    EndpointDecl(
+        "PUT", _TEN + "/plugin-uploaders/{user_id}", "attest_plugin_uploader",
+        "Attest that you know who this editor is: they may upload code (tenant admins, web "
+        "session only; not yourself)", "VerifiedUploader", 200,
+        errors=(*_NF, _E.FORBIDDEN, _E.CONFLICT),
+    ),
+    EndpointDecl(
+        "DELETE", _TEN + "/plugin-uploaders/{user_id}", "revoke_plugin_uploader",
+        "Revoke an attestation (tenant admins, web session only)", None, 204,
+        errors=(*_NF, _E.FORBIDDEN),
+    ),
+)  # fmt: skip
+"""The v0.19 endpoint table (uploaded code: claims, uploads, versions, review, yank, usage,
+examples, tenant settings and attested uploaders; part of :data:`ENDPOINTS`). Every route is
+limited to 8 KiB request bodies."""
+
+# ==================================================================================== v0.20 table
+# DTOs: mapi_spec.chat (ChatRequest, ChatResponse, ChatSettingsView, ReadToken, ...),
+# re-exported here. Chat runs in the control plane over the read-only dashboard tools;
+# /v1/shared/chat is a public route authorised by a share session (X-Mapi-Share) and is
+# covered by the share CORS rules. POST /v1/mcp is public: it takes a dashboard read token
+# (Authorization: Bearer) or a share session and checks it itself; its body is JSON-RPC 2.0.
+
+_CHAT_ERRORS = (
+    _E.CHAT_DISABLED, _E.CHAT_UNAVAILABLE, _E.CHAT_BUDGET_EXHAUSTED, _E.CHAT_HISTORY_INVALID,
+    _E.RATE_LIMITED, _E.PAYLOAD_TOO_LARGE,
+)  # fmt: skip
+_CNV = _DSH + "/chat/transcripts/{conversation_id}"
+_RTK = _DSH + "/read-tokens"
+_MCP_VERSION = "MCP-Protocol-Version"
+_AUTHZ = "Authorization"
+
+V020_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
+    # chat: members and clients (session only for a turn)
+    EndpointDecl(
+        "GET", _DSH + "/chat", "get_dashboard_chat",
+        "Whether you can chat about this dashboard, and the suggested questions",
+        "ChatAvailability", 200, errors=(*_NF, _E.DASHBOARD_NOT_PUBLISHED, _UC), headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _DSH + "/chat", "post_dashboard_chat",
+        "Ask the assistant about this dashboard (web session only; one answer per request)",
+        "ChatResponse", 200, request="ChatRequest",
+        errors=(*_BODY, *_NF, *_FB, *_CHAT_ERRORS, _E.DASHBOARD_NOT_PUBLISHED, _UC),
+        headers=_PH,
+    ),
+    # chat settings and kept conversations: editors
+    EndpointDecl(
+        "GET", _DSH + "/chat/settings", "get_dashboard_chat_settings",
+        "Chat settings of the dashboard and the tokens used today (ETag)", "ChatSettingsView",
+        200, errors=_NF, headers=_PH,
+    ),
+    EndpointDecl(
+        "PUT", _DSH + "/chat/settings", "put_dashboard_chat_settings",
+        "Change the chat settings (If-Match: the etag)", "ChatSettingsView", 200,
+        request="ChatSettingsUpdate", errors=(*_BODY, *_NF, _E.PRECONDITION_FAILED),
+        headers=(*_PH, _IF_MATCH),
+    ),
+    EndpointDecl(
+        "GET", _DSH + "/chat/transcripts", "list_dashboard_chat_transcripts",
+        "Kept conversations, newest first (web session only)",
+        "Page[ChatTranscriptSummary]", 200, errors=(*_NF, *_FB), headers=_PH, paginated=True,
+        query=_PAGE,
+    ),
+    EndpointDecl(
+        "GET", _CNV, "get_dashboard_chat_transcript",
+        "One kept conversation (web session only)", "ChatTranscript", 200,
+        errors=(*_NF, *_FB), headers=_PH,
+    ),
+    EndpointDecl(
+        "DELETE", _CNV, "delete_dashboard_chat_transcript",
+        "Delete a kept conversation (web session only)", None, 204, errors=(*_NF, *_FB),
+        headers=_PH,
+    ),
+    # chat over a share link
+    EndpointDecl(
+        "GET", "/v1/shared/chat", "get_shared_chat",
+        "Public: whether this link can chat, and the suggested questions", "ChatAvailability",
+        200, errors=_SHARE_ERRORS, headers=_SH,
+    ),
+    EndpointDecl(
+        "POST", "/v1/shared/chat", "post_shared_chat",
+        "Public: ask the assistant about the shared dashboard", "ChatResponse", 200,
+        request="ChatRequest", errors=(*_BODY, *_SHARE_ERRORS, *_CHAT_ERRORS), headers=_SH,
+    ),
+    # dashboard read tokens (to connect a chat tool over MCP): web session only
+    EndpointDecl(
+        "GET", _RTK, "list_dashboard_read_tokens",
+        "Your read tokens for this dashboard (all=true: every owner's, editors)",
+        "list[ReadToken]", 200, errors=(*_NF, *_FB), headers=_PH, query=("all",),
+    ),
+    EndpointDecl(
+        "POST", _RTK, "create_dashboard_read_token",
+        "Make a read token for this dashboard (its secret is shown once; at most 5 active)",
+        "ReadTokenCreated", 201, request="ReadTokenCreate",
+        errors=(*_BODY, *_NF, *_FB, _E.READ_TOKEN_LIMIT, _E.DASHBOARD_NOT_PUBLISHED),
+        headers=_PH,
+    ),
+    EndpointDecl(
+        "DELETE", _RTK + "/{token_id}", "revoke_dashboard_read_token",
+        "Revoke a read token (yours, or any of the dashboard's as an editor)", None, 204,
+        errors=(*_NF, *_FB), headers=_PH,
+    ),
+    # MCP (streamable HTTP, stateless, JSON responses)
+    EndpointDecl(
+        "POST", "/v1/mcp", "mcp_endpoint",
+        "Public: the MCP server of one dashboard (JSON-RPC 2.0; a dashboard read token or a "
+        "share session; 202 for a notification)", None, 200,
+        errors=(_E.UNAUTHENTICATED, *_FB, *_NF, _E.LINK_EXPIRED, _E.RATE_LIMITED,
+                _E.PAYLOAD_TOO_LARGE, _E.SCHEMA_INVALID, _UC),
+        headers=(_AUTHZ, SHARE_SESSION_HEADER, _MCP_VERSION),
+    ),
+)  # fmt: skip
+"""The v0.20 endpoint table (dashboard chat, chat settings and kept conversations, dashboard
+read tokens and the MCP endpoint; part of :data:`ENDPOINTS`)."""
+
 V04_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = V03_ENDPOINTS + M3_ENDPOINTS
 """Every endpoint of the v0.4 API (M1 + M2 + M3)."""
 
@@ -4745,9 +5366,13 @@ ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
     + V014_ENDPOINTS
     + V015_ENDPOINTS
     + V016_ENDPOINTS
+    + V017_ENDPOINTS
+    + V018_ENDPOINTS
+    + V019_ENDPOINTS
+    + V020_ENDPOINTS
 )
-"""Every endpoint of the API (M1 + M2 + M3 + M3.5 + M4 + v0.11 + v0.14 + v0.15 + v0.16); the
-server serves every row."""
+"""Every endpoint of the API (M1 + M2 + M3 + M3.5 + M4 + v0.11 + v0.14 + v0.15 + v0.16 +
+v0.17 + v0.18 + v0.19 + v0.20); the server serves every row."""
 
 ALL_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = ENDPOINTS
 """Every endpoint of the contract (an alias of :data:`ENDPOINTS`, kept for the components
@@ -4959,6 +5584,126 @@ Drafts, publishing, review, refresh and refit requests need an editor; publishin
 links with inputs, also need the runner role (handler checks: they spend the publisher's
 compute). Refit approval needs the runner role (``also``)."""
 
+_V017_ACCESS: Final[dict[str, RouteAccess]] = {
+    # the presets read a model version (or an endpoint) of the project: editors who create
+    "list_dashboard_presets": _p(_RK.DASHBOARD, _AC.CREATE, (_RK.MODEL, _AC.READ)),
+    "get_dashboard_sources": _dash(_AC.UPDATE),
+    "upgrade_dashboard": _dash(_AC.UPDATE),
+    "submit_dashboard_predictions": _dash(_AC.RUN),
+    # the handler also requires the readout's own actor or an editor
+    "keep_dashboard_readout": _dash(_AC.RUN),
+    "get_dashboard_batch_template": _dash(_AC.RUN),
+    "submit_dashboard_batch": _dash(_AC.RUN),
+    # the handler also requires the readout's own actor (same client, same link) or an editor
+    "download_dashboard_predictions": _dash(_AC.READ),
+    "get_dashboard_asset": _dash(_AC.READ),
+    "submit_shared_predictions": _PUBLIC,
+    "get_shared_batch_template": _PUBLIC,
+    "submit_shared_batch": _PUBLIC,
+    "download_shared_predictions": _PUBLIC,
+    "get_shared_asset": _PUBLIC,
+}
+"""Access rules of :data:`V017_ENDPOINTS`, as :data:`_V016_ACCESS`: inputs need ``run`` on
+``dashboard`` (clients too: the handler checks the published spec and, for a client, the
+grant); keeping a tried case needs ``run`` (the handler checks the readout's owner, or an
+editor); downloads and pictures need ``read`` (the handler checks the readout's owner);
+presets, sources and the upgrade need an editor."""
+
+_V018_ACCESS: Final[dict[str, RouteAccess]] = {
+    "list_library_items": _p(_RK.LIBRARY, _AC.READ),
+    # scope "tenant" in the body: the handler also requires create on tenant_library
+    "create_library_item": _p(_RK.LIBRARY, _AC.CREATE),
+    "get_library_item": _p(_RK.LIBRARY, _AC.READ),
+    "list_library_revisions": _p(_RK.LIBRARY, _AC.READ),
+    "get_library_revision": _p(_RK.LIBRARY, _AC.READ),
+    # a tenant item: the handler requires update on tenant_library instead
+    "create_library_revision": _p(_RK.LIBRARY, _AC.UPDATE),
+    "archive_library_item": _p(_RK.LIBRARY, _AC.DELETE),
+    "unarchive_library_item": _p(_RK.LIBRARY, _AC.DELETE),
+    # the handler also requires create on tenant_library (a tenant admin)
+    "promote_library_item": _p(_RK.LIBRARY, _AC.CREATE),
+    "validate_library_document": _p(_RK.LIBRARY, _AC.READ),
+    # a model recipe compiled into a spec: the handler also requires create on spec
+    "use_library_item": _p(_RK.LIBRARY, _AC.READ),
+    "preview_library_chart": _p(_RK.LIBRARY, _AC.READ),
+    # the handler requires a tenant admin membership (any tenant) or an operator
+    "list_catalog_diagnostics": _AUTH,
+    "admin_describe_catalog": _op(_RK.CATALOG, _AC.UPDATE),
+    # a render run on catalog example data: viewers, with their own rate limits
+    "preview_catalog_plot": _p(_RK.PLOT, _AC.READ),
+    "get_catalog_plot_preview": _p(_RK.PLOT, _AC.READ),
+    # membership of the tenant (any project) suffices; tokens are refused (tenant scope)
+    "get_onboarding": _t(),
+    "update_onboarding": _t(),
+    "reset_onboarding": _t(),
+    "list_samples": _t(),
+    # install needs an editor in some project of the tenant (join: a viewer); retry needs
+    # the installer or a tenant admin: the handler decides
+    "install_sample": _t(),
+    "retry_sample": _t(),
+    "retire_sample": _t(_RK.TENANT, _AC.UPDATE),
+}
+"""Access rules of :data:`V018_ENDPOINTS`. Library reads need a project viewer (tenant items
+are readable from every project of the tenant); writes need an editor, and tenant items a
+tenant admin (the handler checks ``tenant_library`` when the item or the body is tenant
+scoped). Onboarding and samples are tenant routes for signed-in members (API tokens are
+refused); clients reach none of them (:data:`CLIENT_OPERATIONS` is unchanged)."""
+
+_V019_ACCESS: Final[dict[str, RouteAccess]] = {
+    "list_plugins": _p(_RK.PLUGIN, _AC.READ),
+    # the handler adds D1/D2: an allowed tier (never public) and a tenant admin or an
+    # editor with an active attestation
+    "claim_plugin": _p(_RK.PLUGIN, _AC.CREATE),
+    "get_plugin": _p(_RK.PLUGIN, _AC.READ),
+    "list_plugin_versions": _p(_RK.PLUGIN, _AC.READ),
+    "get_plugin_version": _p(_RK.PLUGIN, _AC.READ),
+    "create_plugin_upload": _p(_RK.PLUGIN, _AC.CREATE),
+    # the same caller as the ticket
+    "complete_plugin_upload": _p(_RK.PLUGIN, _AC.CREATE),
+    # the uploader or a tenant admin
+    "request_plugin_approval": _p(_RK.PLUGIN, _AC.UPDATE),
+    # approve is a tenant-level rule: the handler checks (plugin, approve), a web session
+    # signed in at most 15 minutes ago, not the uploader, and the 7-day membership rule
+    "approve_plugin_version": _p(_RK.PLUGIN, _AC.UPDATE, (_RK.PLUGIN, _AC.APPROVE)),
+    "reject_plugin_version": _p(_RK.PLUGIN, _AC.UPDATE, (_RK.PLUGIN, _AC.APPROVE)),
+    # the uploader for their own versions, else a tenant admin; web sessions only
+    "yank_plugin_version": _p(_RK.PLUGIN, _AC.DELETE),
+    "get_plugin_usage": _p(_RK.PLUGIN, _AC.READ),
+    "get_plugin_example": _p(_RK.PLUGIN, _AC.READ),
+    "get_plugin_settings": _t(_RK.PLUGIN_SETTINGS, _AC.READ),
+    "update_plugin_settings": _t(_RK.PLUGIN_SETTINGS, _AC.UPDATE),
+    "list_plugin_uploaders": _t(_RK.PLUGIN_SETTINGS, _AC.READ),
+    "attest_plugin_uploader": _t(_RK.PLUGIN_SETTINGS, _AC.UPDATE),
+    "revoke_plugin_uploader": _t(_RK.PLUGIN_SETTINGS, _AC.UPDATE),
+}
+"""Access rules of :data:`V019_ENDPOINTS`. Clients reach none of them
+(:data:`CLIENT_OPERATIONS` is unchanged); tokens never approve, reject, yank or change the
+settings (:data:`~mapi_spec.tokens.TOKEN_NEVER`)."""
+
+_V020_ACCESS: Final[dict[str, RouteAccess]] = {
+    # a chat turn reads what the caller could read by clicking: clients too (with a grant)
+    "get_dashboard_chat": _dash(_AC.READ),
+    "post_dashboard_chat": _dash(_AC.READ),
+    "get_dashboard_chat_settings": _dash(_AC.UPDATE),
+    "put_dashboard_chat_settings": _dash(_AC.UPDATE),
+    "list_dashboard_chat_transcripts": _dash(_AC.UPDATE),
+    "get_dashboard_chat_transcript": _dash(_AC.UPDATE),
+    "delete_dashboard_chat_transcript": _dash(_AC.UPDATE),
+    "get_shared_chat": _PUBLIC,
+    "post_shared_chat": _PUBLIC,
+    # own tokens with read; all=true and other owners' tokens need update (handler checks)
+    "list_dashboard_read_tokens": _dash(_AC.READ),
+    "create_dashboard_read_token": _dash(_AC.READ),
+    "revoke_dashboard_read_token": _dash(_AC.READ),
+    # the handler checks the read token or the share session itself (D14)
+    "mcp_endpoint": _PUBLIC,
+}
+"""Access rules of :data:`V020_ENDPOINTS`. Chat and read tokens need ``read`` on
+``dashboard`` (clients too, for a published dashboard granted to them); settings and kept
+conversations need an editor. :data:`SESSION_ONLY_OPERATIONS` refuses API tokens on a chat
+turn, on kept conversations and on read-token management; :data:`DASHBOARD_TOKEN_ROUTES`
+limits read tokens to the MCP endpoint."""
+
 ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
     # M1 (project-scoped from v0.3)
     "health": _PUBLIC,
@@ -5119,6 +5864,13 @@ ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
     **_V015_ACCESS,
     # v0.16 client dashboards, readouts, refit requests, share links
     **_V016_ACCESS,
+    # v0.17 dashboards for any model type
+    **_V017_ACCESS,
+    # v0.18 the library, catalog extensions, recipe previews, onboarding and samples
+    **_V018_ACCESS,
+    **_V019_ACCESS,
+    # v0.20 dashboard chat, read tokens and MCP
+    **_V020_ACCESS,
 }
 """Tenant/project scoping and the permission checked for every operation in
 :data:`ALL_ENDPOINTS` (keyed by ``operation_id``; M3.5 rows from :data:`_M35_ACCESS`).
@@ -5153,6 +5905,19 @@ CLIENT_OPERATIONS: Final[frozenset[str]] = frozenset(
         "submit_dashboard_actuals",
         "list_dashboard_readouts",
         "get_dashboard_readout",
+        # v0.17: scenario rows, batch scoring, their downloads and the revision's pictures
+        "submit_dashboard_predictions",
+        "keep_dashboard_readout",
+        "get_dashboard_batch_template",
+        "submit_dashboard_batch",
+        "download_dashboard_predictions",
+        "get_dashboard_asset",
+        # v0.20: chat about a granted dashboard, and read tokens for it (own tokens only)
+        "get_dashboard_chat",
+        "post_dashboard_chat",
+        "list_dashboard_read_tokens",
+        "create_dashboard_read_token",
+        "revoke_dashboard_read_token",
         # the caller and the browser session (the portal's project switcher reads /v1/me)
         "get_me",
         "auth_login",
@@ -5161,12 +5926,38 @@ CLIENT_OPERATIONS: Final[frozenset[str]] = frozenset(
         "auth_session",
     }
 )
-"""Every operation a ``client`` may reach (v0.16; fail closed). The server refuses any other
-project-scoped operation (``404``) when the caller's effective role in the project is
-``client``, and any other signed-in or tenant operation when every membership of the
-caller is ``client``. Refit-request decisions, drafts, grants and share-link management are
-not in the set; neither are the catalog, guided, workflow, governance, project and tenant
-listings."""
+"""Every operation a ``client`` may reach (v0.16, and the v0.17 inputs and keeping a tried
+case; fail closed). The server refuses any other project-scoped operation (``404``) when the
+caller's effective role in the project is ``client``, and any other signed-in or tenant
+operation when every membership of the caller is ``client``. Refit-request decisions,
+drafts, grants and share-link management are not in the set; neither are the catalog,
+guided, workflow, governance, project and tenant listings. v0.20 adds chat and the client's
+own dashboard read tokens; chat settings and kept conversations stay with editors."""
+
+
+DASHBOARD_TOKEN_ROUTES: Final[frozenset[str]] = frozenset({"mcp_endpoint"})
+"""The only operations a dashboard read token (scope ``dashboard:<id>``) may call (v0.20).
+
+The server refuses a read token with ``403 FORBIDDEN`` on every other route that resolves a
+credential. ``mcp_endpoint`` is a public route, so the generic resolver never reads its
+bearer: the MCP handler resolves the read token itself.
+"""
+
+SESSION_ONLY_OPERATIONS: Final[frozenset[str]] = frozenset(
+    {
+        "post_dashboard_chat",
+        "create_dashboard_read_token",
+        "list_dashboard_chat_transcripts",
+        "get_dashboard_chat_transcript",
+        "delete_dashboard_chat_transcript",
+        "list_dashboard_read_tokens",
+        "revoke_dashboard_read_token",
+    }
+)
+"""Operations that need a signed-in web session (v0.20): any API token, whatever its scopes,
+gets ``403 FORBIDDEN``. A chat turn spends model tokens on behalf of a person, kept
+conversations hold their words, and read tokens are credentials (a token must not mint or
+manage another)."""
 
 
 def route_access(operation_id: str) -> RouteAccess:

@@ -44,7 +44,51 @@ export interface ChunkBudget {
   match: RegExp;
   maxBytes: number;
   forbidden: RegExp[];
+  /**
+   * The budget applies once a chunk bundles a module matching this (the lazy page or panel
+   * the budget is for). Until then (a feature not mounted yet) a missing chunk is fine; once
+   * the module is in the build, a missing chunk is a problem, because the module was merged
+   * into another chunk (often the entry) instead of loading lazily.
+   */
+  requiredWhen?: RegExp;
 }
+
+/** A module id inside an npm package (a flat or a pnpm `.pnpm/<pkg>@<v>/node_modules/` layout). */
+export function pkgPattern(names: string): RegExp {
+  return new RegExp(`node_modules\\/(?:\\.pnpm\\/[^/]+\\/node_modules\\/)?(?:${names})\\/`);
+}
+
+/**
+ * v0.18 (plan D27, I-8): the animation library (`motion` re-exports framer-motion, motion-dom
+ * and motion-utils) and the app's one wrapper around it. Lazy signed-in chunks only.
+ */
+export const MOTION_PATTERNS: RegExp[] = [pkgPattern("motion|framer-motion|motion-dom|motion-utils"), /\/src\/lib\/motion\.tsx$/];
+
+/**
+ * v0.18: what a share link and the client portal must never load: the animation library, the
+ * onboarding, library and extension features, the interactive controls and the illustrations
+ * (v0.19: and the uploaded-code feature; v0.21: and the global search).
+ */
+export const SIGNED_IN_ONLY: RegExp[] = [
+  ...MOTION_PATTERNS,
+  /\/src\/features\/onboarding\//,
+  /\/src\/features\/library\//,
+  /\/src\/features\/extend\//,
+  /\/src\/components\/interactive\//,
+  /\/src\/components\/illustrations\//,
+  // v0.19 (D20, I-8): uploaded code (the upload, version and review pages, the settings card).
+  /\/src\/features\/plugins\//,
+  // v0.21: the global search, its recent items and the visits the detail pages record.
+  /\/src\/features\/search\//,
+];
+
+/**
+ * v0.20 (plan D21/D23): the chat panel and the modules only it uses (the conversation reducer,
+ * the safe renderer, the docs allow-list). They load lazily in the shared `chat-panel` chunk on
+ * the first "Ask about this dashboard", so they must never be in the entry, a share link's or
+ * the portal's static closure (only the small launcher and the transports are).
+ */
+export const CHAT_PANEL_ONLY: RegExp[] = [/\/src\/features\/dashboards\/chat\/(?:chat-panel|render-safe|docs-links|conversation)\.tsx?$/];
 
 /** The chunk and every chunk it reaches through static imports. */
 export function staticClosure(chunks: ChunkInfo[], fileName: string): Set<string> {
@@ -70,6 +114,29 @@ export function loadedBefore(chunks: ChunkInfo[], fileName: string): Set<string>
   return loaded;
 }
 
+/** What loading a budgeted chunk adds (its static closure minus what is already loaded), in bytes. */
+export function chunkAddedBytes(chunks: ChunkInfo[], fileName: string): number {
+  const byName = new Map(chunks.map((c) => [c.fileName, c]));
+  const before = loadedBefore(chunks, fileName);
+  let added = 0;
+  for (const name of staticClosure(chunks, fileName)) {
+    if (!before.has(name) || name === fileName) added += byName.get(name)?.size ?? 0;
+  }
+  return added;
+}
+
+/** One line per budget (`MAPI_BUDGET_REPORT=1 vite build`): the chunk, the bytes it adds and its budget. */
+export function budgetReport(chunks: ChunkInfo[], opts: BudgetOptions): string[] {
+  const entry = new Set(chunks.filter((c) => c.isEntry).flatMap((c) => [...staticClosure(chunks, c.fileName)]));
+  const entryBytes = chunks.filter((c) => entry.has(c.fileName)).reduce((n, c) => n + c.size, 0);
+  const lines = [`entry closure: ${entryBytes} / ${opts.maxEntryBytes} bytes`];
+  for (const budget of opts.chunkBudgets ?? []) {
+    const root = chunks.find((c) => budget.match.test(c.fileName));
+    lines.push(root ? `${root.fileName}: ${chunkAddedBytes(chunks, root.fileName)} / ${budget.maxBytes} bytes` : `${budget.match}: no chunk`);
+  }
+  return lines;
+}
+
 /** Problems with the {@link BudgetOptions.chunkBudgets}; an empty list means every chunk is within budget. */
 export function checkChunkBudgets(chunks: ChunkInfo[], budgets: ChunkBudget[]): string[] {
   const byName = new Map(chunks.map((c) => [c.fileName, c]));
@@ -77,6 +144,15 @@ export function checkChunkBudgets(chunks: ChunkInfo[], budgets: ChunkBudget[]): 
   for (const budget of budgets) {
     const root = chunks.find((c) => budget.match.test(c.fileName));
     if (!root) {
+      if (budget.requiredWhen) {
+        const pattern = budget.requiredWhen;
+        const holder = chunks.find((c) => c.moduleIds.some((id) => pattern.test(id)));
+        if (holder) {
+          const id = holder.moduleIds.find((m) => pattern.test(m));
+          problems.push(`${id} is bundled in ${holder.fileName}, but no chunk matches ${budget.match}; load it with import() in its own chunk`);
+        }
+        continue;
+      }
       problems.push(`no chunk matches ${budget.match}; rename the budget with the chunk`);
       continue;
     }
@@ -155,6 +231,7 @@ export function bundleBudget(opts: BudgetOptions): Plugin {
           size: Buffer.byteLength(out.code, "utf8"),
         });
       }
+      if (process.env.MAPI_BUDGET_REPORT === "1") this.info(`bundle budgets:\n  ${budgetReport(chunks, opts).join("\n  ")}`);
       const problems = checkEntryBudget(chunks, opts);
       if (problems.length) this.error(`bundle budget exceeded:\n  - ${problems.join("\n  - ")}`);
     },

@@ -7,13 +7,16 @@
  * Every edit is a structured edit of the YAML text (`features/editor/spec-doc.ts`), so the two
  * views never disagree and comments survive.
  */
-import { ArrowDown, ArrowUp, ChevronRight, GripVertical, Trash2 } from "lucide-react";
-import { useEffect, useId, useState, type DragEvent, type ReactNode } from "react";
+import { ArrowDown, ArrowUp, BookmarkPlus, ChevronRight, GripVertical, Trash2 } from "lucide-react";
+import { lazy, Suspense, useEffect, useId, useState, type DragEvent, type ReactNode } from "react";
 
+import { can } from "@/api/access";
 import type { Issue } from "@/api/types";
 import { IssueList } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Badge, Field, Input, NativeSelect } from "@/components/ui/primitives";
+import { useGrants } from "@/features/auth/workspace";
+import { applyModelUse, applyPrepUse } from "@/features/extend/team-items";
 import { SchemaForm, type JsonObject } from "@/features/forms/json-schema-form";
 import { addToList, insertStep, moveStep, removeStep, renameStep, setDataset, setModel, setPath, starterWith } from "@/features/editor/spec-doc";
 import {
@@ -35,13 +38,27 @@ import { cn } from "@/lib/utils";
 import { toast } from "@/stores/toast";
 
 import { carries, MOVE_MIME, readDrop, type PaletteItem, type PaletteKind } from "./dnd";
-import { KIND_COLOR, SpecPalette } from "./palette";
+import { KIND_COLOR, SpecPalette, type TeamUse } from "./palette";
 import { defOf, inlineRefs, omitProps, splitKinds } from "./schema-utils";
 
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
 const asObj = (v: unknown): JsonObject => (isObj(v) ? (v as JsonObject) : {});
 const STEP_ID = /^[a-z_][a-z0-9_]{0,62}$/;
+
+// v0.18 D4: "Save steps as preset" (library code loads only when someone opens the dialog).
+const SaveStepsDialog = lazy(() => import("@/features/library/save-steps-dialog").then((m) => ({ default: m.SaveStepsDialog })));
+
+type StepCall = { id: string; use: string; with?: Record<string, never> };
+
+/** The pipeline's steps as the preset dialog takes them (`id`, `use`, `with`). */
+export function stepCallsOf(pipeline: readonly unknown[]): StepCall[] {
+  return pipeline.filter(isObj).flatMap((s, i) => {
+    if (typeof s.use !== "string" || !s.use) return [];
+    const id = typeof s.id === "string" && s.id ? s.id : `step_${i + 1}`;
+    return [{ id, use: s.use, ...(isObj(s.with) ? { with: s.with as Record<string, never> } : {}) }];
+  });
+}
 
 export interface VisualBuilderProps {
   text: string;
@@ -110,10 +127,25 @@ export function VisualBuilder({ text, document, onText, schema, shape, sources, 
 
   const blockIssues = (prefix: string) => issues.filter((i) => pointerWithin(i.pointer ?? "", prefix));
 
+  // v0.18: "From your team" in the palette puts a used library item into this spec.
+  const endNames = namesBeforeStep(shape.steps.length, shape, sources);
+  const team: TeamUse = {
+    names: { vars: endNames.vars.map((n) => n.name), dims: endNames.dims.map((n) => n.name) },
+    dataset: shape.datasetRef,
+    onUse: (item, result) => {
+      if (item.kind === "model_recipe") {
+        commit(applyModelUse(text, result.spec_fragment, result.labels ?? {}), ["Model recipe added", item.title]);
+        toggle("model", true);
+      } else {
+        commit(applyPrepUse(text, result.pipeline, result.labels ?? {}), ["Prep preset added", item.title]);
+      }
+    },
+  };
+
   return (
     <div className="grid min-w-0 gap-4 lg:grid-cols-[15rem_minmax(0,1fr)]" data-testid="visual-builder">
       <div className="lg:sticky lg:top-4 lg:self-start">
-        <SpecPalette catalog={sources.catalog} datasets={sources.datasets} onAdd={(i) => add(i)} disabled={readOnly || !doc} />
+        <SpecPalette catalog={sources.catalog} datasets={sources.datasets} onAdd={(i) => add(i)} disabled={readOnly || !doc} team={team} />
       </div>
       <div className="grid min-w-0 content-start gap-2" role="list" aria-label="Spec blocks">
         {!doc ? (
@@ -563,6 +595,8 @@ function PipelineBlocks({
   onIssue: (issue: Issue) => void;
 }) {
   const pipeline = Array.isArray(doc.pipeline) ? doc.pipeline : [];
+  const mayShare = can(useGrants(), "create", "library");
+  const [saveSteps, setSaveSteps] = useState(false);
   const drop = (index: number, e: DragEvent) => {
     const item = readDrop(e);
     if (!item) return;
@@ -576,9 +610,19 @@ function PipelineBlocks({
   };
   return (
     <div className="grid gap-2" role="group" aria-label="Pipeline">
-      <div className="flex items-center gap-2 px-1 pt-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+      <div className="flex flex-wrap items-center gap-2 px-1 pt-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
         Pipeline <span className="font-normal normal-case">{pipeline.length ? `${pipeline.length} step${pipeline.length === 1 ? "" : "s"}, in order` : "no steps: drag a step here from the palette"}</span>
+        {pipeline.length && mayShare ? (
+          <Button size="sm" variant="ghost" className="ml-auto h-7 rounded-full px-3 text-xs normal-case" onClick={() => setSaveSteps(true)} title="Keep these steps as a prep preset your team can reuse on any dataset">
+            <BookmarkPlus /> Save steps as preset
+          </Button>
+        ) : null}
       </div>
+      {saveSteps ? (
+        <Suspense fallback={null}>
+          <SaveStepsDialog open={saveSteps} onOpenChange={setSaveSteps} steps={stepCallsOf(pipeline)} />
+        </Suspense>
+      ) : null}
       <DropZone index={0} onDrop={drop} disabled={disabled} label="Drop a step at the start" />
       {pipeline.map((raw, i) => {
         const step = asObj(raw);

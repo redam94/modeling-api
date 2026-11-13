@@ -22,7 +22,9 @@ score      a ``ScoreRequest`` document, or              ``bundle``, optional
                                                         ``seasonal_naive`` future covariates)
 evaluate   :class:`EvaluateJob`                         ``bundle``, ``dataset``, ...
 derive     :class:`DeriveJob`                           ``bundle``, ``dataset``, ``side.<name>``
-render     :class:`RenderJob`                           ``plots`` (a ``plots.json``)
+render     :class:`RenderJob`                           ``plots`` (a ``plots.json``); v0.18:
+                                                        none for a recipe preview (``recipe``
+                                                        set), output ``preview/plot.json``
 translate_ :class:`~mapi_spec.calibration.Prior-         ``dataset``, optional ``schema``,
 priors     TranslationJob` (M3)                         ``side.<name>``; output ``priors.json``
 workflow_  :class:`~mapi_spec.workflow.WorkflowNode-    ``in.<port>.<k>`` (each bound input);
@@ -36,6 +38,12 @@ governance :class:`~mapi_spec.governance.Governance-    ``bundle``, ``bundle.man
            Job` (M3.5)                                  ``dataset``, optional ``evaluation``
                                                         (+ ``evaluation.manifest``); output
                                                         ``governance.json``
+plugin_    :class:`PluginInspectJob` (v0.19)            ``plugin.whl`` (the uploaded wheel, read
+inspect                                                 as an archive, never imported); output
+                                                        ``plugin/inspection.json``
+plugin_    :class:`PluginDescribeJob` (v0.19)           none (the wheel is mounted as an
+describe                                                overlay from ``RunSpec.overlays``);
+                                                        output ``plugin/describe.json``
 ========== ============================================ ======================================
 
 ``workflow`` runs are parents (the orchestrator walks the DAG) and never execute.
@@ -51,16 +59,26 @@ This module is pure Pydantic (no numpy/xarray): the control plane imports it.
 
 from __future__ import annotations
 
+import json
 import re
 from typing import Any, Final, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    JsonValue,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 
+from mapi_spec._dto import Id, RequestModel, ResponseModel, Sha256, dto_examples
 from mapi_spec._types import StrictModel
 from mapi_spec.api import IngestMapping
 from mapi_spec.calibration import PRIOR_TRANSLATION_OUTPUT, PriorTranslationJob
 from mapi_spec.collection import CollectionIngest
-from mapi_spec.errors import ErrorCode, MapiError
+from mapi_spec.errors import ErrorCode, MapiError, Problem
 from mapi_spec.executor import RunKind
 from mapi_spec.explore import ExploreJob
 from mapi_spec.governance import GOVERNANCE_OUTPUT, GovernanceJob
@@ -73,6 +91,14 @@ from mapi_spec.ingest import (
 )
 from mapi_spec.loader import parse_document
 from mapi_spec.optimize import OPTIMIZE_OUTPUT, OptimizeJob
+from mapi_spec.plots import PlotSpec
+from mapi_spec.plugins import (
+    PLUGIN_VERSION_ID_RE,
+    UPLOAD_NAMESPACE_RE,
+    ArchiveLimits,
+    upload_dist_name,
+)
+from mapi_spec.refs import UseRef
 from mapi_spec.run import INPUT_BUNDLE, INPUT_DATASET
 from mapi_spec.spec import ModelSpec, ScoreRequest
 from mapi_spec.tree import MAX_TREE_NODES
@@ -111,6 +137,12 @@ __all__ = [
     "OPTIMIZE_OUTPUT",
     "PLOT_DATA_INPUT_PREFIX",
     "PLOT_EXAMPLES_OUTPUT",
+    "PLUGIN_DESCRIBE_OUTPUT",
+    "PLUGIN_INPUT",
+    "PLUGIN_INSPECTION_OUTPUT",
+    "PREVIEW_LABEL",
+    "PREVIEW_OUTPUT",
+    "PREVIEW_SETTINGS_MAX_BYTES",
     "PRIOR_TRANSLATION_OUTPUT",
     "RENDER_OUTPUT_PREFIX",
     "SCORE_INPUTS",
@@ -130,7 +162,12 @@ __all__ = [
     "MetricsSidecar",
     "MffOptions",
     "OptimizeJob",
+    "PluginDescribeJob",
+    "PluginInspectJob",
     "PriorTranslationJob",
+    "RecipePreview",
+    "RecipePreviewRequest",
+    "RecipePreviewResult",
     "RenderJob",
     "ScoreJob",
     "WorkflowNodeJob",
@@ -238,6 +275,12 @@ TREE_DATASET_OUTPUTS: Final = (DATATREE_OUTPUT, TREE_SCHEMA_OUTPUT, INGEST_SCHEM
 """What an ingest run uploads for a tree-layout version (dataset-layout versions keep
 :data:`DATASET_OUTPUTS`)."""
 INSPECT_OUTPUT: Final = "inspection.json"
+PLUGIN_INPUT: Final = "plugin.whl"
+"""v0.19: the input name of the uploaded wheel of a ``plugin_inspect`` run."""
+PLUGIN_INSPECTION_OUTPUT: Final = "plugin/inspection.json"
+"""v0.19: the :class:`~mapi_spec.plugins.PluginInspection` of a ``plugin_inspect`` run."""
+PLUGIN_DESCRIBE_OUTPUT: Final = "plugin/describe.json"
+"""v0.19: the :class:`~mapi_spec.plugins.PluginDescribe` of a ``plugin_describe`` run."""
 """M4: the :class:`~mapi_spec.ingest.UploadInspection` an ``inspect`` run writes."""
 
 FIT_BUNDLE: Final = "bundle.zarr.zip"
@@ -252,6 +295,12 @@ DESCRIBE_OUTPUT: Final = "catalog.json"
 PLOT_EXAMPLES_OUTPUT: Final = "plot_examples.json"
 """Optional output of a describe run: :class:`~mapi_spec.plots.PlotExamples`."""
 SCORE_OUTPUT: Final = "score.zarr.zip"
+PREVIEW_OUTPUT: Final = "preview/plot.json"
+"""v0.18: the sanitized PlotSpec of a recipe preview (a render run with ``recipe`` set)."""
+PREVIEW_LABEL: Final = "mapi.preview"
+"""v0.18: the run label holding a recipe preview's cache key (indexed for render runs)."""
+PREVIEW_SETTINGS_MAX_BYTES: Final = 4096
+"""v0.18: the largest settings object of a recipe preview (compact JSON)."""
 
 
 # ------------------------------------------------------------------------------------- jobs
@@ -389,6 +438,38 @@ class DescribeJob(StrictModel):
     )
 
 
+class PluginInspectJob(StrictModel):
+    """A ``plugin_inspect`` run (v0.19): check the uploaded wheel (input ``plugin.whl``) as an
+    archive, never extracting or importing it. Output ``plugin/inspection.json``."""
+
+    kind: Literal["plugin_inspect"] = "plugin_inspect"
+    plugin_version_id: str = Field(..., pattern=PLUGIN_VERSION_ID_RE)
+    namespace: str = Field(..., pattern=UPLOAD_NAMESPACE_RE)
+    dist_name: str = Field(..., max_length=64, description="The PEP 503 form of the namespace")
+    version: str = Field(..., min_length=1, max_length=64)
+    expected_sha256: Sha256 = Field(..., description="The sha256 the control plane stored")
+    limits: ArchiveLimits = Field(default_factory=ArchiveLimits)
+
+    @model_validator(mode="after")
+    def _dist(self) -> PluginInspectJob:
+        if self.dist_name != upload_dist_name(self.namespace):
+            raise ValueError("dist_name must be the PEP 503 form of the namespace")
+        return self
+
+
+class PluginDescribeJob(StrictModel):
+    """A ``plugin_describe`` run (v0.19): mount the overlay, export its catalog entries, run
+    the kits (data kits on toy fixtures when ``data_kits``) and render the recipe examples.
+    Output ``plugin/describe.json``."""
+
+    kind: Literal["plugin_describe"] = "plugin_describe"
+    plugin_version_id: str = Field(..., pattern=PLUGIN_VERSION_ID_RE)
+    namespace: str = Field(..., pattern=UPLOAD_NAMESPACE_RE)
+    overlay_sha256: Sha256
+    data_kits: bool = True
+    data_check_timeout_s: int = Field(120, ge=1, le=3600)
+
+
 class ScoreJob(StrictModel):
     """A score run: the request plus runner-side options."""
 
@@ -419,11 +500,42 @@ class DeriveJob(StrictModel):
     )
 
 
+def _settings_size(v: dict[str, JsonValue]) -> dict[str, JsonValue]:
+    size = len(json.dumps(v, separators=(",", ":"), ensure_ascii=False).encode())
+    if size > PREVIEW_SETTINGS_MAX_BYTES:
+        raise ValueError(f"settings are larger than {PREVIEW_SETTINGS_MAX_BYTES} bytes")
+    return v
+
+
+class RecipePreview(StrictModel):
+    """v0.18: render a plot recipe's own example data with ``settings`` (the recipe
+    playground). The runner merges ``settings`` over the example's options, validates them
+    with the recipe's settings model, sanitizes the result and writes :data:`PREVIEW_OUTPUT`.
+    No dataset is read."""
+
+    ref: str = Field(..., max_length=200, examples=["core.ppc_fan@1.0.0"])
+    settings: dict[str, JsonValue] = Field(default_factory=dict)
+
+    @field_validator("ref")
+    @classmethod
+    def _ref(cls, v: str) -> str:
+        UseRef.parse(v)
+        return v
+
+    @field_validator("settings")
+    @classmethod
+    def _size(cls, v: dict[str, JsonValue]) -> dict[str, JsonValue]:
+        return _settings_size(v)
+
+
 class RenderJob(StrictModel):
     """Render plots from a ``plots.json`` to static images (``renders/<plot id>.<format>``).
 
     ``pdf`` (M3) and an explicit ``width``/``height`` in CSS pixels (before ``scale``) are
     for reports; Vega-Lite renders with vl-convert, Plotly with kaleido, in the sandbox.
+
+    v0.18: with ``recipe`` set the run is a recipe preview instead (``plots`` must be
+    unset): it writes only :data:`PREVIEW_OUTPUT`.
     """
 
     plots: list[str] | None = Field(None, description="Plot ids (default: all)")
@@ -431,6 +543,43 @@ class RenderJob(StrictModel):
     scale: float = Field(2.0, gt=0, le=8)
     width: int | None = Field(None, ge=16, le=4096)
     height: int | None = Field(None, ge=16, le=4096)
+    recipe: RecipePreview | None = Field(None, exclude_if=lambda v: v is None)
+
+    @model_validator(mode="after")
+    def _one_source(self) -> RenderJob:
+        if self.recipe is not None and self.plots is not None:
+            raise ValueError("a recipe preview renders the recipe's example: leave plots unset")
+        return self
+
+
+class RecipePreviewRequest(RequestModel):
+    """``POST /v1/catalog/plots/{plot_id}/{version}:preview``: the recipe settings to try
+    (validated against the recipe's catalog ``settings_schema`` before any run)."""
+
+    settings: dict[str, JsonValue] = Field(default_factory=dict)
+
+    model_config = dto_examples({"settings": {"title": "Sales: fit and forecast", "var": "y"}})
+
+    @field_validator("settings")
+    @classmethod
+    def _size(cls, v: dict[str, JsonValue]) -> dict[str, JsonValue]:
+        return _settings_size(v)
+
+
+class RecipePreviewResult(ResponseModel):
+    """A recipe preview: done (``plot`` set, or ``problem`` when the run failed) or still
+    running (``run_id`` to poll). ``cached``: served from an earlier run with the same key."""
+
+    run_id: Id | None = None
+    cached: bool = False
+    done: bool
+    plot: PlotSpec | None = None
+    problem: Problem | None = None
+
+    model_config = dto_examples(
+        {"run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0", "cached": False, "done": False},
+        {"run_id": None, "cached": True, "done": True, "plot": None, "problem": None},
+    )
 
 
 Job = (
@@ -447,6 +596,8 @@ Job = (
     | ExploreJob
     | OptimizeJob
     | GovernanceJob
+    | PluginInspectJob
+    | PluginDescribeJob
 )
 
 
@@ -543,6 +694,10 @@ def parse_job(kind: RunKind, spec: dict[str, Any]) -> Job:
             return OptimizeJob.model_validate(spec)
         if kind is RunKind.GOVERNANCE:
             return GovernanceJob.model_validate(spec)
+        if kind is RunKind.PLUGIN_INSPECT:
+            return PluginInspectJob.model_validate(spec)
+        if kind is RunKind.PLUGIN_DESCRIBE:
+            return PluginDescribeJob.model_validate(spec)
     except (ValidationError, ValueError) as exc:
         raise _invalid(kind, exc) from None
     except MapiError:

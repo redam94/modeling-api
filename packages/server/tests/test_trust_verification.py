@@ -98,7 +98,7 @@ async def test_operators_record_identity_verification(
         ("verified", True, False, True),
         ("public", True, False, False),  # cut line A: never, verified or not
         ("public", False, True, False),
-        ("public", True, True, True),  # cut line B (M5)
+        ("public", True, True, False),  # v0.19 D1: public tiers never run uploaded code
     ],
 )
 async def test_uploaded_code_rule_at_admission(

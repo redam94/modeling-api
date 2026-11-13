@@ -5,6 +5,14 @@ it can). A model implements `fit`/`score`. The platform owns all other work: bin
 context tails, coordinates, inverse transforms, summaries and bundles. The **contract kit** tells
 you if you obeyed the rules. It tells you before other persons run your code.
 
+!!! tip "New in v0.18: scaffolds for every kind"
+    `mapi plugin init acme --kind model --kind step` writes a package with the entry points, a
+    filled-in About card and a contract-kit test for each kind. `mapi plugin validate` and
+    `mapi plugin doctor` check it. Start with [Develop a plugin](../extend/develop/index.md),
+    and see [Run your plugin on your stack](../extend/develop/run-on-your-stack.md) to install
+    it. Analysts who want their own model or prep steps with no code use
+    [Make your own](../extend/index.md).
+
 ## A preprocessing step
 
 ```python

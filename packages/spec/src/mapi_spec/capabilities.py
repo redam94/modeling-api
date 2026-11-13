@@ -33,6 +33,7 @@ __all__ = [
     "GridDecl",
     "ModelManifest",
     "OutputDecl",
+    "OutputMeaning",
     "OutputSelector",
     "Owned",
     "Representation",
@@ -268,6 +269,11 @@ class Capabilities(StrictModel):
 
 FieldColormap = Literal["viridis", "magma", "cividis", "gray", "diverging"]
 
+OutputMeaning = Literal["value", "class_probability", "state_probability", "rate", "effect"]
+"""What the numbers of an output are (v0.17, optional): a measured ``value``, the
+probability of each class (``class_probability``) or hidden state (``state_probability``),
+a ``rate`` or a causal ``effect``. Dashboards use it to pick a preset and wording."""
+
 
 class GridDecl(StrictModel):
     """How to draw an output as a 2-D field (an image, a map, a vector field).
@@ -318,6 +324,28 @@ class OutputDecl(StrictModel):
         "of draws use the circular mean and intervals centred on it, wrapped into [0, period)",
         exclude_if=lambda v: not v,
     )
+    meaning: OutputMeaning | None = Field(
+        None,
+        description="What the numbers are (v0.17): a value, a class or state probability, a "
+        "rate or an effect. Unset: dashboards guess it from the dims and plots",
+        exclude_if=lambda v: v is None,
+    )
+    classes_dim: Name | None = Field(
+        None,
+        description="The dim that holds the classes (or states) of a probability output, "
+        "e.g. 'class'",
+        exclude_if=lambda v: v is None,
+    )
+
+    @model_validator(mode="after")
+    def _classes_dim(self) -> OutputDecl:
+        if self.classes_dim is None:
+            return self
+        if self.meaning not in ("class_probability", "state_probability"):
+            raise ValueError("classes_dim needs meaning 'class_probability' or 'state_probability'")
+        if self.dims_of is None and self.classes_dim not in self.dims:
+            raise ValueError(f"classes_dim {self.classes_dim!r} is not a dim of the output")
+        return self
 
     @model_validator(mode="after")
     def _grid_dims(self) -> OutputDecl:

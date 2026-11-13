@@ -33,14 +33,14 @@ export function DialogContent({
       <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-overlay/60" />
       <DialogPrimitive.Content
         className={cn(
-          "fixed top-[12vh] left-1/2 z-50 grid max-h-[80vh] w-[calc(100%-2rem)] -translate-x-1/2 gap-4 overflow-y-auto rounded-xl border bg-popover p-6 text-popover-foreground shadow-lg max-sm:p-4",
+          "fixed top-[12vh] left-1/2 z-50 grid max-h-[80vh] w-[calc(100%-2rem)] -translate-x-1/2 gap-4 overflow-y-auto rounded-2xl border bg-popover p-6 text-popover-foreground shadow-lg max-sm:p-4",
           wide ? "max-w-3xl" : "max-w-lg",
           className,
         )}
         {...props}
       >
         {children}
-        <DialogPrimitive.Close className="focus-ring absolute top-4 right-4 rounded-sm p-1 text-muted-foreground hover:text-foreground">
+        <DialogPrimitive.Close data-dialog-close="" className="focus-ring absolute top-4 right-4 rounded-full p-1 text-muted-foreground hover:text-foreground">
           <X className="size-4" />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>
@@ -65,13 +65,15 @@ export function DialogFooter({ className, ...props }: React.ComponentProps<"div"
 
 export const DropdownMenu = MenuPrimitive.Root;
 export const DropdownMenuTrigger = MenuPrimitive.Trigger;
+/** A named group of items: give it an `aria-label`. */
+export const DropdownMenuGroup = MenuPrimitive.Group;
 
 export function DropdownMenuContent({ className, sideOffset = 6, ...props }: React.ComponentProps<typeof MenuPrimitive.Content>) {
   return (
     <MenuPrimitive.Portal>
       <MenuPrimitive.Content
         sideOffset={sideOffset}
-        className={cn("z-50 min-w-40 rounded-lg border bg-popover p-1 text-popover-foreground shadow-md", className)}
+        className={cn("z-50 min-w-40 rounded-xl border bg-popover p-1.5 text-popover-foreground shadow-md", className)}
         {...props}
       />
     </MenuPrimitive.Portal>
@@ -91,7 +93,7 @@ export function DropdownMenuItem({ className, ...props }: React.ComponentProps<t
 }
 
 export function DropdownMenuLabel({ className, ...props }: React.ComponentProps<typeof MenuPrimitive.Label>) {
-  return <MenuPrimitive.Label className={cn("px-2 py-1.5 text-xs text-hint", className)} {...props} />;
+  return <MenuPrimitive.Label className={cn("px-2 py-1.5 text-xs font-semibold text-hint", className)} {...props} />;
 }
 
 export function DropdownMenuSeparator({ className, ...props }: React.ComponentProps<typeof MenuPrimitive.Separator>) {
@@ -131,7 +133,7 @@ export function Tooltip({ content, children, side = "top" }: { content: React.Re
         <TooltipPrimitive.Content
           side={side}
           sideOffset={6}
-          className="z-50 max-w-xs rounded-md bg-tooltip px-2 py-1.5 text-xs text-tooltip-foreground shadow-sm"
+          className="z-50 max-w-xs rounded-md bg-tooltip px-2.5 py-1.5 text-xs text-tooltip-foreground shadow-sm"
         >
           {content}
         </TooltipPrimitive.Content>
@@ -147,10 +149,10 @@ export const Tabs = TabsPrimitive.Root;
 export function TabsList({ className, ...props }: React.ComponentProps<typeof TabsPrimitive.List>) {
   return (
     <TabsPrimitive.List
-      // Scrolls sideways instead of widening the page on narrow screens. The baseline is an inset
-      // shadow (not a border) so the active tab's underline is not clipped by the overflow box.
+      // A row of pills (the active one is an ink tint). It scrolls sideways on narrow screens:
+      // `contain: inline-size` keeps a long row from widening its (grid) ancestors and the page.
       className={cn(
-        "inline-flex h-10 max-w-full items-center gap-8 overflow-x-auto overflow-y-hidden text-muted-foreground shadow-[inset_0_-1px_0_var(--color-border)] [scrollbar-width:thin]",
+        "flex h-10 w-full items-center gap-1 overflow-x-auto overflow-y-hidden text-muted-foreground [contain:inline-size] [scrollbar-width:none]",
         className,
       )}
       {...props}
@@ -163,7 +165,7 @@ export function TabsTrigger({ className, ...props }: React.ComponentProps<typeof
     <TabsPrimitive.Trigger
       className={cn(
         // An inset ring: the list scrolls (overflow), which would clip an outer focus ring.
-        "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4",
+        "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-foreground [&_svg]:size-4",
         className,
       )}
       {...props}
@@ -233,14 +235,14 @@ export function SegmentedControl<T extends string>({
         if (v) onValueChange(v as T);
       }}
       // Too many options for a narrow screen scroll inside the strip, never the page.
-      className={cn("inline-flex h-8 max-w-full items-center gap-0.5 overflow-x-auto rounded-lg bg-border p-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", className)}
+      className={cn("inline-flex h-8 max-w-full items-center gap-0.5 overflow-x-auto rounded-full bg-accent p-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", className)}
     >
       {options.map((o) => (
         <ToggleGroupPrimitive.Item
           key={o.value}
           value={o.value}
           title={o.title}
-          className="focus-ring inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs whitespace-nowrap font-medium text-muted-foreground transition-colors hover:text-foreground data-[state=on]:bg-card data-[state=on]:text-foreground data-[state=on]:shadow-xs [&_svg]:size-3.5"
+          className="focus-ring inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full px-3 text-xs whitespace-nowrap font-medium text-muted-foreground transition-colors hover:text-foreground data-[state=on]:bg-card data-[state=on]:text-foreground data-[state=on]:shadow-sm [&_svg]:size-3.5"
         >
           {o.label}
         </ToggleGroupPrimitive.Item>

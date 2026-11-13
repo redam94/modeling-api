@@ -80,7 +80,7 @@ fmt: ## Auto-format Python code
 # their contract: e.g. untyped third-party calls need explicit ignores only under --strict).
 STRICT_PY := packages/spec/src packages/sdk/src packages/gcs-shim/src packages/runner/src packages/server/src \
 	packages/workflows/src \
-	packages/client/src packages/cli/src
+	packages/client/src packages/cli/src packages/mcp/src
 
 .PHONY: typecheck
 typecheck: ## mypy over every type-checked package, the dev scripts and the image helpers
@@ -146,8 +146,17 @@ EXECUTOR ?= local-process
 .PHONY: security-suite
 security-suite: ## Run the sandbox-escape probe suite (EXECUTOR=docker-gvisor for the gVisor run)
 	PYTHONPATH=$(SECURITY_PYTHONPATH) $(UV) run python -m mapi_security run --executor $(EXECUTOR) \
-		--metrics .local/security-$(EXECUTOR).prom
+		--image mapi/base-bayes:$(VERSION) --metrics .local/security-$(EXECUTOR).prom
 	PYTHONPATH=$(SECURITY_PYTHONPATH) $(UV) run pytest -q security/tests -m sandbox
+
+.PHONY: security-uploads
+security-uploads: ## Run the hostile-upload corpus for uploaded code (RUNTIME=1 also runs the docker-marked runtime cases)
+	$(UV) run pytest -q tests/security -m "not docker"
+	@if [ -n "$(filter 1 yes true,$(RUNTIME))" ]; then \
+		$(UV) run pytest -q tests/security -m docker; rc=$$?; \
+		if [ $$rc -eq 5 ]; then echo "security-uploads: no docker-marked cases are collected"; \
+		elif [ $$rc -ne 0 ]; then exit $$rc; fi; \
+	fi
 
 .PHONY: security-list
 security-list: ## List the security probe corpus
@@ -200,6 +209,7 @@ web-check: ## Lint, typecheck, test (Vitest + Playwright smoke) and build apps/*
 	$(UV) run python apps/web/scripts/gen_workflow_fixtures.py --check
 	$(UV) run python apps/web/scripts/gen_editor_fixtures.py --check
 	$(UV) run python apps/web/scripts/gen_tree_fixtures.py --check
+	$(UV) run python scripts/gen_docs_search_index.py --check
 	$(PNPM) -r lint
 	$(PNPM) -r typecheck
 	$(PNPM) -r test
@@ -248,6 +258,99 @@ _env-check:
 	@if [ ! -f .env ]; then \
 		echo "error: no .env - run 'cp .env.example .env' and set POSTGRES_PASSWORD" >&2; exit 1; fi
 
+## ---------------------------------------------------------------- extensions
+# Your own models, steps, plot recipes, workflow nodes and workflow templates as Python
+# plugins (docs/extend/develop/). These targets install code into the runner environment:
+# trusted operators and plugin authors only. Nothing here accepts code from tenants.
+# PLUGIN_VENV and EXTRA_PLUGINS exist for tests; the server always reads
+# .local/extra-plugins.txt (CHECKOUT_EXTRA_LIST in mapi_server.settings).
+PLUGINS_DIR ?= plugins
+PLUGIN_VENV ?= .venv
+EXTRA_PLUGINS ?= .local/extra-plugins.txt
+TAG ?= dev
+PLUGIN_IMAGE_DIR ?= .local/plugin-image
+
+.PHONY: plugin-new
+plugin-new: ## Scaffold plugins/<NAME> in this checkout (KIND="recipe node": model, step, recipe, node, template; BASE=custom|pymc|sklearn)
+	@test -n "$(NAME)" || { echo "error: set NAME, for example: make plugin-new NAME=acme KIND=recipe" >&2; exit 2; }
+	$(UV) run mapi plugin init $(NAME) $(foreach k,$(or $(KIND),model),--kind $(k)) $(if $(BASE),--base $(BASE)) --dir $(PLUGINS_DIR)
+	@echo "plugin-new: $(PLUGINS_DIR)/$(NAME) is a workspace member. Run 'make install' once (uv sync --all-packages locks and installs it), then 'make dev'."
+
+.PHONY: plugin-dev
+plugin-dev: ## Install an out-of-tree plugin in editable mode and fold it into the image digest (PLUGIN=../acme; DEPS=1 also installs its dependencies)
+	@test -n "$(PLUGIN)" || { echo "error: set PLUGIN, for example: make plugin-dev PLUGIN=../acme" >&2; exit 2; }
+	@test -f "$(PLUGIN)/pyproject.toml" || { echo "error: $(PLUGIN) has no pyproject.toml" >&2; exit 2; }
+	$(UV) pip install --python $(PLUGIN_VENV)/bin/python $(if $(DEPS),,--no-deps) -e "$(PLUGIN)"
+	@mkdir -p "$(dir $(EXTRA_PLUGINS))" && touch "$(EXTRA_PLUGINS)"
+	@entry="$(patsubst %/,%,$(PLUGIN))"; \
+	if grep -qxF "$$entry" "$(EXTRA_PLUGINS)"; then echo "plugin-dev: $$entry is already in $(EXTRA_PLUGINS)"; \
+	else echo "$$entry" >> "$(EXTRA_PLUGINS)"; echo "plugin-dev: added $$entry to $(EXTRA_PLUGINS)"; fi
+	@echo "plugin-dev: restart 'make dev' to describe the catalog again. 'make install' (uv sync) removes"
+	@echo "            editable plugins: run 'make plugin-dev' again after it."
+
+.PHONY: plugin-undev
+plugin-undev: ## Remove a plugin that plugin-dev installed (PLUGIN=../acme)
+	@test -n "$(PLUGIN)" || { echo "error: set PLUGIN, for example: make plugin-undev PLUGIN=../acme" >&2; exit 2; }
+	@test -f "$(PLUGIN)/pyproject.toml" || { echo "error: $(PLUGIN) has no pyproject.toml" >&2; exit 2; }
+	@name=$$($(PLUGIN_VENV)/bin/python -c 'import sys, tomllib; print(tomllib.load(open(sys.argv[1] + "/pyproject.toml", "rb"))["project"]["name"])' "$(PLUGIN)"); \
+	echo "$(UV) pip uninstall --python $(PLUGIN_VENV)/bin/python $$name"; \
+	$(UV) pip uninstall --python $(PLUGIN_VENV)/bin/python "$$name"
+	@entry="$(patsubst %/,%,$(PLUGIN))"; \
+	if [ -f "$(EXTRA_PLUGINS)" ]; then \
+		grep -vxF "$$entry" "$(EXTRA_PLUGINS)" > "$(EXTRA_PLUGINS).tmp" || true; \
+		mv "$(EXTRA_PLUGINS).tmp" "$(EXTRA_PLUGINS)"; echo "plugin-undev: removed $$entry from $(EXTRA_PLUGINS)"; fi
+	@echo "plugin-undev: restart 'make dev' to describe the catalog again."
+
+.PHONY: plugin-doctor
+plugin-doctor: ## Check every installed extension: load problems, routing, digest (SERVER=1 compares with the server, JSON=1)
+	$(UV) run mapi $(if $(JSON),--json) plugin doctor $(if $(SERVER),--server)
+
+# PLUGIN_CLI runs the mapi CLI (tests set it to `echo mapi` for a dry run).
+PLUGIN_CLI ?= $(UV) run mapi
+
+.PHONY: plugin-push
+plugin-push: ## Build a plugin's wheel and upload it to your workspace, then wait for its checks (PLUGIN=../acme; PROJECT=<tenant>/<project>, APPROVAL=1 asks for a review, WAIT=0 does not wait, JSON=1)
+	@test -n "$(PLUGIN)" || { echo "error: set PLUGIN, for example: make plugin-push PLUGIN=../acme PROJECT=acme/growth" >&2; exit 2; }
+	@test -f "$(PLUGIN)/pyproject.toml" -o -f "$(PLUGIN)" || { echo "error: $(PLUGIN) is not a plugin package or a wheel" >&2; exit 2; }
+	$(PLUGIN_CLI) $(if $(JSON),--json) plugin push "$(PLUGIN)" $(if $(PROJECT),--project $(PROJECT)) $(if $(APPROVAL),--request-approval) $(if $(filter 0 no false,$(WAIT)),,--wait)
+
+.PHONY: plugin-image
+plugin-image: _docker-check ## Build mapi/<NAME>:<TAG> (TAG=dev): a runner image with your wheels (BASE=base-bayes NAME=acme WHEELS="../acme/dist/*.whl" or a directory with a hashed requirements.txt)
+	@test -n "$(BASE)" -a -n "$(NAME)" -a -n "$(WHEELS)" || { \
+		echo "error: set BASE, NAME and WHEELS, for example:" >&2; \
+		echo "       make plugin-image BASE=base-bayes NAME=acme WHEELS=../acme/dist/*.whl" >&2; exit 2; }
+	@set -euo pipefail; \
+	base="$(BASE)"; case "$$base" in */*|*:*) ;; *) base="mapi/$$base:$(VERSION)";; esac; \
+	ctx="$(WHEELS)"; \
+	if [ ! -f "$$ctx/requirements.txt" ]; then \
+		wheels="$(WHEELS)"; if [ -d "$(WHEELS)" ]; then wheels=$$(ls "$(WHEELS)"/*.whl); fi; \
+		ctx=$(PLUGIN_IMAGE_DIR)/$(NAME); rm -rf "$$ctx"; mkdir -p "$$ctx"; \
+		for w in $$wheels; do cp "$$w" "$$ctx/"; done; \
+		for w in "$$ctx"/*.whl; do \
+			f=$$(basename "$$w"); \
+			echo "$$(echo "$$f" | cut -d- -f1 | tr _ -)==$$(echo "$$f" | cut -d- -f2) --hash=sha256:$$(shasum -a 256 "$$w" | cut -d' ' -f1)"; \
+		done > "$$ctx/requirements.txt"; \
+		echo "plugin-image: wrote $$ctx/requirements.txt"; cat "$$ctx/requirements.txt"; \
+	fi; \
+	echo "plugin-image: mapi/$(NAME):$(TAG) from $$base"; \
+	$(DOCKER) build -f images/extend/Dockerfile --build-arg BASE="$$base" \
+		--build-arg MAPI_IMAGE_NAME=$(NAME) --build-arg VERSION=$(TAG) \
+		--build-arg VCS_REF=$(VCS_REF) --build-arg BUILD_DATE=$(BUILD_DATE) \
+		-t mapi/$(NAME):$(TAG) "$$ctx"
+	@echo "plugin-image: next, copy /opt/mapi/extensions.lock out of the image and set MAPI_EXTENSIONS_LOCK_PATH"
+	@echo "              (docs/extend/develop/run-on-your-stack.md)."
+
+.PHONY: catalog-refresh
+catalog-refresh: ## Ask a running server to describe its catalog now (operator; MAPI_URL, MAPI_TOKEN or the dev IdP's admin@dev.local)
+	@set -euo pipefail; \
+	api="$${MAPI_URL:-http://127.0.0.1:8000}"; token="$${MAPI_TOKEN:-}"; \
+	if [ -z "$$token" ]; then \
+		token=$$($(UV) run python -c 'import sys; from mapi_client.oidc import dev_idp_login; print(dev_idp_login(sys.argv[1], "admin@dev.local"))' "$$api") \
+		|| { echo "error: set MAPI_TOKEN to an operator sign-in (mapi login); the dev IdP is not available at $$api" >&2; exit 1; }; \
+	fi; \
+	curl -fsS -X POST -H "Authorization: Bearer $$token" "$$api/v1/admin/catalog:describe" \
+		| $(UV) run python -c 'import json, sys; r = json.load(sys.stdin); print("catalog-refresh: describe run %s is %s" % (r["id"], r["state"]))'
+
 ## ---------------------------------------------------------------- docs
 .PHONY: docs-catalog
 docs-catalog: ## Regenerate the generated reference pages (catalogs, errors, CLI, settings, OpenAPI, permissions, metrics)
@@ -266,7 +369,11 @@ docs-build: docs-catalog ## Build the documentation site into ./site (strict)
 .PHONY: docs-test
 docs-test: ## Run every documentation snippet and check every include
 	$(UV) run pytest -q conformance/tests/test_docs_snippets.py conformance/tests/test_docs_platform.py conformance/tests/test_docs_tutorials.py \
-		conformance/tests/test_docs_v05.py packages/server/tests/test_docs_client_v05.py
+		conformance/tests/test_docs_v05.py packages/server/tests/test_docs_client_v05.py \
+		conformance/tests/test_docs_extend.py conformance/tests/test_docs_upload.py \
+		conformance/tests/test_docs_chat_mcp.py conformance/tests/test_docs_theme.py \
+		conformance/tests/test_docs_nav.py conformance/tests/test_docs_search_index.py \
+		conformance/tests/test_docs_v021.py
 
 .PHONY: docs-screenshots
 docs-screenshots: ## Recapture docs/assets/screenshots from a running, seeded stack (see the script)

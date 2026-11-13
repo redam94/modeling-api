@@ -1,0 +1,809 @@
+{
+ "_comment": "v0.17 ``mapi_spec.dashboard_presets``: the preset of every catalog model (golden table),\ncompiled drafts that validate for every family, the layout 1 upgrade and the checks of a\nspec against the source catalog.",
+ "models": {
+  "causal.did": {
+   "presets": [
+    "causal_impact",
+    "generic"
+   ],
+   "blocked": {
+    "causal_impact": [
+     "actuals: compared only; the effect updates after the analyst refits"
+    ],
+    "generic": [
+     "batch: the model has no row dim"
+    ]
+   },
+   "panels": [
+    "outcome"
+   ]
+  },
+  "causal.impact": {
+   "presets": [
+    "causal_impact",
+    "forecast",
+    "generic"
+   ],
+   "blocked": {
+    "generic": [
+     "batch: the model has no row dim"
+    ]
+   },
+   "panels": [
+    "effect",
+    "outcome"
+   ]
+  },
+  "causal.synthetic_control": {
+   "presets": [
+    "causal_impact",
+    "generic"
+   ],
+   "blocked": {
+    "causal_impact": [
+     "actuals: compared only; the effect updates after the analyst refits"
+    ],
+    "generic": [
+     "batch: the model has no row dim"
+    ]
+   },
+   "panels": [
+    "outcome"
+   ]
+  },
+  "choice.multinomial_logit": {
+   "presets": [
+    "generic"
+   ],
+   "blocked": {
+    "generic": [
+     "batch: the model has no row dim"
+    ]
+   },
+   "panels": [
+    "value",
+    "chart"
+   ]
+  },
+  "dl.cnn_classifier": {
+   "presets": [
+    "image",
+    "classifier",
+    "regression",
+    "generic"
+   ],
+   "blocked": {
+    "image": [
+     "batch: for signed-in analysts only (not for clients or share links)"
+    ],
+    "classifier": [
+     "scenario_rows: the model reads images, not values",
+     "batch: for signed-in analysts only (not for clients or share links)"
+    ],
+    "regression": [
+     "scenario_rows: the model reads images, not values",
+     "batch: for signed-in analysts only (not for clients or share links)"
+    ],
+    "generic": [
+     "scenario_rows: the model reads images, not values",
+     "batch: for signed-in analysts only (not for clients or share links)"
+    ]
+   },
+   "panels": [
+    "about"
+   ]
+  },
+  "dl.finetune_classifier": {
+   "presets": [
+    "image",
+    "classifier",
+    "regression",
+    "generic"
+   ],
+   "blocked": {
+    "image": [
+     "batch: for signed-in analysts only (not for clients or share links)"
+    ],
+    "classifier": [
+     "scenario_rows: the model reads images, not values",
+     "batch: for signed-in analysts only (not for clients or share links)"
+    ],
+    "regression": [
+     "scenario_rows: the model reads images, not values",
+     "batch: for signed-in analysts only (not for clients or share links)"
+    ],
+    "generic": [
+     "scenario_rows: the model reads images, not values",
+     "batch: for signed-in analysts only (not for clients or share links)"
+    ]
+   },
+   "panels": [
+    "about"
+   ]
+  },
+  "dl.mlp": {
+   "presets": [
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "predicted",
+    "by_case",
+    "fit",
+    "residuals"
+   ]
+  },
+  "mmm.bayesian": {
+   "presets": [
+    "mmm_planner",
+    "forecast",
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "tiles",
+    "fan",
+    "scorecard",
+    "changes",
+    "roi_trend",
+    "scenarios"
+   ]
+  },
+  "mmm.frequentist": {
+   "presets": [
+    "mmm_planner",
+    "forecast",
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "tiles",
+    "fan",
+    "scorecard",
+    "changes",
+    "roi_trend",
+    "scenarios"
+   ]
+  },
+  "mmm.multivariate": {
+   "presets": [
+    "mmm_planner",
+    "forecast",
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "tiles",
+    "fan",
+    "scorecard",
+    "changes",
+    "roi_trend",
+    "scenarios"
+   ]
+  },
+  "mmm.nested": {
+   "presets": [
+    "mmm_planner",
+    "forecast",
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "tiles",
+    "fan",
+    "scorecard",
+    "changes",
+    "roi_trend",
+    "scenarios"
+   ]
+  },
+  "sci.areal_bym2": {
+   "presets": [
+    "field_map",
+    "generic"
+   ],
+   "blocked": {
+    "generic": [
+     "batch: the model has no row dim"
+    ]
+   },
+   "panels": [
+    "k_share_p_exceed",
+    "areas"
+   ]
+  },
+  "sci.circular_regression": {
+   "presets": [
+    "field_map",
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "map"
+   ]
+  },
+  "sci.cmb_field": {
+   "presets": [
+    "field_map",
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "k_log_amplitude",
+    "k_tilt",
+    "map"
+   ]
+  },
+  "sci.colour_naming": {
+   "presets": [
+    "field_map",
+    "generic"
+   ],
+   "blocked": {
+    "generic": [
+     "batch: the model has no row dim"
+    ]
+   },
+   "panels": [
+    "k_k_eff_speaker",
+    "k_k_eff_language",
+    "map"
+   ]
+  },
+  "sci.fisher_kpp": {
+   "presets": [
+    "field_map",
+    "forecast",
+    "generic"
+   ],
+   "blocked": {
+    "generic": [
+     "batch: the model has no row dim"
+    ]
+   },
+   "panels": [
+    "k_wave_speed",
+    "map"
+   ]
+  },
+  "sci.graphical_model": {
+   "presets": [
+    "field_map",
+    "generic"
+   ],
+   "blocked": {
+    "generic": [
+     "batch: the model has no row dim"
+    ]
+   },
+   "panels": [
+    "map"
+   ]
+  },
+  "sci.heat_plate": {
+   "presets": [
+    "field_map",
+    "generic"
+   ],
+   "blocked": {
+    "generic": [
+     "batch: the model has no row dim"
+    ]
+   },
+   "panels": [
+    "k_spread_length",
+    "map"
+   ]
+  },
+  "sci.ibp_features": {
+   "presets": [
+    "field_map",
+    "generic"
+   ],
+   "blocked": {
+    "generic": [
+     "batch: the model has no row dim"
+    ]
+   },
+   "panels": [
+    "map"
+   ]
+  },
+  "sci.lgcp_grid": {
+   "presets": [
+    "field_map",
+    "forecast",
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "k_last_total",
+    "map",
+    "over_time"
+   ]
+  },
+  "sci.network_latent_space": {
+   "presets": [
+    "field_map",
+    "generic"
+   ],
+   "blocked": {
+    "generic": [
+     "batch: the model has no row dim"
+    ]
+   },
+   "panels": [
+    "map"
+   ]
+  },
+  "sci.phylo_regression": {
+   "presets": [
+    "field_map",
+    "generic"
+   ],
+   "blocked": {
+    "generic": [
+     "batch: the model has no row dim"
+    ]
+   },
+   "panels": [
+    "value",
+    "chart"
+   ]
+  },
+  "sci.storm_localisation": {
+   "presets": [
+    "field_map",
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "map"
+   ]
+  },
+  "sci.strong_lens": {
+   "presets": [
+    "field_map",
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "k_einstein_radius",
+    "k_einstein_mass",
+    "map"
+   ]
+  },
+  "sci.traction_force": {
+   "presets": [
+    "field_map",
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "k_strain_energy",
+    "k_contractility",
+    "map"
+   ]
+  },
+  "sci.turing_pattern": {
+   "presets": [
+    "field_map",
+    "generic"
+   ],
+   "blocked": {
+    "generic": [
+     "batch: the model has no row dim"
+    ]
+   },
+   "panels": [
+    "k_p_turing",
+    "k_wavelength",
+    "map"
+   ]
+  },
+  "sklearn.multiclass_classifier": {
+   "presets": [
+    "classifier",
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "most_likely",
+    "chances",
+    "calibration",
+    "confusion",
+    "accuracy"
+   ]
+  },
+  "sklearn.tabular_bootstrap": {
+   "presets": [
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "predicted",
+    "by_case",
+    "fit",
+    "residuals",
+    "contributions"
+   ]
+  },
+  "sklearn.tabular_classifier": {
+   "presets": [
+    "classifier",
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "chance",
+    "chances",
+    "calibration",
+    "confusion",
+    "accuracy"
+   ]
+  },
+  "sklearn.tabular_conformal": {
+   "presets": [
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "predicted",
+    "by_case",
+    "fit",
+    "residuals"
+   ]
+  },
+  "sklearn.tabular_quantiles": {
+   "presets": [
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "predicted",
+    "by_case",
+    "fit",
+    "residuals"
+   ]
+  },
+  "sklearn.tabular_regressor": {
+   "presets": [
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "predicted",
+    "by_case",
+    "fit",
+    "residuals",
+    "contributions"
+   ]
+  },
+  "tabular.declarative_glm": {
+   "presets": [
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "predicted",
+    "by_case",
+    "fit",
+    "residuals"
+   ]
+  },
+  "tabular.hierarchical_glm": {
+   "presets": [
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "predicted",
+    "by_case",
+    "fit",
+    "residuals"
+   ]
+  },
+  "tabular.image_logistic": {
+   "presets": [
+    "classifier",
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "most_likely",
+    "chances",
+    "calibration",
+    "confusion",
+    "accuracy"
+   ]
+  },
+  "tabular.regressor": {
+   "presets": [
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "predicted",
+    "by_case",
+    "fit",
+    "residuals"
+   ]
+  },
+  "ts.ardl": {
+   "presets": [
+    "forecast",
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "next",
+    "typical_error",
+    "inside_range",
+    "fan",
+    "accuracy",
+    "next_periods"
+   ]
+  },
+  "ts.arima": {
+   "presets": [
+    "forecast",
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "next",
+    "typical_error",
+    "inside_range",
+    "fan",
+    "accuracy",
+    "next_periods"
+   ]
+  },
+  "ts.bsts": {
+   "presets": [
+    "forecast",
+    "generic"
+   ],
+   "blocked": {
+    "generic": [
+     "batch: the model has no row dim"
+    ]
+   },
+   "panels": [
+    "next",
+    "horizon_total",
+    "typical_error",
+    "inside_range",
+    "fan",
+    "accuracy",
+    "next_periods",
+    "o_level"
+   ]
+  },
+  "ts.dynamic_factor": {
+   "presets": [
+    "forecast",
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "next",
+    "typical_error",
+    "inside_range",
+    "fan",
+    "accuracy",
+    "next_periods"
+   ]
+  },
+  "ts.ecm": {
+   "presets": [
+    "forecast",
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "next",
+    "typical_error",
+    "inside_range",
+    "fan",
+    "accuracy",
+    "next_periods"
+   ]
+  },
+  "ts.ets": {
+   "presets": [
+    "forecast",
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "next",
+    "typical_error",
+    "inside_range",
+    "fan",
+    "accuracy",
+    "next_periods"
+   ]
+  },
+  "ts.gaussian_hmm": {
+   "presets": [
+    "forecast",
+    "generic"
+   ],
+   "blocked": {
+    "generic": [
+     "batch: the model has no row dim"
+    ]
+   },
+   "panels": [
+    "next",
+    "horizon_total",
+    "typical_error",
+    "inside_range",
+    "fan",
+    "accuracy",
+    "next_periods",
+    "o_state_prob"
+   ]
+  },
+  "ts.hsgp_trend": {
+   "presets": [
+    "forecast",
+    "generic"
+   ],
+   "blocked": {
+    "generic": [
+     "batch: the model has no row dim"
+    ]
+   },
+   "panels": [
+    "next",
+    "horizon_total",
+    "typical_error",
+    "inside_range",
+    "fan",
+    "accuracy",
+    "next_periods",
+    "o_trend"
+   ]
+  },
+  "ts.markov_switching": {
+   "presets": [
+    "forecast",
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "next",
+    "typical_error",
+    "inside_range",
+    "fan",
+    "accuracy",
+    "next_periods"
+   ]
+  },
+  "ts.sarimax": {
+   "presets": [
+    "forecast",
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "next",
+    "typical_error",
+    "inside_range",
+    "fan",
+    "accuracy",
+    "next_periods"
+   ]
+  },
+  "ts.theta": {
+   "presets": [
+    "forecast",
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "next",
+    "typical_error",
+    "inside_range",
+    "fan",
+    "accuracy",
+    "next_periods"
+   ]
+  },
+  "ts.unobserved_components": {
+   "presets": [
+    "forecast",
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "next",
+    "typical_error",
+    "inside_range",
+    "fan",
+    "accuracy",
+    "next_periods"
+   ]
+  },
+  "ts.var": {
+   "presets": [
+    "forecast",
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "next",
+    "typical_error",
+    "inside_range",
+    "fan",
+    "accuracy",
+    "next_periods"
+   ]
+  },
+  "ts.varmax": {
+   "presets": [
+    "forecast",
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "next",
+    "typical_error",
+    "inside_range",
+    "fan",
+    "accuracy",
+    "next_periods"
+   ]
+  },
+  "ts.vecm": {
+   "presets": [
+    "forecast",
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "next",
+    "typical_error",
+    "inside_range",
+    "fan",
+    "accuracy",
+    "next_periods"
+   ]
+  }
+ }
+}

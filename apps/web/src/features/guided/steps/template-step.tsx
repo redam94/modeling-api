@@ -71,7 +71,8 @@ export function TemplateCard({ template }: { template: GuidedTemplate }) {
           ))}
         </ul>
       ) : null}
-      <div className="mt-auto flex flex-wrap gap-1.5 pt-1">
+      {/* pe-24: the corner where the absolutely placed About button sits */}
+      <div className={cn("mt-auto flex flex-wrap gap-1.5 pt-1", template.about && "pe-24")}>
         {taskBadges(template).map((b) => (
           <Badge key={b} variant="secondary">
             {b}
@@ -131,7 +132,7 @@ export function TemplatePicker() {
   if (templates.isPending) return <LoadingRows rows={3} />;
   if (templates.isError) return <ErrorNotice error={templates.error} title="The app could not load the templates" onRetry={() => void templates.refetch()} />;
   return (
-    <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="Templates">
+    <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="Templates" data-tour="guided.templates">
       {sortTemplates(templates.data.items).map((t) => (
         <li key={t.id} className="relative">
           <TemplateCard template={t} />

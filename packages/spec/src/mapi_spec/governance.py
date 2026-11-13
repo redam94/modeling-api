@@ -984,13 +984,22 @@ class Approval(ResponseModel):
 
 
 def check_approver(
-    *, submitter_id: str, approver_id: str, is_reviewer: bool, already_approved: Iterable[str] = ()
+    *,
+    submitter_id: str,
+    approver_id: str,
+    is_reviewer: bool,
+    already_approved: Iterable[str] = (),
+    subject: str = "a model for validation",
 ) -> None:
     """Refuse an approval by the submitter (``SELF_APPROVAL_FORBIDDEN``), by someone without
-    the reviewer capability (``FORBIDDEN``) or twice by the same person (``CONFLICT``)."""
+    the reviewer capability (``FORBIDDEN``) or twice by the same person (``CONFLICT``).
+
+    ``subject`` names what was submitted in the self-approval message (v0.19: the plugin
+    routes pass ``"plugin version"`` and ``is_reviewer=True`` after their own tenant-admin
+    check)."""
     if approver_id == submitter_id:
         raise MapiError(
-            "the person who submitted a model for validation cannot approve it",
+            f"the person who submitted {subject} cannot approve it",
             code=ErrorCode.SELF_APPROVAL_FORBIDDEN,
         )
     if not is_reviewer:

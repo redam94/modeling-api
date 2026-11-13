@@ -26,6 +26,24 @@ describe("runs search in the URL", () => {
     expect(validateRunsSearch({ c: Array.from({ length: 20 }, (_, i) => `param.p${i}`) }).c).toHaveLength(16);
   });
 
+  it("reads ?q= (the key of the list pages, which the global search writes) as the name, and takes it out of the URL", () => {
+    const fromSearch = validateRunsSearch({ q: " grid search " });
+    expect(fromSearch.name).toBe("grid search");
+    // The router keeps the keys the validator does not name: `q: undefined` removes it.
+    expect(Object.hasOwn(fromSearch, "q")).toBe(true);
+    expect(fromSearch.q).toBeUndefined();
+    expect(compactSearch(fromSearch)).toEqual({ name: "grid search" });
+    expect(filtersFromSearch(fromSearch)).toEqual({ name: "grid search" });
+    // A number is a text too (the router parses ?q=2025).
+    expect(validateRunsSearch({ q: 2025 }).name).toBe("2025");
+  });
+
+  it("keeps the name of the URL when the URL has a name and a q", () => {
+    expect(validateRunsSearch({ name: "baseline", q: "grid" }).name).toBe("baseline");
+    expect(validateRunsSearch({ name: "baseline" }).name).toBe("baseline");
+    expect(validateRunsSearch({}).name).toBeUndefined();
+  });
+
   it("leaves empty keys out, so /runs stays /runs", () => {
     expect(compactSearch({ state: undefined, f: [], name: "", o: "name" })).toEqual({ o: "name" });
   });

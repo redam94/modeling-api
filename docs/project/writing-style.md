@@ -13,11 +13,55 @@ rules).
 | Text | Rules |
 |---|---|
 | Documentation (`docs/`) | Yes, all pages. Procedures and descriptions. |
-| Text in the web app | Yes: labels, buttons, hints, help text, empty states, errors and tooltips. |
+| Text in the web app | Yes: labels, buttons, hints, help text, errors, validation issues and tooltips. Some surfaces use the [warm voice](#the-warm-voice) instead. |
+| Onboarding, empty states, tours, the checklist, "Make your own", tutorials and marketing-ish UI copy | The [warm voice](#the-warm-voice). |
 | Text that the server sends for the app to show | Yes: About cards, scorecard messages, suggested actions and plain-language error messages. |
 | New CHANGELOG entries | Yes. Older entries stay as they are. |
 | Code, identifiers, API field names and log text for developers | No. Keep the names that the code uses. |
 | Code comments, docstrings and commit messages | No. |
+
+## The warm voice
+
+Some text welcomes people and teaches them. For this text, a friendly voice works better than
+strict STE. The warm voice applies only to these surfaces:
+
+- onboarding: the welcome dialog, the Start here hub, the sample project card and the checklist
+- empty states
+- guided tours and coach-marks
+- "Make your own" and "Add your own"
+- tutorials, for example the extender tutorial in `docs/`
+- marketing-ish UI copy, for example the Home hero
+
+These rules apply to the warm voice:
+
+1. Talk to the reader as "you". You can use "we" for the platform team and "let's" in a tour.
+2. You can use contractions ("you'll", "isn't"), the "-ing" form ("Getting started") and
+   friendly words ("nice", "ready", "try") that are not in the STE dictionary.
+3. Keep the STE limits on length: a maximum of 25 words in a sentence and one idea in each
+   sentence. Short is still better than clever.
+4. Use the project technical names with their meanings (dataset, model, run, spec). Do not use
+   synonyms for them.
+5. Tell the reader what they get, then what to do: "Your first model in two minutes. Open the
+   sample project."
+6. Do not use jokes, slang or idioms. Use a maximum of one exclamation mark in a view.
+   Translators and persons who do not speak English as a first language must understand the
+   text.
+7. Do not promise results that the model cannot give ("guaranteed", "perfect").
+
+The warm voice never applies to these texts. They stay in STE:
+
+- errors, validation issues and their pointers
+- API messages and the plain-language messages that the server sends
+- reference text: About cards, field hints, tooltips, scorecard messages and the reference
+  pages in `docs/`
+- confirmations and warnings
+
+| STE (errors and reference) | Warm voice (onboarding and empty states) |
+|---|---|
+| "This project has no datasets. Upload a CSV file to start." | "No datasets yet. Drop in a CSV file and we'll take it from there." |
+| "The prior is not correct. Type a positive number for sigma." | (not used: this is a validation issue) |
+| "Shows the inputs that the model needs." | (not used: this is a tooltip) |
+| "Open the sample project." | "Want to see a real fit first? Open the sample project." |
 
 ## Words
 

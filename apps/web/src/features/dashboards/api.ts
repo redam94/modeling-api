@@ -1,7 +1,8 @@
 /**
- * TanStack Query hooks of the v0.16 dashboard routes for signed-in callers (`/v1/dashboards`):
+ * TanStack Query hooks of the dashboard routes for signed-in callers (`/v1/dashboards`):
  * the client portal's list, and the analyst's drafts, publishing, grants, share links,
- * readout review and refit requests.
+ * readout review and refit requests; v0.17 adds the suggested presets, the source catalog of
+ * a draft and the layout 2 upgrade.
  *
  * Every route is project-scoped: keys start with `["p", "<tenant>/<project>", "dashboards"]`
  * (`keys.ts`) and every request names the same project in `X-Mapi-Project`. The readout page
@@ -14,22 +15,22 @@ import { api, ApiError, newIdempotencyKey, unwrap, unwrapVoid } from "@/api/clie
 import { useProjectScope, type ProjectScope } from "@/api/queries";
 
 import { memberClient, type MemberClientOptions } from "./client";
-import { dk, type DashboardListFilters, type ReadoutFilters } from "./keys";
+import { dk, type DashboardListFilters, type PresetRef, type ReadoutFilters } from "./keys";
 import {
   isAnalystDashboard,
+  type AnyDashboardSpec,
   type Dashboard,
-  type DashboardClient,
+  type DashboardClientV2,
   type DashboardCreate,
   type DashboardRefitRequest,
   type DashboardShareCreate,
-  type DashboardSpec,
   type ReadoutHeader,
 } from "./types";
 
 const LIMIT = 200;
 
 /** The `DashboardClient` of a signed-in caller in the selected project (stable per project and dashboard). */
-export function useMemberClient(dashboardId: string, opts: MemberClientOptions = {}): DashboardClient {
+export function useMemberClient(dashboardId: string, opts: MemberClientOptions = {}): DashboardClientV2 {
   const s = useProjectScope();
   const kind = opts.kind ?? "member";
   const spec = opts.spec ?? "draft";
@@ -106,12 +107,12 @@ export function useCreateDashboard() {
   });
 }
 
-/** Replace the draft. `etag` is the `draft_etag` you read (412 `DASHBOARD_SPEC_STALE` if it moved). */
+/** Replace the draft (either layout). `etag` is the `draft_etag` you read (412 `DASHBOARD_SPEC_STALE` if it moved). */
 export function useUpdateDraft(id: string) {
   const s = useProjectScope();
   const invalidate = useInvalidateDashboard(s);
   return useMutation({
-    mutationFn: ({ spec, etag }: { spec: DashboardSpec; etag: string }) =>
+    mutationFn: ({ spec, etag }: { spec: AnyDashboardSpec; etag: string }) =>
       unwrap(api.PUT("/v1/dashboards/{dashboard_id}/draft", { params: { path: { dashboard_id: id } }, headers: { ...s.headers, "If-Match": etag }, body: { spec } })),
     onSuccess: (d) => invalidate(id, d),
     // the draft moved: read the new one, so "Load the new draft" loads it
@@ -158,6 +159,51 @@ export function useRefreshDashboard(id: string) {
     mutationFn: (idemKey?: string) =>
       unwrap(api.POST("/v1/dashboards/{dashboard_id}:refresh", { params: { path: { dashboard_id: id } }, headers: { ...s.headers, "Idempotency-Key": idemKey ?? newIdempotencyKey() } })),
     onSuccess: () => qc.invalidateQueries({ queryKey: dk.one(s.key, id) }),
+  });
+}
+
+// ------------------------------------------------------------------------------ layout 2 (v0.17)
+
+/**
+ * The presets suggested for a model version or an endpoint (`GET /v1/dashboards:presets`), best
+ * first, with the compiled layout 2 spec of the first (`spec`; `null` when none compiles, with
+ * `issues`). `ref` `null`: nothing chosen yet.
+ */
+export function useDashboardPresets(ref: PresetRef | null) {
+  const s = useProjectScope();
+  return useQuery({
+    queryKey: dk.presets(s.key, ref ?? { alias: "" }),
+    queryFn: ({ signal }) => unwrap(api.GET("/v1/dashboards:presets", { params: { query: ref ?? {} }, headers: s.headers, signal })),
+    enabled: ref !== null,
+    staleTime: 5 * 60_000,
+  });
+}
+
+/** What the draft's binding offers (`GET …/sources`: outputs, metrics, pictures, inputs); the builder's catalog. */
+export function useDashboardSources(id: string, opts: { enabled?: boolean } = {}) {
+  const s = useProjectScope();
+  return useQuery({
+    queryKey: dk.sources(s.key, id),
+    queryFn: ({ signal }) => unwrap(api.GET("/v1/dashboards/{dashboard_id}/sources", { params: { path: { dashboard_id: id } }, headers: s.headers, signal })),
+    enabled: opts.enabled ?? true,
+    staleTime: 5 * 60_000,
+  });
+}
+
+/**
+ * "Use the new layout": convert the layout 1 draft of `etag` to a layout 2 draft (`:upgrade`;
+ * the answer carries the dashboard, the issues to fix and plain notes). 412 when the draft moved.
+ */
+export function useUpgradeDashboard(id: string) {
+  const s = useProjectScope();
+  const invalidate = useInvalidateDashboard(s);
+  return useMutation({
+    mutationFn: (etag: string) =>
+      unwrap(api.POST("/v1/dashboards/{dashboard_id}:upgrade", { params: { path: { dashboard_id: id } }, headers: { ...s.headers, "If-Match": etag } })),
+    onSuccess: async (out) => {
+      await invalidate(id, out.dashboard);
+    },
+    onError: (e) => (isStale(e) ? invalidate(id) : undefined),
   });
 }
 
@@ -262,14 +308,16 @@ export function useAnalystReadouts(id: string, f: ReadoutFilters = {}, opts: { e
   });
 }
 
-function useReviewReadout(id: string, action: "publish" | "hide") {
+function useReviewReadout(id: string, action: "publish" | "hide" | "keep") {
   const s = useProjectScope();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (seq: number): Promise<ReadoutHeader> =>
-      action === "publish"
-        ? unwrap(api.POST("/v1/dashboards/{dashboard_id}/readouts/{seq}:publish", { params: { path: { dashboard_id: id, seq } }, headers: s.headers }))
-        : unwrap(api.POST("/v1/dashboards/{dashboard_id}/readouts/{seq}:hide", { params: { path: { dashboard_id: id, seq } }, headers: s.headers })),
+    mutationFn: (seq: number): Promise<ReadoutHeader> => {
+      const params = { path: { dashboard_id: id, seq } };
+      if (action === "publish") return unwrap(api.POST("/v1/dashboards/{dashboard_id}/readouts/{seq}:publish", { params, headers: s.headers }));
+      if (action === "keep") return unwrap(api.POST("/v1/dashboards/{dashboard_id}/readouts/{seq}:keep", { params, headers: s.headers }));
+      return unwrap(api.POST("/v1/dashboards/{dashboard_id}/readouts/{seq}:hide", { params, headers: s.headers }));
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: dk.one(s.key, id) }),
   });
 }
@@ -282,6 +330,15 @@ export function usePublishReadout(id: string) {
 /** Remove a readout from the clients' view (the row stays for audit). */
 export function useHideReadout(id: string) {
   return useReviewReadout(id, "hide");
+}
+
+/**
+ * Keep a tried case (anybody's private prediction readout, as an editor): it stops expiring
+ * and waits for review (`409` for another kind of readout). The readout page's own keep is
+ * `useKeepReadout` over its client.
+ */
+export function useKeepTriedCase(id: string) {
+  return useReviewReadout(id, "keep");
 }
 
 // ------------------------------------------------------------------------------ refit requests

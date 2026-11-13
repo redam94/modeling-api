@@ -70,7 +70,7 @@ function SheetsSteps({ endpoint }: { endpoint: Endpoint }) {
     <div className="grid gap-3">
       <ol className="grid list-decimal gap-1 pl-5 text-sm">
         <li>
-          <Link to="/tokens" search={{ preset: `score:${endpoint.alias}` }} className="text-primary hover:underline">
+          <Link to="/tokens" search={{ preset: `score:${endpoint.alias}` }} className="link">
             Create a token
           </Link>{" "}
           that can only score <Mono>{endpoint.alias}</Mono>.

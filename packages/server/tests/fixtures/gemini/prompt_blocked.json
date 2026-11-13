@@ -1,0 +1,15 @@
+{
+  "_source": "Built from the generateContent API reference representations (ai.google.dev/api/generate-content, docs/api-errors) recorded in plans/v020-probe.md (c); no API call was made.",
+  "_note": "No candidate: the prompt was blocked.",
+  "status": 200,
+  "body": {
+    "promptFeedback": {
+      "blockReason": "PROHIBITED_CONTENT"
+    },
+    "usageMetadata": {
+      "promptTokenCount": 900,
+      "candidatesTokenCount": 0,
+      "totalTokenCount": 900
+    }
+  }
+}

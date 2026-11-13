@@ -56,7 +56,7 @@ EXPECTED: dict[str, dict[str, str]] = {
     "project": {"read": "V/P", "create": "A/T", "update": "A/P", "delete": "A/T"},
     "member": {"read": "V/P", "create": "A/P", "update": "A/P", "delete": "A/P"},
     "token": {"read": "V/P", "create": "V/P", "delete": "V/P", "manage": "A/P"},
-    "catalog": {"read": "V/P"},
+    "catalog": {"read": "V/P", "update": "op"},
     "dataset": {"read": "V/P", "create": "E/P", "update": "E/P", "delete": "A/P"},
     "spec": {"read": "V/P", "create": "E/P", "update": "E/P", "delete": "A/P"},
     "run": {"read": "V/P", "create": "R/P", "cancel": "R/P", "update": "R/P"},
@@ -72,7 +72,10 @@ EXPECTED: dict[str, dict[str, str]] = {
     "webhook": {"read": "A/P", "create": "A/P", "update": "A/P", "delete": "A/P"},
     "tenant_deletion": {"read": "A/T", "create": "A/T", "cancel": "A/T", "manage": "op"},
     "tenant_export": {"read": "A/T", "create": "A/T"},
-    "plugin": {"read": "V/P", "create": "A/P", "delete": "A/P"},
+    # v0.19: uploads (create also needs D1/D2 in the handler; approve is a tenant admin)
+    "plugin": {"read": "V/P", "create": "E/P", "update": "E/P", "delete": "E/P",
+               "approve": "A/T"},
+    "plugin_settings": {"read": "A/T", "update": "A/T"},
     "usage": {"read": "V/P"},
     "billing": {"read": "A/T"},
     "audit": {"read": "A/T"},
@@ -90,6 +93,9 @@ EXPECTED: dict[str, dict[str, str]] = {
                   "delete": "E/P"},
     "dashboard_grant": {"read": "E/P", "create": "E/P", "delete": "E/P"},
     "dashboard_share": {"read": "E/P", "create": "E/P", "delete": "E/P"},
+    # v0.18: the library (archive = delete)
+    "library": {"read": "V/P", "create": "E/P", "update": "E/P", "delete": "E/P"},
+    "tenant_library": {"read": "V/P", "create": "A/T", "update": "A/T", "delete": "A/T"},
 }  # fmt: skip
 LETTER = {"C": C, "V": V, "E": E, "R": R, "A": A}
 

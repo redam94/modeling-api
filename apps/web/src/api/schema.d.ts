@@ -34,6 +34,8 @@ export interface paths {
         /**
          * Auth Login
          * @description Start sign-in: Authorization Code + PKCE (S256) + nonce, state kept server-side.
+         *     ``reauth=1`` (v0.19) asks the identity provider to authenticate the person again
+         *     (``max_age=0``, ``prompt=login``), as approving uploaded code needs.
          */
         get: operations["auth_login"];
         put?: never;
@@ -197,6 +199,30 @@ export interface paths {
         get: operations["admin_list_audit"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/catalog:describe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Queue a describe run for the current image digest (operators)
+         * @description Queue a ``describe`` run that builds the catalog of this image digest (for example
+         *     after a describe failed and the plugin was fixed). When one is queued or running, or
+         *     one already succeeded, that run is returned and nothing is queued: the catalog of an
+         *     image digest never changes, so a new plugin needs a new digest (``make plugin-dev`` or
+         *     a new image) and a restart, which describes again by itself.
+         */
+        post: operations["admin_describe_catalog"];
         delete?: never;
         options?: never;
         head?: never;
@@ -499,7 +525,8 @@ export interface paths {
         /**
          * About cards of catalog items (filter: kind)
          * @description The plain-language About card of every model, preprocessing step, split, template,
-         *     workflow template, workflow node and governance check a user can pick.
+         *     workflow template, workflow node and governance check a user can pick (v0.19: the
+         *     uploads in the caller's tenant catalog view too).
          */
         get: operations["list_catalog_abouts"];
         put?: never;
@@ -523,6 +550,29 @@ export interface paths {
          *     query of ``GET /v1/catalog/recommendations``.
          */
         get: operations["get_chooser"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/catalog/diagnostics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Problems found while the current catalog was built (tenant admins, operators)
+         * @description Load errors, reserved namespaces, unsafe schemas that were stripped, and plugin
+         *     workflow nodes and templates that were hidden. ``message`` is platform text;
+         *     ``untrusted_text`` comes from a plugin and is shown as text only. Empty while no catalog
+         *     is cached for the image digest.
+         */
+        get: operations["list_catalog_diagnostics"];
         put?: never;
         post?: never;
         delete?: never;
@@ -603,6 +653,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/catalog/plots/previews/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The result of a recipe preview run */
+        get: operations["get_catalog_plot_preview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/catalog/plots/{plot_id}/{version}/example": {
         parameters: {
             query?: never;
@@ -613,11 +680,34 @@ export interface paths {
         /**
          * Get Catalog Plot Example
          * @description The plot recipe rendered on its synthetic example data (made by the describe run,
-         *     datasets inline). ``404`` when the recipe, or its example, does not exist.
+         *     datasets inline). ``404`` when the recipe, or its example, does not exist. An uploaded
+         *     recipe's example is the one its version's describe run made (re-sanitized).
          */
         get: operations["get_catalog_plot_example"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/catalog/plots/{plot_id}/{version}:preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Draw a plot recipe's example with these settings (Prefer: wait=N, at most 15)
+         * @description ``200`` with the plot when it is done (or cached), else ``202`` with the ``run_id``
+         *     to poll at ``GET /v1/catalog/plots/previews/{run_id}``. The settings are checked against
+         *     the recipe's settings schema before any run (``SCHEMA_INVALID`` with pointers).
+         */
+        post: operations["preview_catalog_plot"];
         delete?: never;
         options?: never;
         head?: never;
@@ -637,7 +727,7 @@ export interface paths {
          *     a question or separate values with commas), each with plain reasons and cautions.
          *     Without ``kind`` the candidates are models, guided templates and workflow templates;
          *     ``kind`` ranks one kind (steps, nodes, checks, ...). An unknown question or answer is
-         *     ``CHOOSER_ANSWER_INVALID``.
+         *     ``CHOOSER_ANSWER_INVALID``. v0.19: uploads are never ranked (the base catalog only).
          */
         get: operations["recommend_catalog_items"];
         put?: never;
@@ -672,7 +762,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Workflow node implementations with ports, parameters and About cards */
+        /**
+         * Workflow node implementations with ports, parameters and About cards
+         * @description The built-in nodes and those of installed plugins (``plugin`` set; v0.18), and
+         *     (v0.19) the uploaded nodes in the caller's tenant catalog view.
+         */
         get: operations["list_workflow_nodes"];
         put?: never;
         post?: never;
@@ -709,7 +803,9 @@ export interface paths {
         /**
          * List Dashboards
          * @description Dashboards of the project, newest first. A client sees only the published ones
-         *     granted to them; viewers do not see drafts (editors do).
+         *     granted to them, less those made with uploaded code (v0.19 D16: opening one answers
+         *     ``403 UPLOADED_CODE_NOT_SHAREABLE``, so the list leaves it out); viewers do not see
+         *     drafts (editors do).
          */
         get: operations["list_dashboards"];
         put?: never;
@@ -783,6 +879,170 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dashboards/{dashboard_id}/assets/{asset_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Dashboard Asset
+         * @description A picture of the dashboard (PNG, at most 512 KiB). Members (viewers and up) may
+         *     read the pictures of any revision (History, the builder); a client only those of the
+         *     published revision (as a share link), so a picture the analyst removed stays gone.
+         */
+        get: operations["get_dashboard_asset"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dashboards/{dashboard_id}/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit Dashboard Batch
+         * @description Score a file of new cases (inline XrJSON, one row per id) as the publisher: a
+         *     private batch readout with a summary and a predictions download (``202``). ``409
+         *     DASHBOARD_BATCH_TOO_LARGE`` over the row cap or the result budget; ``429`` over a daily
+         *     batch cap.
+         */
+        post: operations["submit_dashboard_batch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dashboards/{dashboard_id}/batch/template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Dashboard Batch Template
+         * @description The columns of a batch file (the id, then the drivers with their ranges), an
+         *     example CSV and the row cap (``409 DASHBOARD_INPUT_DISABLED`` without batch scoring).
+         */
+        get: operations["get_dashboard_batch_template"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dashboards/{dashboard_id}/chat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Dashboard Chat
+         * @description Whether you can chat about this dashboard now (``reason`` when not), whether it keeps
+         *     conversations, and the suggested questions.
+         */
+        get: operations["get_dashboard_chat"];
+        put?: never;
+        /**
+         * Post Dashboard Chat
+         * @description Ask the assistant about this dashboard: one answer per request. Send the earlier
+         *     turns of the conversation as they were returned (assistant turns with their ``sig``).
+         *     ``409 CHAT_DISABLED``, ``429 CHAT_BUDGET_EXHAUSTED`` or ``RATE_LIMITED`` (with
+         *     ``Retry-After``), ``400 CHAT_HISTORY_INVALID``, ``503 CHAT_UNAVAILABLE``.
+         */
+        post: operations["post_dashboard_chat"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dashboards/{dashboard_id}/chat/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Dashboard Chat Settings
+         * @description The chat settings of the dashboard and the tokens used today (``ETag``: send it back
+         *     in ``If-Match`` to change them).
+         */
+        get: operations["get_dashboard_chat_settings"];
+        /**
+         * Put Dashboard Chat Settings
+         * @description Change the chat settings. ``If-Match`` must be the ``etag`` you read (``412
+         *     PRECONDITION_FAILED`` when it is missing or the settings changed). Audited.
+         */
+        put: operations["put_dashboard_chat_settings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dashboards/{dashboard_id}/chat/transcripts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Dashboard Chat Transcripts
+         * @description The kept conversations of the dashboard, newest first.
+         */
+        get: operations["list_dashboard_chat_transcripts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dashboards/{dashboard_id}/chat/transcripts/{conversation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Dashboard Chat Transcript
+         * @description One kept conversation, oldest turn first (``404`` when nothing is kept).
+         */
+        get: operations["get_dashboard_chat_transcript"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete Dashboard Chat Transcript
+         * @description Delete a kept conversation (every turn of it). Audited with the number of turns.
+         */
+        delete: operations["delete_dashboard_chat_transcript"];
         options?: never;
         head?: never;
         patch?: never;
@@ -876,6 +1136,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/dashboards/{dashboard_id}/predictions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit Dashboard Predictions
+         * @description Score scenario rows ("Try a case"): every value is checked against the published
+         *     revision (``422 DASHBOARD_INPUT_INVALID`` with ``/rows/<i>/<name>`` pointers; never
+         *     clipped), then scored as the publisher - a private prediction readout (``202``; a
+         *     repeated request answers with the earlier result).
+         */
+        post: operations["submit_dashboard_predictions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dashboards/{dashboard_id}/read-tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Dashboard Read Tokens
+         * @description Your read tokens for this dashboard, newest first (``all=true``: every owner's, for
+         *     editors). Never a secret.
+         */
+        get: operations["list_dashboard_read_tokens"];
+        put?: never;
+        /**
+         * Create Dashboard Read Token
+         * @description Make a read token for this dashboard. ``secret`` is returned now and never again.
+         */
+        post: operations["create_dashboard_read_token"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dashboards/{dashboard_id}/read-tokens/{token_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Revoke Dashboard Read Token
+         * @description Revoke a read token (idempotent): yours, or any of the dashboard's as an editor.
+         */
+        delete: operations["revoke_dashboard_read_token"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/dashboards/{dashboard_id}/readouts": {
         parameters: {
             query?: never;
@@ -919,6 +1247,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/dashboards/{dashboard_id}/readouts/{seq}/predictions.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Dashboard Predictions
+         * @description The predictions of a batch readout as CSV, rendered from the run's results (its own
+         *     caller, or an editor). ``404`` for anybody else; ``410 DASHBOARD_DOWNLOAD_GONE`` once
+         *     the readout or the run's results expired. Charged to egress and audited.
+         */
+        get: operations["download_dashboard_predictions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/dashboards/{dashboard_id}/readouts/{seq}:hide": {
         parameters: {
             query?: never;
@@ -934,6 +1284,29 @@ export interface paths {
          *     Audited.
          */
         post: operations["hide_dashboard_readout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dashboards/{dashboard_id}/readouts/{seq}:keep": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Keep Dashboard Readout
+         * @description Keep a tried case (a private prediction readout of yours; an editor: anybody's): it
+         *     no longer expires and waits for review - only an editor's ``…:publish`` takes it into the
+         *     history. ``409`` for another kind of readout, a failed or a hidden one. Idempotent.
+         *     Audited.
+         */
+        post: operations["keep_dashboard_readout"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1111,6 +1484,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/dashboards/{dashboard_id}/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Dashboard Sources
+         * @description What the draft's model version offers to panels and inputs: outputs (summary names,
+         *     dims, representation, what each allows), fit metrics, scorecard checks, pictures and
+         *     inputs (cached per model version).
+         */
+        get: operations["get_dashboard_sources"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/dashboards/{dashboard_id}/whatif:evaluate": {
         parameters: {
             query?: never;
@@ -1196,6 +1591,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/dashboards/{dashboard_id}:upgrade": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upgrade Dashboard
+         * @description Convert the layout 1 draft to layout 2 and save it as the draft (``If-Match``: the
+         *     ``draft_etag``). ``issues`` say what to fix before publishing, ``notes`` what changed.
+         *     Publish it as usual. Audited.
+         */
+        post: operations["upgrade_dashboard"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/dashboards/{dashboard_id}:validate": {
         parameters: {
             query?: never;
@@ -1210,6 +1627,29 @@ export interface paths {
          * @description Whether the draft can be published now, and what to fix (JSON pointers into it).
          */
         post: operations["validate_dashboard"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dashboards:presets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Dashboard Presets
+         * @description The presets that fit a model version (``model_id`` and optional ``version``: the
+         *     latest ready one) or the version an endpoint ``alias`` serves, best first, with plain
+         *     reasons and the inputs each cannot offer; and the compiled layout 2 spec of the first
+         *     (a starting draft: nothing is saved).
+         */
+        get: operations["list_dashboard_presets"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1509,9 +1949,10 @@ export interface paths {
         /**
          * Public: the embedded plot with inline data (410 when expired or revoked)
          * @description Public: the embedded plot with every dataset inline (``410 LINK_EXPIRED`` once
-         *     expired or revoked, ``404`` for an unknown token, ``429`` past the per-link or
-         *     per-address rate). Cookies and ``Authorization`` are ignored; browsers may read it only
-         *     from the plot-sandbox origin (CORS), which renders it under its own CSP.
+         *     expired or revoked, ``404`` for an unknown token, ``403 UPLOADED_CODE_NOT_SHAREABLE``
+         *     for a plot made with uploaded code, ``429`` past the per-link or per-address rate).
+         *     Cookies and ``Authorization`` are ignored; browsers may read it only from the
+         *     plot-sandbox origin (CORS), which renders it under its own CSP.
          */
         get: operations["get_embed"];
         put?: never;
@@ -2011,6 +2452,250 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/library": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Library Items
+         * @description Library items of the project and of the tenant, most recently changed first. Archived
+         *     items only with ``include_archived=true``; ``q`` matches the name or the title.
+         */
+        get: operations["list_library_items"];
+        put?: never;
+        /**
+         * Create Library Item
+         * @description Create an item and its revision 1 from a document (or YAML/JSON text). A document that
+         *     does not compile against the current catalog is stored with ``valid: false`` and its
+         *     issues, except a workflow template, which is refused. ``scope: tenant`` needs a tenant
+         *     admin.
+         */
+        post: operations["create_library_item"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/library/charts:preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview Library Chart
+         * @description Draw a chart template on its source recipe's example data (JSON only, no run).
+         *     Problems with the template come back as issues with ``plot: null``.
+         */
+        post: operations["preview_library_chart"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/library/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Library Item
+         * @description One item (``ETag``: ``"r<latest_revision>"``, for ``If-Match`` on a new revision).
+         */
+        get: operations["get_library_item"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/library/{item_id}/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Library Revisions
+         * @description The revisions of an item, newest first.
+         */
+        get: operations["list_library_revisions"];
+        put?: never;
+        /**
+         * Create Library Revision
+         * @description Add an immutable revision. ``If-Match`` with the item's ``ETag`` refuses the change
+         *     (``412``) when someone saved in between. The kind cannot change; the document's
+         *     metadata renames and retitles the item.
+         */
+        post: operations["create_library_revision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/library/{item_id}/revisions/{revision}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Library Revision
+         * @description One revision: the document, whether it compiled, its issues and the compiled output.
+         */
+        get: operations["get_library_revision"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/library/{item_id}:archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Archive Library Item
+         * @description Archive an item: lists and pickers hide it; nothing is deleted, and recipes that use
+         *     it keep working.
+         */
+        post: operations["archive_library_item"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/library/{item_id}:promote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Promote Library Item
+         * @description Copy a project item's latest revision into a new tenant item, which every project of
+         *     the tenant can read (tenant admins). The project item stays as it is.
+         */
+        post: operations["promote_library_item"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/library/{item_id}:unarchive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Unarchive Library Item
+         * @description Show an archived item again.
+         */
+        post: operations["unarchive_library_item"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/library/{item_id}:use": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Use Library Item
+         * @description Compile an item for use, with lineage labels; nothing is saved. A model recipe gives a
+         *     spec fragment (it needs ``spec`` create), a prep preset its steps, a chart template the
+         *     chart applied to ``model_id`` v``model_version``, a workflow template its document.
+         */
+        post: operations["use_library_item"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/library:validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Validate Library Document
+         * @description Check a document against the current catalog (and, with ``dataset``, against the
+         *     data: binding, shape, slots, variables). Nothing is saved; the issues point into the
+         *     document.
+         */
+        post: operations["validate_library_document"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/mcp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mcp Endpoint
+         * @description Public: the MCP server of one dashboard. Send one JSON-RPC 2.0 message with a
+         *     dashboard read token (``Authorization: Bearer``) or a share session
+         *     (``X-Mapi-Share``). Methods: ``initialize``, ``ping``, ``tools/list``, ``tools/call``
+         *     and the ``notifications/initialized`` notification (``202``, no body).
+         */
+        post: operations["mcp_endpoint"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me": {
         parameters: {
             query?: never;
@@ -2442,7 +3127,8 @@ export interface paths {
          * Tokenised read-only link (platform recipes only; shown once)
          * @description Mint a read-only link (the token is in the response once; only its HMAC is stored).
          *     Only plots a model version drew with a platform recipe can be embedded
-         *     (``EMBED_NOT_ALLOWED`` for plugin- and user-authored plots). When the caller may start
+         *     (``EMBED_NOT_ALLOWED`` for plugin- and user-authored plots;
+         *     ``UPLOADED_CODE_NOT_SHAREABLE`` for a plot made with uploaded code). When the caller may start
          *     render runs, a PNG of the plot is rendered in the sandbox as the embed page's fallback.
          *     Audited.
          */
@@ -2513,6 +3199,265 @@ export interface paths {
          *     unsafe: the verdict is ``valid`` + ``issues``).
          */
         post: operations["validate_plot"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plugins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Plugins
+         * @description The tenant's uploaded plugins by namespace. ``state`` keeps plugins with a version in
+         *     that state, ``mine`` the plugins you claimed. Versions that are private to other people
+         *     are not counted or shown.
+         */
+        get: operations["list_plugins"];
+        put?: never;
+        /**
+         * Claim Plugin
+         * @description Claim a short name for uploaded code. The namespace is ``t_<tenant code>_<short
+         *     name>``; the workspace gets its tenant code on its first claim.
+         */
+        post: operations["claim_plugin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plugins/{plugin_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Plugin
+         * @description One plugin and its newest version that you can see.
+         */
+        get: operations["get_plugin"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plugins/{plugin_id}/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Plugin Upload
+         * @description An upload ticket: POST the wheel (``{dist}-{version}-py3-none-any.whl``) as
+         *     ``multipart/form-data`` to ``post.url`` with every field of ``post.fields`` and the file
+         *     last, then call ``…/uploads/{upload_id}:complete``. At most 20 tickets per person a day.
+         */
+        post: operations["create_plugin_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plugins/{plugin_id}/uploads/{upload_id}:complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete Plugin Upload
+         * @description The wheel is uploaded: the server hashes it and starts the checks (state
+         *     ``inspecting``). ``project`` pays for the check runs; ``request_approval`` sends the
+         *     version for review as soon as it passes its tests.
+         */
+        post: operations["complete_plugin_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plugins/{plugin_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Plugin Versions
+         * @description The versions of a plugin, newest first (private versions only for their uploader and
+         *     the tenant admins).
+         */
+        get: operations["list_plugin_versions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plugins/{plugin_id}/versions/{version_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Plugin Version
+         * @description One version: inspect facts, SBOM, kit report, exports, issues and decisions
+         *     (``ETag``; ``If-None-Match`` answers ``304`` when nothing changed).
+         */
+        get: operations["get_plugin_version"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plugins/{plugin_id}/versions/{version_id}/examples/{plot_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Plugin Example
+         * @description The example of an uploaded plot recipe: a PlotSpec, sanitized again on the way out.
+         *     Render it only in the plot-sandbox origin.
+         */
+        get: operations["get_plugin_example"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plugins/{plugin_id}/versions/{version_id}/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Plugin Usage
+         * @description What uses a version: runs in the last 30 days, model versions, endpoints and
+         *     dashboards (each list at most 50 ids).
+         */
+        get: operations["get_plugin_usage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plugins/{plugin_id}/versions/{version_id}:approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve Plugin Version
+         * @description Approve a version for the whole workspace: a tenant admin who is not the uploader,
+         *     signed in to the web app in the last 15 minutes. The body repeats the digests the page
+         *     showed.
+         */
+        post: operations["approve_plugin_version"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plugins/{plugin_id}/versions/{version_id}:reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject Plugin Version
+         * @description Reject a version (the same rules as approve; ``note`` is required).
+         */
+        post: operations["reject_plugin_version"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plugins/{plugin_id}/versions/{version_id}:request-approval": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request Plugin Approval
+         * @description Ask the tenant admins to review a version that passed its tests (its uploader or a
+         *     tenant admin).
+         */
+        post: operations["request_plugin_approval"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plugins/{plugin_id}/versions/{version_id}:yank": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Yank Plugin Version
+         * @description Withdraw a version: it leaves every catalog at once and runs that need it cannot
+         *     start. ``security`` also cancels the queued and running runs that use it.
+         */
+        post: operations["yank_plugin_version"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3076,6 +4021,95 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/shared/assets/{asset_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Shared Asset
+         * @description Public: a picture of the shared dashboard's published revision (PNG, at most
+         *     512 KiB; ``nosniff`` and ``private, no-store`` like every share response).
+         */
+        get: operations["get_shared_asset"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/shared/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit Shared Batch
+         * @description Public: score a file of new cases as this link's private readout (within the
+         *     link's daily batch cap).
+         */
+        post: operations["submit_shared_batch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/shared/batch/template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Shared Batch Template
+         * @description Public: the batch file template (the link must allow batch scoring).
+         */
+        get: operations["get_shared_batch_template"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/shared/chat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Shared Chat
+         * @description Public: whether this link can chat now (``reason`` when not), and the suggested
+         *     questions.
+         */
+        get: operations["get_shared_chat"];
+        put?: never;
+        /**
+         * Post Shared Chat
+         * @description Public: ask the assistant about the shared dashboard (one answer per request). ``410
+         *     LINK_EXPIRED`` once the link ended; ``409 CHAT_DISABLED`` when the dashboard does not
+         *     open chat to share links.
+         */
+        post: operations["post_shared_chat"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/shared/dashboard": {
         parameters: {
             query?: never;
@@ -3116,6 +4150,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/shared/predictions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit Shared Predictions
+         * @description Public: score scenario rows as this link's private readout (the link must allow
+         *     them; it spends the publisher's compute, within the link's hourly cap).
+         */
+        post: operations["submit_shared_predictions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/shared/readouts": {
         parameters: {
             query?: never;
@@ -3149,6 +4204,27 @@ export interface paths {
          * @description Public: one readout (``404`` for another link's private one).
          */
         get: operations["get_shared_readout"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/shared/readouts/{seq}/predictions.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Shared Predictions
+         * @description Public: the predictions CSV of this link's own batch readout (``404`` for any
+         *     other readout, ``410`` once it expired).
+         */
+        get: operations["download_shared_predictions"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3505,6 +4581,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/tenants/{tenant_id}/me/onboarding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Onboarding
+         * @description Your checklist and tour progress in this tenant (``ETag``: its version). Before the
+         *     first change it is empty, at version 0.
+         */
+        get: operations["get_onboarding"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Onboarding
+         * @description Merge progress: steps completed, tours moved, the checklist dismissed, tips off,
+         *     samples hidden. A completed step never reverts (only ``:reset`` starts again). With
+         *     ``If-Match`` the change applies only to that version (``412`` when it moved).
+         */
+        patch: operations["update_onboarding"];
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/me/onboarding:reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset Onboarding
+         * @description Start the tours and the checklist again and turn tips back on. The samples you hid
+         *     stay hidden, and the welcome dialog does not show again.
+         */
+        post: operations["reset_onboarding"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tenants/{tenant_id}/members": {
         parameters: {
             query?: never;
@@ -3539,6 +4663,76 @@ export interface paths {
         head?: never;
         /** Update Tenant Member */
         patch: operations["update_tenant_member"];
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/plugin-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Plugin Settings
+         * @description The workspace's uploaded-code settings, its tenant code (after the first claim) and
+         *     whether uploads are allowed here (and why not).
+         */
+        get: operations["get_plugin_settings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Plugin Settings
+         * @description Turn private use on or off: whether uploaders may use their own versions that passed
+         *     their tests before a tenant admin approves them.
+         */
+        patch: operations["update_plugin_settings"];
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/plugin-uploaders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Plugin Uploaders
+         * @description The editors a tenant admin attested: they may upload code (tenant admins always may).
+         */
+        get: operations["list_plugin_uploaders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/plugin-uploaders/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Attest Plugin Uploader
+         * @description Confirm that you know who this member is: they may upload code. Not yourself.
+         */
+        put: operations["attest_plugin_uploader"];
+        post?: never;
+        /**
+         * Revoke Plugin Uploader
+         * @description Revoke an attestation. Versions the person uploaded keep their state.
+         */
+        delete: operations["revoke_plugin_uploader"];
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/tenants/{tenant_id}/projects": {
@@ -3618,6 +4812,90 @@ export interface paths {
         head?: never;
         /** Update Project Member */
         patch: operations["update_member"];
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/samples": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Samples
+         * @description The sample projects of the tenant: what each is, whether it is installed and how far
+         *     it got, and what you may do with it. Empty when samples are turned off.
+         */
+        get: operations["list_samples"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/samples/{sample_id}:install": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Install Sample
+         * @description Install the sample (``202``: its project is made and the fit starts as you), or join
+         *     the one installed (``200``: a membership of its project, at most ``runner``).
+         */
+        post: operations["install_sample"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/samples/{sample_id}:retire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retire Sample
+         * @description Retire the sample: it is hidden for everyone and the grants it made are removed. Its
+         *     project, data and models stay.
+         */
+        post: operations["retire_sample"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/samples/{sample_id}:retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retry Sample
+         * @description Start a failed sample again; its next runs are yours. ``409`` when it is not failed
+         *     or used its attempts.
+         */
+        post: operations["retry_sample"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/tenants/{tenant_id}/usage": {
@@ -4105,7 +5383,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The gallery of workflow templates */
+        /**
+         * The gallery of workflow templates
+         * @description The built-in templates and those of installed plugins (``source: "plugin"``; v0.18),
+         *     and (v0.19) the uploaded templates in the caller's tenant catalog view.
+         */
         get: operations["list_workflow_templates"];
         put?: never;
         post?: never;
@@ -4448,6 +5730,49 @@ export interface components {
             url?: string | null;
         };
         /**
+         * AccuracyPoint
+         * @description One published actuals readout in the accuracy history.
+         */
+        AccuracyPoint: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * N
+             * @default 0
+             */
+            n?: number;
+            /** Period */
+            period?: [
+                string,
+                string
+            ] | null;
+            /** Seq */
+            seq: number;
+            /** Values */
+            values?: {
+                [key: string]: number | null;
+            };
+        };
+        /**
+         * AccuracySource
+         * @description An accuracy metric of the readout's actuals (or its history over readouts).
+         */
+        AccuracySource: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "accuracy";
+            /**
+             * Metric
+             * @enum {string}
+             */
+            metric: "n" | "mae" | "rmse" | "mape" | "wape" | "smape" | "bias" | "r2" | "band_hit_rate" | "accuracy" | "brier" | "log_score" | "auc" | "effect_total" | "effect_relative";
+        };
+        /**
          * ActualsAccuracy
          * @description How close the model's predictions were to uploaded actuals (:func:`metrics_of`).
          *
@@ -4459,6 +5784,8 @@ export interface components {
             band_hit_rate?: number | null;
             /** Bias */
             bias?: number | null;
+            /** Mae */
+            mae?: number | null;
             /** Mape */
             mape?: number | null;
             /**
@@ -4466,6 +5793,14 @@ export interface components {
              * @default 0
              */
             n?: number;
+            /** R2 */
+            r2?: number | null;
+            /** Rmse */
+            rmse?: number | null;
+            /** Smape */
+            smape?: number | null;
+            /** Wape */
+            wape?: number | null;
         };
         /**
          * ActualsInputs
@@ -4493,6 +5828,48 @@ export interface components {
             publish?: "auto" | "review";
             /** Refit Workflow Id */
             refit_workflow_id?: string | null;
+        };
+        /**
+         * ActualsInputsV2
+         * @description Actuals for any model type. ``match="time"``: per period, as layout 1;
+         *     ``match="row"``: per case, joined on ``id_column`` (the outcome is ``label_column`` or
+         *     the target). ``threshold``: the probability above which a classifier says "positive"
+         *     (the analyst sets it; clients cannot change it).
+         */
+        ActualsInputsV2: {
+            /**
+             * Allow Refit Requests
+             * @default false
+             */
+            allow_refit_requests?: boolean;
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled?: boolean;
+            /** Id Column */
+            id_column?: string | null;
+            /** Label Column */
+            label_column?: string | null;
+            /**
+             * Match
+             * @default time
+             * @enum {string}
+             */
+            match?: "time" | "row";
+            /**
+             * Publish
+             * @default review
+             * @enum {string}
+             */
+            publish?: "auto" | "review";
+            /** Refit Workflow Id */
+            refit_workflow_id?: string | null;
+            /**
+             * Threshold
+             * @default 0.5
+             */
+            threshold?: number;
         };
         /**
          * ActualsSubmit
@@ -4591,9 +5968,19 @@ export interface components {
         ActualsTemplate: {
             /** Example Csv */
             example_csv: string;
+            /** Id Column */
+            id_column?: string | null;
             input_table: components["schemas"]["InputTable"];
             /** Kpi Column */
             kpi_column: string;
+            /** Label Column */
+            label_column?: string | null;
+            /**
+             * Match
+             * @default time
+             * @enum {string}
+             */
+            match?: "time" | "row";
             /**
              * Max Rows
              * @default 520
@@ -4956,7 +6343,7 @@ export interface components {
          * @description Audited actions (``<resource>.<verb>``). New actions are additive.
          * @enum {string}
          */
-        AuditAction: "auth.login" | "auth.login_failed" | "auth.logout" | "tenant.create" | "tenant.update" | "tenant.suspend" | "tenant.reactivate" | "tenant.delete" | "project.create" | "project.update" | "project.delete" | "member.add" | "member.update" | "member.remove" | "token.create" | "token.revoke" | "token.auth_failed" | "quota.update" | "quota.delete" | "quota.denied" | "kill_switch.update" | "executor.evidence_update" | "executor.update" | "run.create" | "run.cancel" | "run.integrity_failure" | "dataset.download" | "model.artifact_link" | "endpoint.promote" | "plugin.publish" | "plugin.yank" | "event.rejected" | "auth.signup" | "auth.signup_rejected" | "auth.email_verified" | "auth.signup_flagged" | "auth.signup_review" | "tenant.verification_update" | "tenant.deletion_request" | "tenant.deletion_cancel" | "tenant.deletion_retry" | "tenant.purged" | "tenant.export" | "project.guided_lock" | "endpoint.create" | "endpoint.promote_override" | "endpoint.rollback" | "endpoint.delete" | "webhook.create" | "webhook.update" | "webhook.delete" | "webhook.secret_rotate" | "webhook.replay" | "webhook.disabled" | "webhook.url_blocked" | "plot.embed_create" | "plot.embed_revoke" | "workflow.create" | "workflow.revision" | "workflow.update" | "workflow.delete" | "workflow.run" | "workflow.run_cancel" | "workflow.schedule_create" | "workflow.schedule_update" | "workflow.schedule_delete" | "workflow.trigger_create" | "workflow.trigger_delete" | "policy.create" | "policy.update" | "policy.delete" | "model.validation_request" | "model.validation_transition" | "model.approve" | "model.reject" | "model.deprecate" | "model.evidence_export" | "endpoint.promote_not_validated" | "dataset.about_update" | "run.update" | "run.log" | "experiment.create" | "experiment.update" | "experiment.delete" | "run_view.save" | "run_view.delete" | "dashboard.create" | "dashboard.publish" | "dashboard.archive" | "dashboard.grant" | "dashboard.ungrant" | "dashboard.share_create" | "dashboard.share_revoke" | "dashboard.share_unlock_failed" | "dashboard.actuals_submit" | "dashboard.readout_review" | "dashboard.refit_request" | "dashboard.refit_decide";
+        AuditAction: "auth.login" | "auth.login_failed" | "auth.logout" | "tenant.create" | "tenant.update" | "tenant.suspend" | "tenant.reactivate" | "tenant.delete" | "project.create" | "project.update" | "project.delete" | "member.add" | "member.update" | "member.remove" | "token.create" | "token.revoke" | "token.auth_failed" | "quota.update" | "quota.delete" | "quota.denied" | "kill_switch.update" | "executor.evidence_update" | "executor.update" | "run.create" | "run.cancel" | "run.integrity_failure" | "dataset.download" | "model.artifact_link" | "endpoint.promote" | "plugin.publish" | "plugin.yank" | "event.rejected" | "auth.signup" | "auth.signup_rejected" | "auth.email_verified" | "auth.signup_flagged" | "auth.signup_review" | "tenant.verification_update" | "tenant.deletion_request" | "tenant.deletion_cancel" | "tenant.deletion_retry" | "tenant.purged" | "tenant.export" | "project.guided_lock" | "endpoint.create" | "endpoint.promote_override" | "endpoint.rollback" | "endpoint.delete" | "webhook.create" | "webhook.update" | "webhook.delete" | "webhook.secret_rotate" | "webhook.replay" | "webhook.disabled" | "webhook.url_blocked" | "plot.embed_create" | "plot.embed_revoke" | "workflow.create" | "workflow.revision" | "workflow.update" | "workflow.delete" | "workflow.run" | "workflow.run_cancel" | "workflow.schedule_create" | "workflow.schedule_update" | "workflow.schedule_delete" | "workflow.trigger_create" | "workflow.trigger_delete" | "policy.create" | "policy.update" | "policy.delete" | "model.validation_request" | "model.validation_transition" | "model.approve" | "model.reject" | "model.deprecate" | "model.evidence_export" | "endpoint.promote_not_validated" | "dataset.about_update" | "run.update" | "run.log" | "experiment.create" | "experiment.update" | "experiment.delete" | "run_view.save" | "run_view.delete" | "dashboard.create" | "dashboard.publish" | "dashboard.archive" | "dashboard.grant" | "dashboard.ungrant" | "dashboard.share_create" | "dashboard.share_revoke" | "dashboard.share_unlock_failed" | "dashboard.actuals_submit" | "dashboard.readout_review" | "dashboard.refit_request" | "dashboard.refit_decide" | "dashboard.upgraded" | "dashboard.readout_keep" | "dashboard.batch_download" | "library.create" | "library.revise" | "library.archive" | "library.promote" | "catalog.describe" | "sample.install" | "sample.join" | "sample.retry" | "sample.retire" | "plugin.claim" | "plugin.approval_request" | "plugin.approve" | "plugin.reject" | "plugin.purge" | "plugin.settings_update" | "plugin.uploader_attest" | "plugin.uploader_revoke" | "dashboard.chat_settings" | "dashboard.chat_transcript_delete" | "dashboard.read_token_create" | "dashboard.read_token_revoke";
         /**
          * AuditEvent
          * @description One audit row. ``tenant_id`` is ``None`` for platform-level actions.
@@ -5052,6 +6439,274 @@ export interface components {
          * @enum {string}
          */
         AuditOutcome: "success" | "denied" | "error";
+        /** BarRow */
+        BarRow: {
+            /** High */
+            high?: number | null;
+            /** Label */
+            label: string;
+            /** Low */
+            low?: number | null;
+            /** Tag */
+            tag?: string | null;
+            /** Value */
+            value?: number | null;
+        };
+        /** BarsBlock */
+        BarsBlock: {
+            /**
+             * Approximate
+             * @default false
+             */
+            approximate?: boolean;
+            /** Caption */
+            caption?: string | null;
+            /**
+             * Intent
+             * @default bars
+             * @enum {string}
+             */
+            intent?: "fan" | "line" | "bars" | "range" | "diverging" | "scatter" | "residuals" | "calibration" | "confusion" | "probability_bars" | "field" | "area_bars" | "effect" | "accuracy_history" | "decomposition" | "state_sequence";
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "bars";
+            /** Panel Id */
+            panel_id: string;
+            /** Rows */
+            rows?: components["schemas"]["BarRow"][];
+            /** Title */
+            title: string;
+        };
+        /** BatchClassCount */
+        BatchClassCount: {
+            /** Count */
+            count: number;
+            /** Label */
+            label: string;
+        };
+        /**
+         * BatchColumn
+         * @description One column of a batch file (``input`` names the scenario input that checks it).
+         */
+        BatchColumn: {
+            /** Choices */
+            choices?: string[];
+            /** Max */
+            max?: number | null;
+            /** Min */
+            min?: number | null;
+            /** Name */
+            name: string;
+            /**
+             * Required
+             * @default true
+             */
+            required?: boolean;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "id" | "driver";
+            /**
+             * Type
+             * @default number
+             * @enum {string}
+             */
+            type?: "number" | "integer" | "choice" | "date" | "toggle" | "text";
+        };
+        /**
+         * BatchDef
+         * @description Batch scoring: a CSV of up to ``max_rows`` new cases (one ``id_column`` plus the
+         *     driver columns); with ``enforce_ranges`` every cell is checked like a scenario row.
+         */
+        BatchDef: {
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled?: boolean;
+            /**
+             * Enforce Ranges
+             * @default true
+             */
+            enforce_ranges?: boolean;
+            /** Id Column */
+            id_column: string;
+            /**
+             * Max Rows
+             * @default 2000
+             */
+            max_rows?: number;
+            /** Outputs */
+            outputs: string[];
+        };
+        /**
+         * BatchDownload
+         * @description Whether ``…/readouts/{seq}/predictions.csv`` can be downloaded (by its owner).
+         */
+        BatchDownload: {
+            /**
+             * Available
+             * @default false
+             */
+            available?: boolean;
+            /**
+             * Bytes Estimate
+             * @default 0
+             */
+            bytes_estimate?: number;
+            /**
+             * Rows
+             * @default 0
+             */
+            rows?: number;
+        };
+        /**
+         * BatchForm
+         * @description The "Score a file" form: the columns a file needs and its row cap.
+         */
+        BatchForm: {
+            /** Columns */
+            columns?: string[];
+            /** Id Column */
+            id_column: string;
+            /** Max Rows */
+            max_rows: number;
+            /** Outputs */
+            outputs?: string[];
+        };
+        /**
+         * BatchStats
+         * @description The spread of the row centres of one output (never an interval).
+         */
+        BatchStats: {
+            /** Max */
+            max?: number | null;
+            /** Mean */
+            mean?: number | null;
+            /** Min */
+            min?: number | null;
+            /** P10 */
+            p10?: number | null;
+            /** P50 */
+            p50?: number | null;
+            /** P90 */
+            p90?: number | null;
+        };
+        /**
+         * BatchSubmit
+         * @description ``POST …/batch``: the file as inline XrJSON (parsed in the browser from CSV), one row
+         *     per case along the id column.
+         * @example {
+         *       "inputs": {
+         *         "coords": {
+         *           "case_id": {
+         *             "data": [
+         *               "c1",
+         *               "c2"
+         *             ],
+         *             "dims": [
+         *               "case_id"
+         *             ]
+         *           }
+         *         },
+         *         "data_vars": {
+         *           "plan": {
+         *             "data": [
+         *               "basic",
+         *               "plus"
+         *             ],
+         *             "dims": [
+         *               "case_id"
+         *             ]
+         *           },
+         *           "tenure": {
+         *             "data": [
+         *               12,
+         *               40
+         *             ],
+         *             "dims": [
+         *               "case_id"
+         *             ]
+         *           }
+         *         }
+         *       },
+         *       "label": "October leads"
+         *     }
+         */
+        BatchSubmit: {
+            inputs: components["schemas"]["XrJsonDataset"];
+            /** Label */
+            label?: string | null;
+        };
+        /** BatchSummary */
+        BatchSummary: {
+            /** Class Counts */
+            class_counts?: components["schemas"]["BatchClassCount"][];
+            download?: components["schemas"]["BatchDownload"];
+            /** Histogram */
+            histogram?: components["schemas"]["HistogramBin"][];
+            /** N Rows */
+            n_rows: number;
+            /** N Scored */
+            n_scored: number;
+            /** Outputs */
+            outputs?: string[];
+            /** Preview */
+            preview?: {
+                [key: string]: boolean | number | string | null;
+            }[];
+            /** Share Positive */
+            share_positive?: number | null;
+            /** Stats */
+            stats?: {
+                [key: string]: components["schemas"]["BatchStats"];
+            };
+        };
+        /**
+         * BatchTemplate
+         * @description ``GET …/batch/template``: the columns of a batch file, an example CSV and the cap.
+         * @example {
+         *       "columns": [
+         *         {
+         *           "name": "case_id",
+         *           "role": "id",
+         *           "type": "text"
+         *         },
+         *         {
+         *           "max": 120,
+         *           "min": 0,
+         *           "name": "tenure",
+         *           "role": "driver",
+         *           "type": "number"
+         *         },
+         *         {
+         *           "choices": [
+         *             "basic",
+         *             "plus"
+         *           ],
+         *           "name": "plan",
+         *           "role": "driver",
+         *           "type": "choice"
+         *         }
+         *       ],
+         *       "example_csv": "case_id,tenure,plan\nc1,12,basic\nc2,40,plus\n",
+         *       "id_column": "case_id",
+         *       "max_rows": 2000
+         *     }
+         */
+        BatchTemplate: {
+            /** Columns */
+            columns: components["schemas"]["BatchColumn"][];
+            /** Example Csv */
+            example_csv: string;
+            /** Id Column */
+            id_column: string;
+            /** Max Rows */
+            max_rows: number;
+        };
         /**
          * Binding
          * @description Canonical name → dataset name, for dims and variables (``geo: market``).
@@ -5270,6 +6925,11 @@ export interface components {
             /** Overlay Hash */
             overlay_hash?: string | null;
             /**
+             * Overlay Hashes
+             * @description v0.19: the sha256 of every uploaded wheel the run mounted (from the control plane's runs.overlays)
+             */
+            overlay_hashes?: string[];
+            /**
              * Project Id
              * @example default
              */
@@ -5389,6 +7049,36 @@ export interface components {
              * @example EUR
              */
             spend_units?: string | null;
+        };
+        /** CalibrationBin */
+        CalibrationBin: {
+            /** N */
+            n: number;
+            /** Observed */
+            observed: number;
+            /** P Mean */
+            p_mean: number;
+        };
+        /** CalibrationBlock */
+        CalibrationBlock: {
+            /**
+             * Approximate
+             * @default false
+             */
+            approximate?: boolean;
+            /** Bins */
+            bins?: components["schemas"]["CalibrationBin"][];
+            /** Caption */
+            caption?: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "calibration";
+            /** Panel Id */
+            panel_id: string;
+            /** Title */
+            title: string;
         };
         /**
          * Capabilities
@@ -5527,6 +7217,163 @@ export interface components {
             /** Id */
             id: string;
             kind: components["schemas"]["AboutKind"];
+        };
+        /**
+         * CatalogDiagnostic
+         * @description Something the runner could not put into the catalog, or put there with a change.
+         *
+         *     ``message`` is platform-authored plain text; anything a plugin wrote (an exception
+         *     message, an id it exported) goes in ``untrusted_text`` and is shown as text only.
+         * @example {
+         *       "code": "namespace_reserved",
+         *       "distribution": "acme-models",
+         *       "entry_point": "acme",
+         *       "group": "mapi.models",
+         *       "id": "mmm.acme_mix",
+         *       "message": "The namespace 'mmm' belongs to the built-in plugins."
+         *     }
+         */
+        CatalogDiagnostic: {
+            /**
+             * Code
+             * @enum {string}
+             */
+            code: "load_error" | "namespace_reserved" | "id_collision" | "schema_unsafe" | "about_incomplete" | "node_contract_invalid" | "template_invalid" | "deprecated";
+            /** Distribution */
+            distribution?: string | null;
+            /** Entry Point */
+            entry_point?: string | null;
+            /**
+             * Group
+             * @description The entry-point group (mapi.models, ...) or the check
+             */
+            group: string;
+            /**
+             * Id
+             * @description The catalog id concerned
+             */
+            id?: string | null;
+            /**
+             * Message
+             * @description Trusted, platform-authored text
+             */
+            message: string;
+            /**
+             * Untrusted Text
+             * @description Plugin-originated text; render as text only
+             */
+            untrusted_text?: string | null;
+        };
+        /**
+         * CatalogInput
+         * @description An input a scenario row or batch column can bind (a variable or a dim), with its
+         *     declared bounds and the fit data's range (``profile_min``/``profile_max``: defaults
+         *     that the analyst must confirm).
+         */
+        CatalogInput: {
+            /** Bound Max */
+            bound_max?: number | null;
+            /** Bound Min */
+            bound_min?: number | null;
+            /** Date Max */
+            date_max?: string | null;
+            /** Date Min */
+            date_min?: string | null;
+            /** Dim */
+            dim?: string | null;
+            /** Dtype */
+            dtype?: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "number" | "integer" | "choice" | "date" | "toggle" | "text";
+            /** Levels */
+            levels?: string[];
+            policy?: components["schemas"]["DimPolicy"] | null;
+            /** Profile Max */
+            profile_max?: number | null;
+            /** Profile Min */
+            profile_min?: number | null;
+            /** Var */
+            var?: string | null;
+        };
+        /**
+         * CatalogMetric
+         * @description A metric logged by the fit run (``labels`` ``{}`` is the scalar value).
+         */
+        CatalogMetric: {
+            /** Key */
+            key: string;
+            /** Labels */
+            labels?: {
+                [key: string]: string;
+            };
+            /** Last */
+            last?: number | null;
+        };
+        /**
+         * CatalogOutput
+         * @description One output a panel can bind: its summary table ``name`` (the score summary names it
+         *     as the manifest does; only the dim columns take the dataset names), dims, shape and
+         *     representation, and what may be asked of it.
+         *
+         *     ``centre`` is the centre column the readout selector gives (draws ``mean``, quantiles
+         *     ``median``, interval ``point``, point ``mean``); ``predictive_ok`` is false when a
+         *     predictive score would not give an outcome range (point outputs, which refuse
+         *     ``kind: predictive``, and outputs that ignore it, e.g. ``sci.lgcp_grid`` ``total``):
+         *     the panel then falls back to the ``mean`` band with a caption.
+         */
+        CatalogOutput: {
+            /**
+             * Centre
+             * @default mean
+             * @enum {string}
+             */
+            centre?: "mean" | "median" | "q50" | "p50" | "point";
+            /** Classes */
+            classes?: string[];
+            /** Dims */
+            dims?: string[];
+            /** Intents */
+            intents?: ("fan" | "line" | "bars" | "range" | "diverging" | "scatter" | "residuals" | "calibration" | "confusion" | "probability_bars" | "field" | "area_bars" | "effect" | "accuracy_history" | "decomposition" | "state_sequence")[];
+            /** Manifest Name */
+            manifest_name: string;
+            /** Meaning */
+            meaning?: ("value" | "class_probability" | "state_probability" | "rate" | "effect") | null;
+            /** Name */
+            name: string;
+            /**
+             * Predictive Ok
+             * @default false
+             */
+            predictive_ok?: boolean;
+            /** Reduces */
+            reduces?: ("none" | "select" | "last" | "next" | "mean" | "sum" | "share_above" | "top_class")[];
+            representation: components["schemas"]["Representation"];
+            /**
+             * Shape
+             * @enum {string}
+             */
+            shape: "grid" | "areal" | "classification" | "time" | "categorical" | "scalar";
+            /** Stats */
+            stats?: ("centre" | "low" | "high" | "value")[];
+            /** Time Dim */
+            time_dim?: string | null;
+            /** Units */
+            units?: string | null;
+        };
+        /**
+         * CatalogPicture
+         * @description An embeddable plot of the model version (platform recipe provenance only).
+         */
+        CatalogPicture: {
+            /** Plot Id */
+            plot_id: string;
+            /** Recipe */
+            recipe: string;
+            /** Title */
+            title: string;
         };
         /**
          * CatalogResponse
@@ -5771,6 +7618,522 @@ export interface components {
             zone?: ("headroom" | "optimal" | "over" | "no_payback") | null;
         };
         /**
+         * ChartPanel
+         * @description A native chart (``intent``) of an output or of the accuracy history.
+         */
+        ChartPanel: {
+            /**
+             * Band
+             * @default outcome
+             * @enum {string}
+             */
+            band?: "outcome" | "mean" | "none";
+            /** Caption */
+            caption?: string | null;
+            /** Facet */
+            facet?: string | null;
+            /** Id */
+            id: string;
+            /**
+             * Intent
+             * @enum {string}
+             */
+            intent: "fan" | "line" | "bars" | "range" | "diverging" | "scatter" | "residuals" | "calibration" | "confusion" | "probability_bars" | "field" | "area_bars" | "effect" | "accuracy_history" | "decomposition" | "state_sequence";
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "chart";
+            /**
+             * Max Items
+             * @default 20
+             */
+            max_items?: number;
+            reduce?: components["schemas"]["Reduce"];
+            /** Source */
+            source: components["schemas"]["OutputSource"] | components["schemas"]["AccuracySource"];
+            /** Title */
+            title: string;
+        };
+        /**
+         * ChartPreview
+         * @description A previewed chart (``None`` when it was refused) and what the checks found.
+         * @example {
+         *       "issues": []
+         *     }
+         */
+        ChartPreview: {
+            /** Issues */
+            issues?: components["schemas"]["Issue"][];
+            plot?: components["schemas"]["PlotSpec"] | null;
+        };
+        /**
+         * ChartPreviewRequest
+         * @description Preview a chart template document on its source recipe's catalog example.
+         * @example {
+         *       "document": {
+         *         "apiVersion": "mapi/v1",
+         *         "kind": "ChartTemplate",
+         *         "metadata": {
+         *           "name": "fit-dots",
+         *           "title": "Fit as dots"
+         *         },
+         *         "plot": {
+         *           "data": {
+         *             "name": "points"
+         *           },
+         *           "encoding": {
+         *             "x": {
+         *               "field": "observed",
+         *               "type": "quantitative"
+         *             },
+         *             "y": {
+         *               "field": "point",
+         *               "type": "quantitative"
+         *             }
+         *           },
+         *           "mark": "point"
+         *         },
+         *         "source_recipe": "core.fit_vs_actual@^1"
+         *       }
+         *     }
+         */
+        ChartPreviewRequest: {
+            /** Document */
+            document: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+        };
+        /**
+         * ChatAudiences
+         * @description Who may chat when chat is on: members, client users with a grant, share links.
+         */
+        ChatAudiences: {
+            /**
+             * Clients
+             * @default true
+             */
+            clients?: boolean;
+            /**
+             * Members
+             * @default true
+             */
+            members?: boolean;
+            /**
+             * Share Links
+             * @default false
+             */
+            share_links?: boolean;
+        };
+        /**
+         * ChatAvailability
+         * @description ``GET …/chat``: may the caller chat on this dashboard, and what to show first.
+         * @example {
+         *       "enabled_for_me": true,
+         *       "keeps_transcripts": false,
+         *       "model": "gemini-3.1-flash-lite",
+         *       "suggestions": [
+         *         "What does the latest readout show?",
+         *         "What changed since the last readout?",
+         *         "How accurate is the model?",
+         *         "Explain the main numbers in plain words."
+         *       ],
+         *       "transcript_days": 30
+         *     }
+         * @example {
+         *       "enabled_for_me": false,
+         *       "reason": "off",
+         *       "suggestions": []
+         *     }
+         */
+        ChatAvailability: {
+            /** Enabled For Me */
+            enabled_for_me: boolean;
+            /**
+             * Keeps Transcripts
+             * @default false
+             */
+            keeps_transcripts?: boolean;
+            /** Model */
+            model?: string | null;
+            /** Reason */
+            reason?: ("off" | "audience" | "layout" | "region" | "provider" | "killswitch" | "budget") | null;
+            /** Suggestions */
+            suggestions?: string[];
+            /**
+             * Transcript Days
+             * @default 30
+             */
+            transcript_days?: number;
+        };
+        /**
+         * ChatRequest
+         * @description ``POST /v1/dashboards/{dashboard_id}/chat`` and ``POST /v1/shared/chat``.
+         *
+         *     ``messages`` is the conversation so far plus the new question: it starts and ends with a
+         *     ``user`` turn and the roles alternate. ``conversation_id`` is ``None`` on the first
+         *     message (the server makes one). ``readout_seq`` tells the assistant which readout the
+         *     person is looking at.
+         * @example {
+         *       "messages": [
+         *         {
+         *           "role": "user",
+         *           "text": "What changed since the last readout?"
+         *         }
+         *       ]
+         *     }
+         * @example {
+         *       "conversation_id": "cnv_01jaf3t1v2w3x4y5z6a7b8c9d0",
+         *       "messages": [
+         *         {
+         *           "role": "user",
+         *           "text": "What changed since the last readout?"
+         *         },
+         *         {
+         *           "role": "assistant",
+         *           "sig": "q3Jx8m1V0bYH7kQf2nTzL5cWd9pR4sAe6uGiOjKvXyw",
+         *           "text": "Revenue went up by 4%."
+         *         },
+         *         {
+         *           "role": "user",
+         *           "text": "Which tile changed most?"
+         *         }
+         *       ],
+         *       "readout_seq": 12
+         *     }
+         */
+        ChatRequest: {
+            /** Conversation Id */
+            conversation_id?: string | null;
+            /** Messages */
+            messages: components["schemas"]["ChatTurn"][];
+            /** Readout Seq */
+            readout_seq?: number | null;
+        };
+        /**
+         * ChatResponse
+         * @description The answer to a :class:`ChatRequest`. Send ``reply`` back unchanged in the next
+         *     request's ``messages``.
+         * @example {
+         *       "conversation_id": "cnv_01jaf3t1v2w3x4y5z6a7b8c9d0",
+         *       "notices": [],
+         *       "reply": {
+         *         "role": "assistant",
+         *         "sig": "q3Jx8m1V0bYH7kQf2nTzL5cWd9pR4sAe6uGiOjKvXyw",
+         *         "text": "Revenue went up by 4% from readout 11 to readout 12."
+         *       },
+         *       "tool_calls": [
+         *         {
+         *           "args": {
+         *             "a_seq": 11,
+         *             "b_seq": 12
+         *           },
+         *           "ms": 38,
+         *           "name": "compare_readouts",
+         *           "ok": true
+         *         }
+         *       ],
+         *       "transcript_kept": false,
+         *       "usage": {
+         *         "input_tokens": 3120,
+         *         "model": "gemini-3.1-flash-lite",
+         *         "output_tokens": 96,
+         *         "thought_tokens": 0,
+         *         "total_tokens": 3216
+         *       }
+         *     }
+         */
+        ChatResponse: {
+            /** Conversation Id */
+            conversation_id: string;
+            /** Notices */
+            notices?: ("unverified_numbers" | "tool_limit" | "truncated" | "budget_low" | "transcript_kept")[];
+            reply: components["schemas"]["ChatTurn"];
+            /** Tool Calls */
+            tool_calls?: components["schemas"]["ToolCallSummary"][];
+            /**
+             * Transcript Kept
+             * @default false
+             */
+            transcript_kept?: boolean;
+            usage: components["schemas"]["ChatUsage"];
+        };
+        /**
+         * ChatSettingsUpdate
+         * @description ``PUT …/chat/settings`` with ``If-Match: <etag>``: the whole settings document.
+         * @example {
+         *       "audiences": {
+         *         "clients": true,
+         *         "members": true,
+         *         "share_links": false
+         *       },
+         *       "enabled": true,
+         *       "keep_transcripts": false,
+         *       "share_tokens_per_day": 50000,
+         *       "tokens_per_day": 200000
+         *     }
+         */
+        ChatSettingsUpdate: {
+            audiences: components["schemas"]["ChatAudiences"];
+            /** Enabled */
+            enabled: boolean;
+            /** Keep Transcripts */
+            keep_transcripts: boolean;
+            /** Share Tokens Per Day */
+            share_tokens_per_day: number;
+            /** Tokens Per Day */
+            tokens_per_day: number;
+        };
+        /**
+         * ChatSettingsView
+         * @description ``GET``/``PUT …/chat/settings`` (editors). ``etag`` is the ``If-Match`` value of the
+         *     next update; ``used_today_tokens`` and ``est_micros_today`` cover the current UTC day;
+         *     ``transcript_days`` is how long the server keeps chats (``MAPI_CHAT_TRANSCRIPT_TTL_DAYS``).
+         * @example {
+         *       "audiences": {
+         *         "clients": true,
+         *         "members": true,
+         *         "share_links": false
+         *       },
+         *       "dashboard_id": "dsh_01jaf3k1m2n3p4q5r6s7t8v9w0",
+         *       "enabled": true,
+         *       "est_micros_today": 4210,
+         *       "etag": "\"c3\"",
+         *       "keep_transcripts": false,
+         *       "share_tokens_per_day": 50000,
+         *       "tokens_per_day": 200000,
+         *       "transcript_days": 30,
+         *       "updated_at": "2026-10-15T09:30:00Z",
+         *       "updated_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *       "used_today_tokens": 12480,
+         *       "version": 3
+         *     }
+         */
+        ChatSettingsView: {
+            audiences?: components["schemas"]["ChatAudiences"];
+            /**
+             * Dashboard Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            dashboard_id: string;
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled?: boolean;
+            /**
+             * Est Micros Today
+             * @default 0
+             */
+            est_micros_today?: number;
+            /** Etag */
+            etag: string;
+            /**
+             * Keep Transcripts
+             * @default false
+             */
+            keep_transcripts?: boolean;
+            /**
+             * Share Tokens Per Day
+             * @default 50000
+             */
+            share_tokens_per_day?: number;
+            /**
+             * Tokens Per Day
+             * @default 200000
+             */
+            tokens_per_day?: number;
+            /**
+             * Transcript Days
+             * @default 30
+             */
+            transcript_days?: number;
+            /** Updated At */
+            updated_at?: string | null;
+            /** Updated By */
+            updated_by?: string | null;
+            /**
+             * Used Today Tokens
+             * @default 0
+             */
+            used_today_tokens?: number;
+            /**
+             * Version
+             * @default 1
+             */
+            version?: number;
+        };
+        /**
+         * ChatTranscript
+         * @description ``GET …/chat/transcripts/{conversation_id}``: a kept conversation, oldest turn first.
+         * @example {
+         *       "summary": {
+         *         "conversation_id": "cnv_01jaf3t1v2w3x4y5z6a7b8c9d0",
+         *         "expires_at": "2026-11-14T09:34:00Z",
+         *         "first_at": "2026-10-15T09:30:00Z",
+         *         "last_at": "2026-10-15T09:34:00Z",
+         *         "principal_kind": "client",
+         *         "principal_label": "Dana Client",
+         *         "turns": 4
+         *       },
+         *       "turns": [
+         *         {
+         *           "at": "2026-10-15T09:30:00Z",
+         *           "index": 0,
+         *           "role": "user",
+         *           "text": "What changed?"
+         *         },
+         *         {
+         *           "at": "2026-10-15T09:30:00Z",
+         *           "index": 1,
+         *           "ok": true,
+         *           "role": "assistant",
+         *           "text": "Revenue went up by 4%.",
+         *           "tool_calls": [
+         *             "compare_readouts"
+         *           ]
+         *         }
+         *       ]
+         *     }
+         */
+        ChatTranscript: {
+            summary: components["schemas"]["ChatTranscriptSummary"];
+            /** Turns */
+            turns: components["schemas"]["ChatTranscriptTurn"][];
+        };
+        /**
+         * ChatTranscriptSummary
+         * @description One kept conversation (editors). ``principal_label`` is a user's display name or
+         *     ``Share link <name>``; it is never an IP address.
+         * @example {
+         *       "conversation_id": "cnv_01jaf3t1v2w3x4y5z6a7b8c9d0",
+         *       "expires_at": "2026-11-14T09:34:00Z",
+         *       "first_at": "2026-10-15T09:30:00Z",
+         *       "last_at": "2026-10-15T09:34:00Z",
+         *       "principal_kind": "client",
+         *       "principal_label": "Dana Client",
+         *       "turns": 4
+         *     }
+         */
+        ChatTranscriptSummary: {
+            /** Conversation Id */
+            conversation_id: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * First At
+             * Format: date-time
+             */
+            first_at: string;
+            /**
+             * Last At
+             * Format: date-time
+             */
+            last_at: string;
+            /**
+             * Principal Kind
+             * @enum {string}
+             */
+            principal_kind: "member" | "client" | "share";
+            /** Principal Label */
+            principal_label: string;
+            /** Turns */
+            turns: number;
+        };
+        /**
+         * ChatTranscriptTurn
+         * @description One kept turn: its text and the names of the tools called (never their results).
+         * @example {
+         *       "at": "2026-10-15T09:30:00Z",
+         *       "index": 1,
+         *       "ok": true,
+         *       "role": "assistant",
+         *       "text": "Revenue went up by 4%.",
+         *       "tool_calls": [
+         *         "compare_readouts"
+         *       ]
+         *     }
+         */
+        ChatTranscriptTurn: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Index */
+            index: number;
+            /**
+             * Ok
+             * @default true
+             */
+            ok?: boolean;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "user" | "assistant";
+            /** Text */
+            text: string;
+            /** Tool Calls */
+            tool_calls?: string[];
+        };
+        /**
+         * ChatTurn
+         * @description One turn of a conversation: plain text.
+         *
+         *     A ``user`` turn has no ``sig`` and at most :data:`CHAT_MAX_USER_CHARS` characters. An
+         *     ``assistant`` turn carries the ``sig`` the server returned with it, unchanged.
+         * @example {
+         *       "role": "user",
+         *       "text": "What changed since the last readout?"
+         *     }
+         * @example {
+         *       "role": "assistant",
+         *       "sig": "q3Jx8m1V0bYH7kQf2nTzL5cWd9pR4sAe6uGiOjKvXyw",
+         *       "text": "Revenue went up by 4% (readout 12)."
+         *     }
+         */
+        ChatTurn: {
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "user" | "assistant";
+            /** Sig */
+            sig?: string | null;
+            /** Text */
+            text: string;
+        };
+        /**
+         * ChatUsage
+         * @description Model tokens spent by one turn (all model calls of the turn together).
+         * @example {
+         *       "input_tokens": 3120,
+         *       "model": "gemini-3.1-flash-lite",
+         *       "output_tokens": 96,
+         *       "thought_tokens": 0,
+         *       "total_tokens": 3216
+         *     }
+         */
+        ChatUsage: {
+            /** Input Tokens */
+            input_tokens: number;
+            /** Model */
+            model: string;
+            /** Output Tokens */
+            output_tokens: number;
+            /** Thought Tokens */
+            thought_tokens: number;
+            /**
+             * Total Tokens
+             * @description What the daily budgets count
+             */
+            total_tokens: number;
+        };
+        /**
          * CheckDirection
          * @enum {string}
          */
@@ -5985,6 +8348,42 @@ export interface components {
             /** Unanswered */
             unanswered?: string[];
         };
+        /**
+         * ClassAccuracy
+         * @description How right a classifier was (``threshold`` and ``positive`` for a binary one;
+         *     ``rate_pred``/``rate_obs`` the predicted and observed share of ``positive``).
+         */
+        ClassAccuracy: {
+            /** Accuracy */
+            accuracy?: number | null;
+            /** Auc */
+            auc?: number | null;
+            /** Bins */
+            bins?: components["schemas"]["CalibrationBin"][];
+            /** Brier */
+            brier?: number | null;
+            confusion?: components["schemas"]["ConfusionMatrix"] | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "classification";
+            /** Log Score */
+            log_score?: number | null;
+            /**
+             * N
+             * @default 0
+             */
+            n?: number;
+            /** Positive */
+            positive?: string | null;
+            /** Rate Obs */
+            rate_obs?: number | null;
+            /** Rate Pred */
+            rate_pred?: number | null;
+            /** Threshold */
+            threshold?: number | null;
+        };
         /** ClassCount */
         ClassCount: {
             /** Count */
@@ -5996,6 +8395,10 @@ export interface components {
          * ClientDashboard
          * @description What a client user or a share link sees: the published revision only, with no ids of
          *     people and no model internals. ``ends_at`` is the share link's expiry (share views).
+         *
+         *     Layout 2 (v0.17) adds ``preset``, ``subject`` (``kpi`` is derived from it), the panels to
+         *     lay out, the forms of the inputs and ``sections``; ``upgrade_note`` is the one-time
+         *     plain note after the automatic upgrade (the page lets each viewer dismiss it).
          * @example {
          *       "channels": [
          *         {
@@ -6142,6 +8545,7 @@ export interface components {
          *     }
          */
         ClientDashboard: {
+            batch_form?: components["schemas"]["BatchForm"] | null;
             /** Channels */
             channels?: components["schemas"]["ChannelDef"][];
             /** Client Name */
@@ -6157,6 +8561,11 @@ export interface components {
             kpi: components["schemas"]["KpiDef"];
             latest_readout?: components["schemas"]["Readout"] | null;
             /**
+             * Layout Version
+             * @default 1
+             */
+            layout_version?: number;
+            /**
              * Live Inputs
              * @default ok
              * @enum {string}
@@ -6164,25 +8573,35 @@ export interface components {
             live_inputs?: "ok" | "paused";
             /** Note */
             note?: string | null;
+            /** Panels Meta */
+            panels_meta?: components["schemas"]["PanelMeta"][];
             /**
              * Period Label
              * @default week
              * @enum {string}
              */
-            period_label?: "week" | "month" | "period";
+            period_label?: "week" | "month" | "quarter" | "year" | "day" | "period" | "case";
+            /** Preset */
+            preset?: ("mmm_planner" | "forecast" | "regression" | "classifier" | "causal_impact" | "field_map" | "image" | "generic") | null;
+            scenario_form?: components["schemas"]["ScenarioForm"] | null;
+            /** Sections */
+            sections?: ("overview" | "try" | "accuracy" | "batch" | "history")[];
             /**
              * Show Technical
              * @default false
              */
             show_technical?: boolean;
+            subject?: components["schemas"]["SubjectDef"] | null;
             /** Summary */
             summary?: string | null;
             /** Tabs */
             tabs?: ("this_period" | "trends" | "scenarios" | "update" | "history")[];
             /** Tiles */
-            tiles?: ("expected" | "vs_expected" | "return_on_media" | "in_range_spend" | "accuracy" | "index")[];
+            tiles?: ("expected" | "vs_expected" | "return_on_media" | "in_range_spend" | "accuracy" | "index" | "panel")[];
             /** Title */
             title: string;
+            /** Upgrade Note */
+            upgrade_note?: string | null;
         };
         /**
          * ClientTenant
@@ -6848,6 +9267,39 @@ export interface components {
              */
             remote_control_api?: boolean;
         };
+        /** ConfusionBlock */
+        ConfusionBlock: {
+            /**
+             * Approximate
+             * @default false
+             */
+            approximate?: boolean;
+            /** Caption */
+            caption?: string | null;
+            /** Counts */
+            counts?: number[][];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "confusion";
+            /** Labels */
+            labels?: string[];
+            /** Panel Id */
+            panel_id: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * ConfusionMatrix
+         * @description ``counts[i][j]``: cases of actual class ``labels[i]`` predicted as ``labels[j]``.
+         */
+        ConfusionMatrix: {
+            /** Counts */
+            counts?: number[][];
+            /** Labels */
+            labels?: string[];
+        };
         /**
          * ContextNeed
          * @description Per-group tail a step needs at score time: ``n`` rows along ``along`` within groups.
@@ -6971,7 +9423,9 @@ export interface components {
          * @description The analyst's view of a dashboard (``GET /v1/dashboards/{dashboard_id}`` for viewers
          *     and up; a client gets :class:`ClientDashboard`). ``run_as`` is the publisher whose
          *     compute the live inputs use; ``live_inputs`` is ``paused`` when that user lost the runner
-         *     role. ``problem`` is a short machine word for the analyst (``new_version_available``).
+         *     role. ``problem`` is a short machine word for the analyst (:data:`DashboardProblem`:
+         *     ``new_version_available``, ``upgrade_needs_review``); ``upgrade_issues`` are the issues
+         *     that stopped the automatic layout 2 upgrade (shown in the builder's banner).
          * @example {
          *       "created_at": "2026-10-15T09:30:00Z",
          *       "created_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
@@ -7141,7 +9595,8 @@ export interface components {
             created_by: string;
             /** Draft Etag */
             draft_etag: string;
-            draft_spec: components["schemas"]["DashboardSpec"];
+            /** Draft Spec */
+            draft_spec: components["schemas"]["DashboardSpec"] | components["schemas"]["DashboardSpecV2"];
             /**
              * Id
              * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
@@ -7171,10 +9626,14 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+            /** Upgrade Issues */
+            upgrade_issues?: components["schemas"]["Issue"][];
         };
         /**
          * DashboardCreate
-         * @description ``POST /v1/dashboards``: a new draft (unique ``name`` per project).
+         * @description ``POST /v1/dashboards``: a new draft (unique ``name`` per project). From v0.17 a new
+         *     dashboard is layout 2: the server refuses a layout 1 spec with
+         *     ``DASHBOARD_LAYOUT_RETIRED``.
          * @example {
          *       "name": "acme-weekly",
          *       "spec": {
@@ -7243,7 +9702,8 @@ export interface components {
         DashboardCreate: {
             /** Name */
             name: string;
-            spec: components["schemas"]["DashboardSpec"];
+            /** Spec */
+            spec: components["schemas"]["DashboardSpec"] | components["schemas"]["DashboardSpecV2"];
         };
         /**
          * DashboardDraftUpdate
@@ -7313,7 +9773,8 @@ export interface components {
          *     }
          */
         DashboardDraftUpdate: {
-            spec: components["schemas"]["DashboardSpec"];
+            /** Spec */
+            spec: components["schemas"]["DashboardSpec"] | components["schemas"]["DashboardSpecV2"];
         };
         /**
          * DashboardGrant
@@ -7456,6 +9917,158 @@ export interface components {
              */
             exact_runs_per_day?: number;
         };
+        /** DashboardLimitsV2 */
+        DashboardLimitsV2: {
+            /**
+             * Batch Runs Per Day
+             * @default 3
+             */
+            batch_runs_per_day?: number;
+            /**
+             * Exact Runs Per Day
+             * @default 20
+             */
+            exact_runs_per_day?: number;
+        };
+        /**
+         * DashboardPresets
+         * @description ``GET /v1/dashboards:presets``: compatible presets, best first, and the compiled
+         *     spec of the first (a starting draft; nothing is saved).
+         * @example {
+         *       "spec": {
+         *         "actuals": {
+         *           "enabled": true,
+         *           "publish": "auto"
+         *         },
+         *         "client_name": "Northwind Outdoor",
+         *         "layout_version": 2,
+         *         "limits": {
+         *           "exact_runs_per_day": 20
+         *         },
+         *         "panels": [
+         *           {
+         *             "id": "next",
+         *             "kind": "kpi",
+         *             "reduce": {
+         *               "how": "next"
+         *             },
+         *             "source": {
+         *               "kind": "output",
+         *               "variable": "y_hat"
+         *             },
+         *             "title": "Sales next month"
+         *           },
+         *           {
+         *             "good": "down",
+         *             "id": "typical_error",
+         *             "kind": "kpi",
+         *             "source": {
+         *               "kind": "accuracy",
+         *               "metric": "mae"
+         *             },
+         *             "stat": "value",
+         *             "title": "Typical error"
+         *           },
+         *           {
+         *             "id": "fan",
+         *             "intent": "fan",
+         *             "kind": "chart",
+         *             "source": {
+         *               "kind": "output",
+         *               "variable": "y_hat"
+         *             },
+         *             "title": "Sales and forecast"
+         *           },
+         *           {
+         *             "id": "history",
+         *             "intent": "accuracy_history",
+         *             "kind": "chart",
+         *             "source": {
+         *               "kind": "accuracy",
+         *               "metric": "mape"
+         *             },
+         *             "title": "Accuracy over time"
+         *           },
+         *           {
+         *             "id": "about",
+         *             "kind": "note",
+         *             "text": "The forecast starts from the newest month that you sent.",
+         *             "title": "About these numbers"
+         *           }
+         *         ],
+         *         "period_label": "month",
+         *         "preset": "forecast",
+         *         "refresh": {
+         *           "follow_endpoint": true,
+         *           "horizon": 6
+         *         },
+         *         "scenario_rows": {
+         *           "enabled": true,
+         *           "horizon": {
+         *             "default": 6,
+         *             "dim": "date",
+         *             "max": 12,
+         *             "min": 1
+         *           },
+         *           "inputs": [
+         *             {
+         *               "applies": "horizon",
+         *               "bind": {
+         *                 "var": "price"
+         *               },
+         *               "default": 19.5,
+         *               "label": "Average price",
+         *               "max": 30,
+         *               "min": 10,
+         *               "name": "price",
+         *               "step": 0.5,
+         *               "type": "number"
+         *             }
+         *           ],
+         *           "max_rows": 3,
+         *           "outputs": [
+         *             "y_hat"
+         *           ]
+         *         },
+         *         "source": {
+         *           "alias": "sales-forecast",
+         *           "kind": "endpoint"
+         *         },
+         *         "subject": {
+         *           "currency": "EUR",
+         *           "label": "Sales",
+         *           "unit": "currency",
+         *           "variable": "y_hat"
+         *         },
+         *         "summary": "The sales that we expect for the next months.",
+         *         "title": "Monthly sales forecast"
+         *       },
+         *       "suggestions": [
+         *         {
+         *           "preset": "forecast",
+         *           "reasons": [
+         *             "The model forecasts a time output."
+         *           ]
+         *         },
+         *         {
+         *           "blocked_inputs": [
+         *             "batch: the model has no row dim"
+         *           ],
+         *           "preset": "generic",
+         *           "reasons": [
+         *             "Any model."
+         *           ]
+         *         }
+         *       ]
+         *     }
+         */
+        DashboardPresets: {
+            /** Issues */
+            issues?: components["schemas"]["Issue"][];
+            spec?: components["schemas"]["DashboardSpecV2"] | null;
+            /** Suggestions */
+            suggestions?: components["schemas"]["PresetSuggestion"][];
+        };
         /**
          * DashboardRefitRequest
          * @description A request, made with an actuals upload, that the analyst refits the model with those
@@ -7532,7 +10145,8 @@ export interface components {
         };
         /**
          * DashboardRevision
-         * @description An immutable published revision: the spec and the model version it pins.
+         * @description An immutable published revision: the spec (either layout) and the model version it
+         *     pins.
          * @example {
          *       "created_at": "2026-10-15T09:30:00Z",
          *       "created_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
@@ -7627,7 +10241,8 @@ export interface components {
             model_version_id: string;
             /** Seq */
             seq: number;
-            spec: components["schemas"]["DashboardSpec"];
+            /** Spec */
+            spec: components["schemas"]["DashboardSpec"] | components["schemas"]["DashboardSpecV2"];
             /** Spec Hash */
             spec_hash: string;
         };
@@ -7650,7 +10265,7 @@ export interface components {
          */
         DashboardShare: {
             /** Allowed Inputs */
-            allowed_inputs?: ("whatif" | "actuals")[];
+            allowed_inputs?: ("whatif" | "actuals" | "scenario_rows" | "batch")[];
             /**
              * Created At
              * Format: date-time
@@ -7713,7 +10328,7 @@ export interface components {
          */
         DashboardShareCreate: {
             /** Allowed Inputs */
-            allowed_inputs?: ("whatif" | "actuals")[];
+            allowed_inputs?: ("whatif" | "actuals" | "scenario_rows" | "batch")[];
             /**
              * Expires In Days
              * @default 30
@@ -7747,7 +10362,7 @@ export interface components {
          */
         DashboardShareCreated: {
             /** Allowed Inputs */
-            allowed_inputs?: ("whatif" | "actuals")[];
+            allowed_inputs?: ("whatif" | "actuals" | "scenario_rows" | "batch")[];
             /**
              * Created At
              * Format: date-time
@@ -7927,10 +10542,169 @@ export interface components {
             /** Tabs */
             tabs?: ("this_period" | "trends" | "scenarios" | "update" | "history")[];
             /** Tiles */
-            tiles?: ("expected" | "vs_expected" | "return_on_media" | "in_range_spend" | "accuracy" | "index")[];
+            tiles?: ("expected" | "vs_expected" | "return_on_media" | "in_range_spend" | "accuracy" | "index" | "panel")[];
             /** Title */
             title: string;
             whatif?: components["schemas"]["WhatIfInputs"];
+        };
+        /**
+         * DashboardSpecV2
+         * @description What a layout 2 dashboard shows (the stored draft and each published revision).
+         *
+         *     ``layout_version`` is required (never a default: the hash rule). Panels are at most
+         *     :data:`MAX_PANELS` (at most :data:`MAX_KPI_PANELS` KPI tiles) with unique ids, of the
+         *     kinds and intents the preset allows (:data:`PRESET_RULES`); ``mmm`` is given exactly for
+         *     the ``mmm_planner`` preset. Text fields are plain text. The serialised spec holds at most
+         *     :data:`~mapi_spec.dashboards.MAX_SPEC_BYTES`.
+         * @example {
+         *       "actuals": {
+         *         "enabled": true,
+         *         "publish": "auto"
+         *       },
+         *       "client_name": "Northwind Outdoor",
+         *       "layout_version": 2,
+         *       "limits": {
+         *         "exact_runs_per_day": 20
+         *       },
+         *       "panels": [
+         *         {
+         *           "id": "next",
+         *           "kind": "kpi",
+         *           "reduce": {
+         *             "how": "next"
+         *           },
+         *           "source": {
+         *             "kind": "output",
+         *             "variable": "y_hat"
+         *           },
+         *           "title": "Sales next month"
+         *         },
+         *         {
+         *           "good": "down",
+         *           "id": "typical_error",
+         *           "kind": "kpi",
+         *           "source": {
+         *             "kind": "accuracy",
+         *             "metric": "mae"
+         *           },
+         *           "stat": "value",
+         *           "title": "Typical error"
+         *         },
+         *         {
+         *           "id": "fan",
+         *           "intent": "fan",
+         *           "kind": "chart",
+         *           "source": {
+         *             "kind": "output",
+         *             "variable": "y_hat"
+         *           },
+         *           "title": "Sales and forecast"
+         *         },
+         *         {
+         *           "id": "history",
+         *           "intent": "accuracy_history",
+         *           "kind": "chart",
+         *           "source": {
+         *             "kind": "accuracy",
+         *             "metric": "mape"
+         *           },
+         *           "title": "Accuracy over time"
+         *         },
+         *         {
+         *           "id": "about",
+         *           "kind": "note",
+         *           "text": "The forecast starts from the newest month that you sent.",
+         *           "title": "About these numbers"
+         *         }
+         *       ],
+         *       "period_label": "month",
+         *       "preset": "forecast",
+         *       "refresh": {
+         *         "follow_endpoint": true,
+         *         "horizon": 6
+         *       },
+         *       "scenario_rows": {
+         *         "enabled": true,
+         *         "horizon": {
+         *           "default": 6,
+         *           "dim": "date",
+         *           "max": 12,
+         *           "min": 1
+         *         },
+         *         "inputs": [
+         *           {
+         *             "applies": "horizon",
+         *             "bind": {
+         *               "var": "price"
+         *             },
+         *             "default": 19.5,
+         *             "label": "Average price",
+         *             "max": 30,
+         *             "min": 10,
+         *             "name": "price",
+         *             "step": 0.5,
+         *             "type": "number"
+         *           }
+         *         ],
+         *         "max_rows": 3,
+         *         "outputs": [
+         *           "y_hat"
+         *         ]
+         *       },
+         *       "source": {
+         *         "alias": "sales-forecast",
+         *         "kind": "endpoint"
+         *       },
+         *       "subject": {
+         *         "currency": "EUR",
+         *         "label": "Sales",
+         *         "unit": "currency",
+         *         "variable": "y_hat"
+         *       },
+         *       "summary": "The sales that we expect for the next months.",
+         *       "title": "Monthly sales forecast"
+         *     }
+         */
+        DashboardSpecV2: {
+            actuals?: components["schemas"]["ActualsInputsV2"];
+            batch?: components["schemas"]["BatchDef"] | null;
+            /** Client Name */
+            client_name?: string | null;
+            /**
+             * Layout Version
+             * @constant
+             */
+            layout_version: 2;
+            limits?: components["schemas"]["DashboardLimitsV2"];
+            mmm?: components["schemas"]["MmmPlanner"] | null;
+            /** Note */
+            note?: string | null;
+            /** Panels */
+            panels: (components["schemas"]["KpiPanel"] | components["schemas"]["ChartPanel"] | components["schemas"]["TablePanel"] | components["schemas"]["NotePanel"] | components["schemas"]["RecipePanel"] | components["schemas"]["MmmPanel"])[];
+            /**
+             * Period Label
+             * @default period
+             * @enum {string}
+             */
+            period_label?: "week" | "month" | "quarter" | "year" | "day" | "period" | "case";
+            /**
+             * Preset
+             * @enum {string}
+             */
+            preset: "mmm_planner" | "forecast" | "regression" | "classifier" | "causal_impact" | "field_map" | "image" | "generic";
+            refresh?: components["schemas"]["RefreshPolicy"];
+            scenario_rows?: components["schemas"]["ScenarioRowsDef"];
+            /**
+             * Show Technical
+             * @default false
+             */
+            show_technical?: boolean;
+            source: components["schemas"]["DashboardSource"];
+            subject: components["schemas"]["SubjectDef"];
+            /** Summary */
+            summary?: string | null;
+            /** Title */
+            title: string;
         };
         /**
          * DashboardSummary
@@ -7984,7 +10758,7 @@ export interface components {
              * @default week
              * @enum {string}
              */
-            period_label?: "week" | "month" | "period";
+            period_label?: "week" | "month" | "quarter" | "year" | "day" | "period" | "case";
             /**
              * Status
              * @enum {string}
@@ -7997,6 +10771,158 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /**
+         * DashboardUpgrade
+         * @description ``POST …:upgrade``: the draft converted to layout 2 (saved; publish it as usual),
+         *     what to fix (``issues``) and what changed (``notes``).
+         * @example {
+         *       "dashboard": {
+         *         "created_at": "2026-10-15T09:30:00Z",
+         *         "created_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *         "draft_etag": "\"3\"",
+         *         "draft_spec": {
+         *           "actuals": {
+         *             "enabled": true,
+         *             "publish": "auto"
+         *           },
+         *           "client_name": "Northwind Outdoor",
+         *           "layout_version": 2,
+         *           "limits": {
+         *             "exact_runs_per_day": 20
+         *           },
+         *           "panels": [
+         *             {
+         *               "id": "next",
+         *               "kind": "kpi",
+         *               "reduce": {
+         *                 "how": "next"
+         *               },
+         *               "source": {
+         *                 "kind": "output",
+         *                 "variable": "y_hat"
+         *               },
+         *               "title": "Sales next month"
+         *             },
+         *             {
+         *               "good": "down",
+         *               "id": "typical_error",
+         *               "kind": "kpi",
+         *               "source": {
+         *                 "kind": "accuracy",
+         *                 "metric": "mae"
+         *               },
+         *               "stat": "value",
+         *               "title": "Typical error"
+         *             },
+         *             {
+         *               "id": "fan",
+         *               "intent": "fan",
+         *               "kind": "chart",
+         *               "source": {
+         *                 "kind": "output",
+         *                 "variable": "y_hat"
+         *               },
+         *               "title": "Sales and forecast"
+         *             },
+         *             {
+         *               "id": "history",
+         *               "intent": "accuracy_history",
+         *               "kind": "chart",
+         *               "source": {
+         *                 "kind": "accuracy",
+         *                 "metric": "mape"
+         *               },
+         *               "title": "Accuracy over time"
+         *             },
+         *             {
+         *               "id": "about",
+         *               "kind": "note",
+         *               "text": "The forecast starts from the newest month that you sent.",
+         *               "title": "About these numbers"
+         *             }
+         *           ],
+         *           "period_label": "month",
+         *           "preset": "forecast",
+         *           "refresh": {
+         *             "follow_endpoint": true,
+         *             "horizon": 6
+         *           },
+         *           "scenario_rows": {
+         *             "enabled": true,
+         *             "horizon": {
+         *               "default": 6,
+         *               "dim": "date",
+         *               "max": 12,
+         *               "min": 1
+         *             },
+         *             "inputs": [
+         *               {
+         *                 "applies": "horizon",
+         *                 "bind": {
+         *                   "var": "price"
+         *                 },
+         *                 "default": 19.5,
+         *                 "label": "Average price",
+         *                 "max": 30,
+         *                 "min": 10,
+         *                 "name": "price",
+         *                 "step": 0.5,
+         *                 "type": "number"
+         *               }
+         *             ],
+         *             "max_rows": 3,
+         *             "outputs": [
+         *               "y_hat"
+         *             ]
+         *           },
+         *           "source": {
+         *             "alias": "sales-forecast",
+         *             "kind": "endpoint"
+         *           },
+         *           "subject": {
+         *             "currency": "EUR",
+         *             "label": "Sales",
+         *             "unit": "currency",
+         *             "variable": "y_hat"
+         *           },
+         *           "summary": "The sales that we expect for the next months.",
+         *           "title": "Monthly sales forecast"
+         *         },
+         *         "id": "dsh_01jaf3r1s2t3v4w5x6y7z8a9b0",
+         *         "latest_readout": {
+         *           "created_at": "2026-10-15T09:30:00Z",
+         *           "kind": "refresh",
+         *           "model_ref": "model://growth/eu-geo-mmm@v3",
+         *           "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+         *           "period": [
+         *             "2026-10-12",
+         *             "2026-10-18"
+         *           ],
+         *           "ready_at": "2026-10-15T09:30:00Z",
+         *           "seq": 12,
+         *           "status": "ready",
+         *           "title": "Week ending 18/10/2026",
+         *           "trigger": "workflow",
+         *           "visibility": "published"
+         *         },
+         *         "live_inputs": "ok",
+         *         "name": "acme-weekly",
+         *         "run_as": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *         "status": "draft",
+         *         "updated_at": "2026-10-15T09:30:00Z"
+         *       },
+         *       "notes": [
+         *         "The channel 'price' was a placeholder: the forecast preset shows the sales forecast without channels."
+         *       ]
+         *     }
+         */
+        DashboardUpgrade: {
+            dashboard: components["schemas"]["Dashboard"];
+            /** Issues */
+            issues?: components["schemas"]["Issue"][];
+            /** Notes */
+            notes?: string[];
         };
         /**
          * DashboardValidation
@@ -8828,6 +11754,14 @@ export interface components {
          */
         Difficulty: "beginner" | "intermediate" | "expert";
         /**
+         * DimBind
+         * @description The input picks a coordinate of a dim (a store, a period).
+         */
+        DimBind: {
+            /** Dim */
+            dim: string;
+        };
+        /**
          * DimMapping
          * @description A dim of the dataset, read from one column of a tabular upload.
          * @example {
@@ -8912,11 +11846,39 @@ export interface components {
             units?: string | null;
         };
         /**
+         * EffectAccuracy
+         * @description The updated effect of a causal model: Σ actual − the counterfactual, with its range.
+         */
+        EffectAccuracy: {
+            /** High */
+            high?: number | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "effect";
+            /** Low */
+            low?: number | null;
+            /**
+             * N Periods
+             * @default 0
+             */
+            n_periods?: number;
+            /** Note */
+            note?: string | null;
+            /** Relative */
+            relative?: number | null;
+            /** Total */
+            total?: number | null;
+        };
+        /**
          * EffectiveInputs
          * @description What the viewer may do: the published spec's inputs, narrowed by a share link's
          *     ``allowed_inputs``. ``refit_requests``: an upload may ask for a refit.
          */
         EffectiveInputs: {
+            /** Accuracy Kind */
+            accuracy_kind?: ("error" | "classification" | "effect") | null;
             /**
              * Actuals
              * @default false
@@ -8924,6 +11886,11 @@ export interface components {
             actuals?: boolean;
             /** Actuals Mode */
             actuals_mode?: ("conditioned" | "compared") | null;
+            /**
+             * Batch
+             * @default false
+             */
+            batch?: boolean;
             /**
              * Exact
              * @default false
@@ -8934,6 +11901,11 @@ export interface components {
              * @default false
              */
             refit_requests?: boolean;
+            /**
+             * Scenario Rows
+             * @default false
+             */
+            scenario_rows?: boolean;
             /**
              * Whatif
              * @default false
@@ -9716,11 +12688,56 @@ export interface components {
             valid: boolean;
         };
         /**
+         * EntryPointDecl
+         * @description An entry point the wheel declares (read from ``entry_points.txt``, never loaded).
+         */
+        EntryPointDecl: {
+            /** Group */
+            group: string;
+            /** Name */
+            name: string;
+            /** Value */
+            value: string;
+        };
+        /**
+         * ErrorAccuracy
+         * @description Errors of numeric predictions (``mape``, ``wape``, ``smape`` and ``band_hit_rate`` in
+         *     percent; ``bias`` = mean of predicted − actual).
+         */
+        ErrorAccuracy: {
+            /** Band Hit Rate */
+            band_hit_rate?: number | null;
+            /** Bias */
+            bias?: number | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "error";
+            /** Mae */
+            mae?: number | null;
+            /** Mape */
+            mape?: number | null;
+            /**
+             * N
+             * @default 0
+             */
+            n?: number;
+            /** R2 */
+            r2?: number | null;
+            /** Rmse */
+            rmse?: number | null;
+            /** Smape */
+            smape?: number | null;
+            /** Wape */
+            wape?: number | null;
+        };
+        /**
          * ErrorCode
          * @description Stable error codes. See :data:`ERROR_INFO` for HTTP status and titles.
          * @enum {string}
          */
-        ErrorCode: "SCHEMA_INVALID" | "SPEC_PARSE_ERROR" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_API_VERSION" | "REF_UNRESOLVED" | "SETTINGS_INVALID" | "BINDING_INVALID" | "SPLIT_INVALID" | "LEAKAGE_RISK" | "DIM_POLICY_LOOSENED" | "SCHEMA_DYNAMIC" | "SIDE_TABLE_COVERAGE" | "PLOT_UNSAFE" | "UNSEEN_LEVELS" | "COORD_NOT_ALLOWED" | "HORIZON_EXCEEDS_FIT" | "MISSING_FUTURE_COVARIATE" | "NON_CONTIGUOUS_EXTENSION" | "CAPABILITY_UNSUPPORTED" | "RECURSIVE_UNSUPPORTED" | "MODE_NOT_SUPPORTED" | "QUOTA_EXCEEDED" | "RATE_LIMITED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "IDEMPOTENCY_CONFLICT" | "PRECONDITION_FAILED" | "USER_CODE_ERROR" | "RESOURCE_EXHAUSTED" | "INFRA_ERROR" | "INTEGRITY_FAILURE" | "TIMEOUT" | "SANDBOX_VIOLATION" | "CANCELLED" | "INTERNAL_ERROR" | "GUIDED_ANSWERS_INVALID" | "BUSINESS_PRIORS_INVALID" | "CALIBRATION_UNSUPPORTED" | "IMPORT_UNSUPPORTED" | "SCENARIO_OUT_OF_RANGE" | "PROMOTION_BLOCKED" | "OVERRIDE_REQUIRED" | "WEBHOOK_URL_BLOCKED" | "WEBHOOK_SIGNATURE_INVALID" | "EMBED_NOT_ALLOWED" | "LINK_EXPIRED" | "EMAIL_NOT_ALLOWED" | "TERMS_NOT_ACCEPTED" | "EMAIL_NOT_VERIFIED" | "IDENTITY_VERIFICATION_REQUIRED" | "ABOUT_INCOMPLETE" | "CHOOSER_ANSWER_INVALID" | "WORKFLOW_INVALID" | "EXPRESSION_INVALID" | "EXPRESSION_ERROR" | "NODE_UNKNOWN" | "SCHEDULE_INVALID" | "WORKFLOW_NOT_RUNNABLE" | "POLICY_INVALID" | "VALIDATION_TRANSITION_INVALID" | "SELF_APPROVAL_FORBIDDEN" | "NOT_VALIDATED" | "EXPLORE_INVALID" | "OPTIMIZE_INFEASIBLE" | "ACTUALS_NOT_SUPPORTED" | "ACTUALS_INVALID" | "NOT_READY" | "INGEST_UNSAFE_FILE" | "DASHBOARD_NOT_PUBLISHED" | "DASHBOARD_INPUT_DISABLED" | "DASHBOARD_LIVE_PAUSED" | "DASHBOARD_RUN_LIMIT" | "DASHBOARD_SPEC_STALE" | "SHARE_PASSCODE_REQUIRED" | "SHARE_PASSCODE_INVALID" | "SHARE_LOCKED" | "INVALID_ROLE_SCOPE";
+        ErrorCode: "SCHEMA_INVALID" | "SPEC_PARSE_ERROR" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_API_VERSION" | "REF_UNRESOLVED" | "SETTINGS_INVALID" | "BINDING_INVALID" | "SPLIT_INVALID" | "LEAKAGE_RISK" | "DIM_POLICY_LOOSENED" | "SCHEMA_DYNAMIC" | "SIDE_TABLE_COVERAGE" | "PLOT_UNSAFE" | "UNSEEN_LEVELS" | "COORD_NOT_ALLOWED" | "HORIZON_EXCEEDS_FIT" | "MISSING_FUTURE_COVARIATE" | "NON_CONTIGUOUS_EXTENSION" | "CAPABILITY_UNSUPPORTED" | "RECURSIVE_UNSUPPORTED" | "MODE_NOT_SUPPORTED" | "QUOTA_EXCEEDED" | "RATE_LIMITED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "IDEMPOTENCY_CONFLICT" | "PRECONDITION_FAILED" | "USER_CODE_ERROR" | "RESOURCE_EXHAUSTED" | "INFRA_ERROR" | "INTEGRITY_FAILURE" | "TIMEOUT" | "SANDBOX_VIOLATION" | "CANCELLED" | "INTERNAL_ERROR" | "GUIDED_ANSWERS_INVALID" | "BUSINESS_PRIORS_INVALID" | "CALIBRATION_UNSUPPORTED" | "IMPORT_UNSUPPORTED" | "SCENARIO_OUT_OF_RANGE" | "PROMOTION_BLOCKED" | "OVERRIDE_REQUIRED" | "WEBHOOK_URL_BLOCKED" | "WEBHOOK_SIGNATURE_INVALID" | "EMBED_NOT_ALLOWED" | "LINK_EXPIRED" | "EMAIL_NOT_ALLOWED" | "TERMS_NOT_ACCEPTED" | "EMAIL_NOT_VERIFIED" | "IDENTITY_VERIFICATION_REQUIRED" | "ABOUT_INCOMPLETE" | "CHOOSER_ANSWER_INVALID" | "WORKFLOW_INVALID" | "EXPRESSION_INVALID" | "EXPRESSION_ERROR" | "NODE_UNKNOWN" | "SCHEDULE_INVALID" | "WORKFLOW_NOT_RUNNABLE" | "POLICY_INVALID" | "VALIDATION_TRANSITION_INVALID" | "SELF_APPROVAL_FORBIDDEN" | "NOT_VALIDATED" | "EXPLORE_INVALID" | "OPTIMIZE_INFEASIBLE" | "ACTUALS_NOT_SUPPORTED" | "ACTUALS_INVALID" | "NOT_READY" | "INGEST_UNSAFE_FILE" | "DASHBOARD_NOT_PUBLISHED" | "DASHBOARD_INPUT_DISABLED" | "DASHBOARD_LIVE_PAUSED" | "DASHBOARD_RUN_LIMIT" | "DASHBOARD_SPEC_STALE" | "SHARE_PASSCODE_REQUIRED" | "SHARE_PASSCODE_INVALID" | "SHARE_LOCKED" | "INVALID_ROLE_SCOPE" | "DASHBOARD_INPUT_INVALID" | "DASHBOARD_BATCH_TOO_LARGE" | "DASHBOARD_DOWNLOAD_GONE" | "DASHBOARD_LAYOUT_RETIRED" | "LIBRARY_INVALID" | "LIBRARY_DATA_SHAPE" | "SCHEMA_UNSAFE" | "EXTENSION_UNAVAILABLE" | "SAMPLES_DISABLED" | "PREVIEW_DISABLED" | "PLUGIN_REFUSED" | "PLUGIN_NAMESPACE_TAKEN" | "PLUGIN_VERSION_EXISTS" | "PLUGIN_STATE_CONFLICT" | "PLUGIN_UNAVAILABLE" | "UPLOADED_CODE_NOT_SHAREABLE" | "UNTRUSTED_PLACEMENT_UNAVAILABLE" | "REAUTH_REQUIRED" | "CHAT_DISABLED" | "CHAT_UNAVAILABLE" | "CHAT_BUDGET_EXHAUSTED" | "CHAT_HISTORY_INVALID" | "READ_TOKEN_LIMIT";
         /**
          * ErrorPayload
          * @description ``error``: the run failed; ``message`` is platform-authored, plugin text is untrusted.
@@ -10024,6 +13041,18 @@ export interface components {
              * @default []
              */
             regions?: string[];
+            /**
+             * Runs Untrusted Code
+             * @description v0.19: the backend may run uploaded (tenant) code: docker, docker-gvisor and Cloud Run Jobs; local-process only with the dev-only allowance
+             * @default false
+             */
+            runs_untrusted_code?: boolean;
+            /**
+             * Untrusted Dev Only
+             * @description v0.19: uploaded code runs here only because of the development allowance (MAPI_DEV_ALLOW_LOCAL_UNTRUSTED); the run gets a DEV_MODE_ISOLATION event
+             * @default false
+             */
+            untrusted_dev_only?: boolean;
         };
         /**
          * ExecutorEvidence
@@ -10803,6 +13832,71 @@ export interface components {
             units?: string | null;
             /** Values */
             values: (number | null)[][];
+        };
+        /**
+         * FieldBlock
+         * @description A 2-D field map (at most 64 × 64 cells, 8 frames). Without ``missing_code`` (blocks
+         *     built before v0.17.0's fix) code ``c`` maps to ``vmin + c / 255 * (vmax - vmin)``; with
+         *     it, the value codes are ``0`` … ``254`` and map to ``vmin + c / 254 * (vmax - vmin)``,
+         *     and ``missing_code`` (255) is a cell with no value (drawn transparent, left out of the
+         *     statistics). Values are on log10 when ``log``.
+         */
+        FieldBlock: {
+            /**
+             * Approximate
+             * @default false
+             */
+            approximate?: boolean;
+            /** Caption */
+            caption?: string | null;
+            /**
+             * Colormap
+             * @default viridis
+             * @enum {string}
+             */
+            colormap?: "viridis" | "magma" | "cividis" | "gray" | "diverging";
+            /** Frames */
+            frames: components["schemas"]["FieldFrame"][];
+            /** Height */
+            height: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "field";
+            /**
+             * Log
+             * @default false
+             */
+            log?: boolean;
+            /** Missing Code */
+            missing_code?: 255 | null;
+            /** Panel Id */
+            panel_id: string;
+            /** Title */
+            title: string;
+            /** Units */
+            units?: string | null;
+            /** Vmax */
+            vmax: number;
+            /** Vmin */
+            vmin: number;
+            /** Width */
+            width: number;
+            /** X Label */
+            x_label?: string | null;
+            /** Y Label */
+            y_label?: string | null;
+        };
+        /**
+         * FieldFrame
+         * @description One frame of a field: ``width * height`` uint8 codes (row-major), base64 encoded.
+         */
+        FieldFrame: {
+            /** Codes B64 */
+            codes_b64: string;
+            /** Label */
+            label: string;
         };
         /**
          * FitMode
@@ -12098,6 +15192,15 @@ export interface components {
              */
             status: "ok" | "degraded" | "fail";
         };
+        /** HistogramBin */
+        HistogramBin: {
+            /** Count */
+            count: number;
+            /** Hi */
+            hi: number;
+            /** Lo */
+            lo: number;
+        };
         /**
          * HoldoutPlan
          * @description One fold: the existing train/holdout split.
@@ -12122,6 +15225,23 @@ export interface components {
             dim: string;
             /** Periods */
             periods: number;
+        };
+        /**
+         * HorizonDef
+         * @description How many periods ahead a forecast scenario row reaches.
+         */
+        HorizonDef: {
+            /** Default */
+            default: number;
+            /** Dim */
+            dim: string;
+            /** Max */
+            max: number;
+            /**
+             * Min
+             * @default 1
+             */
+            min?: number;
         };
         /**
          * ImageFolderOptions
@@ -12584,6 +15704,22 @@ export interface components {
             role: "coord" | "target" | "driver" | "input";
         };
         /**
+         * InspectProblem
+         * @description One reason the inspect run refuses the wheel. ``message`` is platform-authored;
+         *     ``path`` is the archive member concerned (untrusted, normalized).
+         */
+        InspectProblem: {
+            /**
+             * Check
+             * @enum {string}
+             */
+            check: "archive_size" | "member_count" | "member_size" | "ratio" | "path_unsafe" | "link_member" | "special_member" | "duplicate_name" | "case_collision" | "zip_structure" | "encrypted" | "compression_method" | "nested_archive" | "native_code" | "bytecode" | "pth_file" | "site_hook" | "top_level_name" | "namespace_package" | "dist_name" | "dist_info" | "wheel_tag" | "data_dir" | "entry_point_group" | "entry_point_target" | "requirement_unlocked" | "requirement_url" | "requires_python" | "metadata_invalid" | "text_unsafe" | "sha_mismatch";
+            /** Message */
+            message: string;
+            /** Path */
+            path?: string | null;
+        };
+        /**
          * InspectedArray
          * @description One array of an inspected upload (from its metadata only; no data is read).
          *
@@ -12705,6 +15841,10 @@ export interface components {
          *       "global_spend_cap_micros": 500000000,
          *       "reason": "daily cap for the beta"
          *     }
+         * @example {
+         *       "chat_enabled": false,
+         *       "reason": "model provider incident"
+         *     }
          */
         KillSwitchUpdate: {
             /**
@@ -12713,6 +15853,11 @@ export interface components {
              * @default false
              */
             cancel_untrusted_runs?: boolean;
+            /**
+             * Chat Enabled
+             * @description v0.20: turn dashboard chat off (or on again) for every tenant
+             */
+            chat_enabled?: boolean | null;
             /**
              * Clear Spend Cap
              * @description Remove the spend cap
@@ -12743,6 +15888,12 @@ export interface components {
          */
         KillSwitches: {
             /**
+             * Chat Enabled
+             * @description Off: no dashboard chat turn reaches a model
+             * @default true
+             */
+            chat_enabled?: boolean;
+            /**
              * Global Spend Cap Micros
              * @description Stop new compute once the platform spent this much
              */
@@ -12770,6 +15921,51 @@ export interface components {
             updated_at?: string | null;
             /** Updated By */
             updated_by?: string | null;
+        };
+        /**
+         * KitCheck
+         * @description One kit result. ``message`` comes from the sandbox (untrusted, normalized).
+         */
+        KitCheck: {
+            /** Check */
+            check: string;
+            /** Entry Id */
+            entry_id?: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "model" | "step" | "plot" | "node" | "template" | "package";
+            /**
+             * Message
+             * @default
+             */
+            message?: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pass" | "fail" | "skipped";
+        };
+        /** KpiBlock */
+        KpiBlock: {
+            /**
+             * Approximate
+             * @default false
+             */
+            approximate?: boolean;
+            /** Caption */
+            caption?: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "kpi";
+            /** Panel Id */
+            panel_id: string;
+            tile: components["schemas"]["KpiValue"];
+            /** Title */
+            title: string;
         };
         /**
          * KpiDef
@@ -12814,10 +16010,63 @@ export interface components {
             variable: string;
         };
         /**
+         * KpiPanel
+         * @description A KPI tile. ``stat``: the centre or a bound of an output (``value`` for metrics,
+         *     checks and accuracy); ``band``: ``outcome`` (the range of one new result, scored as
+         *     predictive), ``mean`` (the range of the average) or ``none``; ``compare``: the change
+         *     against the previous published readout; ``good``: which direction is good news.
+         */
+        KpiPanel: {
+            /**
+             * Band
+             * @default outcome
+             * @enum {string}
+             */
+            band?: "outcome" | "mean" | "none";
+            /** Caption */
+            caption?: string | null;
+            /**
+             * Compare
+             * @default previous
+             * @enum {string}
+             */
+            compare?: "previous" | "none";
+            /**
+             * Good
+             * @default up
+             * @enum {string}
+             */
+            good?: "up" | "down" | "none";
+            /** Id */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "kpi";
+            reduce?: components["schemas"]["Reduce"];
+            /** Source */
+            source: components["schemas"]["OutputSource"] | components["schemas"]["MetricSource"] | components["schemas"]["ScorecardSource"] | components["schemas"]["ViewSource"] | components["schemas"]["AccuracySource"];
+            /**
+             * Stat
+             * @default centre
+             * @enum {string}
+             */
+            stat?: "centre" | "low" | "high" | "value";
+            /** Title */
+            title: string;
+        };
+        /**
          * KpiValue
          * @description One KPI tile: a value with its plain caption and the change against ``delta_basis``.
          */
         KpiValue: {
+            /**
+             * Approximate
+             * @description Layout 2: the value is a sum or mean of point predictions
+             * @default false
+             */
+            approximate?: boolean;
             /**
              * Caption
              * @default
@@ -12839,16 +16088,21 @@ export interface components {
              * Key
              * @enum {string}
              */
-            key: "expected" | "vs_expected" | "return_on_media" | "in_range_spend" | "accuracy" | "index";
+            key: "expected" | "vs_expected" | "return_on_media" | "in_range_spend" | "accuracy" | "index" | "panel";
             /** Label */
             label: string;
             /** Low */
             low?: number | null;
             /**
+             * Panel Id
+             * @description Layout 2: the KPI panel
+             */
+            panel_id?: string | null;
+            /**
              * Unit
              * @enum {string}
              */
-            unit: "count" | "currency" | "ratio" | "percent" | "index";
+            unit: "count" | "currency" | "ratio" | "percent" | "index" | "probability" | "number" | "label" | "rate";
             /** Value */
             value?: number | null;
         };
@@ -12917,6 +16171,482 @@ export interface components {
             n?: number | null;
             /** Seed */
             seed?: number | null;
+        };
+        /**
+         * LibraryCreate
+         * @description Create a library item (revision 1).
+         * @example {
+         *       "document": {
+         *         "apiVersion": "mapi/v1",
+         *         "base": "declarative",
+         *         "declarative": {
+         *           "groups": [
+         *             {
+         *               "dim": "store"
+         *             }
+         *           ],
+         *           "outcome": {
+         *             "family": "negative_binomial",
+         *             "var": "sales"
+         *           },
+         *           "terms": [
+         *             {
+         *               "prior": {
+         *                 "sigma": 0.5
+         *               },
+         *               "sign": "negative",
+         *               "transform": [
+         *                 {
+         *                   "use": "log1p"
+         *                 }
+         *               ],
+         *               "var": "price"
+         *             },
+         *             {
+         *               "prior": {
+         *                 "sigma": 1
+         *               },
+         *               "sign": "positive",
+         *               "var": "promo",
+         *               "varies_by": "store"
+         *             }
+         *           ]
+         *         },
+         *         "kind": "ModelRecipe",
+         *         "metadata": {
+         *           "name": "store-sales",
+         *           "title": "Store sales with promo lift"
+         *         },
+         *         "plots": [
+         *           "core.ppc"
+         *         ]
+         *       },
+         *       "scope": "project"
+         *     }
+         */
+        LibraryCreate: {
+            /** Document */
+            document?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /** Message */
+            message?: string | null;
+            /**
+             * Scope
+             * @default project
+             * @enum {string}
+             */
+            scope?: "project" | "tenant";
+            /**
+             * Text
+             * @description The document as YAML or JSON text (instead of document)
+             */
+            text?: string | null;
+        };
+        /**
+         * LibraryItem
+         * @description A library item (its documents are in :class:`LibraryRevision`).
+         * @example {
+         *       "archived": false,
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "created_by": "usr_analyst",
+         *       "etag": "\"r3\"",
+         *       "id": "lib_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *       "kind": "model_recipe",
+         *       "latest_revision": 3,
+         *       "name": "store-sales",
+         *       "project_id": "growth",
+         *       "scope": "project",
+         *       "summary": "",
+         *       "tags": [
+         *         "retail"
+         *       ],
+         *       "title": "Store sales with promo lift",
+         *       "updated_at": "2026-10-15T09:30:00Z"
+         *     }
+         */
+        LibraryItem: {
+            /**
+             * Archived
+             * @default false
+             */
+            archived?: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by: string;
+            /**
+             * Etag
+             * @description The latest revision as an ETag: "r<latest_revision>"
+             */
+            etag: string;
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "model_recipe" | "prep_preset" | "chart_template" | "workflow_template";
+            /** Latest Revision */
+            latest_revision: number;
+            /** Name */
+            name: string;
+            /** Project Id */
+            project_id?: string | null;
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "project" | "tenant";
+            /**
+             * Summary
+             * @default
+             */
+            summary?: string;
+            /** Tags */
+            tags?: string[];
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * LibraryRevision
+         * @description One immutable revision of a library item: the document, whether it compiled against
+         *     the catalog of the time, and the compiled output.
+         * @example {
+         *       "catalog_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "created_by": "usr_analyst",
+         *       "doc_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+         *       "document": {
+         *         "apiVersion": "mapi/v1",
+         *         "base": "declarative",
+         *         "declarative": {
+         *           "groups": [
+         *             {
+         *               "dim": "store"
+         *             }
+         *           ],
+         *           "outcome": {
+         *             "family": "negative_binomial",
+         *             "var": "sales"
+         *           },
+         *           "terms": [
+         *             {
+         *               "prior": {
+         *                 "sigma": 0.5
+         *               },
+         *               "sign": "negative",
+         *               "transform": [
+         *                 {
+         *                   "use": "log1p"
+         *                 }
+         *               ],
+         *               "var": "price"
+         *             },
+         *             {
+         *               "prior": {
+         *                 "sigma": 1
+         *               },
+         *               "sign": "positive",
+         *               "var": "promo",
+         *               "varies_by": "store"
+         *             }
+         *           ]
+         *         },
+         *         "kind": "ModelRecipe",
+         *         "metadata": {
+         *           "name": "store-sales",
+         *           "title": "Store sales with promo lift"
+         *         },
+         *         "plots": [
+         *           "core.ppc"
+         *         ]
+         *       },
+         *       "issues": [],
+         *       "item_id": "lib_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *       "message": "first version",
+         *       "revision": 1,
+         *       "valid": true
+         *     }
+         */
+        LibraryRevision: {
+            /** Catalog Digest */
+            catalog_digest?: string | null;
+            /** Compiled */
+            compiled?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by: string;
+            /** Doc Hash */
+            doc_hash: string;
+            /** Document */
+            document: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Issues */
+            issues?: components["schemas"]["Issue"][];
+            /** Item Id */
+            item_id: string;
+            /** Message */
+            message?: string | null;
+            /** Revision */
+            revision: number;
+            /** Valid */
+            valid: boolean;
+        };
+        /**
+         * LibraryRevisionCreate
+         * @description Add a revision to a library item (``If-Match: "r<latest_revision>"``).
+         * @example {
+         *       "document": {
+         *         "apiVersion": "mapi/v1",
+         *         "base": "declarative",
+         *         "declarative": {
+         *           "groups": [
+         *             {
+         *               "dim": "store"
+         *             }
+         *           ],
+         *           "outcome": {
+         *             "family": "negative_binomial",
+         *             "var": "sales"
+         *           },
+         *           "terms": [
+         *             {
+         *               "prior": {
+         *                 "sigma": 0.5
+         *               },
+         *               "sign": "negative",
+         *               "transform": [
+         *                 {
+         *                   "use": "log1p"
+         *                 }
+         *               ],
+         *               "var": "price"
+         *             },
+         *             {
+         *               "prior": {
+         *                 "sigma": 1
+         *               },
+         *               "sign": "positive",
+         *               "var": "promo",
+         *               "varies_by": "store"
+         *             }
+         *           ]
+         *         },
+         *         "kind": "ModelRecipe",
+         *         "metadata": {
+         *           "name": "store-sales",
+         *           "title": "Store sales with promo lift"
+         *         },
+         *         "plots": [
+         *           "core.ppc"
+         *         ]
+         *       },
+         *       "message": "tighter price prior"
+         *     }
+         */
+        LibraryRevisionCreate: {
+            /** Document */
+            document?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /** Message */
+            message?: string | null;
+            /**
+             * Text
+             * @description The document as YAML or JSON text (instead of document)
+             */
+            text?: string | null;
+        };
+        /**
+         * LibraryUseRequest
+         * @description Use an item: the values of its slots and exposed settings, the dataset to check
+         *     against, and for chart templates the model version to apply to.
+         * @example {
+         *       "dataset": "dataset://growth/store_sales@latest",
+         *       "slots": {
+         *         "media": [
+         *           "tv",
+         *           "search"
+         *         ]
+         *       }
+         *     }
+         */
+        LibraryUseRequest: {
+            /** Dataset */
+            dataset?: string | null;
+            /** Exposed */
+            exposed?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Model Id */
+            model_id?: string | null;
+            /** Model Version */
+            model_version?: number | null;
+            /** Revision */
+            revision?: number | null;
+            /** Slots */
+            slots?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+        };
+        /**
+         * LibraryUseResult
+         * @description What an item compiles to: a spec fragment (model recipes), prep steps (prep presets),
+         *     an applied chart (chart templates) or a workflow document (workflow templates).
+         * @example {
+         *       "issues": [],
+         *       "kind": "prep_preset",
+         *       "labels": {
+         *         "mapi.library/prep": "lib_01jaf3q2x8m9v7k5h4g3f2e1d0-r2"
+         *       },
+         *       "pipeline": [
+         *         {
+         *           "id": "p_scale",
+         *           "use": "core.max_abs_scale@^1",
+         *           "with": {
+         *             "over": [
+         *               "time"
+         *             ],
+         *             "vars": [
+         *               "tv",
+         *               "search"
+         *             ]
+         *           }
+         *         }
+         *       ]
+         *     }
+         */
+        LibraryUseResult: {
+            /** Issues */
+            issues?: components["schemas"]["Issue"][];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "model_recipe" | "prep_preset" | "chart_template" | "workflow_template";
+            /** Labels */
+            labels?: {
+                [key: string]: string;
+            };
+            /** Pipeline */
+            pipeline?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            }[] | null;
+            plot?: components["schemas"]["PlotSpec"] | null;
+            /** Spec Fragment */
+            spec_fragment?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /** Workflow Document */
+            workflow_document?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+        };
+        /**
+         * LibraryValidateRequest
+         * @description Check a document; with ``dataset``, also its slots and variables against the data.
+         * @example {
+         *       "dataset": "dataset://growth/store_sales@latest",
+         *       "document": {
+         *         "apiVersion": "mapi/v1",
+         *         "base": "declarative",
+         *         "declarative": {
+         *           "groups": [
+         *             {
+         *               "dim": "store"
+         *             }
+         *           ],
+         *           "outcome": {
+         *             "family": "negative_binomial",
+         *             "var": "sales"
+         *           },
+         *           "terms": [
+         *             {
+         *               "prior": {
+         *                 "sigma": 0.5
+         *               },
+         *               "sign": "negative",
+         *               "transform": [
+         *                 {
+         *                   "use": "log1p"
+         *                 }
+         *               ],
+         *               "var": "price"
+         *             },
+         *             {
+         *               "prior": {
+         *                 "sigma": 1
+         *               },
+         *               "sign": "positive",
+         *               "var": "promo",
+         *               "varies_by": "store"
+         *             }
+         *           ]
+         *         },
+         *         "kind": "ModelRecipe",
+         *         "metadata": {
+         *           "name": "store-sales",
+         *           "title": "Store sales with promo lift"
+         *         },
+         *         "plots": [
+         *           "core.ppc"
+         *         ]
+         *       }
+         *     }
+         */
+        LibraryValidateRequest: {
+            /** Dataset */
+            dataset?: string | null;
+            /** Document */
+            document?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /**
+             * Text
+             * @description The document as YAML or JSON text (instead of document)
+             */
+            text?: string | null;
+        };
+        /**
+         * LibraryValidation
+         * @description The result of a check: issues point into the document.
+         * @example {
+         *       "issues": [
+         *         {
+         *           "code": "LIBRARY_INVALID",
+         *           "message": "varies_by 'region' is not one of the groups",
+         *           "pointer": "/declarative/terms/1/varies_by",
+         *           "severity": "error"
+         *         }
+         *       ],
+         *       "valid": false
+         *     }
+         */
+        LibraryValidation: {
+            /** Compiled */
+            compiled?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /** Issues */
+            issues?: components["schemas"]["Issue"][];
+            /** Valid */
+            valid: boolean;
         };
         /**
          * LiftTest
@@ -13039,6 +16769,11 @@ export interface components {
             };
             /** Overlay Hash */
             overlay_hash?: string | null;
+            /**
+             * Overlays
+             * @description v0.19: the uploaded plugin versions the run used (from the control plane's runs.overlays; overlay_hash is deprecated and always null for new rows)
+             */
+            overlays?: components["schemas"]["OverlayPin"][];
             /**
              * Plugin
              * @example mmm.bayesian@1.3.2
@@ -13253,10 +16988,25 @@ export interface components {
              */
             auth: "session" | "token" | "service";
             /**
+             * Dev Untrusted Code
+             * @default false
+             */
+            dev_untrusted_code?: boolean;
+            /**
              * Operator
              * @default false
              */
             operator?: boolean;
+            /**
+             * Plugins Enabled
+             * @default true
+             */
+            plugins_enabled?: boolean;
+            /**
+             * Plugins Paused
+             * @default false
+             */
+            plugins_paused?: boolean;
             /** Principal */
             principal: components["schemas"]["UserPrincipal"] | components["schemas"]["TokenPrincipal"] | components["schemas"]["ServicePrincipal"];
             /** Tenants */
@@ -13809,6 +17559,30 @@ export interface components {
             min: number;
         };
         /**
+         * MetricSource
+         * @description A metric logged by the fit run (``labels`` pick one row, e.g. ``{"unit": "s1"}``;
+         *     the empty labels are the run's scalar value).
+         */
+        MetricSource: {
+            /** Key */
+            key: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "metric";
+            /** Labels */
+            labels?: {
+                [key: string]: string;
+            };
+            /**
+             * Run
+             * @default fit
+             * @constant
+             */
+            run?: "fit";
+        };
+        /**
          * MetricsWrite
          * @description ``POST /v1/runs/{run_id}/metrics``: log metric points to a run (any state).
          * @example {
@@ -13944,6 +17718,42 @@ export interface components {
             variable_column?: string;
         };
         /**
+         * MmmPanel
+         * @description A part of the media planner (``mmm_planner`` preset only): the layout 1 tiles, the
+         *     channel scorecard, the changes against the expectation, the return trend or the saved
+         *     scenarios.
+         */
+        MmmPanel: {
+            /** Caption */
+            caption?: string | null;
+            /** Id */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "mmm";
+            /**
+             * Part
+             * @enum {string}
+             */
+            part: "tiles" | "scorecard" | "changes" | "roi_trend" | "scenarios";
+            /** Title */
+            title: string;
+        };
+        /**
+         * MmmPlanner
+         * @description The media planner part of the ``mmm_planner`` preset (layout 1's channels, what-ifs
+         *     and tiles).
+         */
+        MmmPlanner: {
+            /** Channels */
+            channels: components["schemas"]["ChannelDef"][];
+            /** Tiles */
+            tiles?: ("expected" | "vs_expected" | "return_on_media" | "in_range_spend" | "accuracy" | "index" | "panel")[];
+            whatif?: components["schemas"]["WhatIfInputs"];
+        };
+        /**
          * Model
          * @description A registry entry grouping the versions fitted from one spec name.
          * @example {
@@ -14000,6 +17810,11 @@ export interface components {
             manifest: components["schemas"]["ModelManifest"];
             /** Overlay Hash */
             overlay_hash?: string | null;
+            /**
+             * Provider
+             * @description v0.18: the distribution that installed a non-built-in model
+             */
+            provider?: string | null;
             /**
              * Yanked
              * @default false
@@ -14660,6 +18475,11 @@ export interface components {
             params_schema?: {
                 [key: string]: components["schemas"]["JsonValue"];
             };
+            /**
+             * Plugin
+             * @description v0.18: the namespace of a plugin node (None for the built-in nodes); the id is '<kind>.<plugin>_<name>'
+             */
+            plugin?: string | null;
             /** Result Fields */
             result_fields?: {
                 [key: string]: components["schemas"]["ResultField"];
@@ -14794,6 +18614,46 @@ export interface components {
          * @enum {string}
          */
         NodeRunStatus: "pending" | "queued" | "running" | "succeeded" | "cached" | "skipped" | "failed" | "cancelled";
+        /** NoteBlock */
+        NoteBlock: {
+            /**
+             * Approximate
+             * @default false
+             */
+            approximate?: boolean;
+            /** Caption */
+            caption?: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "note";
+            /** Panel Id */
+            panel_id: string;
+            /** Text */
+            text: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * NotePanel
+         * @description Plain text from the analyst (rendered as text, never HTML or markdown).
+         */
+        NotePanel: {
+            /** Caption */
+            caption?: string | null;
+            /** Id */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "note";
+            /** Text */
+            text: string;
+            /** Title */
+            title: string;
+        };
         /**
          * ObjectRef
          * @description A stored object exposed through ``…/artifacts/{name}`` (fetch it as an ArtifactLink).
@@ -14815,6 +18675,124 @@ export interface components {
             name: string;
             /** Size */
             size: number;
+        };
+        /**
+         * OnboardingPatch
+         * @description ``PATCH /v1/tenants/{t}/me/onboarding`` (at most 2 KiB). Every field is optional;
+         *     an absent field leaves the state as it is.
+         * @example {
+         *       "complete": [
+         *         "took_tour"
+         *       ]
+         *     }
+         * @example {
+         *       "tours": {
+         *         "fit": {
+         *           "status": "in_progress",
+         *           "step": 2,
+         *           "updated_at": "2026-10-15T09:30:00Z"
+         *         }
+         *       },
+         *       "welcomed": true
+         *     }
+         * @example {
+         *       "checklist_dismissed": true,
+         *       "hide_samples": [
+         *         "geo_mmm"
+         *       ]
+         *     }
+         */
+        OnboardingPatch: {
+            /** Checklist Dismissed */
+            checklist_dismissed?: boolean | null;
+            /**
+             * Complete
+             * @description Steps now done
+             */
+            complete?: ("took_tour" | "open_sample" | "fit_model" | "read_results" | "try_whatif" | "make_dashboard" | "own_data" | "make_your_own")[];
+            /** Hide Samples */
+            hide_samples?: string[];
+            /** Tips Off */
+            tips_off?: boolean | null;
+            /**
+             * Tours
+             * @description Tours to set (other tours are kept)
+             */
+            tours?: {
+                [key: string]: components["schemas"]["TourProgress"];
+            } | null;
+            /** Unhide Samples */
+            unhide_samples?: string[];
+            /**
+             * Welcomed
+             * @description true records the first welcome; only a reset clears it
+             */
+            welcomed?: boolean | null;
+        };
+        /**
+         * OnboardingState
+         * @description The checklist and tour progress of the calling user in one tenant.
+         * @example {
+         *       "version": 0
+         *     }
+         * @example {
+         *       "checklist": {
+         *         "open_sample": "2026-10-15T09:30:00Z",
+         *         "took_tour": "2026-10-15T09:30:00Z"
+         *       },
+         *       "checklist_dismissed": false,
+         *       "hidden_samples": [],
+         *       "tips_off": false,
+         *       "tours": {
+         *         "welcome": {
+         *           "status": "completed",
+         *           "step": 5,
+         *           "updated_at": "2026-10-15T09:30:00Z"
+         *         }
+         *       },
+         *       "version": 4,
+         *       "welcomed_at": "2026-10-15T09:30:00Z"
+         *     }
+         */
+        OnboardingState: {
+            /**
+             * Checklist
+             * @description Completed steps and when they were completed
+             */
+            checklist?: {
+                [key: string]: string;
+            };
+            /**
+             * Checklist Dismissed
+             * @default false
+             */
+            checklist_dismissed?: boolean;
+            /**
+             * Hidden Samples
+             * @description Sample projects the user hid from the Start-here hub
+             */
+            hidden_samples?: string[];
+            /**
+             * Tips Off
+             * @description The user turned the welcome dialog and tips off
+             * @default false
+             */
+            tips_off?: boolean;
+            /** Tours */
+            tours?: {
+                [key: string]: components["schemas"]["TourProgress"];
+            };
+            /**
+             * Version
+             * @description Bumped on every change; the ETag of the state
+             * @default 0
+             */
+            version?: number;
+            /**
+             * Welcomed At
+             * @description When the user first saw (and closed) the welcome dialog
+             */
+            welcomed_at?: string | null;
         };
         /**
          * Optimization
@@ -15152,6 +19130,11 @@ export interface components {
              * @default false
              */
             circular?: boolean;
+            /**
+             * Classes Dim
+             * @description The dim that holds the classes (or states) of a probability output, e.g. 'class'
+             */
+            classes_dim?: string | null;
             /** Description */
             description?: string | null;
             /** Dims */
@@ -15163,6 +19146,11 @@ export interface components {
             dims_of?: string | null;
             /** @description Draw the output as a 2-D field (Model Explorer 'fields' section) */
             grid?: components["schemas"]["GridDecl"] | null;
+            /**
+             * Meaning
+             * @description What the numbers are (v0.17): a value, a class or state probability, a rate or an effect. Unset: dashboards guess it from the dims and plots
+             */
+            meaning?: ("value" | "class_probability" | "state_probability" | "rate" | "effect") | null;
             /** Units */
             units?: string | null;
             /**
@@ -15213,6 +19201,42 @@ export interface components {
             units?: "original" | "model";
             /** Vars */
             vars?: string[];
+        };
+        /**
+         * OutputSource
+         * @description A model output (its score summary table; names as the dataset names them).
+         *     ``select`` fixes coordinates (``{"store": "s1"}``) before any reduction.
+         */
+        OutputSource: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "output";
+            /** Select */
+            select?: {
+                [key: string]: string | number;
+            };
+            /** Variable */
+            variable: string;
+        };
+        /**
+         * OverlayPin
+         * @description One uploaded plugin version a run uses: which version, its namespace and the sha256 of
+         *     the wheel the control plane stored. Set by the control plane, never by a caller.
+         * @example {
+         *       "namespace": "t_k3vq7m_acme",
+         *       "plugin_version_id": "plv_01jbz3q2x8m9v7k5h4g3f2e1d1",
+         *       "sha256": "sha256:abababababababababababababababababababababababababababababababab"
+         *     }
+         */
+        OverlayPin: {
+            /** Namespace */
+            namespace: string;
+            /** Plugin Version Id */
+            plugin_version_id: string;
+            /** Sha256 */
+            sha256: string;
         };
         /**
          * PackInfo
@@ -15291,6 +19315,19 @@ export interface components {
         Page_CatalogAbout_: {
             /** Items */
             items: components["schemas"]["CatalogAbout"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[ChatTranscriptSummary]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_ChatTranscriptSummary_: {
+            /** Items */
+            items: components["schemas"]["ChatTranscriptSummary"][];
             /** Next Cursor */
             next_cursor?: string | null;
         };
@@ -15503,6 +19540,32 @@ export interface components {
             next_cursor?: string | null;
         };
         /**
+         * Page[LibraryItem]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_LibraryItem_: {
+            /** Items */
+            items: components["schemas"]["LibraryItem"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[LibraryRevision]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_LibraryRevision_: {
+            /** Items */
+            items: components["schemas"]["LibraryRevision"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
          * Page[LogLine]
          * @example {
          *       "items": [],
@@ -15681,6 +19744,32 @@ export interface components {
         Page_PlotSpec_: {
             /** Items */
             items: components["schemas"]["PlotSpec"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[PluginVersionSummary]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_PluginVersionSummary_: {
+            /** Items */
+            items: components["schemas"]["PluginVersionSummary"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[Plugin]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_Plugin_: {
+            /** Items */
+            items: components["schemas"]["Plugin"][];
             /** Next Cursor */
             next_cursor?: string | null;
         };
@@ -15971,6 +20060,25 @@ export interface components {
             next_cursor?: string | null;
         };
         /**
+         * PanelMeta
+         * @description A panel as a client page lays it out (no sources, no model internals).
+         */
+        PanelMeta: {
+            /** Caption */
+            caption?: string | null;
+            /** Id */
+            id: string;
+            /** Intent */
+            intent?: ("fan" | "line" | "bars" | "range" | "diverging" | "scatter" | "residuals" | "calibration" | "confusion" | "probability_bars" | "field" | "area_bars" | "effect" | "accuracy_history" | "decomposition" | "state_sequence") | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "kpi" | "chart" | "table" | "note" | "recipe" | "mmm";
+            /** Title */
+            title: string;
+        };
+        /**
          * ParamsWrite
          * @description ``POST /v1/runs/{run_id}/params``: params are write-once (a different value is a 409).
          * @example {
@@ -15999,6 +20107,36 @@ export interface components {
             accepted: number;
             /** Unchanged */
             unchanged: number;
+        };
+        /**
+         * PictureBlock
+         * @description A revision asset (PNG) served same-origin: ``…/assets/{asset_id}``.
+         */
+        PictureBlock: {
+            /** Alt */
+            alt: string;
+            /**
+             * Approximate
+             * @default false
+             */
+            approximate?: boolean;
+            /** Asset Id */
+            asset_id: string;
+            /** Caption */
+            caption?: string | null;
+            /** Height */
+            height: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "picture";
+            /** Panel Id */
+            panel_id: string;
+            /** Title */
+            title: string;
+            /** Width */
+            width: number;
         };
         /**
          * PlotBindings
@@ -16042,20 +20180,44 @@ export interface components {
             /** Id */
             id: string;
             /**
+             * Overlay Hash
+             * @description v0.19: the sha256 of the uploaded wheel the recipe comes from
+             */
+            overlay_hash?: string | null;
+            /**
+             * Pack Label
+             * @description v0.18: the name of the recipe pack shown on the catalog card
+             */
+            pack_label?: string | null;
+            /**
              * Persona
              * @default both
              * @enum {string}
              */
             persona?: "guided" | "expert" | "both";
+            /**
+             * Provider
+             * @description v0.18: the distribution that installed a non-built-in recipe
+             */
+            provider?: string | null;
             /** Requires Groups */
             requires_groups?: string[];
             /** Requires Representation */
             requires_representation?: components["schemas"]["Representation"][];
             /**
+             * Settings Schema
+             * @description v0.18: the recipe's settings as a safe JSON Schema (at most 16 KiB; absent when too large)
+             */
+            settings_schema?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /**
              * Summary
              * @description One line on what the chart shows (the recipe's summary)
              */
             summary?: string | null;
+            /** Tags */
+            tags?: string[];
             /** Title */
             title: string;
             /**
@@ -16449,6 +20611,581 @@ export interface components {
             valid: boolean;
         };
         /**
+         * Plugin
+         * @description A claimed plugin name of a tenant and its latest version.
+         * @example {
+         *       "created_at": "2026-10-22T09:30:00Z",
+         *       "created_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *       "id": "plg_01jbz3q2x8m9v7k5h4g3f2e1d0",
+         *       "latest_version": {
+         *         "describe_digest": "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+         *         "exports": {
+         *           "model": 1,
+         *           "node": 1,
+         *           "plot": 1,
+         *           "step": 1,
+         *           "template": 1
+         *         },
+         *         "id": "plv_01jbz3q2x8m9v7k5h4g3f2e1d1",
+         *         "overlay_sha256": "sha256:abababababababababababababababababababababababababababababababab",
+         *         "plugin_id": "plg_01jbz3q2x8m9v7k5h4g3f2e1d0",
+         *         "scope": "private",
+         *         "state": "kit_passed",
+         *         "uploaded_at": "2026-10-22T09:30:00Z",
+         *         "uploaded_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *         "version": "0.1.0"
+         *       },
+         *       "namespace": "t_k3vq7m_acme",
+         *       "short_name": "acme",
+         *       "title": "Acme store tools",
+         *       "updated_at": "2026-10-22T09:30:00Z",
+         *       "versions": 1
+         *     }
+         */
+        Plugin: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by: string;
+            /**
+             * Id
+             * @example plg_01jbz3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            latest_version?: components["schemas"]["PluginVersionSummary"] | null;
+            /**
+             * Namespace
+             * @example t_k3vq7m_acme
+             */
+            namespace: string;
+            /** Short Name */
+            short_name: string;
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /**
+             * Versions
+             * @default 0
+             */
+            versions?: number;
+        };
+        /**
+         * PluginClaim
+         * @description Claim a short name: the namespace becomes ``t_<tenant code>_<short_name>``.
+         * @example {
+         *       "short_name": "acme",
+         *       "title": "Acme store tools"
+         *     }
+         */
+        PluginClaim: {
+            /** Short Name */
+            short_name: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * PluginDecision
+         * @description Approve or reject a version. The digests must be the ones the page showed (else
+         *     ``PLUGIN_STATE_CONFLICT``); a rejection needs a ``note``.
+         * @example {
+         *       "base_image_digest": "sha256:efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef",
+         *       "describe_digest": "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+         *       "overlay_sha256": "sha256:abababababababababababababababababababababababababababababababab"
+         *     }
+         * @example {
+         *       "base_image_digest": "sha256:efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef",
+         *       "describe_digest": "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+         *       "note": "The recipe sends data to an external host.",
+         *       "overlay_sha256": "sha256:abababababababababababababababababababababababababababababababab"
+         *     }
+         */
+        PluginDecision: {
+            /** Base Image Digest */
+            base_image_digest: string;
+            /** Describe Digest */
+            describe_digest: string;
+            /** Note */
+            note?: string | null;
+            /** Overlay Sha256 */
+            overlay_sha256: string;
+        };
+        /**
+         * PluginDecisionRecord
+         * @description One approval or rejection of a version, with the digests the reviewer saw.
+         * @example {
+         *       "approver_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k9",
+         *       "approver_name": "Ada Admin",
+         *       "base_image_digest": "sha256:efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef",
+         *       "decided_at": "2026-10-22T09:30:00Z",
+         *       "decision": "approve",
+         *       "describe_digest": "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+         *       "overlay_sha256": "sha256:abababababababababababababababababababababababababababababababab"
+         *     }
+         */
+        PluginDecisionRecord: {
+            /** Approver Id */
+            approver_id: string;
+            /** Approver Name */
+            approver_name?: string | null;
+            /** Base Image Digest */
+            base_image_digest: string;
+            /**
+             * Decided At
+             * Format: date-time
+             */
+            decided_at: string;
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "approve" | "reject";
+            /** Describe Digest */
+            describe_digest: string;
+            /**
+             * Note
+             * @description Untrusted text
+             */
+            note?: string | null;
+            /** Overlay Sha256 */
+            overlay_sha256: string;
+        };
+        /**
+         * PluginExports
+         * @description The catalog entries an upload exports (only its own distribution's).
+         */
+        PluginExports: {
+            /** Models */
+            models?: components["schemas"]["ModelCatalogEntry"][];
+            /** Plots */
+            plots?: components["schemas"]["PlotCatalogEntry"][];
+            /** Steps */
+            steps?: components["schemas"]["StepCatalogEntry"][];
+            /** Workflow Nodes */
+            workflow_nodes?: components["schemas"]["NodeImplementation"][];
+            /** Workflow Templates */
+            workflow_templates?: components["schemas"]["TemplateCatalogEntry"][];
+        };
+        /**
+         * PluginInspection
+         * @description ``plugin/inspection.json``: what the inspect run found (``ok`` = no problem).
+         */
+        PluginInspection: {
+            /** Archive Sha256 */
+            archive_sha256: string;
+            /** Dist */
+            dist?: string | null;
+            /** Entry Points */
+            entry_points?: components["schemas"]["EntryPointDecl"][];
+            /**
+             * Members
+             * @default 0
+             */
+            members?: number;
+            /** Ok */
+            ok: boolean;
+            /** Problems */
+            problems?: components["schemas"]["InspectProblem"][];
+            /** Requires Python */
+            requires_python?: string | null;
+            sbom?: components["schemas"]["PluginSbom"] | null;
+            /** Top Level */
+            top_level?: string[];
+            /**
+             * Uncompressed Bytes
+             * @default 0
+             */
+            uncompressed_bytes?: number;
+            /** Version */
+            version?: string | null;
+            /** Wheel Tags */
+            wheel_tags?: string[];
+        };
+        /**
+         * PluginKitReport
+         * @description Every kit result of a describe run (``ok``: no ``fail``; ``skipped`` is allowed).
+         */
+        PluginKitReport: {
+            /** Checks */
+            checks?: components["schemas"]["KitCheck"][];
+            /** Ok */
+            ok: boolean;
+        };
+        /**
+         * PluginSbom
+         * @description The software bill of materials of an upload: every file and every requirement.
+         */
+        PluginSbom: {
+            /** Base Image Digest */
+            base_image_digest: string;
+            /** Dist */
+            dist: string;
+            /** Files */
+            files?: components["schemas"]["SbomFile"][];
+            /**
+             * Format
+             * @default mapi.sbom/v1
+             * @constant
+             */
+            format?: "mapi.sbom/v1";
+            /** License */
+            license?: string | null;
+            /** Requires */
+            requires?: components["schemas"]["RequirementFact"][];
+            /** Version */
+            version: string;
+        };
+        /**
+         * PluginSettings
+         * @description The tenant's uploaded-code settings and whether uploads are allowed (and why not).
+         * @example {
+         *       "private_use": true,
+         *       "reason": "",
+         *       "tenant_code": "k3vq7m",
+         *       "uploads_allowed": true
+         *     }
+         */
+        PluginSettings: {
+            /**
+             * Private Use
+             * @default true
+             */
+            private_use?: boolean;
+            /**
+             * Reason
+             * @default
+             */
+            reason?: string;
+            /** Tenant Code */
+            tenant_code?: string | null;
+            /**
+             * Uploads Allowed
+             * @default false
+             */
+            uploads_allowed?: boolean;
+        };
+        /**
+         * PluginSettingsPatch
+         * @description Turn private use of kit-passed uploads on or off for the tenant.
+         * @example {
+         *       "private_use": false
+         *     }
+         */
+        PluginSettingsPatch: {
+            /** Private Use */
+            private_use: boolean;
+        };
+        /**
+         * PluginUploadComplete
+         * @description The wheel is uploaded: check it. ``project`` pays for the pipeline runs.
+         * @example {
+         *       "project": "growth",
+         *       "request_approval": false
+         *     }
+         */
+        PluginUploadComplete: {
+            /** Project */
+            project: string;
+            /**
+             * Request Approval
+             * @default false
+             */
+            request_approval?: boolean;
+        };
+        /**
+         * PluginUploadTicket
+         * @description Where to POST the wheel: a POST policy for exactly one quarantine key.
+         * @example {
+         *       "expires_at": "2026-10-22T09:45:00Z",
+         *       "max_bytes": 20971520,
+         *       "post": {
+         *         "content_length_range": [
+         *           1,
+         *           20971520
+         *         ],
+         *         "create_only": true,
+         *         "expires_at": "2026-10-22T09:45:00Z",
+         *         "fields": {
+         *           "key": "t/default/plugins/pup_01jbz3q2x8m9v7k5h4g3f2e1d2/plugin.whl",
+         *           "policy": "eyJjb25kaXRpb25zIjpbXX0=",
+         *           "x-goog-signature": "abc123"
+         *         },
+         *         "method": "POST",
+         *         "prefix": "t/default/plugins/pup_01jbz3q2x8m9v7k5h4g3f2e1d2/",
+         *         "url": "http://127.0.0.1:4443/mapi-local-quarantine"
+         *       },
+         *       "upload_id": "pup_01jbz3q2x8m9v7k5h4g3f2e1d2"
+         *     }
+         */
+        PluginUploadTicket: {
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Max Bytes */
+            max_bytes: number;
+            post: components["schemas"]["PostPolicy"];
+            /**
+             * Upload Id
+             * @example pup_01jbz3q2x8m9v7k5h4g3f2e1d2
+             */
+            upload_id: string;
+        };
+        /**
+         * PluginUploadTicketRequest
+         * @description Ask for an upload ticket. ``size`` above the deployment's cap is refused by the route
+         *     with ``PAYLOAD_TOO_LARGE``.
+         * @example {
+         *       "filename": "t_k3vq7m_acme-0.1.0-py3-none-any.whl",
+         *       "size": 12960
+         *     }
+         */
+        PluginUploadTicketRequest: {
+            /** Filename */
+            filename: string;
+            /** Size */
+            size: number;
+        };
+        /**
+         * PluginUsage
+         * @description What uses a version (shown before a yank).
+         * @example {
+         *       "dashboards": [],
+         *       "endpoints": [],
+         *       "model_versions": [
+         *         "mv_01jbz3q2x8m9v7k5h4g3f2e1d3"
+         *       ],
+         *       "runs_30d": 4,
+         *       "truncated": false
+         *     }
+         */
+        PluginUsage: {
+            /** Dashboards */
+            dashboards?: string[];
+            /** Endpoints */
+            endpoints?: string[];
+            /** Model Versions */
+            model_versions?: string[];
+            /**
+             * Runs 30D
+             * @default 0
+             */
+            runs_30d?: number;
+            /**
+             * Truncated
+             * @default false
+             */
+            truncated?: boolean;
+        };
+        /**
+         * PluginVersion
+         * @description One version with everything the version page and the reviewer panel show.
+         * @example {
+         *       "base_image_digest": "sha256:efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef",
+         *       "describe_digest": "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+         *       "exports": {
+         *         "model": 1,
+         *         "node": 1,
+         *         "plot": 1,
+         *         "step": 1,
+         *         "template": 1
+         *       },
+         *       "id": "plv_01jbz3q2x8m9v7k5h4g3f2e1d1",
+         *       "inspection": {
+         *         "archive_sha256": "sha256:abababababababababababababababababababababababababababababababab",
+         *         "dist": "t-k3vq7m-acme",
+         *         "entry_points": [
+         *           {
+         *             "group": "mapi.steps",
+         *             "name": "acme",
+         *             "value": "t_k3vq7m_acme.steps:STEPS"
+         *           }
+         *         ],
+         *         "members": 11,
+         *         "ok": true,
+         *         "problems": [],
+         *         "requires_python": ">=3.12",
+         *         "top_level": [
+         *           "t_k3vq7m_acme"
+         *         ],
+         *         "uncompressed_bytes": 40960,
+         *         "version": "0.1.0",
+         *         "wheel_tags": [
+         *           "py3-none-any"
+         *         ]
+         *       },
+         *       "kit": {
+         *         "checks": [
+         *           {
+         *             "check": "check_step",
+         *             "entry_id": "t_k3vq7m_acme.winsorize",
+         *             "kind": "step",
+         *             "message": "",
+         *             "status": "pass"
+         *           }
+         *         ],
+         *         "ok": true
+         *       },
+         *       "overlay_sha256": "sha256:abababababababababababababababababababababababababababababababab",
+         *       "plugin_id": "plg_01jbz3q2x8m9v7k5h4g3f2e1d0",
+         *       "scope": "private",
+         *       "state": "kit_passed",
+         *       "uploaded_at": "2026-10-22T09:30:00Z",
+         *       "uploaded_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *       "urls": [
+         *         "https://example.org/acme"
+         *       ],
+         *       "version": "0.1.0"
+         *     }
+         */
+        PluginVersion: {
+            /** Approvals */
+            approvals?: components["schemas"]["PluginDecisionRecord"][];
+            /** Base Image Digest */
+            base_image_digest?: string | null;
+            /** Describe Digest */
+            describe_digest?: string | null;
+            /** Exports */
+            exports?: {
+                [key: string]: number;
+            };
+            exports_detail?: components["schemas"]["PluginExports"] | null;
+            /**
+             * Id
+             * @example plv_01jbz3q2x8m9v7k5h4g3f2e1d1
+             */
+            id: string;
+            inspection?: components["schemas"]["PluginInspection"] | null;
+            /** Issues */
+            issues?: components["schemas"]["Issue"][];
+            kit?: components["schemas"]["PluginKitReport"] | null;
+            /** Overlay Sha256 */
+            overlay_sha256?: string | null;
+            /**
+             * Plugin Id
+             * @example plg_01jbz3q2x8m9v7k5h4g3f2e1d0
+             */
+            plugin_id: string;
+            problem?: components["schemas"]["Problem"] | null;
+            /** Purge After */
+            purge_after?: string | null;
+            /**
+             * Scope
+             * @description Who may use it now: only the uploader (private), the whole tenant, or nobody
+             * @enum {string}
+             */
+            scope: "private" | "tenant" | "none";
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "uploaded" | "inspecting" | "inspect_failed" | "describing" | "kit_failed" | "kit_passed" | "awaiting_approval" | "approved" | "rejected" | "yanked" | "purged";
+            /**
+             * Uploaded At
+             * Format: date-time
+             */
+            uploaded_at: string;
+            /** Uploaded By */
+            uploaded_by: string;
+            /**
+             * Urls
+             * @description Every About reference URL, for the reviewer
+             */
+            urls?: string[];
+            /** Version */
+            version: string;
+            /** Yank Note */
+            yank_note?: string | null;
+            /** Yank Reason */
+            yank_reason?: ("withdrawn" | "security" | "superseded" | "rekit_failed") | null;
+        };
+        /**
+         * PluginVersionSummary
+         * @description One uploaded version of a plugin (lists).
+         * @example {
+         *       "describe_digest": "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+         *       "exports": {
+         *         "model": 1,
+         *         "node": 1,
+         *         "plot": 1,
+         *         "step": 1,
+         *         "template": 1
+         *       },
+         *       "id": "plv_01jbz3q2x8m9v7k5h4g3f2e1d1",
+         *       "overlay_sha256": "sha256:abababababababababababababababababababababababababababababababab",
+         *       "plugin_id": "plg_01jbz3q2x8m9v7k5h4g3f2e1d0",
+         *       "scope": "private",
+         *       "state": "kit_passed",
+         *       "uploaded_at": "2026-10-22T09:30:00Z",
+         *       "uploaded_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *       "version": "0.1.0"
+         *     }
+         */
+        PluginVersionSummary: {
+            /** Describe Digest */
+            describe_digest?: string | null;
+            /** Exports */
+            exports?: {
+                [key: string]: number;
+            };
+            /**
+             * Id
+             * @example plv_01jbz3q2x8m9v7k5h4g3f2e1d1
+             */
+            id: string;
+            /** Overlay Sha256 */
+            overlay_sha256?: string | null;
+            /**
+             * Plugin Id
+             * @example plg_01jbz3q2x8m9v7k5h4g3f2e1d0
+             */
+            plugin_id: string;
+            /**
+             * Scope
+             * @description Who may use it now: only the uploader (private), the whole tenant, or nobody
+             * @enum {string}
+             */
+            scope: "private" | "tenant" | "none";
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "uploaded" | "inspecting" | "inspect_failed" | "describing" | "kit_failed" | "kit_passed" | "awaiting_approval" | "approved" | "rejected" | "yanked" | "purged";
+            /**
+             * Uploaded At
+             * Format: date-time
+             */
+            uploaded_at: string;
+            /** Uploaded By */
+            uploaded_by: string;
+            /** Version */
+            version: string;
+        };
+        /**
+         * PluginYank
+         * @description Withdraw a version (``security`` also cancels queued and running runs that use it).
+         * @example {
+         *       "note": "Use 0.2.0.",
+         *       "reason": "superseded"
+         *     }
+         */
+        PluginYank: {
+            /** Note */
+            note?: string | null;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "withdrawn" | "security" | "superseded";
+        };
+        /**
          * PolicyCheck
          * @description A required check in a policy: thresholds, severity and parameters.
          */
@@ -16515,6 +21252,129 @@ export interface components {
          * @enum {string}
          */
         PortType: "dataset" | "test_result" | "split_plan" | "model_version" | "metrics" | "table" | "plot" | "report" | "evidence";
+        /**
+         * PostPolicy
+         * @description A V4 POST policy: multipart form uploads of any key under ``prefix``.
+         *
+         *     The uploader posts ``multipart/form-data`` to ``url`` with every entry of ``fields``,
+         *     then ``key`` (which must start with ``prefix``), then the ``file`` part last. The storage
+         *     service rejects bodies outside ``content_length_range`` and keys outside the prefix.
+         *
+         *     A ``create_only`` policy cannot replace an existing object (its signed conditions carry
+         *     ``x-goog-if-generation-match: 0``), so the holder can neither overwrite the write-once
+         *     manifest nor swap an output after it was written.
+         * @example {
+         *       "content_length_range": [
+         *         0,
+         *         1073741824
+         *       ],
+         *       "expires_at": "2026-10-15T10:30:00Z",
+         *       "fields": {
+         *         "policy": "eyJjb25kaXRpb25zIjpbXX0=",
+         *         "x-goog-algorithm": "GOOG4-HMAC-SHA256",
+         *         "x-goog-credential": "local/20261015/auto/storage/goog4_request",
+         *         "x-goog-date": "20261015T093000Z",
+         *         "x-goog-signature": "abcdef0123"
+         *       },
+         *       "method": "POST",
+         *       "prefix": "t/default/runs/run_01jabc/a1/",
+         *       "url": "http://127.0.0.1:4443/mapi-local-runs"
+         *     }
+         */
+        PostPolicy: {
+            /** Content Length Range */
+            content_length_range: [
+                number,
+                number
+            ];
+            /**
+             * Create Only
+             * @default false
+             */
+            create_only?: boolean;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Fields */
+            fields?: {
+                [key: string]: string;
+            };
+            /**
+             * Method
+             * @default POST
+             * @constant
+             */
+            method?: "POST";
+            /** Prefix */
+            prefix: string;
+            /** Url */
+            url: string;
+        };
+        /**
+         * PredictionResult
+         * @description The result of scenario rows. ``band``: the kind of range (``outcome``: one new result;
+         *     ``mean``: the average; ``none``).
+         */
+        PredictionResult: {
+            /**
+             * Approximate
+             * @default false
+             */
+            approximate?: boolean;
+            /**
+             * Band
+             * @default outcome
+             * @enum {string}
+             */
+            band?: "outcome" | "mean" | "none";
+            /** Rows */
+            rows?: components["schemas"]["PredictionRow"][];
+        };
+        /** PredictionRow */
+        PredictionRow: {
+            /** Inputs */
+            inputs?: {
+                [key: string]: boolean | number | string | null;
+            };
+            /** Outputs */
+            outputs?: {
+                [key: string]: components["schemas"]["PredictionValue"];
+            };
+        };
+        /**
+         * PredictionValue
+         * @description One output of one scenario row: its centre and range (``label``/``probability``:
+         *     the most probable class of a classifier).
+         */
+        PredictionValue: {
+            /** Centre */
+            centre?: number | null;
+            /** High */
+            high?: number | null;
+            /** Label */
+            label?: string | null;
+            /** Low */
+            low?: number | null;
+            /** Probability */
+            probability?: number | null;
+        };
+        /**
+         * PresetSuggestion
+         * @description A preset that fits the model version, why, and which inputs it cannot offer.
+         */
+        PresetSuggestion: {
+            /** Blocked Inputs */
+            blocked_inputs?: string[];
+            /**
+             * Preset
+             * @enum {string}
+             */
+            preset: "mmm_planner" | "forecast" | "regression" | "classifier" | "causal_impact" | "field_map" | "image" | "generic";
+            /** Reasons */
+            reasons?: string[];
+        };
         /**
          * PrincipalKind
          * @enum {string}
@@ -17323,6 +22183,140 @@ export interface components {
             within_dim: string;
         };
         /**
+         * ReadToken
+         * @description A dashboard read token as listed (never its secret or hash).
+         * @example {
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "dashboard_id": "dsh_01jaf3k1m2n3p4q5r6s7t8v9w0",
+         *       "expires_at": "2026-11-14T09:30:00Z",
+         *       "id": "tok_01jaf3r1s2t3v4w5x6y7z8a9b0",
+         *       "last_used_at": "2026-10-16T08:00:00Z",
+         *       "name": "Claude Desktop",
+         *       "owner_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *       "owner_label": "Dana Client",
+         *       "prefix": "7k2m9q4x"
+         *     }
+         */
+        ReadToken: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Dashboard Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            dashboard_id: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /** Last Used At */
+            last_used_at?: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Owner Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            owner_id: string;
+            /** Owner Label */
+            owner_label: string;
+            /**
+             * Prefix
+             * @example 7k2m9q4x
+             */
+            prefix: string;
+            /** Revoked At */
+            revoked_at?: string | null;
+        };
+        /**
+         * ReadTokenCreate
+         * @description ``POST …/read-tokens``: a read token for this dashboard, owned by the caller. The
+         *     server sets the scope (``dashboard:<dashboard_id>``) and the owner.
+         * @example {
+         *       "expires_in_days": 30,
+         *       "name": "Claude Desktop"
+         *     }
+         */
+        ReadTokenCreate: {
+            /**
+             * Expires In Days
+             * @default 30
+             */
+            expires_in_days?: number;
+            /** Name */
+            name: string;
+        };
+        /**
+         * ReadTokenCreated
+         * @description ``201`` body of ``POST …/read-tokens``: the only time ``secret`` is returned.
+         * @example {
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "dashboard_id": "dsh_01jaf3k1m2n3p4q5r6s7t8v9w0",
+         *       "expires_at": "2026-11-14T09:30:00Z",
+         *       "id": "tok_01jaf3r1s2t3v4w5x6y7z8a9b0",
+         *       "last_used_at": "2026-10-16T08:00:00Z",
+         *       "name": "Claude Desktop",
+         *       "owner_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *       "owner_label": "Dana Client",
+         *       "prefix": "7k2m9q4x",
+         *       "secret": "mapi_7k2m9q4x_0123456789abcdefghjkmnpqrstvwxyz072gj7d"
+         *     }
+         */
+        ReadTokenCreated: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Dashboard Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            dashboard_id: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /** Last Used At */
+            last_used_at?: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Owner Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            owner_id: string;
+            /** Owner Label */
+            owner_label: string;
+            /**
+             * Prefix
+             * @example 7k2m9q4x
+             */
+            prefix: string;
+            /** Revoked At */
+            revoked_at?: string | null;
+            /**
+             * Secret
+             * @description The full token. Store it now; it is not shown again.
+             */
+            secret: string;
+        };
+        /**
          * Readout
          * @description A readout with its snapshot (``None`` until ``ready``) or the problem that stopped it.
          * @example {
@@ -17435,7 +22429,12 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "baseline" | "refresh" | "scenario" | "actuals";
+            kind: "baseline" | "refresh" | "scenario" | "actuals" | "prediction" | "batch";
+            /**
+             * Mine
+             * @description Whether the caller made this readout (its own tried case, file or upload); set on the readout list and reads, null where the caller is not known
+             */
+            mine?: boolean | null;
             /** Model Ref */
             model_ref: string;
             /** Model Version Id */
@@ -17464,7 +22463,7 @@ export interface components {
              * Trigger
              * @enum {string}
              */
-            trigger: "publish" | "manual" | "whatif" | "actuals" | "workflow" | "endpoint";
+            trigger: "publish" | "manual" | "whatif" | "actuals" | "workflow" | "endpoint" | "scenario_rows" | "batch";
             /**
              * Visibility
              * @enum {string}
@@ -17517,7 +22516,12 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "baseline" | "refresh" | "scenario" | "actuals";
+            kind: "baseline" | "refresh" | "scenario" | "actuals" | "prediction" | "batch";
+            /**
+             * Mine
+             * @description Whether the caller made this readout (its own tried case, file or upload); set on the readout list and reads, null where the caller is not known
+             */
+            mine?: boolean | null;
             /** Model Ref */
             model_ref: string;
             /** Model Version Id */
@@ -17544,7 +22548,7 @@ export interface components {
              * Trigger
              * @enum {string}
              */
-            trigger: "publish" | "manual" | "whatif" | "actuals" | "workflow" | "endpoint";
+            trigger: "publish" | "manual" | "whatif" | "actuals" | "workflow" | "endpoint" | "scenario_rows" | "batch";
             /**
              * Visibility
              * @enum {string}
@@ -17592,19 +22596,38 @@ export interface components {
          */
         ReadoutSnapshot: {
             accuracy?: components["schemas"]["ActualsAccuracy"] | null;
+            /** Accuracy Detail */
+            accuracy_detail?: (components["schemas"]["ErrorAccuracy"] | components["schemas"]["ClassAccuracy"] | components["schemas"]["EffectAccuracy"]) | null;
+            /** Accuracy History */
+            accuracy_history?: components["schemas"]["AccuracyPoint"][];
+            batch?: components["schemas"]["BatchSummary"] | null;
             /** Channels */
             channels?: components["schemas"]["ChannelReadout"][];
             conditioning?: components["schemas"]["ForecastConditioning"] | null;
             /** Input Fingerprint */
             input_fingerprint?: string | null;
+            /** Inputs Echo */
+            inputs_echo?: {
+                [key: string]: string | number | boolean | null;
+            }[];
             /** Lead */
             lead: string;
             /** Notes Plain */
             notes_plain?: string[];
+            /** Panels */
+            panels?: (components["schemas"]["KpiBlock"] | components["schemas"]["SeriesBlock"] | components["schemas"]["BarsBlock"] | components["schemas"]["ScatterBlock"] | components["schemas"]["CalibrationBlock"] | components["schemas"]["ConfusionBlock"] | components["schemas"]["FieldBlock"] | components["schemas"]["TableBlock"] | components["schemas"]["NoteBlock"] | components["schemas"]["PictureBlock"] | components["schemas"]["UnavailableBlock"])[];
+            prediction?: components["schemas"]["PredictionResult"] | null;
+            /** Preset */
+            preset?: ("mmm_planner" | "forecast" | "regression" | "classifier" | "causal_impact" | "field_map" | "image" | "generic") | null;
             /** Scenario */
             scenario?: {
                 [key: string]: number;
             } | null;
+            /**
+             * Schema Version
+             * @default 1
+             */
+            schema_version?: number;
             /** Series */
             series?: components["schemas"]["Series"][];
             /** Source Run Ids */
@@ -17615,6 +22638,74 @@ export interface components {
             };
             /** Tiles */
             tiles?: components["schemas"]["KpiValue"][];
+        };
+        /**
+         * RecipePanel
+         * @description A platform plot recipe: drawn natively when the recipe is in :data:`RECIPE_INTENTS`,
+         *     else a **picture** of the model version's plot ``plot_id`` (rendered once at publish).
+         */
+        RecipePanel: {
+            /** Caption */
+            caption?: string | null;
+            /** Id */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "recipe";
+            /** Output */
+            output?: string | null;
+            /** Plot Id */
+            plot_id?: string | null;
+            /** Recipe */
+            recipe: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * RecipePreviewRequest
+         * @description ``POST /v1/catalog/plots/{plot_id}/{version}:preview``: the recipe settings to try
+         *     (validated against the recipe's catalog ``settings_schema`` before any run).
+         * @example {
+         *       "settings": {
+         *         "title": "Sales: fit and forecast",
+         *         "var": "y"
+         *       }
+         *     }
+         */
+        RecipePreviewRequest: {
+            /** Settings */
+            settings?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+        };
+        /**
+         * RecipePreviewResult
+         * @description A recipe preview: done (``plot`` set, or ``problem`` when the run failed) or still
+         *     running (``run_id`` to poll). ``cached``: served from an earlier run with the same key.
+         * @example {
+         *       "cached": false,
+         *       "done": false,
+         *       "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+         *     }
+         * @example {
+         *       "cached": true,
+         *       "done": true
+         *     }
+         */
+        RecipePreviewResult: {
+            /**
+             * Cached
+             * @default false
+             */
+            cached?: boolean;
+            /** Done */
+            done: boolean;
+            plot?: components["schemas"]["PlotSpec"] | null;
+            problem?: components["schemas"]["Problem"] | null;
+            /** Run Id */
+            run_id?: string | null;
         };
         /**
          * Recommendation
@@ -17637,6 +22728,29 @@ export interface components {
             /** Title */
             title: string;
             typical_runtime: components["schemas"]["TypicalRuntime"];
+        };
+        /**
+         * Reduce
+         * @description How an output becomes the panel's numbers.
+         *
+         *     ``select``: the cells of ``source.select``; ``last``/``next``: the last fitted or the
+         *     next forecast period; ``mean``/``sum`` over dims ``over`` (of draws only the ``sum``
+         *     over the time dim of a forecast: the forecast total, with its range; point outputs
+         *     are allowed and flagged ``approximate``); ``share_above``: the share of cells above
+         *     ``threshold``; ``top_class``: the most probable class. The server never adds interval
+         *     bounds.
+         */
+        Reduce: {
+            /**
+             * How
+             * @default none
+             * @enum {string}
+             */
+            how?: "none" | "select" | "last" | "next" | "mean" | "sum" | "share_above" | "top_class";
+            /** Over */
+            over?: string[];
+            /** Threshold */
+            threshold?: number | null;
         };
         /**
          * RefitRequestDecision
@@ -17662,6 +22776,8 @@ export interface components {
              * @default false
              */
             follow_endpoint?: boolean;
+            /** Horizon */
+            horizon?: number | null;
             /** Workflow Id */
             workflow_id?: string | null;
         };
@@ -17671,6 +22787,23 @@ export interface components {
          * @enum {string}
          */
         Representation: "draws" | "quantiles" | "interval" | "point" | "moments";
+        /**
+         * RequirementFact
+         * @description One ``Requires-Dist`` line and the version the base image has (``None``: missing).
+         */
+        RequirementFact: {
+            /** Locked Version */
+            locked_version?: string | null;
+            /** Marker */
+            marker?: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Specifier
+             * @default
+             */
+            specifier?: string;
+        };
         /** ResolvedModel */
         ResolvedModel: {
             capabilities: components["schemas"]["Capabilities"];
@@ -17773,7 +22906,7 @@ export interface components {
          * ResourceKind
          * @enum {string}
          */
-        ResourceKind: "tenant" | "tenant_member" | "project" | "member" | "token" | "catalog" | "dataset" | "spec" | "run" | "model" | "endpoint" | "plot" | "plugin" | "usage" | "billing" | "audit" | "quota" | "kill_switch" | "executor" | "event" | "webhook" | "embed" | "tenant_deletion" | "tenant_export" | "workflow" | "policy" | "tenant_policy" | "dashboard" | "dashboard_grant" | "dashboard_share";
+        ResourceKind: "tenant" | "tenant_member" | "project" | "member" | "token" | "catalog" | "dataset" | "spec" | "run" | "model" | "endpoint" | "plot" | "plugin" | "usage" | "billing" | "audit" | "quota" | "kill_switch" | "executor" | "event" | "webhook" | "embed" | "tenant_deletion" | "tenant_export" | "workflow" | "policy" | "tenant_policy" | "dashboard" | "dashboard_grant" | "dashboard_share" | "library" | "tenant_library" | "plugin_settings";
         /**
          * ResultField
          * @description A field of a node's JSON result that conditions may read (``nodes.<id>.<field>``).
@@ -18531,7 +23664,7 @@ export interface components {
          *     M4): they own child runs and never execute on an executor themselves.
          * @enum {string}
          */
-        RunKind: "ingest" | "describe" | "validate" | "fit" | "score" | "evaluate" | "derive" | "render" | "optimize" | "sweep" | "backtest" | "sbc" | "campaign" | "translate_priors" | "workflow" | "workflow_node" | "explore" | "governance" | "inspect";
+        RunKind: "ingest" | "describe" | "validate" | "fit" | "score" | "evaluate" | "derive" | "render" | "optimize" | "sweep" | "backtest" | "sbc" | "campaign" | "translate_priors" | "workflow" | "workflow_node" | "explore" | "governance" | "inspect" | "plugin_inspect" | "plugin_describe";
         /**
          * RunMedia
          * @description An image or a table a run logged. ``caption`` is untrusted text; ``url`` is a signed GET
@@ -18870,6 +24003,100 @@ export interface components {
          */
         RunnerPhase: "bootstrap" | "load_inputs" | "validate" | "preprocess" | "fit" | "sample" | "score" | "evaluate" | "derive" | "plots" | "upload" | "done";
         /**
+         * SampleInfo
+         * @description A sample project as one tenant member sees it.
+         * @example {
+         *       "can_install": true,
+         *       "id": "geo_mmm",
+         *       "minutes": 1,
+         *       "summary": "Two years of weekly revenue and media spend.",
+         *       "title": "Marketing mix in four regions"
+         *     }
+         * @example {
+         *       "attempts": 1,
+         *       "id": "geo_mmm",
+         *       "minutes": 1,
+         *       "progress": 0.6,
+         *       "project_id": "sample",
+         *       "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *       "spec_id": "spec_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *       "state": "fitting",
+         *       "summary": "Two years of weekly revenue and media spend.",
+         *       "title": "Marketing mix in four regions"
+         *     }
+         * @example {
+         *       "attempts": 1,
+         *       "can_retire": true,
+         *       "id": "geo_mmm",
+         *       "minutes": 1,
+         *       "model_id": "mdl_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *       "model_version": 1,
+         *       "progress": 1,
+         *       "project_id": "sample",
+         *       "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *       "spec_id": "spec_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *       "state": "ready",
+         *       "summary": "Two years of weekly revenue and media spend.",
+         *       "title": "Marketing mix in four regions"
+         *     }
+         */
+        SampleInfo: {
+            /**
+             * Attempts
+             * @default 0
+             */
+            attempts?: number;
+            /**
+             * Can Install
+             * @description Install, or join the installed sample
+             * @default false
+             */
+            can_install?: boolean;
+            /**
+             * Can Retire
+             * @default false
+             */
+            can_retire?: boolean;
+            /**
+             * Can Retry
+             * @default false
+             */
+            can_retry?: boolean;
+            /**
+             * Hidden
+             * @description The caller hid the sample from the hub
+             * @default false
+             */
+            hidden?: boolean;
+            /** Id */
+            id: string;
+            /** Minutes */
+            minutes: number;
+            /** Model Id */
+            model_id?: string | null;
+            /** Model Version */
+            model_version?: number | null;
+            /** @description Why the sample failed (plain words) */
+            problem?: components["schemas"]["Problem"] | null;
+            /** Progress */
+            progress?: number | null;
+            /** Project Id */
+            project_id?: string | null;
+            /** Run Id */
+            run_id?: string | null;
+            /** Spec Id */
+            spec_id?: string | null;
+            /**
+             * State
+             * @description None: not installed in the tenant
+             */
+            state?: ("provisioning" | "ingesting" | "fitting" | "ready" | "failed" | "retired") | null;
+            /** Summary */
+            summary: string;
+            /** Title */
+            title: string;
+        };
+        /**
          * SavedPlot
          * @description A saved plot. ``spec`` is the sanitized PlotSpec (on ``GET /v1/plots/{plot_id}``;
          *     omitted in lists). ``embeddable`` is :func:`embeddable` of this plot.
@@ -18964,6 +24191,172 @@ export interface components {
             spec?: components["schemas"]["PlotSpec"] | null;
             /** Title */
             title: string;
+        };
+        /**
+         * SbomFile
+         * @description One archive member: its path, sha256 and uncompressed size.
+         */
+        SbomFile: {
+            /** Path */
+            path: string;
+            /** Sha256 */
+            sha256: string;
+            /** Size */
+            size: number;
+        };
+        /** ScatterBlock */
+        ScatterBlock: {
+            /**
+             * Approximate
+             * @default false
+             */
+            approximate?: boolean;
+            /** Caption */
+            caption?: string | null;
+            /**
+             * Intent
+             * @default scatter
+             * @enum {string}
+             */
+            intent?: "fan" | "line" | "bars" | "range" | "diverging" | "scatter" | "residuals" | "calibration" | "confusion" | "probability_bars" | "field" | "area_bars" | "effect" | "accuracy_history" | "decomposition" | "state_sequence";
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "scatter";
+            /** Panel Id */
+            panel_id: string;
+            /** Points */
+            points?: components["schemas"]["ScatterPoint"][];
+            /** Title */
+            title: string;
+            /** X Label */
+            x_label?: string | null;
+            /** Y Label */
+            y_label?: string | null;
+        };
+        /** ScatterPoint */
+        ScatterPoint: {
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
+        };
+        /**
+         * ScenarioForm
+         * @description The "Try a case" form a client fills in (the revision's scenario input defs).
+         */
+        ScenarioForm: {
+            horizon?: components["schemas"]["HorizonDef"] | null;
+            /** Inputs */
+            inputs?: components["schemas"]["ScenarioInputDef"][];
+            /** Max Rows */
+            max_rows: number;
+            /** Outputs */
+            outputs?: string[];
+        };
+        /**
+         * ScenarioInputDef
+         * @description One value a client may edit in a scenario row (or a batch column, when ranges are
+         *     enforced). ``number``/``integer`` need ``min`` < ``max`` (and at most
+         *     :data:`MAX_SCENARIO_STEPS` steps); ``choice`` needs ``choices``; ``date`` needs
+         *     ``date_min``/``date_max``. ``applies``: per row, or for the forecast horizon.
+         */
+        ScenarioInputDef: {
+            /**
+             * Applies
+             * @default row
+             * @enum {string}
+             */
+            applies?: "row" | "horizon";
+            /** Bind */
+            bind: components["schemas"]["VarBind"] | components["schemas"]["DimBind"];
+            /** Choices */
+            choices?: string[];
+            /** Date Max */
+            date_max?: string | null;
+            /** Date Min */
+            date_min?: string | null;
+            /** Default */
+            default: boolean | number | string;
+            /** Help */
+            help?: string | null;
+            /** Label */
+            label: string;
+            /** Max */
+            max?: number | null;
+            /** Min */
+            min?: number | null;
+            /** Name */
+            name: string;
+            /** Step */
+            step?: number | null;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "number" | "integer" | "choice" | "date" | "toggle";
+        };
+        /**
+         * ScenarioRowsDef
+         * @description Scenario rows ("Try a case"): clients edit ``inputs`` (at most ``max_rows`` rows per
+         *     request); ``fixed`` values are sent with every row and never shown; the model scores
+         *     ``outputs`` with their uncertainty.
+         */
+        ScenarioRowsDef: {
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled?: boolean;
+            /** Fixed */
+            fixed?: {
+                [key: string]: boolean | number | string;
+            };
+            horizon?: components["schemas"]["HorizonDef"] | null;
+            /** Inputs */
+            inputs?: components["schemas"]["ScenarioInputDef"][];
+            /**
+             * Max Rows
+             * @default 5
+             */
+            max_rows?: number;
+            /** Outputs */
+            outputs?: string[];
+        };
+        /**
+         * ScenarioRowsRequest
+         * @description ``POST …/predictions``: up to 20 rows of the scenario inputs (names as the form's
+         *     ``inputs``; missing values take the defaults). The server checks every value against
+         *     the published revision's defs and refuses (never clips) a value out of range.
+         * @example {
+         *       "label": "Two prices",
+         *       "rows": [
+         *         {
+         *           "price": 18
+         *         },
+         *         {
+         *           "price": 22.5
+         *         }
+         *       ]
+         *     }
+         * @example {
+         *       "rows": [
+         *         {
+         *           "promo": true,
+         *           "store": "s_new",
+         *           "week": "2026-11-01"
+         *         }
+         *       ]
+         *     }
+         */
+        ScenarioRowsRequest: {
+            /** Label */
+            label?: string | null;
+            /** Rows */
+            rows: {
+                [key: string]: boolean | number | string | null;
+            }[];
         };
         /**
          * ScenarioSave
@@ -19542,6 +24935,19 @@ export interface components {
             value?: number | null;
         };
         /**
+         * ScorecardSource
+         * @description One check of the model version's scorecard.
+         */
+        ScorecardSource: {
+            /** Check */
+            check: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "scorecard";
+        };
+        /**
          * SecurityProbeRow
          * @description One probe of a security-suite run (``mapi-security --json``).
          * @example {
@@ -19623,6 +25029,43 @@ export interface components {
             name: string;
             /** Points */
             points?: components["schemas"]["SeriesPoint"][];
+        };
+        /**
+         * SeriesBlock
+         * @description Lines or fans over time or categories (``split_at``: where the forecast starts).
+         */
+        SeriesBlock: {
+            /**
+             * Approximate
+             * @default false
+             */
+            approximate?: boolean;
+            /** Caption */
+            caption?: string | null;
+            /**
+             * Intent
+             * @enum {string}
+             */
+            intent: "fan" | "line" | "bars" | "range" | "diverging" | "scatter" | "residuals" | "calibration" | "confusion" | "probability_bars" | "field" | "area_bars" | "effect" | "accuracy_history" | "decomposition" | "state_sequence";
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "series";
+            /** Panel Id */
+            panel_id: string;
+            /** Series */
+            series?: components["schemas"]["Series"][];
+            /** Split At */
+            split_at?: string | null;
+            /** Title */
+            title: string;
+            /**
+             * X Kind
+             * @default time
+             * @enum {string}
+             */
+            x_kind?: "time" | "category";
         };
         /**
          * SeriesConditioning
@@ -20209,6 +25652,115 @@ export interface components {
             items?: components["schemas"]["Snippet"][];
         };
         /**
+         * SourceCatalog
+         * @description ``GET …/sources``: what the draft's model version offers to panels and inputs
+         *     (cached per model version). ``row_policy`` is the policy of ``row_dim`` (``fixed``
+         *     rows: no scenario rows or batch except horizon-only); ``views``: the guided views the
+         *     version's runs write.
+         * @example {
+         *       "inputs": [
+         *         {
+         *           "dim": "geo",
+         *           "kind": "choice",
+         *           "levels": [
+         *             "north",
+         *             "south"
+         *           ],
+         *           "policy": "fixed"
+         *         }
+         *       ],
+         *       "metrics": [
+         *         {
+         *           "key": "mape",
+         *           "last": 6.2
+         *         },
+         *         {
+         *           "key": "coverage_90",
+         *           "last": 0.88
+         *         }
+         *       ],
+         *       "namespace": "ts",
+         *       "outputs": [
+         *         {
+         *           "centre": "median",
+         *           "dims": [
+         *             "geo",
+         *             "date"
+         *           ],
+         *           "intents": [
+         *             "fan",
+         *             "line",
+         *             "range"
+         *           ],
+         *           "manifest_name": "y_hat",
+         *           "name": "y_hat",
+         *           "predictive_ok": true,
+         *           "reduces": [
+         *             "none",
+         *             "select",
+         *             "last",
+         *             "next"
+         *           ],
+         *           "representation": "quantiles",
+         *           "shape": "time",
+         *           "stats": [
+         *             "centre",
+         *             "low",
+         *             "high"
+         *           ],
+         *           "time_dim": "date"
+         *         }
+         *       ],
+         *       "score_modes": [
+         *         "predict",
+         *         "forecast"
+         *       ],
+         *       "time_dim": "date",
+         *       "views": []
+         *     }
+         */
+        SourceCatalog: {
+            /**
+             * Conditions On Actuals
+             * @default false
+             */
+            conditions_on_actuals?: boolean;
+            /** Family */
+            family?: string | null;
+            /**
+             * Has Grid
+             * @default false
+             */
+            has_grid?: boolean;
+            /**
+             * Input Kind
+             * @default dataset
+             * @enum {string}
+             */
+            input_kind?: "dataset" | "tree" | "collection";
+            /** Inputs */
+            inputs?: components["schemas"]["CatalogInput"][];
+            /** Metrics */
+            metrics?: components["schemas"]["CatalogMetric"][];
+            /** Namespace */
+            namespace?: string | null;
+            /** Outputs */
+            outputs?: components["schemas"]["CatalogOutput"][];
+            /** Pictures */
+            pictures?: components["schemas"]["CatalogPicture"][];
+            /** Row Dim */
+            row_dim?: string | null;
+            row_policy?: components["schemas"]["DimPolicy"] | null;
+            /** Score Modes */
+            score_modes?: ("predict" | "forecast" | "counterfactual" | "simulate" | "filter" | "evaluate")[];
+            /** Scorecard */
+            scorecard?: string[];
+            /** Time Dim */
+            time_dim?: string | null;
+            /** Views */
+            views?: ("forecast" | "fields" | "counterfactual")[];
+        };
+        /**
          * SpecCreate
          * @description Create a spec document with its first revision (YAML 1.2 or JSON text).
          * @example {
@@ -20479,6 +26031,16 @@ export interface components {
             invertible?: boolean;
             kind: components["schemas"]["StepKind"];
             /**
+             * Overlay Hash
+             * @description v0.19: the sha256 of the uploaded wheel the step comes from
+             */
+            overlay_hash?: string | null;
+            /**
+             * Provider
+             * @description v0.18: the distribution that installed a non-built-in step
+             */
+            provider?: string | null;
+            /**
              * Provides
              * @description Preprocessing a model may declare it owns (ModelManifest owns); such a step is rejected on the target/media variables of a model that owns it
              */
@@ -20598,6 +26160,98 @@ export interface components {
             y_dim?: string | null;
         };
         /**
+         * SubjectDef
+         * @description What the dashboard is about (the main output and how to show its numbers).
+         *
+         *     ``positive_label`` is the class a classifier reports the chance of; ``value_per_unit``
+         *     (currency per unit of a count) is for the MMM planner only.
+         * @example {
+         *       "currency": "EUR",
+         *       "label": "Sales",
+         *       "unit": "currency",
+         *       "variable": "y_hat"
+         *     }
+         * @example {
+         *       "label": "Chance of churn",
+         *       "positive_label": "churned",
+         *       "unit": "probability",
+         *       "variable": "y_hat"
+         *     }
+         */
+        SubjectDef: {
+            /**
+             * Currency
+             * @description ISO 4217 code
+             */
+            currency?: string | null;
+            /**
+             * Decimals
+             * @default 0
+             */
+            decimals?: number;
+            /** Label */
+            label: string;
+            /** Positive Label */
+            positive_label?: string | null;
+            /**
+             * Unit
+             * @enum {string}
+             */
+            unit: "count" | "currency" | "ratio" | "percent" | "index" | "probability" | "number" | "label" | "rate";
+            /** Value Per Unit */
+            value_per_unit?: number | null;
+            /** Variable */
+            variable: string;
+        };
+        /** TableBlock */
+        TableBlock: {
+            /**
+             * Approximate
+             * @default false
+             */
+            approximate?: boolean;
+            /** Caption */
+            caption?: string | null;
+            /** Columns */
+            columns?: string[];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "table";
+            /** Panel Id */
+            panel_id: string;
+            /** Rows */
+            rows?: (string | number | null)[][];
+            /** Title */
+            title: string;
+        };
+        /**
+         * TablePanel
+         * @description A table of an output (``columns``: dims and stats, in order).
+         */
+        TablePanel: {
+            /** Caption */
+            caption?: string | null;
+            /** Columns */
+            columns?: string[];
+            /** Id */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "table";
+            /**
+             * Max Rows
+             * @default 20
+             */
+            max_rows?: number;
+            source: components["schemas"]["OutputSource"];
+            /** Title */
+            title: string;
+        };
+        /**
          * TemplateCase
          * @description Conditional fragment merged into the template when all ``when`` params match.
          */
@@ -20610,6 +26264,35 @@ export interface components {
             when: {
                 [key: string]: components["schemas"]["JsonValue"];
             };
+        };
+        /**
+         * TemplateCatalogEntry
+         * @description A plugin workflow template (entry-point group ``mapi.workflow_templates``).
+         *
+         *     The sibling of :class:`~mapi_spec.workflow_templates.WorkflowTemplate` (which this module
+         *     cannot import: ``workflow`` imports the catalog). The id is ``<namespace>_<name>`` so it
+         *     fits ``POST /v1/workflows {template}``; ``document`` is the workflow document, validated
+         *     against the merged node contracts when the control plane loads the catalog.
+         */
+        TemplateCatalogEntry: {
+            about: components["schemas"]["About"];
+            /** Document */
+            document: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Id */
+            id: string;
+            /** Overlay Hash */
+            overlay_hash?: string | null;
+            /** Provider */
+            provider?: string | null;
+            /** Tags */
+            tags?: string[];
+            /**
+             * Version
+             * @default 1.0.0
+             */
+            version?: string;
         };
         /**
          * TemplateLookup
@@ -21011,6 +26694,71 @@ export interface components {
          */
         TokenStatus: "active" | "expired" | "revoked";
         /**
+         * ToolCallSummary
+         * @description One tool call the assistant made in a turn (shown as a chip; never the result).
+         *
+         *     ``args`` larger than :data:`CHAT_MAX_TOOL_ARGS_BYTES` are replaced by
+         *     ``{"_truncated": true}``.
+         * @example {
+         *       "args": {
+         *         "seq": 12
+         *       },
+         *       "ms": 41,
+         *       "name": "get_readout",
+         *       "ok": true
+         *     }
+         * @example {
+         *       "args": {
+         *         "panel_id": "nope"
+         *       },
+         *       "code": "NOT_FOUND",
+         *       "ms": 12,
+         *       "name": "get_panel",
+         *       "ok": false
+         *     }
+         */
+        ToolCallSummary: {
+            /** Args */
+            args?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            code?: components["schemas"]["ErrorCode"] | null;
+            /** Ms */
+            ms: number;
+            /** Name */
+            name: string;
+            /** Ok */
+            ok: boolean;
+            /**
+             * Truncated
+             * @description The result was trimmed to fit the budget
+             * @default false
+             */
+            truncated?: boolean;
+        };
+        /**
+         * TourProgress
+         * @description Where the user is in one tour. ``updated_at`` is set by the server on merge.
+         */
+        TourProgress: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "in_progress" | "completed" | "dismissed";
+            /**
+             * Step
+             * @description Index of the current step
+             * @default 0
+             */
+            step?: number;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
          * TreeSchema
          * @description Schema of an ``xr.DataTree``: one :class:`~mapi_spec.schema.DataSchema` per node.
          *
@@ -21083,6 +26831,30 @@ export interface components {
          * @enum {string}
          */
         TypicalRuntime: "instant" | "seconds" | "minutes" | "long";
+        /**
+         * UnavailableBlock
+         * @description A panel whose source was missing at materialise (one panel never fails a readout).
+         */
+        UnavailableBlock: {
+            /**
+             * Approximate
+             * @default false
+             */
+            approximate?: boolean;
+            /** Caption */
+            caption?: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "unavailable";
+            /** Panel Id */
+            panel_id: string;
+            /** Reason */
+            reason: string;
+            /** Title */
+            title: string;
+        };
         /**
          * UploadCreate
          * @description Ask for a signed PUT URL into the quarantine bucket for one file.
@@ -21511,6 +27283,14 @@ export interface components {
             to_status: components["schemas"]["ValidationStatus"];
         };
         /**
+         * VarBind
+         * @description The input sets an input variable (a driver column).
+         */
+        VarBind: {
+            /** Var */
+            var: string;
+        };
+        /**
          * VarMapping
          * @description A data variable read from one column (dtype is inferred during ingest).
          * @example {
@@ -21658,6 +27438,55 @@ export interface components {
             method: components["schemas"]["VerificationMethod"];
             /** Reason */
             reason: string;
+        };
+        /**
+         * VerifiedUploader
+         * @description An editor a tenant admin attested (identity-verified for uploads).
+         * @example {
+         *       "display_name": "Eve Editor",
+         *       "email": "eve@example.com",
+         *       "method": "admin_attested",
+         *       "user_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *       "verified_at": "2026-10-22T09:30:00Z",
+         *       "verified_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k9"
+         *     }
+         */
+        VerifiedUploader: {
+            /** Display Name */
+            display_name?: string | null;
+            /** Email */
+            email?: string | null;
+            /**
+             * Method
+             * @enum {string}
+             */
+            method: "admin_attested" | "provider";
+            /** User Id */
+            user_id: string;
+            /**
+             * Verified At
+             * Format: date-time
+             */
+            verified_at: string;
+            /** Verified By */
+            verified_by: string;
+        };
+        /**
+         * ViewSource
+         * @description A guided view of the readout's run: the forecast total over the horizon, the
+         *     counterfactual delta, or the conditioning of a forecast on actuals.
+         */
+        ViewSource: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "view";
+            /**
+             * View
+             * @enum {string}
+             */
+            view: "forecast_total" | "counterfactual_delta" | "conditioning";
         };
         /**
          * WarningPayload
@@ -21867,7 +27696,7 @@ export interface components {
          * WebhookEventType
          * @enum {string}
          */
-        WebhookEventType: "run.succeeded" | "run.failed" | "model.version.ready" | "endpoint.promoted" | "score.completed" | "tenant.deletion.completed" | "workflow.run.succeeded" | "workflow.run.failed" | "model.validation.checks_passed" | "model.validation.checks_failed" | "model.validation.awaiting_approval" | "model.validated" | "model.rejected" | "model.deprecated" | "dataset.version.created" | "optimize.completed" | "dashboard.readout.published";
+        WebhookEventType: "run.succeeded" | "run.failed" | "model.version.ready" | "endpoint.promoted" | "score.completed" | "tenant.deletion.completed" | "workflow.run.succeeded" | "workflow.run.failed" | "model.validation.checks_passed" | "model.validation.checks_failed" | "model.validation.awaiting_approval" | "model.validated" | "model.rejected" | "model.deprecated" | "dataset.version.created" | "optimize.completed" | "dashboard.readout.published" | "plugin.version.kit_passed" | "plugin.version.kit_failed" | "plugin.version.awaiting_approval" | "plugin.version.approved" | "plugin.version.rejected" | "plugin.version.yanked";
         /**
          * WebhookUpdate
          * @description ``PATCH /v1/webhooks/{webhook_id}`` (re-activating resets the failure count).
@@ -22809,6 +28638,13 @@ export interface components {
             };
             /** Id */
             id: string;
+            /**
+             * Source
+             * @description v0.18: 'plugin' for a template an installed plugin added
+             * @default builtin
+             * @enum {string}
+             */
+            source?: "builtin" | "plugin";
             /** Tags */
             tags?: string[];
             /**
@@ -23137,6 +28973,7 @@ export interface operations {
         parameters: {
             query?: {
                 return_to?: string | null;
+                reauth?: boolean;
             };
             header?: never;
             path?: never;
@@ -23414,6 +29251,62 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_describe_catalog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Run"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -24258,6 +30151,62 @@ export interface operations {
             };
         };
     };
+    list_catalog_diagnostics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogDiagnostic"][];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     list_governance_checks: {
         parameters: {
             query?: {
@@ -24386,6 +30335,73 @@ export interface operations {
             };
         };
     };
+    get_catalog_plot_preview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipePreviewResult"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     get_catalog_plot_example: {
         parameters: {
             query?: never;
@@ -24444,6 +30460,89 @@ export interface operations {
                 };
             };
             /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    preview_catalog_plot: {
+        parameters: {
+            query?: never;
+            header?: {
+                Prefer?: string | null;
+            };
+            path: {
+                plot_id: string;
+                version: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecipePreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipePreviewResult"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PREVIEW_DISABLED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, MODE_NOT_SUPPORTED */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED, QUOTA_EXCEEDED */
             429: {
                 headers: {
                     [name: string]: unknown;
@@ -24817,7 +30916,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: SCHEMA_INVALID */
+            /** @description Problem: SCHEMA_INVALID, DASHBOARD_LAYOUT_RETIRED */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -24866,7 +30965,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -24939,7 +31038,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -25024,7 +31123,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -25044,6 +31143,778 @@ export interface operations {
             };
             /** @description Problem: DASHBOARD_INPUT_DISABLED */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_dashboard_asset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dashboard_id: string;
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": unknown;
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    submit_dashboard_batch: {
+        parameters: {
+            query?: never;
+            header?: {
+                Prefer?: string | null;
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                dashboard_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BatchSubmit"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Readout"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: DASHBOARD_INPUT_DISABLED, DASHBOARD_LIVE_PAUSED, IDEMPOTENCY_CONFLICT, DASHBOARD_BATCH_TOO_LARGE */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, DASHBOARD_INPUT_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED, DASHBOARD_RUN_LIMIT, QUOTA_EXCEEDED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_dashboard_batch_template: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dashboard_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchTemplate"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: DASHBOARD_INPUT_DISABLED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_dashboard_chat: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dashboard_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatAvailability"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: DASHBOARD_NOT_PUBLISHED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    post_dashboard_chat: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dashboard_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatResponse"];
+                };
+            };
+            /** @description Problem: CHAT_HISTORY_INVALID */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CHAT_DISABLED, DASHBOARD_NOT_PUBLISHED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED, CHAT_BUDGET_EXHAUSTED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CHAT_UNAVAILABLE */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_dashboard_chat_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dashboard_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatSettingsView"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    put_dashboard_chat_settings: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                dashboard_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatSettingsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatSettingsView"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PRECONDITION_FAILED */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_dashboard_chat_transcripts: {
+        parameters: {
+            query?: {
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                dashboard_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ChatTranscriptSummary_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_dashboard_chat_transcript: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dashboard_id: string;
+                conversation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatTranscript"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    delete_dashboard_chat_transcript: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dashboard_id: string;
+                conversation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -25133,7 +32004,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: SCHEMA_INVALID */
+            /** @description Problem: SCHEMA_INVALID, DASHBOARD_LAYOUT_RETIRED */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -25253,7 +32124,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -25395,7 +32266,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -25442,10 +32313,317 @@ export interface operations {
             };
         };
     };
+    submit_dashboard_predictions: {
+        parameters: {
+            query?: never;
+            header?: {
+                Prefer?: string | null;
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                dashboard_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScenarioRowsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Readout"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: DASHBOARD_INPUT_DISABLED, DASHBOARD_LIVE_PAUSED, IDEMPOTENCY_CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, DASHBOARD_INPUT_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED, DASHBOARD_RUN_LIMIT, QUOTA_EXCEEDED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_dashboard_read_tokens: {
+        parameters: {
+            query?: {
+                all?: boolean;
+            };
+            header?: never;
+            path: {
+                dashboard_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadToken"][];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_dashboard_read_token: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dashboard_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReadTokenCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadTokenCreated"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: READ_TOKEN_LIMIT, DASHBOARD_NOT_PUBLISHED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    revoke_dashboard_read_token: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dashboard_id: string;
+                token_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     list_dashboard_readouts: {
         parameters: {
             query?: {
-                kind?: ("baseline" | "refresh" | "scenario" | "actuals") | null;
+                kind?: ("baseline" | "refresh" | "scenario" | "actuals" | "prediction" | "batch") | null;
                 visibility?: ("published" | "private" | "pending_review" | "hidden") | null;
                 before_seq?: number | null;
                 limit?: number;
@@ -25476,7 +32654,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -25544,7 +32722,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -25582,7 +32760,161 @@ export interface operations {
             };
         };
     };
+    download_dashboard_predictions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dashboard_id: string;
+                seq: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": unknown;
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: DASHBOARD_DOWNLOAD_GONE */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     hide_dashboard_readout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dashboard_id: string;
+                seq: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadoutHeader"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    keep_dashboard_readout: {
         parameters: {
             query?: never;
             header?: never;
@@ -26077,7 +33409,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -26227,7 +33559,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -26342,6 +33674,73 @@ export interface operations {
             };
         };
     };
+    get_dashboard_sources: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dashboard_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceCatalog"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     evaluate_dashboard_whatif: {
         parameters: {
             query?: never;
@@ -26375,7 +33774,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -26654,6 +34053,93 @@ export interface operations {
             };
         };
     };
+    upgrade_dashboard: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                dashboard_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardUpgrade"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: DASHBOARD_SPEC_STALE, PRECONDITION_FAILED */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     validate_dashboard: {
         parameters: {
             query?: never;
@@ -26708,6 +34194,75 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_dashboard_presets: {
+        parameters: {
+            query?: {
+                model_id?: string | null;
+                version?: number | null;
+                alias?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardPresets"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description Problem: RATE_LIMITED */
@@ -27576,6 +35131,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EmbedView"];
+                };
+            };
+            /** @description Problem (`UPLOADED_CODE_NOT_SHAREABLE`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description Problem (`NOT_FOUND`) */
@@ -29270,6 +36834,1056 @@ export interface operations {
             };
         };
     };
+    list_library_items: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                kind?: ("model_recipe" | "prep_preset" | "chart_template" | "workflow_template") | null;
+                scope?: ("tenant" | "project") | null;
+                q?: string | null;
+                include_archived?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_LibraryItem_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_library_item: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LibraryCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryItem"];
+                };
+            };
+            /** @description Problem: SPEC_PARSE_ERROR */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, LIBRARY_INVALID, SCHEMA_UNSAFE */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    preview_library_chart: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChartPreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChartPreview"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: EXTENSION_UNAVAILABLE */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, LIBRARY_INVALID, PLOT_UNSAFE */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_library_item: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryItem"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_library_revisions: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_LibraryRevision_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_library_revision: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LibraryRevisionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryRevision"];
+                };
+            };
+            /** @description Problem: SPEC_PARSE_ERROR */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PRECONDITION_FAILED */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, LIBRARY_INVALID, SCHEMA_UNSAFE */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_library_revision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+                revision: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryRevision"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    archive_library_item: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryItem"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    promote_library_item: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryItem"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    unarchive_library_item: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryItem"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    use_library_item: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LibraryUseRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryUseResult"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: EXTENSION_UNAVAILABLE */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, LIBRARY_INVALID, LIBRARY_DATA_SHAPE, PLOT_UNSAFE */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    validate_library_document: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LibraryValidateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryValidation"];
+                };
+            };
+            /** @description Problem: SPEC_PARSE_ERROR */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, LIBRARY_INVALID, SCHEMA_UNSAFE */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    mcp_endpoint: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description One JSON-RPC 2.0 message (MCP 2025-11-25 or 2025-06-18) */
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description The JSON-RPC response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Accepted (a notification; no body) */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: LINK_EXPIRED */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     get_me: {
         parameters: {
             query?: never;
@@ -30470,7 +39084,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem (`FORBIDDEN`) */
+            /** @description Problem (`FORBIDDEN`, `UPLOADED_CODE_NOT_SHAREABLE`) */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -30702,6 +39316,1006 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_plugins: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                state?: ("uploaded" | "inspecting" | "inspect_failed" | "describing" | "kit_failed" | "kit_passed" | "awaiting_approval" | "approved" | "rejected" | "yanked" | "purged") | null;
+                mine?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_Plugin_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    claim_plugin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PluginClaim"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Plugin"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN, IDENTITY_VERIFICATION_REQUIRED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PLUGIN_NAMESPACE_TAKEN */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_plugin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Plugin"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_plugin_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PluginUploadTicketRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginUploadTicket"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN, IDENTITY_VERIFICATION_REQUIRED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    complete_plugin_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+                upload_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PluginUploadComplete"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginVersion"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN, IDENTITY_VERIFICATION_REQUIRED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PLUGIN_VERSION_EXISTS, UNTRUSTED_PLACEMENT_UNAVAILABLE */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PRECONDITION_FAILED */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, PLUGIN_REFUSED */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_plugin_versions: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_PluginVersionSummary_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_plugin_version: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-None-Match"?: string | null;
+            };
+            path: {
+                plugin_id: string;
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginVersion"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_plugin_example: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+                version_id: string;
+                plot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlotSpec"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_plugin_usage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginUsage"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    approve_plugin_version: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PluginDecision"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginVersion"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED, REAUTH_REQUIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN, SELF_APPROVAL_FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PLUGIN_STATE_CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    reject_plugin_version: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PluginDecision"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginVersion"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED, REAUTH_REQUIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN, SELF_APPROVAL_FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PLUGIN_STATE_CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    request_plugin_approval: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginVersion"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PLUGIN_STATE_CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    yank_plugin_version: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PluginYank"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginVersion"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PLUGIN_STATE_CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -31717,7 +41331,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -31793,7 +41407,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -31874,7 +41488,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -31968,7 +41582,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -32024,6 +41638,461 @@ export interface operations {
             };
         };
     };
+    get_shared_asset: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Mapi-Share"?: string | null;
+            };
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": unknown;
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: LINK_EXPIRED */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    submit_shared_batch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Mapi-Share"?: string | null;
+                Prefer?: string | null;
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BatchSubmit"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Readout"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: DASHBOARD_INPUT_DISABLED, DASHBOARD_LIVE_PAUSED, IDEMPOTENCY_CONFLICT, DASHBOARD_BATCH_TOO_LARGE */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: LINK_EXPIRED */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, DASHBOARD_INPUT_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED, DASHBOARD_RUN_LIMIT, QUOTA_EXCEEDED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_shared_batch_template: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Mapi-Share"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchTemplate"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: DASHBOARD_INPUT_DISABLED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: LINK_EXPIRED */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_shared_chat: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Mapi-Share"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatAvailability"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: LINK_EXPIRED */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    post_shared_chat: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Mapi-Share"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatResponse"];
+                };
+            };
+            /** @description Problem: CHAT_HISTORY_INVALID */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CHAT_DISABLED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: LINK_EXPIRED */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED, CHAT_BUDGET_EXHAUSTED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CHAT_UNAVAILABLE */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     get_shared_dashboard: {
         parameters: {
             query?: never;
@@ -32053,7 +42122,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -32129,7 +42198,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -32185,10 +42254,110 @@ export interface operations {
             };
         };
     };
+    submit_shared_predictions: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Mapi-Share"?: string | null;
+                Prefer?: string | null;
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScenarioRowsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Readout"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: DASHBOARD_INPUT_DISABLED, DASHBOARD_LIVE_PAUSED, IDEMPOTENCY_CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: LINK_EXPIRED */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, DASHBOARD_INPUT_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED, DASHBOARD_RUN_LIMIT, QUOTA_EXCEEDED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     list_shared_readouts: {
         parameters: {
             query?: {
-                kind?: ("baseline" | "refresh" | "scenario" | "actuals") | null;
+                kind?: ("baseline" | "refresh" | "scenario" | "actuals" | "prediction" | "batch") | null;
                 before_seq?: number | null;
                 limit?: number;
             };
@@ -32218,7 +42387,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -32296,7 +42465,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -32315,6 +42484,84 @@ export interface operations {
                 };
             };
             /** @description Problem: LINK_EXPIRED */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    download_shared_predictions: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Mapi-Share"?: string | null;
+            };
+            path: {
+                seq: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": unknown;
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: LINK_EXPIRED, DASHBOARD_DOWNLOAD_GONE */
             410: {
                 headers: {
                     [name: string]: unknown;
@@ -32378,7 +42625,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -32467,7 +42714,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -33568,6 +43815,231 @@ export interface operations {
             };
         };
     };
+    get_onboarding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OnboardingState"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_onboarding: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OnboardingPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OnboardingState"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PRECONDITION_FAILED */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    reset_onboarding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OnboardingState"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     list_tenant_members: {
         parameters: {
             query?: {
@@ -33699,6 +44171,354 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_plugin_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginSettings"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_plugin_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PluginSettingsPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginSettings"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_plugin_uploaders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerifiedUploader"][];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    attest_plugin_uploader: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerifiedUploader"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    revoke_plugin_uploader: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -33973,6 +44793,295 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_samples: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SampleInfo"][];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    install_sample: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                sample_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SampleInfo"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND, SAMPLES_DISABLED */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED, QUOTA_EXCEEDED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    retire_sample: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                sample_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SampleInfo"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND, SAMPLES_DISABLED */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    retry_sample: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                sample_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SampleInfo"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND, SAMPLES_DISABLED */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED, QUOTA_EXCEEDED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };

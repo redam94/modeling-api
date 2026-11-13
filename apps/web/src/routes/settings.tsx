@@ -1,4 +1,5 @@
-import { LogOut } from "lucide-react";
+import { LogOut, RotateCcw } from "lucide-react";
+import { lazy, Suspense } from "react";
 
 import { can, ROLE_META } from "@/api/access";
 import { errorMessage } from "@/api/client";
@@ -7,14 +8,19 @@ import { Button } from "@/components/ui/button";
 import { useSignOut } from "@/features/auth/gate";
 import { useWorkspace } from "@/features/auth/workspace";
 import { useEffectivePersona, useGuidedLock, useSetPersona } from "@/features/guided/persona";
+import { useOnboarding, useOnboardingTenant, usePatchOnboarding, useResetOnboarding } from "@/features/onboarding/api";
 import { DataSettings } from "@/features/trust/data-settings";
 import { KeyValues, Mono, PageHeader } from "@/components/common";
-import { SegmentedControl, Switch } from "@/components/ui/overlays";
+import { FilterPills } from "@/components/ui/filter-pills";
+import { Switch } from "@/components/ui/overlays";
 import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/primitives";
 import { env } from "@/env";
 import { absoluteTime, formatNumber } from "@/lib/format";
 import { toast } from "@/stores/toast";
 import { useUi, type Persona, type ThemePreference } from "@/stores/ui";
+
+/** v0.19 (D20): Settings › Workspace › Uploaded code, for tenant admins (lazy; signed-in only). */
+const PluginSettingsCard = lazy(() => import("@/features/plugins/plugin-settings-card"));
 
 /** The project's persona lock (`Project.guided_locked`), for its admins. */
 function GuidedLockSwitch({ locked }: { locked: boolean }) {
@@ -50,6 +56,70 @@ function GuidedLockSwitch({ locked }: { locked: boolean }) {
         </p>
       </div>
     </div>
+  );
+}
+
+/**
+ * v0.18 (D19, D24): tips, tours and the first-run checklist, per user in this organisation.
+ * "Reset tips" starts them all again (the welcome card, the checklist and the tours).
+ */
+function TipsCard() {
+  const tenant = useOnboardingTenant();
+  const progress = useOnboarding();
+  const patch = usePatchOnboarding();
+  const reset = useResetOnboarding();
+  if (!tenant) return null;
+  const tipsOn = progress.data ? !progress.data.tips_off : true;
+  return (
+    <Card>
+      <CardHeader>
+        <div>
+          <CardTitle>Tips and tours</CardTitle>
+          <CardDescription>Your checklist, tours and tips follow you to any browser. They are yours alone, so nobody else in your team sees them change.</CardDescription>
+        </div>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <div className="flex items-start gap-3">
+          <Switch
+            id="tips-on"
+            className="mt-0.5"
+            checked={tipsOn}
+            disabled={!progress.data || patch.isPending}
+            aria-describedby="tips-on-hint"
+            onCheckedChange={(on) =>
+              patch.mutate(
+                { patch: { tips_off: !on } },
+                { onError: (err) => toast.error("The app could not save the change", errorMessage(err)) },
+              )
+            }
+          />
+          <div className="grid gap-0.5">
+            <label htmlFor="tips-on" className="text-sm font-medium">
+              Show tips and the Start here checklist
+            </label>
+            <p id="tips-on-hint" className="text-xs text-muted-foreground">
+              Turn this off and Home folds Start here into one line. You can still take any tour from your account menu.
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-3 border-t pt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={reset.isPending}
+            onClick={() =>
+              reset.mutate(undefined, {
+                onSuccess: () => toast.success("Tips are back", "Your checklist and tours start fresh. The welcome card shows on your next visit."),
+                onError: (err) => toast.error("The app could not reset the tips", errorMessage(err)),
+              })
+            }
+          >
+            <RotateCcw /> Reset tips
+          </Button>
+          <p className="text-xs text-muted-foreground">Starts the checklist, the tours and the welcome card again.</p>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -108,7 +178,7 @@ export function SettingsPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <SegmentedControl<ThemePreference>
+            <FilterPills<ThemePreference>
               label="Theme"
               value={theme}
               onValueChange={setTheme}
@@ -133,9 +203,9 @@ export function SettingsPage() {
             {lock.locked ? (
               <p className="text-sm text-muted-foreground">A project admin locked this project to Guided mode.</p>
             ) : (
-              <SegmentedControl<Persona>
+              <FilterPills<Persona>
                 label="Mode"
-                value={persona}
+                  value={persona}
                 onValueChange={setPersona}
                 options={[
                   { value: "expert", label: "Expert" },
@@ -146,6 +216,7 @@ export function SettingsPage() {
             <GuidedLockSwitch locked={lock.projectLocked} />
           </CardContent>
         </Card>
+        {ws.mode === "session" ? <TipsCard /> : null}
         <Card>
           <CardHeader>
             <div>
@@ -178,6 +249,11 @@ export function SettingsPage() {
           </CardContent>
         </Card>
         {ws.mode === "session" && ws.current?.tenantRole === "admin" && "trust_tier" in ws.current.tenant ? <DataSettings tenant={ws.current.tenant} /> : null}
+        {ws.mode === "session" && ws.current?.tenantRole === "admin" && "trust_tier" in ws.current.tenant && ws.current.tenant.trust_tier !== "public" ? (
+          <Suspense fallback={null}>
+            <PluginSettingsCard tenantId={ws.current.tenant.id} />
+          </Suspense>
+        ) : null}
       </div>
     </>
   );

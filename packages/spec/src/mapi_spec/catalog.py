@@ -2,16 +2,26 @@
 
 The control plane validates specs against these JSON shapes only — it never imports the
 step or model code that produced them.
+
+v0.18 (additive; every new field is left out of the JSON when empty, so the digest of a
+catalog without extensions does not change): ``provider`` on entries (the distribution of a
+non-built-in plugin), plot ``settings_schema``/``tags``/``pack_label``, plugin workflow node
+contracts and templates (:class:`TemplateCatalogEntry`), and :class:`CatalogDiagnostic`
+rows for everything that could not be loaded.
+
+v0.19 (additive, left out when ``None``): ``overlay_hash`` on step, plot and template entries
+(models had it already) - the sha256 of the uploaded wheel an entry of the tenant catalog view
+comes from; its ``provider`` is then ``upload:<plugin version id>``.
 """
 
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Any, Literal
+from typing import Any, Final, Literal
 
-from pydantic import Field, JsonValue, field_validator, model_validator
+from pydantic import ConfigDict, Field, JsonValue, field_validator, model_validator
 
-from mapi_spec._types import StrictModel
+from mapi_spec._types import Slug, StrictModel
 from mapi_spec.about import About, about_issues
 from mapi_spec.capabilities import ModelManifest, Representation, check_json_schema
 from mapi_spec.effects import (
@@ -23,15 +33,125 @@ from mapi_spec.effects import (
     resolve_effect,
 )
 from mapi_spec.errors import ErrorCode, Issue, Severity, json_pointer
+from mapi_spec.namespaces import PLATFORM_RESERVED, uploaded_namespace_of
 from mapi_spec.refs import UseRef, Version
+from mapi_spec.workflow_nodes import NodeImplementation
 
 __all__ = [
+    "CATALOG_DIAGNOSTICS_MAX",
+    "DIAGNOSTICS_PER_DISTRIBUTION_MAX",
     "Catalog",
+    "CatalogDiagnostic",
+    "DiagnosticCode",
     "ModelCatalogEntry",
     "PlotCatalogEntry",
     "StepCatalogEntry",
+    "TemplateCatalogEntry",
     "catalog_about_issues",
 ]
+
+DiagnosticCode = Literal[
+    "load_error",
+    "namespace_reserved",
+    "id_collision",
+    "schema_unsafe",
+    "about_incomplete",
+    "node_contract_invalid",
+    "template_invalid",
+    "deprecated",
+]
+CATALOG_DIAGNOSTICS_MAX: Final = 500
+DIAGNOSTICS_PER_DISTRIBUTION_MAX: Final = 20
+"""Caps of :attr:`Catalog.diagnostics` (in total, and per distribution: the exporter keeps
+the first ones and adds one row saying how many more there were)."""
+
+
+def _none(v: object) -> bool:
+    return v is None
+
+
+def _empty(v: object) -> bool:
+    return not v
+
+
+class CatalogDiagnostic(StrictModel):
+    """Something the runner could not put into the catalog, or put there with a change.
+
+    ``message`` is platform-authored plain text; anything a plugin wrote (an exception
+    message, an id it exported) goes in ``untrusted_text`` and is shown as text only.
+    """
+
+    code: DiagnosticCode
+    group: str = Field(
+        ..., max_length=64, description="The entry-point group (mapi.models, ...) or the check"
+    )
+    entry_point: str | None = Field(None, max_length=128)
+    distribution: str | None = Field(None, max_length=128)
+    id: str | None = Field(None, max_length=128, description="The catalog id concerned")
+    message: str = Field(..., max_length=500, description="Trusted, platform-authored text")
+    untrusted_text: str | None = Field(
+        None, max_length=500, description="Plugin-originated text; render as text only"
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "code": "namespace_reserved",
+                    "group": "mapi.models",
+                    "entry_point": "acme",
+                    "distribution": "acme-models",
+                    "id": "mmm.acme_mix",
+                    "message": "The namespace 'mmm' belongs to the built-in plugins.",
+                }
+            ]
+        }
+    )
+
+
+_TEMPLATE_ID = r"^[a-z][a-z0-9_]{0,63}$"
+_SHA256 = r"^sha256:[0-9a-f]{64}$"
+
+
+class TemplateCatalogEntry(StrictModel):
+    """A plugin workflow template (entry-point group ``mapi.workflow_templates``).
+
+    The sibling of :class:`~mapi_spec.workflow_templates.WorkflowTemplate` (which this module
+    cannot import: ``workflow`` imports the catalog). The id is ``<namespace>_<name>`` so it
+    fits ``POST /v1/workflows {template}``; ``document`` is the workflow document, validated
+    against the merged node contracts when the control plane loads the catalog.
+    """
+
+    id: str = Field(..., pattern=_TEMPLATE_ID)
+    version: str = "1.0.0"
+    about: About
+    document: dict[str, JsonValue]
+    tags: list[Slug] = Field(default_factory=list, max_length=8, exclude_if=_empty)
+    provider: str | None = Field(None, max_length=128, exclude_if=_none)
+    overlay_hash: str | None = Field(None, pattern=_SHA256, exclude_if=_none)
+
+    @field_validator("id")
+    @classmethod
+    def _id(cls, v: str) -> str:
+        head, sep, name = v.partition("_")
+        if not sep or not name:
+            raise ValueError("a plugin template id is '<namespace>_<name>'")
+        # v0.19: an uploaded template ('t_<code>_<short>_<name>'); whether the exporter may
+        # use that namespace is decided by the loader (check_namespace(..., claimed=...))
+        if uploaded_namespace_of(v) is not None:
+            return v
+        if head in PLATFORM_RESERVED:
+            raise ValueError(f"the namespace {head!r} is reserved for the platform")
+        return v
+
+    @field_validator("version")
+    @classmethod
+    def _version(cls, v: str) -> str:
+        return _check_version(v)
+
+    @property
+    def ref(self) -> str:
+        return f"{self.id}@{self.version}"
 
 
 def _check_id(v: str) -> str:
@@ -85,6 +205,18 @@ class StepCatalogEntry(StrictModel):
         description="M3.5: the plain-language About card (the catalog rule requires one)",
         exclude_if=lambda v: v is None,
     )
+    provider: str | None = Field(
+        None,
+        max_length=128,
+        description="v0.18: the distribution that installed a non-built-in step",
+        exclude_if=_none,
+    )
+    overlay_hash: str | None = Field(
+        None,
+        pattern=_SHA256,
+        description="v0.19: the sha256 of the uploaded wheel the step comes from",
+        exclude_if=_none,
+    )
 
     @field_validator("id")
     @classmethod
@@ -125,6 +257,12 @@ class ModelCatalogEntry(StrictModel):
     base_image: str | None = Field(None, max_length=256, examples=["base-bayes@2026.10"])
     overlay_hash: str | None = Field(None, pattern=r"^sha256:[0-9a-f]{64}$")
     yanked: bool = False
+    provider: str | None = Field(
+        None,
+        max_length=128,
+        description="v0.18: the distribution that installed a non-built-in model",
+        exclude_if=_none,
+    )
 
     @property
     def id(self) -> str:
@@ -165,6 +303,31 @@ class PlotCatalogEntry(StrictModel):
         description="The plot's About card: what it shows, how to read it, what it needs",
         exclude_if=lambda v: v is None,
     )
+    provider: str | None = Field(
+        None,
+        max_length=128,
+        description="v0.18: the distribution that installed a non-built-in recipe",
+        exclude_if=_none,
+    )
+    settings_schema: dict[str, JsonValue] | None = Field(
+        None,
+        description="v0.18: the recipe's settings as a safe JSON Schema (at most 16 KiB; "
+        "absent when too large)",
+        exclude_if=_none,
+    )
+    tags: list[Slug] = Field(default_factory=list, max_length=8, exclude_if=_empty)
+    pack_label: str | None = Field(
+        None,
+        max_length=40,
+        description="v0.18: the name of the recipe pack shown on the catalog card",
+        exclude_if=_none,
+    )
+    overlay_hash: str | None = Field(
+        None,
+        pattern=_SHA256,
+        description="v0.19: the sha256 of the uploaded wheel the recipe comes from",
+        exclude_if=_none,
+    )
 
     @property
     def ref(self) -> str:
@@ -180,13 +343,28 @@ class PlotCatalogEntry(StrictModel):
     def _version(cls, v: str) -> str:
         return _check_version(v)
 
+    @field_validator("settings_schema")
+    @classmethod
+    def _schema(cls, v: dict[str, JsonValue] | None) -> dict[str, JsonValue] | None:
+        return None if v is None else check_json_schema(v)
+
 
 class Catalog(StrictModel):
-    """A set of catalog entries with semver resolution helpers."""
+    """A set of catalog entries with semver resolution helpers.
+
+    ``workflow_nodes`` and ``workflow_templates`` hold only *plugin* contributions (the
+    built-in nodes and templates are static in :mod:`mapi_spec`); ``diagnostics`` lists what
+    the runner could not load. All three are left out of the JSON when empty.
+    """
 
     steps: list[StepCatalogEntry] = Field(default_factory=list)
     models: list[ModelCatalogEntry] = Field(default_factory=list)
     plots: list[PlotCatalogEntry] = Field(default_factory=list)
+    workflow_nodes: list[NodeImplementation] = Field(default_factory=list, exclude_if=_empty)
+    workflow_templates: list[TemplateCatalogEntry] = Field(default_factory=list, exclude_if=_empty)
+    diagnostics: list[CatalogDiagnostic] = Field(
+        default_factory=list, max_length=CATALOG_DIAGNOSTICS_MAX, exclude_if=_empty
+    )
 
     @model_validator(mode="after")
     def _unique(self) -> Catalog:
@@ -194,6 +372,8 @@ class Catalog(StrictModel):
             ("step", [e.ref for e in self.steps]),
             ("model", [e.ref for e in self.models]),
             ("plot", [e.ref for e in self.plots]),
+            ("workflow node", [e.id for e in self.workflow_nodes]),
+            ("workflow template", [e.id for e in self.workflow_templates]),
         ):
             if len(refs) != len(set(refs)):
                 raise ValueError(f"duplicate {kind} catalog entries")

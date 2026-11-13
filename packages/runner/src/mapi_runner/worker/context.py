@@ -1,4 +1,10 @@
-"""The worker's side of the run: channel client, scratch layout, inputs and hooks."""
+"""The worker's side of the run: channel client, scratch layout, inputs and hooks.
+
+v0.19: the uploads a run mounts arrive as ``--overlay DIR=NS=PVID`` (:class:`OverlaySpec`).
+``worker/__main__`` appends each directory to ``sys.path`` and records them with
+:func:`mapi_sdk.registry.set_process_overlays`; :func:`load_registry` then loads them through
+the SDK's path rule (provider ``upload:<pvid>``, ids only in the claimed namespace).
+"""
 
 from __future__ import annotations
 
@@ -11,7 +17,7 @@ import threading
 import time
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 from mapi_spec.capabilities import Diagnostic
 from mapi_spec.errors import ErrorCode, MapiError
@@ -41,16 +47,35 @@ from mapi_runner.transfer import Transfers, new_client
 if TYPE_CHECKING:
     from mapi_runner.worker.tracking import WorkerTracker
 
-__all__ = ["WorkerContext", "load_registry"]
+__all__ = ["OverlaySpec", "WorkerContext", "load_registry"]
 
 _PROGRESS_MIN_INTERVAL = 0.25
 
 
-def load_registry(ref: str | None) -> Any:
-    """The plugin registry: entry points by default, or ``module:callable``."""
-    from mapi_sdk.registry import default_registry
+class OverlaySpec(NamedTuple):
+    """One mounted upload: the read-only directory the supervisor extracted it to, the
+    namespace the platform assigned and the plugin version id (a ``(dir, namespace, pvid)``
+    tuple, the form :class:`mapi_sdk.registry.Registry` takes)."""
+
+    dir: Path
+    namespace: str
+    pvid: str
+
+
+def load_registry(ref: str | None = None, overlays: Sequence[OverlaySpec] = ()) -> Any:
+    """The plugin registry: entry points by default (with ``overlays``, v0.19), or
+    ``module:callable`` (an operator test hook, never set from a run; it ignores overlays).
+
+    Overlay directories must already be on ``sys.path`` (the worker appends them before it
+    loads anything); uploaded code is never loaded through ``ref``."""
+    from mapi_sdk.registry import default_registry, process_overlays, set_process_overlays
 
     if not ref:
+        current = tuple((o.dir, o.namespace, o.pvid) for o in process_overlays())
+        wanted = tuple((Path(d), ns, pvid) for d, ns, pvid in overlays)
+        if wanted != current:  # the workflow loaders read the same process-wide overlays
+            set_process_overlays(wanted)
+            return default_registry(reload=True)
         return default_registry()
     module, _, attr = ref.partition(":")
     if not module or not attr:
@@ -69,12 +94,15 @@ class WorkerContext:
         *,
         cancel: Any,
         registry_ref: str | None = None,
+        overlays: Sequence[OverlaySpec] = (),
     ) -> None:
         self.start = start
         self._sock = sock
         self._send_lock = threading.Lock()
         self.cancel = cancel
         self._registry_ref = registry_ref
+        self.overlays: tuple[OverlaySpec, ...] = tuple(overlays)
+        """The uploads this run mounted (v0.19; empty for most runs)."""
         self._registry: Any = None
         root = Path(start.scratch)
         self.inputs_dir = root / "inputs"
@@ -194,7 +222,7 @@ class WorkerContext:
     @property
     def registry(self) -> Any:
         if self._registry is None:
-            self._registry = load_registry(self._registry_ref)
+            self._registry = load_registry(self._registry_ref, self.overlays)
         return self._registry
 
     # --------------------------------------------------------------------- inputs

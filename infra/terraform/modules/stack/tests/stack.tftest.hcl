@@ -39,6 +39,7 @@ variables {
     metrics_collector = { image = "europe-west4-docker.pkg.dev/acme-test-build/mirror/otelcol-google@sha256:6666666666666666666666666666666666666666666666666666666666666666" }
   }
   oidc_client_secret = "mock-oauth-client-secret"
+  gemini_api_key     = "mock-gemini-api-key"
 }
 
 run "full_environment" {
@@ -50,7 +51,7 @@ run "full_environment" {
   }
 
   assert {
-    condition     = output.buckets == { quarantine = "mapi-test-quarantine", bootstrap = "mapi-test-bootstrap", runs = "mapi-test-runs", bundles = "mapi-test-bundles", data = "mapi-test-data" }
+    condition     = output.buckets == { quarantine = "mapi-test-quarantine", bootstrap = "mapi-test-bootstrap", runs = "mapi-test-runs", bundles = "mapi-test-bundles", data = "mapi-test-data", plugins = "mapi-test-plugins" }
     error_message = "Bucket names must be exactly mapi-{env}-{purpose} (mapi_spec.storage.bucket_name)."
   }
 

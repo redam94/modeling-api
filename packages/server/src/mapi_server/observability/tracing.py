@@ -7,7 +7,10 @@ OTLP span exporter. Export is therefore optional: with nothing configured the pr
 runs so spans carry a valid trace id into the logs, but no spans leave the process.
 
 ``instrument_app`` adds FastAPI (ASGI), SQLAlchemy and httpx instrumentation. Each is
-import-guarded and applied at most once. ``run_span`` opens a span that carries ``run_id``
+import-guarded and applied at most once. Request spans of the MCP endpoint (``/v1/mcp``)
+never carry its query string (:func:`scrub_mcp_query`): a misconfigured client may put a
+read token or share session in the URL, and the middleware's ``401`` comes after the span
+was opened. ``run_span`` opens a span that carries ``run_id``
 (and the tenant/attempt) so a run's dispatch, reconcile and finalize work is one trace.
 """
 
@@ -30,6 +33,7 @@ __all__ = [
     "instrument_engine",
     "instrument_httpx",
     "run_span",
+    "scrub_mcp_query",
     "shutdown_tracing",
 ]
 
@@ -94,8 +98,38 @@ def configure_tracing(
     return provider
 
 
-def instrument_app(app: FastAPI) -> None:
-    """Instrument a FastAPI app for request spans (once per process)."""
+_MCP_PATH = "/v1/mcp"
+_REDACTED = "REDACTED"
+_URL_ATTRIBUTES = ("http.url", "url.full")
+_QUERY_ATTRIBUTES = ("url.query",)
+_TARGET_ATTRIBUTES = ("http.target",)
+
+
+def scrub_mcp_query(span: Any, scope: dict[str, Any]) -> None:
+    """``server_request_hook`` of the ASGI instrumentation: on ``/v1/mcp``, replace the
+    query string in the span's URL attributes (old and stable HTTP conventions) with
+    ``REDACTED``. The endpoint takes no query parameters, so whatever is there may only be a
+    misplaced credential (``?token=mapi_…``)."""
+    if span is None or not span.is_recording():
+        return
+    path = scope.get("path")
+    if scope.get("type") != "http" or not isinstance(path, str):
+        return
+    if path.rstrip("/") != _MCP_PATH or not scope.get("query_string"):
+        return
+    attributes = getattr(span, "attributes", None) or {}
+    for key in _URL_ATTRIBUTES + _TARGET_ATTRIBUTES:
+        value = attributes.get(key)
+        if isinstance(value, str) and "?" in value:
+            span.set_attribute(key, value.split("?", 1)[0] + "?" + _REDACTED)
+    for key in _QUERY_ATTRIBUTES:
+        if key in attributes:
+            span.set_attribute(key, _REDACTED)
+
+
+def instrument_app(app: FastAPI, *, tracer_provider: Any = None) -> None:
+    """Instrument a FastAPI app for request spans (once per process). ``tracer_provider``
+    replaces the global provider (tests)."""
     global _APP_INSTRUMENTED
     if _APP_INSTRUMENTED:
         return
@@ -103,7 +137,12 @@ def instrument_app(app: FastAPI) -> None:
         from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
     except ImportError:  # pragma: no cover
         return
-    FastAPIInstrumentor.instrument_app(app, exclude_spans=["receive", "send"])
+    FastAPIInstrumentor.instrument_app(
+        app,
+        exclude_spans=["receive", "send"],
+        server_request_hook=scrub_mcp_query,
+        tracer_provider=tracer_provider,
+    )
     _APP_INSTRUMENTED = True
 
 

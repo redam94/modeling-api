@@ -217,7 +217,7 @@ export function barsPlot(data: readonly BarDatum[], opts: { title: string; forma
   if (opts.ruleAt !== undefined && opts.ruleAt !== null) {
     layers.push({
       data: { values: [{ at: opts.ruleAt, label: opts.ruleLabel ?? "" }] },
-      mark: { type: "rule", strokeDash: [5, 4], strokeWidth: 1.5, color: "#c20021" },
+      mark: { type: "rule", strokeDash: [5, 4], strokeWidth: 1.5, color: "#c00f2c" },
       encoding: { x: { field: "at", type: "quantitative" } },
     });
   }
@@ -305,7 +305,7 @@ export function fitPlot(actual: { coords: readonly unknown[]; values: readonly (
     },
     {
       transform: [{ filter: "datum.actual != null" }],
-      mark: { type: "point", filled: true, size: 16, color: "#697077" },
+      mark: { type: "point", filled: true, size: 16, color: "#68686d" },
       encoding: {
         x,
         y: { field: "actual", type: "quantitative", scale },

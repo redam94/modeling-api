@@ -1,0 +1,82 @@
+{
+ "tables": [
+  {
+   "columns": [
+    "store",
+    "sku",
+    "week",
+    "mean"
+   ],
+   "dims": [
+    "store",
+    "sku",
+    "week"
+   ],
+   "rows": [
+    [
+     "s_new",
+     "k0",
+     "2024-10-06",
+     8.82181741740493
+    ]
+   ],
+   "time_dim": "week",
+   "variable": "y_hat"
+  },
+  {
+   "columns": [
+    "component",
+    "store",
+    "sku",
+    "week",
+    "mean"
+   ],
+   "dims": [
+    "component",
+    "store",
+    "sku",
+    "week"
+   ],
+   "rows": [
+    [
+     "intercept",
+     "s_new",
+     "k0",
+     "2024-10-06",
+     17.63259021649515
+    ],
+    [
+     "price",
+     "s_new",
+     "k0",
+     "2024-10-06",
+     -4.271527075586123
+    ],
+    [
+     "promo",
+     "s_new",
+     "k0",
+     "2024-10-06",
+     0.0
+    ],
+    [
+     "sku",
+     "s_new",
+     "k0",
+     "2024-10-06",
+     -4.53924572350312
+    ],
+    [
+     "store",
+     "s_new",
+     "k0",
+     "2024-10-06",
+     -9.768827780707567e-13
+    ]
+   ],
+   "time_dim": "week",
+   "variable": "contributions"
+  }
+ ],
+ "truncated": false
+}

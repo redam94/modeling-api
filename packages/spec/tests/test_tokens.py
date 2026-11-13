@@ -194,10 +194,12 @@ SCOPE_EXPECTED: dict[str, set[tuple[str, str]]] = {
             "workflow",  # M3.5
             "policy",  # M3.5
             "dashboard",  # v0.16
+            "library",  # v0.18
         )
     },
     "datasets:write": {("dataset", "read"), ("dataset", "create"), ("dataset", "update")},
-    "plugins:publish": {("plugin", "read"), ("plugin", "create"), ("plugin", "delete")},
+    # v0.19: push and ask for approval; never approve or yank (TOKEN_NEVER)
+    "plugins:publish": {("plugin", "read"), ("plugin", "create"), ("plugin", "update")},
 }
 SCOPE_EXPECTED["endpoints:promote"] = {
     ("endpoint", "read"),

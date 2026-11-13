@@ -1,0 +1,814 @@
+{
+ "bundle_ui_artifacts": [
+  "ui/explore/diagnostics.json",
+  "ui/explore/fit.json",
+  "ui/explore/index.json",
+  "ui/explore/plots/fit.json",
+  "ui/explore/plots/residuals.json",
+  "ui/explore/residuals.json",
+  "ui/preprocess.json",
+  "ui/summaries.json",
+  "ui/tree_index.json"
+ ],
+ "capabilities": {
+  "checkpointable": false,
+  "contribution_scale": "none",
+  "decision": false,
+  "deterministic_given_seed": true,
+  "evidence": false,
+  "fast_score": false,
+  "identified_quantities": [],
+  "inference": "custom",
+  "loo_invalid_reason": "scikit-learn and xgboost estimators provide no pointwise log-likelihood",
+  "loo_valid": false,
+  "owns": [],
+  "recommend": false,
+  "representation": "interval",
+  "score_modes": [
+   "counterfactual",
+   "evaluate",
+   "forecast",
+   "predict"
+  ]
+ },
+ "fit_metrics": [
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:48:21.088413-04:00",
+   "key": "coverage_80",
+   "labels": {},
+   "last": 0.8916666666666667,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:48:21.088413-04:00",
+   "max": 0.8916666666666667,
+   "min": 0.8916666666666667
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:48:21.088457-04:00",
+   "key": "mape",
+   "labels": {},
+   "last": 23.08270115893153,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:48:21.088457-04:00",
+   "max": 23.08270115893153,
+   "min": 23.08270115893153
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:48:21.088492-04:00",
+   "key": "rmse",
+   "labels": {},
+   "last": 4.262317808574756,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:48:21.088492-04:00",
+   "max": 4.262317808574756,
+   "min": 4.262317808574756
+  }
+ ],
+ "fit_run": "run_01m5fbge89kncgzv66c4b2w9m3",
+ "inputs": {
+  "input_table": {
+   "columns": [
+    {
+     "description": "The period (yyyy-MM-dd)",
+     "dims": [],
+     "freq": "W-SUN",
+     "name": "time",
+     "role": "coord"
+    },
+    {
+     "description": "A level of sku",
+     "dims": [],
+     "freq": null,
+     "name": "sku",
+     "role": "coord"
+    },
+    {
+     "description": "A level of store",
+     "dims": [],
+     "freq": null,
+     "name": "store",
+     "role": "coord"
+    },
+    {
+     "description": "Leave empty. This model forecasts from the end of its fitted history",
+     "dims": [
+      "store",
+      "sku",
+      "time"
+     ],
+     "freq": null,
+     "name": "y",
+     "role": "target"
+    },
+    {
+     "description": "Necessary on each period, also on the periods to forecast",
+     "dims": [
+      "store",
+      "sku",
+      "time"
+     ],
+     "freq": null,
+     "name": "price",
+     "role": "driver"
+    },
+    {
+     "description": "Necessary on each period, also on the periods to forecast",
+     "dims": [
+      "store",
+      "sku",
+      "time"
+     ],
+     "freq": null,
+     "name": "promo",
+     "role": "driver"
+    }
+   ],
+   "conditions_on_actuals": false,
+   "horizon_dim": "time",
+   "rows": [
+    [
+     "2025-03-02",
+     "k0",
+     "s0",
+     null,
+     null,
+     null
+    ],
+    [
+     "2025-03-02",
+     "k0",
+     "s1",
+     null,
+     null,
+     null
+    ],
+    [
+     "2025-03-02",
+     "k1",
+     "s0",
+     null,
+     null,
+     null
+    ],
+    [
+     "2025-03-02",
+     "k1",
+     "s1",
+     null,
+     null,
+     null
+    ],
+    [
+     "2025-03-09",
+     "k0",
+     "s0",
+     null,
+     null,
+     null
+    ],
+    [
+     "2025-03-09",
+     "k0",
+     "s1",
+     null,
+     null,
+     null
+    ],
+    [
+     "2025-03-09",
+     "k1",
+     "s0",
+     null,
+     null,
+     null
+    ],
+    [
+     "2025-03-09",
+     "k1",
+     "s1",
+     null,
+     null,
+     null
+    ]
+   ]
+  },
+  "max_inline_bytes": 5242880,
+  "model_ref": "model://default/v017-sklearn-store-demand-14c181-model@v1",
+  "snapshot": {
+   "conditions_on_actuals": false,
+   "fit_coords": {
+    "sku": {
+     "contiguous": true,
+     "end": null,
+     "freq": null,
+     "kind": "categorical",
+     "size": 3,
+     "start": null,
+     "step": null,
+     "values": [
+      "k0",
+      "k1",
+      "k2"
+     ]
+    },
+    "store": {
+     "contiguous": true,
+     "end": null,
+     "freq": null,
+     "kind": "categorical",
+     "size": 5,
+     "start": null,
+     "step": null,
+     "values": [
+      "s0",
+      "s1",
+      "s2",
+      "s3",
+      "s4"
+     ]
+    },
+    "time": {
+     "contiguous": true,
+     "end": "2025-02-23T00:00:00",
+     "freq": "W-SUN",
+     "kind": "time",
+     "size": 60,
+     "start": "2024-01-07T00:00:00",
+     "step": null,
+     "values": null
+    }
+   },
+   "future_required": [
+    "price",
+    "promo"
+   ],
+   "horizon_dim": "time",
+   "input_schema": {
+    "dims": {
+     "sku": {
+      "description": null,
+      "freq": null,
+      "kind": "categorical",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "fixed"
+     },
+     "store": {
+      "description": null,
+      "freq": null,
+      "kind": "categorical",
+      "max_extension": null,
+      "new_level_strategy": "pooled",
+      "ordered": false,
+      "policy": "new_levels"
+     },
+     "time": {
+      "description": null,
+      "freq": "W-SUN",
+      "kind": "time",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "extend"
+     }
+    },
+    "layout": "dense",
+    "ragged": [],
+    "vars": {
+     "price": {
+      "bounds": null,
+      "description": null,
+      "dims": [
+       "store",
+       "sku",
+       "time"
+      ],
+      "dtype": "float64",
+      "future_required": true,
+      "index_of": null,
+      "missing": "allow",
+      "missing_sentinel": null,
+      "role": "covariate",
+      "units": "EUR"
+     },
+     "promo": {
+      "bounds": null,
+      "description": null,
+      "dims": [
+       "store",
+       "sku",
+       "time"
+      ],
+      "dtype": "float64",
+      "future_required": true,
+      "index_of": null,
+      "missing": "forbid",
+      "missing_sentinel": null,
+      "role": "covariate",
+      "units": null
+     },
+     "y": {
+      "bounds": null,
+      "description": null,
+      "dims": [
+       "store",
+       "sku",
+       "time"
+      ],
+      "dtype": "float64",
+      "future_required": false,
+      "index_of": null,
+      "missing": "forbid",
+      "missing_sentinel": null,
+      "role": "target",
+      "units": "units"
+     }
+    }
+   },
+   "inputs_stage": "raw",
+   "representation": "interval",
+   "schema_hash": "sha256:2b66fc03b85792811d7cc03c57b3f3ac5a4dcea32e286a687223e0a4bb72e6e6",
+   "score_modes": [
+    "counterfactual",
+    "evaluate",
+    "forecast",
+    "predict"
+   ]
+  }
+ },
+ "manifest_outputs": null,
+ "model_ref": "model://default/v017-sklearn-store-demand-14c181-model@v1",
+ "plugin": "sklearn.tabular_conformal@1.0.0",
+ "scorecard": {
+  "items": [
+   {
+    "category": "holdout",
+    "check": "holdout.mape",
+    "code": "HOLDOUT_MAPE",
+    "docs_anchor": "check-holdout-mape",
+    "message_expert": "mape 23.08% over 120 held-out values",
+    "message_plain": "The forecast error on the holdout periods was 23%.",
+    "metric": "mape",
+    "status": "warn",
+    "suggested_action": "Look for gaps or one-time events in the last periods of data. Add holidays or controls that explain them.",
+    "threshold": 0.1,
+    "title": "Holdout error",
+    "value": 0.23082701158931532
+   },
+   {
+    "category": "data",
+    "check": "data.missing",
+    "code": "DATA_MISSING",
+    "docs_anchor": "check-data-missing",
+    "message_expert": "5 of 2700 values missing",
+    "message_plain": "Only 0.2% of the values are missing.",
+    "metric": "missing_fraction",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 0.05,
+    "title": "Few missing values",
+    "value": 0.001851851851851852
+   },
+   {
+    "category": "data",
+    "check": "data.history",
+    "code": "DATA_HISTORY",
+    "docs_anchor": "check-data-history",
+    "message_expert": "60 periods at W-SUN (52 per year) along 'time' at the model stage",
+    "message_plain": "There are only 1.2 years of history. The seasonal effects are not certain.",
+    "metric": "history_years",
+    "status": "warn",
+    "suggested_action": "If you have more history, add it.",
+    "threshold": 2.0,
+    "title": "Enough history",
+    "value": 1.1538461538461537
+   }
+  ],
+  "overall": "warn",
+  "skipped": {
+   "convergence.divergences": "the model has no posterior draws (the fit did not use MCMC)",
+   "convergence.ess": "the model has no posterior draws (the fit did not use MCMC)",
+   "convergence.rhat": "the model has no posterior draws (the fit did not use MCMC)",
+   "data.spend_variation": "the dataset has no spend variable along time",
+   "holdout.coverage_90": "the spec does not evaluate it (evaluate.metrics) or has no holdout split",
+   "holdout.hit_rate": "only models of a categorical target (choice models) report a hit rate. Evaluate accuracy_lift on one of these models",
+   "plausibility.baseline_share": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.negative_roi": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.prior_overlap": "the fit kept no prior draws (set fit.prior_predictive or fit.keep.prior)",
+   "plausibility.roi_absurd": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.share_outlier": "the model has no response curves (outputs.derived: response_curves)"
+  }
+ },
+ "scores": {
+  "forecast_4__canonical": {
+   "captured": [
+    "forecast_4__canonical.summary.json",
+    "forecast_4__canonical.result.json"
+   ],
+   "inline": false,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-sklearn-store-demand-14c181-future@v1",
+    "horizon": {
+     "dim": "time",
+     "periods": 4
+    },
+    "kind": "ScoreRequest",
+    "mode": "forecast",
+    "model": "model://default/v017-sklearn-store-demand-14c181-model@v1",
+    "output": {
+     "names": "canonical",
+     "summary": [
+      "point",
+      "interval"
+     ]
+    }
+   },
+   "run_id": "run_01m5fbhwm2e9gb2gg2cbmhaaan",
+   "state": "succeeded"
+  },
+  "forecast_4__predictive": {
+   "captured": [
+    "forecast_4__predictive.summary.json",
+    "forecast_4__predictive.result.json"
+   ],
+   "inline": false,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-sklearn-store-demand-14c181-future@v1",
+    "horizon": {
+     "dim": "time",
+     "periods": 4
+    },
+    "kind": "ScoreRequest",
+    "mode": "forecast",
+    "model": "model://default/v017-sklearn-store-demand-14c181-model@v1",
+    "output": {
+     "kind": "predictive",
+     "summary": [
+      "point",
+      "interval"
+     ]
+    }
+   },
+   "run_id": "run_01m5fbhjv7wvr0kfmh6w0e49kw",
+   "state": "succeeded"
+  },
+  "forecast_4__readout": {
+   "captured": [
+    "forecast_4__readout.summary.json",
+    "forecast_4__readout.result.json"
+   ],
+   "inline": false,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-sklearn-store-demand-14c181-future@v1",
+    "horizon": {
+     "dim": "time",
+     "periods": 4
+    },
+    "kind": "ScoreRequest",
+    "mode": "forecast",
+    "model": "model://default/v017-sklearn-store-demand-14c181-model@v1",
+    "output": {
+     "summary": [
+      "point",
+      "interval"
+     ]
+    }
+   },
+   "run_id": "run_01m5fbhb8fyb6ryzax9pem8x85",
+   "state": "succeeded"
+  },
+  "forecast_inline": {
+   "captured": [
+    "forecast_inline.summary.json",
+    "forecast_inline.result.json"
+   ],
+   "inline": true,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "horizon": {
+     "dim": "time",
+     "periods": 4
+    },
+    "kind": "ScoreRequest",
+    "mode": "forecast",
+    "model": "model://default/v017-sklearn-store-demand-14c181-model@v1",
+    "output": {
+     "kind": "predictive",
+     "summary": [
+      "point",
+      "interval"
+     ]
+    }
+   },
+   "run_id": "run_01m5fbjkf3v0ncgph4k7d97eyk",
+   "state": "succeeded"
+  },
+  "predict_new_sku__canonical": {
+   "captured": [],
+   "code": "UNSEEN_LEVELS",
+   "inline": false,
+   "issues": [
+    {
+     "code": "UNSEEN_LEVELS",
+     "context": {},
+     "message": "the fit did not see 1 level(s) of 'sku', and the policy of the dim is 'fixed'",
+     "pointer": "/data",
+     "severity": "error",
+     "suggested_action": null,
+     "untrusted_text": "k_new"
+    }
+   ],
+   "refused": "CoordPlanError: validation failed with 1 error. The first error is at /data: the fit did not see 1 level(s) of 'sku', and the policy of the dim is 'fixed'",
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-sklearn-store-demand-14c181-new-sku@v1",
+    "kind": "ScoreRequest",
+    "mode": "predict",
+    "model": "model://default/v017-sklearn-store-demand-14c181-model@v1",
+    "output": {
+     "names": "canonical",
+     "summary": [
+      "point",
+      "interval"
+     ]
+    }
+   }
+  },
+  "predict_new_sku__predictive": {
+   "captured": [],
+   "code": "UNSEEN_LEVELS",
+   "inline": false,
+   "issues": [
+    {
+     "code": "UNSEEN_LEVELS",
+     "context": {},
+     "message": "the fit did not see 1 level(s) of 'sku', and the policy of the dim is 'fixed'",
+     "pointer": "/data",
+     "severity": "error",
+     "suggested_action": null,
+     "untrusted_text": "k_new"
+    }
+   ],
+   "refused": "CoordPlanError: validation failed with 1 error. The first error is at /data: the fit did not see 1 level(s) of 'sku', and the policy of the dim is 'fixed'",
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-sklearn-store-demand-14c181-new-sku@v1",
+    "kind": "ScoreRequest",
+    "mode": "predict",
+    "model": "model://default/v017-sklearn-store-demand-14c181-model@v1",
+    "output": {
+     "kind": "predictive",
+     "summary": [
+      "point",
+      "interval"
+     ]
+    }
+   }
+  },
+  "predict_new_sku__readout": {
+   "captured": [],
+   "code": "UNSEEN_LEVELS",
+   "inline": false,
+   "issues": [
+    {
+     "code": "UNSEEN_LEVELS",
+     "context": {},
+     "message": "the fit did not see 1 level(s) of 'sku', and the policy of the dim is 'fixed'",
+     "pointer": "/data",
+     "severity": "error",
+     "suggested_action": null,
+     "untrusted_text": "k_new"
+    }
+   ],
+   "refused": "CoordPlanError: validation failed with 1 error. The first error is at /data: the fit did not see 1 level(s) of 'sku', and the policy of the dim is 'fixed'",
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-sklearn-store-demand-14c181-new-sku@v1",
+    "kind": "ScoreRequest",
+    "mode": "predict",
+    "model": "model://default/v017-sklearn-store-demand-14c181-model@v1",
+    "output": {
+     "summary": [
+      "point",
+      "interval"
+     ]
+    }
+   }
+  },
+  "predict_new_sku_inline": {
+   "captured": [],
+   "code": "UNSEEN_LEVELS",
+   "inline": true,
+   "issues": [
+    {
+     "code": "UNSEEN_LEVELS",
+     "context": {},
+     "message": "the fit did not see 1 level(s) of 'sku', and the policy of the dim is 'fixed'",
+     "pointer": "/data",
+     "severity": "error",
+     "suggested_action": null,
+     "untrusted_text": "k_new"
+    }
+   ],
+   "refused": "CoordPlanError: validation failed with 1 error. The first error is at /data: the fit did not see 1 level(s) of 'sku', and the policy of the dim is 'fixed'",
+   "request": {
+    "apiVersion": "mapi/v1",
+    "kind": "ScoreRequest",
+    "mode": "predict",
+    "model": "model://default/v017-sklearn-store-demand-14c181-model@v1",
+    "output": {
+     "summary": [
+      "point",
+      "interval"
+     ]
+    }
+   }
+  }
+ },
+ "size": "tiny",
+ "source": "conformance fixture sklearn_store_demand",
+ "spec": {
+  "apiVersion": "mapi/v1",
+  "data": {
+   "bind": {
+    "dims": {
+     "sku": "sku",
+     "store": "store_id",
+     "time": "week"
+    },
+    "vars": {
+     "price": "price",
+     "promo": "promo_flag",
+     "y": "units_sold"
+    }
+   },
+   "dataset": "dataset://default/v017-sklearn-store-demand-14c181-data@v1",
+   "split": {
+    "dim": "time",
+    "kind": "time_holdout",
+    "last": 8
+   }
+  },
+  "evaluate": {
+   "metrics": [
+    "rmse",
+    "mape",
+    "coverage_80"
+   ]
+  },
+  "execution": {
+   "resource_class": "S",
+   "timeout": "10m"
+  },
+  "kind": "ModelSpec",
+  "metadata": {
+   "labels": {
+    "corpus": "sklearn_store_demand"
+   },
+   "name": "v017-sklearn-store-demand-14c181-model",
+   "project": "default"
+  },
+  "model": {
+   "fit": {
+    "mode": "evaluate_then_refit",
+    "seed": 7
+   },
+   "settings": {
+    "columns": {
+     "roles": [
+      "covariate"
+     ]
+    },
+    "coord_features": {
+     "sku": "category",
+     "store": "category"
+    },
+    "estimator": {
+     "kind": "sklearn.HistGradientBoostingRegressor",
+     "params": {
+      "learning_rate": 0.15,
+      "max_iter": 60,
+      "max_leaf_nodes": 31
+     }
+    },
+    "forecast_strategy": "direct",
+    "retransform": "median",
+    "rows": [
+     "store",
+     "sku",
+     "time"
+    ],
+    "uncertainty": {
+     "alpha": 0.2,
+     "calibration": 0.2,
+     "kind": "conformal"
+    }
+   },
+   "use": "sklearn.tabular_conformal@^1"
+  },
+  "outputs": {
+   "plots": [
+    "core.fit_vs_actual",
+    "core.residuals_over_time"
+   ]
+  },
+  "pipeline": [
+   {
+    "id": "imp",
+    "use": "core.impute@^1",
+    "with": {
+     "along": "time",
+     "method": "ffill",
+     "unseen_levels": "pooled",
+     "vars": [
+      "price"
+     ],
+     "within": [
+      "store",
+      "sku"
+     ]
+    }
+   },
+   {
+    "id": "plags",
+    "use": "core.lag@^1",
+    "with": {
+     "along": "time",
+     "lags": [
+      1,
+      2
+     ],
+     "vars": [
+      "promo"
+     ],
+     "within": [
+      "store",
+      "sku"
+     ]
+    }
+   },
+   {
+    "id": "cal",
+    "use": "core.calendar@^1",
+    "with": {
+     "along": "time",
+     "features": [
+      "week_of_year",
+      "month"
+     ]
+    }
+   },
+   {
+    "id": "logy",
+    "use": "core.log1p@^1",
+    "with": {
+     "vars": [
+      "y"
+     ]
+    }
+   }
+  ]
+ },
+ "version_metrics": {
+  "coverage_80": 0.8916666666666667,
+  "mape": 23.08270115893153,
+  "rmse": 4.262317808574756
+ }
+}

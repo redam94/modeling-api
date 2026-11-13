@@ -5,8 +5,12 @@ hoc colours: they use these swatches, which are the light-theme values. The plot
 (``apps/plot-sandbox/src/recipe-palette.ts``, kept in sync by a test) swaps every light value
 for its dark variant when it renders in dark mode. Static renders keep the light values.
 
+A stored plot keeps the light values of the release that made it. When a light value here
+changes, add the old value to ``apps/plot-sandbox/src/legacy-palette.ts`` (a test holds that
+table against this one), so the sandbox still draws old plots in the colours of today.
+
 Swatches marked ``legible`` are strokes, dots or text: they keep at least 3:1 contrast (WCAG
-non-text) against the light card (``#ffffff``) and the dark card (``#1b212d``). The others
+non-text) against the light card (``#ffffff``) and the dark card (``#161617``). The others
 are fills (bands at :func:`band_opacity`, empty cells, separators), never a data mark: a bar,
 histogram, density or marker that carries data uses ``ESTIMATE`` or a series colour.
 """
@@ -47,21 +51,23 @@ class Swatch:
 
 
 PALETTE: Final[dict[str, Swatch]] = {
+    # Mono (v0.21): each swatch is the app token named on its line, light and dark, so a
+    # recipe drawn in the sandbox reads like the tokens around it.
     # uncertainty bands (areas): the light value is the pale ``--chart-band`` fill, so it is no
-    # stroke colour on the light card; its dark variant keeps 3:1 on the dark card.
-    "band": Swatch("#c7dbff", "#5c85ff", legible=False),
-    "estimate": Swatch("#0014cc", "#85a3ff"),  # the point estimate over the bands
-    "observed": Swatch("#121619", "#f4f5f7"),  # actual values
-    "alert": Swatch("#c20021", "#ff8597"),  # split line, thresholds, failed checks
-    "ok": Swatch("#036e1b", "#4fd26b"),  # passed checks
-    "reference": Swatch("#767e8c", "#8b95a5"),  # zero lines, ideal lines, reference rules
-    "muted": Swatch("#5b6577", "#9aa3b2"),  # annotations
-    "strong": Swatch("#333b48", "#c8cfdb"),  # interval rules and means drawn over bars
-    "baseline": Swatch("#6b7685", "#97a6b6"),  # the baseline of a counterfactual
-    "scenario": Swatch("#c45a00", "#f0a35e"),  # the scenario of a counterfactual
-    "positive": Swatch("#1f6fb4", "#6fb0f2"),  # signed effects above zero
-    "empty": Swatch("#e3e6ec", "#2a3140", legible=False),  # cells with no data
-    "surface": Swatch("#ffffff", "#1b212d", legible=False),  # separators (the card colour)
+    # stroke colour on the light card; its dark variant (blue-500) keeps 3:1 on the dark card.
+    "band": Swatch("#bfdcec", "#0072b2", legible=False),
+    "estimate": Swatch("#0072b2", "#56b4e9"),  # the point estimate over the bands (--series-1)
+    "observed": Swatch("#1d1d1f", "#f5f5f7"),  # actual values (--foreground)
+    "alert": Swatch("#c00f2c", "#ff6b6b"),  # split line, thresholds, failed checks (--destructive)
+    "ok": Swatch("#00704e", "#34d399"),  # passed checks (--success)
+    "reference": Swatch("#86868b", "#86868b"),  # zero, ideal and reference rules (--chart-plain)
+    "muted": Swatch("#68686d", "#a1a1a6"),  # annotations (--chart-ref)
+    "strong": Swatch("#424245", "#d2d2d7"),  # interval rules and means over bars (grey-700/300)
+    "baseline": Swatch("#6e6e73", "#8e8e93"),  # the baseline of a counterfactual (--series-8)
+    "scenario": Swatch("#8f5600", "#ffc929"),  # the scenario of a counterfactual (--series-7)
+    "positive": Swatch("#1d93a5", "#5fe8f2"),  # signed effects above zero (--series-6)
+    "empty": Swatch("#e8e8ed", "#2a2a2c", legible=False),  # cells with no data (--chart-grid)
+    "surface": Swatch("#ffffff", "#161617", legible=False),  # separators (--card)
 }
 
 BAND: Final = PALETTE["band"].light

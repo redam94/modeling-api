@@ -43,13 +43,17 @@ def _resolve(name: str) -> type[BaseModel]:
 
 
 def test_the_table_is_additive_and_unique() -> None:
-    # M4, v0.11, v0.14, v0.15 and v0.16 rows follow M3.5
+    # M4, v0.11, v0.14, v0.15, v0.16, v0.17 and v0.18 rows follow M3.5
     after = (
         len(api.M4_ENDPOINTS)
         + len(api.V011_ENDPOINTS)
         + len(api.V014_ENDPOINTS)
         + len(api.V015_ENDPOINTS)
         + len(api.V016_ENDPOINTS)
+        + len(api.V017_ENDPOINTS)
+        + len(api.V018_ENDPOINTS)
+        + len(api.V019_ENDPOINTS)
+        + len(api.V020_ENDPOINTS)
     )
     assert ENDPOINTS[-len(M35_ENDPOINTS) - after : -after] == M35_ENDPOINTS
     assert len(M35_ENDPOINTS) >= 55

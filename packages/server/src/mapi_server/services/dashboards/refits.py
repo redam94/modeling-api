@@ -52,7 +52,11 @@ from mapi_server.db import models as m
 from mapi_server.errors import Conflict, NotFoundError, ProblemWithHeaders
 from mapi_server.jsonlimits import loads_limited
 from mapi_server.services.audit import write_audit
-from mapi_server.services.dashboards.access import DashboardContext, load_dashboard, revision_spec
+from mapi_server.services.dashboards.access import (
+    DashboardContext,
+    any_revision_spec,
+    load_dashboard,
+)
 from mapi_server.services.dashboards.readouts import _lock_dashboard, review
 from mapi_server.services.endpoints import live_capabilities_snapshot
 from mapi_server.services.quotas import admit_storage
@@ -360,7 +364,7 @@ async def approve(
         raise Conflict("the dashboard is not published")
     rev = await session.get(m.DashboardRevision, dash.published_revision_id)
     assert rev is not None
-    spec = revision_spec(rev)
+    spec = any_revision_spec(rev)
     wf_id = spec.actuals.refit_workflow_id
     if not spec.actuals.allow_refit_requests or wf_id is None:
         raise Conflict("refit requests are turned off on this dashboard")
@@ -607,7 +611,7 @@ async def advance(ctx: ServerContext, *, limit: int = 20) -> int:
                 if dash is not None and dash.published_revision_id
                 else None
             )
-            wf_id = revision_spec(rev).actuals.refit_workflow_id if rev is not None else None
+            wf_id = any_revision_spec(rev).actuals.refit_workflow_id if rev is not None else None
             wf = await s.get(m.Workflow, wf_id) if wf_id else None
             if wf is None or wf.archived:
                 await _fail(req, ErrorCode.WORKFLOW_NOT_RUNNABLE, "the refit workflow is gone")

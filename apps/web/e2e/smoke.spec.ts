@@ -2,7 +2,7 @@
  * Smoke test against the MSW-mocked API (`vite --mode mock`) and the real plot sandbox on its
  * own origin. Runs by default in `pnpm test`.
  */
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 const RUNNING = "run_01jaf3q2x8m9v7k5h4g3f2e1d0";
 const FAILED = "run_01jaf3q2x8m9v7k5h4g3f2e1b2";
@@ -371,6 +371,126 @@ test("theme can be switched to dark", async ({ page }) => {
   await expect(page.locator("html")).toHaveClass(/dark/);
 });
 
+// ------------------------------------------------------------------ the fixes of the v0.21 review
+
+/** The light or the dark theme, for the default mock persona. */
+async function themed(page: Page, theme: "light" | "dark") {
+  await page.addInitScript((t) => {
+    if (window.top !== window || sessionStorage.getItem("mapi.test.theme")) return;
+    localStorage.setItem("mapi.noTour", "1");
+    localStorage.setItem("mapi.ui", JSON.stringify({ state: { theme: t, persona: "expert", personas: {}, sidebarCollapsed: false, navMoreOpen: false }, version: 4 }));
+    sessionStorage.setItem("mapi.test.theme", "1");
+  }, theme);
+}
+
+/**
+ * What the eye gets of an element, in sRGB: its text colour and its background, each over the
+ * opaque surface behind it, and the outer ring of its focus box-shadow.
+ */
+function paint(target: Locator) {
+  return target.evaluate((el) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 1;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
+    const rgba = (css: string): [number, number, number, number] => {
+      ctx.clearRect(0, 0, 1, 1);
+      ctx.fillStyle = css;
+      ctx.fillRect(0, 0, 1, 1);
+      const d = ctx.getImageData(0, 0, 1, 1).data;
+      return [d[0]!, d[1]!, d[2]!, d[3]! / 255];
+    };
+    const over = (top: [number, number, number, number], under: number[]) => top.slice(0, 3).map((v, i) => Math.round(v * top[3] + under[i]! * (1 - top[3])));
+    const surface = (node: Element | null): number[] => {
+      const stack: [number, number, number, number][] = [];
+      for (let n = node; n; n = n.parentElement) {
+        const c = rgba(getComputedStyle(n).backgroundColor);
+        if (c[3] > 0) stack.push(c);
+        if (c[3] === 1) break;
+      }
+      return stack.reverse().reduce<number[]>((under, c) => over(c, under), [255, 255, 255]);
+    };
+    const lum = (c: number[]) => {
+      const [r, g, b] = c.map((v) => {
+        const x = v / 255;
+        return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+    };
+    const ratio = (a: number[], b: number[]) => {
+      const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+      return (hi! + 0.05) / (lo! + 0.05);
+    };
+    const style = getComputedStyle(el);
+    const own = rgba(style.backgroundColor);
+    const background = surface(el);
+    const around = surface(el.parentElement);
+    // box-shadow rings: "<colour> 0px 0px 0px <spread>px", the widest is the outer ring
+    const rings = style.boxShadow
+      .split(/,(?![^(]*\))/)
+      .map((part) => /^(.*\)|#[0-9a-f]+|[a-z]+)\s+0px 0px 0px ([\d.]+)px$/i.exec(part.trim()))
+      .filter((m): m is RegExpExecArray => m !== null && Number(m[2]) > 0)
+      .sort((a, b) => Number(a[2]) - Number(b[2]));
+    const outer = rings.at(-1);
+    return {
+      focusVisible: el.matches(":focus-visible"),
+      ownAlpha: own[3],
+      textOnBackground: ratio(over(rgba(style.color), background), background),
+      ringOnSurround: outer ? ratio(over(rgba(outer[1]!), around), around) : 0,
+    };
+  });
+}
+
+for (const theme of ["light", "dark"] as const) {
+  test(`the inverted button on a dark block shows its keyboard focus in the ${theme} theme`, async ({ page }) => {
+    await themed(page, theme);
+    for (const [path, name] of [
+      ["/catalog", "Use this model"],
+      ["/library", "Describe a model"],
+    ] as const) {
+      await page.goto(path);
+      const button = page.getByRole("button", { name }).or(page.getByRole("link", { name })).first();
+      await expect(button).toBeVisible();
+      // the keyboard, so the ring of :focus-visible shows
+      await page.keyboard.press("Tab");
+      await button.focus();
+      const seen = await paint(button);
+      expect(seen.focusVisible, `${path} ${name}`).toBe(true);
+      // WCAG 1.4.11: the ring has 3:1 against the block around the button
+      expect(seen.ringOnSurround, `${path} ${name}: ring against the block`).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  test(`the chain lanes of a running fit have readable labels in the ${theme} theme`, async ({ page }) => {
+    await themed(page, theme);
+    await page.goto(`/runs/${RUNNING}`);
+    const label = page.getByRole("list", { name: "Chains" }).getByTitle("Divergent transitions").first();
+    await expect(label).toBeVisible();
+    await expect(label).toContainText("div.");
+    expect((await paint(label)).textOnBackground).toBeGreaterThanOrEqual(4.5);
+  });
+
+  test(`the SVG and PNG buttons over a plot have a solid surface in the ${theme} theme`, async ({ page }) => {
+    await themed(page, theme);
+    await page.goto(`/models/${MODEL}/versions/1?tab=plots`);
+    await expect(page.locator('iframe[data-testid="plot-frame"]').first()).toBeAttached();
+    for (const name of ["SVG", "PNG"]) {
+      const button = page.getByRole("button", { name, exact: true }).first();
+      await expect(button).toBeAttached();
+      // chart text under the button must not show through it
+      expect((await paint(button)).ownAlpha, name).toBe(1);
+    }
+  });
+}
+
+test("only the last item of a breadcrumb trail is the current page", async ({ page }) => {
+  await page.goto(`/models/${MODEL}/versions/1/explore`);
+  const trail = page.getByRole("navigation", { name: "Breadcrumb" });
+  await expect(trail.getByRole("link", { name: "Models" })).toBeVisible();
+  await expect(trail.getByRole("link")).toHaveCount(3);
+  await expect(trail.locator("[aria-current]")).toHaveCount(1);
+  await expect(trail.locator("[aria-current='page']")).toHaveText("Explore");
+});
+
 test.describe("phone layout (375 px)", () => {
   test.use({ viewport: { width: 375, height: 800 } });
   const DATASET = "ds_01jaf3a1b2c3d4e5f6g7h8j9k0";
@@ -395,16 +515,33 @@ test.describe("phone layout (375 px)", () => {
     });
   }
 
-  test("the compact nav shows every destination, Settings included", async ({ page }) => {
+  test("the compact nav reaches every destination, Settings included, in one short row", async ({ page }) => {
     await page.goto("/");
     const nav = page.getByRole("navigation", { name: "Primary (compact)" });
+    // v0.18 review: a wrapping chip cloud made the sticky header ~a fifth of the screen;
+    // it is one row now that scrolls sideways
+    const header = await page.locator("header.sticky").boundingBox();
+    expect(header!.height).toBeLessThan(120);
     for (const label of ["Home", "Datasets", "Build", "Runs", "Models", "Score", "Catalog", "Settings"]) {
       const link = nav.getByRole("link", { name: label, exact: true });
+      await link.scrollIntoViewIfNeeded();
       await expect(link).toBeVisible();
       const box = await link.boundingBox();
       expect(box, label).not.toBeNull();
       expect(box!.x, label).toBeGreaterThanOrEqual(0);
       expect(box!.x + box!.width, label).toBeLessThanOrEqual(375);
     }
+  });
+
+  test("the chain lanes of a run stay readable: the numbers go under the bar", async ({ page }) => {
+    await page.goto(`/runs/${RUNNING}`);
+    const lanes = page.getByRole("list", { name: "Chains" });
+    const bar = lanes.getByRole("progressbar", { name: "Chain 0" });
+    await expect(bar).toBeVisible();
+    const box = (await bar.boundingBox())!;
+    // v0.21: with the numbers beside it, the bar was a few pixels wide on a phone.
+    expect(box.width).toBeGreaterThanOrEqual(160);
+    const numbers = (await lanes.getByRole("listitem").first().getByText(/\d\/\d/).boundingBox())!;
+    expect(numbers.y).toBeGreaterThanOrEqual(box.y + box.height);
   });
 });

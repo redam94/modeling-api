@@ -77,7 +77,21 @@ _FAIL_TRIGGERS = {
     FailureClass.INFRA: RunTrigger.FAIL_INFRA,
     FailureClass.TIMEOUT: RunTrigger.FAIL_TIMEOUT,
     FailureClass.SANDBOX: RunTrigger.FAIL_SANDBOX,
+    FailureClass.INTEGRITY: RunTrigger.FAIL_INTEGRITY,
 }
+
+OVERLAY_HASH_MISMATCH = (
+    "The uploaded code of this run did not match the hash (sha256) it was checked and "
+    "approved with, so the platform refused to run it. None of the uploaded code ran. The "
+    "stored copy may have been changed: ask a tenant admin to check the plugin version."
+)
+"""The detail of a run whose supervisor refused an overlay's bytes (F3; platform text)."""
+OVERLAY_GONE = (
+    "The uploaded code of this run is no longer stored as it was checked and approved (its "
+    "stored copy was replaced or removed), so the platform refused to run it. None of the "
+    "uploaded code ran."
+)
+"""The detail of a run whose supervisor found an overlay's pinned object gone (F2)."""
 
 
 DEADLINE_STOP = "stopped by the platform at the run deadline"
@@ -502,9 +516,42 @@ class Reconciler:
             return
         problem = self._problem(run, att, code, fc)
         trigger = _FAIL_TRIGGERS.get(fc or FailureClass.INFRA, RunTrigger.FAIL_INFRA)
-        await self._transition(
+        moved = await self._transition(
             run, trigger, expect_state=state, attempt_update=base_update, problem=problem
         )
+        if moved and fc is FailureClass.INTEGRITY and run.overlays:
+            await self._check_overlays(run)
+
+    async def _check_overlays(self, run: m.Run) -> None:
+        """After an integrity failure of a run with uploaded code, look at the pinned
+        objects again **from the control plane** (F2): one that no longer exists at its
+        generation, or whose size changed, was tampered with, and its version is withdrawn
+        (``security``, mail to the uploader and the admins). The supervisor's report alone
+        never withdraws anything. Storage errors are logged; the next run checks again."""
+        from mapi_server.services.plugins.review import withdraw_for_integrity
+        from mapi_server.services.runspec import (
+            OverlayIntegrityError,
+            resolve_overlays,
+            verify_overlay_objects,
+        )
+
+        ctx = self.ctx
+        try:
+            async with ctx.db.session() as session:
+                overlays = await resolve_overlays(session, run, plugins_bucket=ctx.buckets.plugins)
+                try:
+                    await verify_overlay_objects(ctx.store, overlays)
+                except OverlayIntegrityError as exc:
+                    await withdraw_for_integrity(
+                        session,
+                        ctx,
+                        tenant_id=run.tenant_id,
+                        version_ids=[p.plugin_version_id for p in exc.pins],
+                        actor_id="svc_reconciler",
+                        run_id=run.id,
+                    )
+        except Exception:  # never fail the pass: the run is already failed
+            log.exception("could not re-check the uploaded code of run %s", run.id)
 
     async def _complete_arrived(self, att: m.RunAttempt) -> bool:
         async with self.ctx.db.session() as session:
@@ -529,11 +576,17 @@ class Reconciler:
     ) -> Problem:
         payload = self._error_payload(att)
         if fc is FailureClass.INTEGRITY:
-            # an input did not match its size/crc32c: the transition table has no
-            # live → fail_integrity edge, so the run fails as infra with the integrity code
+            # exit 13 is the supervisor's (the worker cannot set it); its message only picks
+            # which platform text to show, so a wrong one can mislabel, never hide, it
+            message = payload.message if payload else ""
+            detail = "an input object did not match its expected size or CRC32C"
+            if run.overlays and "gone or was replaced" in message:
+                detail = OVERLAY_GONE
+            elif run.overlays and "uploaded wheel" in message:
+                detail = OVERLAY_HASH_MISMATCH
             return Problem.from_code(
                 ErrorCode.INTEGRITY_FAILURE,
-                "an input object did not match its expected size or CRC32C",
+                detail,
                 untrusted_text=payload.untrusted_text if payload else None,
             )
         error_code = (fc or FailureClass.INFRA).error_code

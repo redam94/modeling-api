@@ -33,6 +33,7 @@ import type {
 import { env } from "@/env";
 
 import { PRICE_VERSION, T0 } from "./fixtures";
+import { mockPluginFlags } from "./plugins";
 
 const API = env.apiBase;
 const AUTH = env.authBase;
@@ -156,12 +157,20 @@ const CLIENT_ROUTES: readonly (readonly [string, RegExp])[] = [
   ["GET", /^\/v1\/me$/],
   ["GET", /^\/v1\/dashboards$/],
   ["GET", /^\/v1\/dashboards\/[^/:]+$/],
-  ["GET", /^\/v1\/dashboards\/[^/:]+\/(?:grid|readouts|readouts\/\d+|actuals\/template)$/],
-  ["POST", /^\/v1\/dashboards\/[^/:]+\/(?:whatif:evaluate|scenarios|actuals)$/],
+  ["GET", /^\/v1\/dashboards\/[^/:]+\/(?:grid|readouts|readouts\/\d+|actuals\/template|batch\/template|readouts\/\d+\/predictions\.csv|assets\/[^/:]+)$/],
+  ["POST", /^\/v1\/dashboards\/[^/:]+\/(?:whatif:evaluate|scenarios|actuals|predictions|batch|readouts\/\d+:keep)$/],
+  // v0.20: get/post_dashboard_chat, list/create/revoke_dashboard_read_token (CLIENT_OPERATIONS).
+  ["GET", /^\/v1\/dashboards\/[^/:]+\/(?:chat|read-tokens)$/],
+  ["POST", /^\/v1\/dashboards\/[^/:]+\/(?:chat|read-tokens)$/],
+  ["DELETE", /^\/v1\/dashboards\/[^/:]+\/read-tokens\/[^/:]+$/],
 ];
 
 /** Dashboard input routes (`DASHBOARD:RUN`, rank client): open to viewers too. */
-const DASHBOARD_RUN = /^\/v1\/dashboards\/[^/:]+\/(?:whatif:evaluate|scenarios|actuals)$/;
+const DASHBOARD_RUN = /^\/v1\/dashboards\/[^/:]+\/(?:whatif:evaluate|scenarios|actuals|predictions|batch|readouts\/\d+:keep)$/;
+/** v0.18 library reads that are POSTs (`:use`, `charts:preview`): open to viewers. */
+const LIBRARY_READ_POST = /^\/v1\/library(?:\/[^/:]+:use|\/charts:preview)$/;
+/** v0.20 chat turns and read tokens are (dashboard, read): open to viewers. */
+const DASHBOARD_READ_POST = /^\/v1\/dashboards\/[^/:]+\/(?:chat|read-tokens(?:\/[^/:]+)?)$/;
 
 export function isClientRoute(method: string, pathname: string): boolean {
   return CLIENT_ROUTES.some(([m, re]) => m === method.toUpperCase() && re.test(pathname));
@@ -336,6 +345,8 @@ function meFor(p: Persona, state: TenancyState): Me {
     principal: { kind: "user", id: p.id, issuer: "https://accounts.google.com", subject: p.id.slice(4), email: p.email, email_verified: true, name: p.name },
     auth: "session",
     operator: p.operator,
+    // v0.19: the uploaded-code flags (the mocks/plugins.ts localStorage switches).
+    ...mockPluginFlags(),
     tenants: tenantIds.flatMap((tid) => {
       const tenant = state.tenants.find((t) => t.id === tid);
       if (!tenant) return [];
@@ -626,7 +637,7 @@ export function createTenancyHandlers(state: TenancyState = createTenancyState()
         return problem(403, "FORBIDDEN", "Not allowed", "the tenant is suspended");
       }
       const tokenRoute = url.pathname.startsWith("/v1/tokens");
-      if (request.method !== "GET" && !tokenRoute && role === "viewer" && !/:validate$/.test(url.pathname) && !DASHBOARD_RUN.test(url.pathname)) {
+      if (request.method !== "GET" && !tokenRoute && role === "viewer" && !/:validate$/.test(url.pathname) && !DASHBOARD_RUN.test(url.pathname) && !LIBRARY_READ_POST.test(url.pathname) && !DASHBOARD_READ_POST.test(url.pathname)) {
         return problem(403, "FORBIDDEN", "Not allowed", "the viewer role cannot change or run anything here");
       }
       if (EMPTY_PROJECTS.has(header) && request.method === "GET" && LIST_RE.test(url.pathname)) return page([]);
@@ -838,12 +849,13 @@ export function createTenancyHandlers(state: TenancyState = createTenancyState()
     http.put(`${API}/v1/admin/kill-switches`, async ({ request }) => {
       const denied = needOperator();
       if (denied) return denied;
-      const body = (await request.json()) as { untrusted_execution_enabled?: boolean; global_spend_cap_micros?: number; clear_spend_cap?: boolean; spend_cap_period?: "day" | "month"; reason: string };
+      const body = (await request.json()) as { untrusted_execution_enabled?: boolean; chat_enabled?: boolean; global_spend_cap_micros?: number; clear_spend_cap?: boolean; spend_cap_period?: "day" | "month"; reason: string };
       if (!body.reason || body.reason.length < 3) return problem(422, "SCHEMA_INVALID", "Invalid request", "reason is required");
       const ks = state.killSwitches;
       state.killSwitches = {
         ...ks,
         ...(body.untrusted_execution_enabled !== undefined ? { untrusted_execution_enabled: body.untrusted_execution_enabled } : {}),
+        ...(body.chat_enabled !== undefined ? { chat_enabled: body.chat_enabled } : {}),
         ...(body.global_spend_cap_micros !== undefined ? { global_spend_cap_micros: body.global_spend_cap_micros } : {}),
         ...(body.clear_spend_cap ? { global_spend_cap_micros: null } : {}),
         ...(body.spend_cap_period ? { spend_cap_period: body.spend_cap_period } : {}),

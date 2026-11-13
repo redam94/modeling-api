@@ -295,6 +295,10 @@ def _run(
                     dataclasses.replace(case, payload=payload), data, spec, schema, seed, size
                 )
                 assert one is not None
+                # a payload keeps the fixture's schema attribute, which still names the
+                # dropped target: the upload would be refused (SCHEMA_INVALID)
+                one = one.copy()
+                one.attrs = {k: v for k, v in one.attrs.items() if k != DATASET_SCHEMA_ATTR}
                 refs.payloads[key] = _upload(
                     api, one, dataset_name(prefix, fixture_id, token, key.replace("+", "-")),
                     timeout,

@@ -637,6 +637,8 @@ export const modelVersion: ModelVersion = {
     { name: "bundle.zarr.zip", size: 2_097_152, content_type: "application/zip" },
     { name: "ui/tree_index.json", size: 1024, content_type: "application/json" },
     { name: "ui/preprocess.json", size: 1024, content_type: "application/json" },
+    // the media mix model wrote its response grid (the builder asks for it only when listed)
+    { name: "ui/grids/response_curves.json", size: 4096, content_type: "application/json" },
   ],
   created_at: T0,
 };

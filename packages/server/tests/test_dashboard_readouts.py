@@ -37,7 +37,7 @@ from mapi_spec.views import ResponseGridView
 from mapi_spec.whatif import WhatIfScenario, evaluate_scenario
 from pydantic import ValidationError
 from sqlalchemy import func, select, update
-from test_dashboards_crud import create_published, dashboard_kit, dashboard_spec
+from test_dashboards_crud import LAYOUT1, create_published, dashboard_kit, dashboard_spec
 
 pytestmark = pytest.mark.integration
 
@@ -57,7 +57,7 @@ SUMMARY = {
 
 @pytest.fixture
 def settings(settings: Settings) -> Settings:
-    return settings.model_copy(update={"profile": Profile.MULTI_TENANT})
+    return settings.model_copy(update={"profile": Profile.MULTI_TENANT, **LAYOUT1})
 
 
 @pytest.fixture
@@ -279,6 +279,45 @@ async def test_an_unreadable_upload_never_becomes_a_ready_comparison(
     assert row.status == "failed" and row.problem is not None
 
 
+async def test_a_failed_published_actuals_upload_leaves_the_history(
+    kit: dict[str, Any], ctx: ServerContext
+) -> None:
+    """v0.17 B2 follow-up (v0.16 D11: failed rows are the analysts'): a client's published
+    actuals upload that fails becomes ``hidden`` - never a published result in anybody's
+    history - its open refit request fails, and the uploader still sees it failed."""
+    dash_id = kit["dash_id"]
+    await _baseline_done(kit, ctx, SUMMARY)
+    cleo = kit["users"]["cleo"]
+    ref = {"bucket": ctx.buckets.quarantine, "name": "t/default/inline/gone.json",
+           "generation": 1, "kpi_column": "y", "time_dim": "t"}  # fmt: skip
+    async with ctx.db.session() as s:
+        await s.execute(
+            update(m.DashboardReadout)
+            .where(m.DashboardReadout.dashboard_id == dash_id, m.DashboardReadout.seq == 1)
+            .values(kind="actuals", trigger="actuals", input_ref=ref, visibility="published",
+                    actor_kind="client", actor_id=cleo.id)
+        )  # fmt: skip
+        s.add(m.DashboardRefitRequest(
+            id="drr_failedup", tenant_id="default", project_id="default",
+            dashboard_id=dash_id, readout_seq=1, status="open", requested_by_kind="client",
+            requested_by=cleo.id, created_at=now(),
+        ))  # fmt: skip
+    await DashboardLoop(ctx).materialise()
+    row = await _readout(ctx, dash_id, 1)
+    assert row.status == "failed" and row.visibility == "hidden"
+    async with ctx.db.session() as s:
+        req = await s.get(m.DashboardRefitRequest, "drr_failedup")
+        assert req is not None and req.status == "failed" and req.problem is not None
+    base = f"/v1/dashboards/{dash_id}/readouts"
+    mine = (await kit["cleo"].get(f"{base}/1")).json()
+    assert mine["status"] == "failed" and mine["visibility"] != "published"
+    assert [h["seq"] for h in (await kit["cleo"].get(base)).json()["items"]] == [1]
+    published = (await kit["vic"].get(base, params={"visibility": "published"})).json()
+    assert published["items"] == []
+    r = await kit["ana"].post(f"/v1/dashboards/{dash_id}/readouts/1:publish")
+    assert r.status_code == 409, r.text
+
+
 async def test_a_version_that_ran_uploaded_code_never_materialises(
     kit: dict[str, Any], ctx: ServerContext
 ) -> None:
@@ -306,6 +345,7 @@ async def test_a_failed_run_fails_its_readout_only_analysts_see(
         await apply_transition(s, run, RunTrigger.CANCEL_CONFIRMED, Actor.RECONCILER)
     failed = await _readout(ctx, dash_id, 1)
     assert failed.status == "failed" and failed.problem is not None
+    assert failed.visibility == "hidden"  # a failed baseline is never a published result
     base = f"/v1/dashboards/{dash_id}/readouts"
     assert (await kit["vic"].get(f"{base}/1")).json()["status"] == "failed"
     assert (await kit["cleo"].get(f"{base}/1")).status_code == 404

@@ -219,3 +219,40 @@ async def test_single_tenant_browser_session_is_the_local_administrator(
     assert info.authenticated and info.operator
     assert info.principal is not None and info.principal.id == LOCAL_USER_ID
     assert "x-csrf-token" not in r.headers
+
+
+async def test_cors_preflight_allows_every_header_the_web_app_sends(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    """The web app is cross-origin to the API in dev and most deploys, so every request
+    header it sets must pass the preflight (v0.17 R2: the builder's ``If-Match`` did not,
+    so Save draft, Publish and :upgrade failed in a browser while the same-origin e2e
+    mocks passed)."""
+    web = ctx.settings.web_origin.rstrip("/")
+    sent = [
+        "If-Match",
+        "Idempotency-Key",
+        "Last-Event-ID",
+        "Prefer",
+        "X-Mapi-Project",
+        "X-CSRF-Token",
+        "Content-Type",
+        "Authorization",
+    ]
+    for method, path in (
+        ("PUT", "/v1/dashboards/d_x/draft"),
+        ("POST", "/v1/dashboards/d_x:publish"),
+        ("POST", "/v1/dashboards/d_x:upgrade"),
+    ):
+        r = await client.options(
+            path,
+            headers={
+                "Origin": web,
+                "Access-Control-Request-Method": method,
+                "Access-Control-Request-Headers": ", ".join(h.lower() for h in sent),
+            },
+        )
+        assert r.status_code == 200, (path, r.status_code, r.text)
+        assert r.headers["access-control-allow-origin"] == web
+        allowed = {h.strip().lower() for h in r.headers["access-control-allow-headers"].split(",")}
+        assert {h.lower() for h in sent} <= allowed, path

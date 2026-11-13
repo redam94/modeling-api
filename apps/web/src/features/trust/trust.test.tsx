@@ -218,6 +218,26 @@ describe("admin console", () => {
     await waitFor(() => expect(within(screen.getByRole("table", { name: "Sign-ups" })).queryByText("promo@burst.example")).toBeNull());
   });
 
+  it("turns dashboard chat off and on with the kill switch (v0.20 live: the switch had no control)", async () => {
+    const user = userEvent.setup();
+    renderApp("/admin?tab=kill-switches");
+    const card = await screen.findByTestId("ks-chat");
+    expect(within(card).getByText("on")).toBeInTheDocument();
+    await user.click(within(card).getByRole("switch", { name: "Allow dashboard chat" }));
+    const dialog = await screen.findByRole("dialog", { name: "Turn off dashboard chat?" });
+    await user.type(within(dialog).getByLabelText("Reason (recorded in the audit log)"), "model incident");
+    expect(within(dialog).getByRole("button", { name: "Confirm" })).toBeDisabled();
+    await user.type(within(dialog).getByLabelText("Type OFF to confirm"), "OFF");
+    await user.click(within(dialog).getByRole("button", { name: "Confirm" }));
+    await waitFor(() => expect(within(screen.getByTestId("ks-chat")).getByText("off")).toBeInTheDocument());
+    expect(seen.find((r) => r.method === "PUT" && r.path === "/v1/admin/kill-switches")?.body).toEqual({ chat_enabled: false, reason: "model incident" });
+    await user.click(within(screen.getByTestId("ks-chat")).getByRole("switch", { name: "Allow dashboard chat" }));
+    const again = await screen.findByRole("dialog", { name: "Turn dashboard chat on again?" });
+    await user.type(within(again).getByLabelText("Reason (recorded in the audit log)"), "resolved");
+    await user.click(within(again).getByRole("button", { name: "Confirm" }));
+    await waitFor(() => expect(within(screen.getByTestId("ks-chat")).getByText("on")).toBeInTheDocument());
+  });
+
   it("marks a tenant's identity verified and shows its deletion status", async () => {
     const user = userEvent.setup();
     renderApp("/admin");

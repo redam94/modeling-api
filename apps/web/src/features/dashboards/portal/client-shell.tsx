@@ -2,11 +2,20 @@
  * The client portal's frame: the app mark and the client's name, a project switcher when the
  * user is in more than one project, the theme menu and the account menu (sign out). There is no
  * navigation, command palette or keyboard shortcut: a client user sees only their dashboards.
+ *
+ * v0.20: on a dashboard (`/c/<id>`) the frame adds "Ask about your dashboard" (the chat
+ * launcher, when the analyst opened chat to clients) and "Connect a chat tool" (a read token
+ * for an MCP client; a lazy chunk). The dashboard id comes from the portal's own path.
  */
 import { useQueryClient } from "@tanstack/react-query";
+import { useRouterState } from "@tanstack/react-router";
 import { Check, ChevronsUpDown, LogOut, Monitor, Moon, Sun } from "lucide-react";
+import { lazy, Suspense, useMemo } from "react";
 import type * as React from "react";
 
+import { useProjectScope } from "@/api/queries";
+
+import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -18,10 +27,34 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/overlays";
-import { Logo, useSignOut } from "@/features/auth/gate";
+import { useSignOut } from "@/features/auth/gate";
 import { useWorkspace, type ProjectChoice } from "@/features/auth/workspace";
 import { useScope } from "@/stores/scope";
 import { useUi, type ThemePreference } from "@/stores/ui";
+
+import { useMemberClient } from "../api";
+import { ChatLauncher } from "../chat/chat-launcher";
+import { memberChatTransport } from "../chat/transport-member";
+
+const ConnectChatToolButton = lazy(() => import("../connect/connect-button").then((m) => ({ default: m.ConnectChatToolButton })));
+
+/** `/c/<id>`: the dashboard the portal shows, or `null` on the list. */
+export function portalDashboardId(pathname: string): string | null {
+  const m = /^\/c\/([A-Za-z0-9][A-Za-z0-9_.-]{0,127})\/?$/.exec(pathname);
+  return m?.[1] ?? null;
+}
+
+function usePortalDashboardId(): string | null {
+  return portalDashboardId(useRouterState({ select: (s) => s.location.pathname }));
+}
+
+/** The chat launcher of the open dashboard, as the client user (`GET`/`POST …/chat`). */
+function PortalChat({ dashboardId }: { dashboardId: string }) {
+  const scope = useProjectScope();
+  const client = useMemberClient(dashboardId, { kind: "client" });
+  const transport = useMemo(() => memberChatTransport(dashboardId, { scopeKey: scope.key }), [dashboardId, scope.key]);
+  return <ChatLauncher transport={transport} cacheKey={client.cacheKey} />;
+}
 
 function initials(name: string): string {
   const parts = name.replace(/@.*$/, "").split(/[\s._-]+/).filter(Boolean);
@@ -107,7 +140,7 @@ function AccountMenu() {
         <button
           type="button"
           aria-label={`Account: ${user.name}`}
-          className="focus-ring grid size-8 shrink-0 place-items-center rounded-full bg-accent text-2xs font-semibold text-accent-foreground hover:bg-brand-200 dark:hover:bg-secondary"
+          className="focus-ring grid size-8 shrink-0 place-items-center rounded-full bg-accent text-2xs font-semibold text-accent-foreground transition-colors hover:bg-border-strong"
         >
           {initials(user.name)}
         </button>
@@ -127,26 +160,34 @@ function AccountMenu() {
 }
 
 export function ClientShell({ clientName, onHome, children }: { clientName: string | null; onHome: () => void; children: React.ReactNode }) {
+  const dashboardId = usePortalDashboardId();
   return (
     <div className="flex min-h-svh flex-col bg-background">
-      <a href="#main" className="focus-ring sr-only rounded-md bg-card px-3 py-2 focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50">
+      <a href="#main" className="focus-ring sr-only rounded-full bg-card px-4 py-2 focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50">
         Skip to the content
       </a>
-      <header className="sticky top-0 z-20 border-b bg-card/90 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-[1440px] items-center gap-3 px-4 md:px-8">
+      <header className="frost sticky top-0 z-20 border-b [--frost-surface:var(--background)]">
+        <div className="mx-auto flex h-12 max-w-[1440px] items-center gap-3 px-4 md:px-8">
           <a
             href="/c"
             onClick={(e) => {
               e.preventDefault();
               onHome();
             }}
-            className="focus-ring flex min-w-0 items-center gap-2.5 rounded-md"
+            className="focus-ring flex min-w-0 items-center gap-2.5 rounded-sm"
           >
-            <Logo className="size-7" />
-            <span className="truncate text-base font-semibold text-foreground">{clientName ?? "Your dashboards"}</span>
+            <Logo />
+            <span className="truncate font-display text-[15px] font-semibold tracking-[-0.02em] text-foreground">{clientName ?? "Your dashboards"}</span>
           </a>
           <ProjectMenu onClientProject={onHome} />
           <div className="ml-auto flex items-center gap-2">
+            {dashboardId ? (
+              <div className="hidden sm:block">
+                <Suspense fallback={null}>
+                  <ConnectChatToolButton key={dashboardId} dashboardId={dashboardId} />
+                </Suspense>
+              </div>
+            ) : null}
             <ThemeMenu />
             <AccountMenu />
           </div>
@@ -155,6 +196,7 @@ export function ClientShell({ clientName, onHome, children }: { clientName: stri
       <main id="main" className="mx-auto w-full max-w-[1440px] min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">
         {children}
       </main>
+      {dashboardId ? <PortalChat key={dashboardId} dashboardId={dashboardId} /> : null}
     </div>
   );
 }

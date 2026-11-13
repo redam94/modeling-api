@@ -107,6 +107,29 @@ resource "google_cloud_run_v2_service" "api" {
         }
       }
 
+      # Dashboard chat (v0.20): only the API calls the model. The key is a Secret Manager
+      # reference (never a plain value) and exists only once a key version was written.
+      dynamic "env" {
+        for_each = var.chat.provider == "off" ? {} : { MAPI_CHAT_PROVIDER = var.chat.provider }
+        content {
+          name  = env.key
+          value = env.value
+        }
+      }
+
+      dynamic "env" {
+        for_each = var.chat.gemini_api_key_version > 0 ? { MAPI_GEMINI_API_KEY = "gemini-api-key" } : {}
+        content {
+          name = env.key
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.this[env.value].secret_id
+              version = "latest"
+            }
+          }
+        }
+      }
+
       startup_probe {
         http_get {
           path = "/healthz"
@@ -163,6 +186,7 @@ resource "google_cloud_run_v2_service" "api" {
     google_secret_manager_secret_version.server_secret,
     google_secret_manager_secret_version.metrics_token,
     google_secret_manager_secret_version.oidc_client_secret,
+    google_secret_manager_secret_version.gemini_api_key,
     google_secret_manager_secret_iam_member.access,
   ]
 }

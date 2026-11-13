@@ -1,10 +1,13 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { createRootRouteWithContext, createRoute, createRouter, lazyRouteComponent, Link } from "@tanstack/react-router";
 
-import { EmptyState } from "@/components/common";
+import notFoundArt from "@/assets/brand/not-found.webp";
+import { BrandArt } from "@/components/brand/brand-art";
+import { Button } from "@/components/ui/button";
 import { AppShell } from "@/components/shell/app-shell";
 import { isNodePath } from "@/features/datasets/tree";
 import { validateRunsSearch, type RunsSearch } from "@/features/runs/run-search";
+import { queryParam } from "@/lib/list-query";
 import { HomePage } from "@/routes/home";
 
 /*
@@ -39,6 +42,10 @@ const page = {
   // M3.5: workflows (the canvas loads with the editor) and governance.
   workflows: () => import("@/routes/workflows"),
   governance: () => import("@/routes/governance"),
+  // v0.18: Make your own (the no-code library; its chunk is `library-*`).
+  library: () => import("@/routes/library"),
+  // v0.19: uploaded code (upload, versions, review; its chunk is `plugins-*`).
+  plugins: () => import("@/routes/plugins"),
 };
 
 export interface RouterContext {
@@ -63,18 +70,26 @@ function catalogId(v: unknown): string | undefined {
   return typeof v === "string" && v.length <= 128 && /^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*$/.test(v) ? v : undefined;
 }
 
+/** The search of a list page that has only the text of its search box (v0.21: `?q=`). */
+interface ListSearch {
+  q?: string | undefined;
+}
+const listSearch = (s: Record<string, unknown>): ListSearch => ({ q: queryParam(s.q) });
+
+/** No route matches: a block that is dark in both themes, with the not-found art behind the words. */
 function NotFound() {
   return (
-    <EmptyState
-      title="This page does not exist"
-      action={
-        <Link to="/" className="text-primary hover:underline">
-          Go to Home
-        </Link>
-      }
-    >
-      The link may be out of date, or the resource was removed.
-    </EmptyState>
+    <section className="band-dark relative isolate grid min-h-[min(60svh,30rem)] place-items-center overflow-hidden rounded-3xl px-6 py-16 text-center">
+      <BrandArt src={notFoundArt} width={960} height={540} blend={false} className="absolute inset-0 -z-10 size-full object-cover" />
+      <div className="grid justify-items-center gap-3">
+        <p className="kicker">Error 404</p>
+        <h1 className="display-title text-[clamp(2rem,5vw,3.5rem)] leading-[1.04]">This page does not exist</h1>
+        <p className="max-w-[40ch] text-base text-muted-foreground">The link may be out of date, or the resource was removed.</p>
+        <Button asChild className="mt-3">
+          <Link to="/">Go to Home</Link>
+        </Button>
+      </div>
+    </section>
   );
 }
 
@@ -85,7 +100,7 @@ const rootRoute = createRootRouteWithContext<RouterContext>()({
 
 const homeRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", component: HomePage });
 
-const datasetsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/datasets", component: lazyRouteComponent(page.datasets, "DatasetsPage") });
+const datasetsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/datasets", component: lazyRouteComponent(page.datasets, "DatasetsPage"), validateSearch: listSearch });
 
 const datasetRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -97,7 +112,7 @@ const datasetRoute = createRoute({
   }),
 });
 
-const buildRoute = createRoute({ getParentRoute: () => rootRoute, path: "/build", component: lazyRouteComponent(page.build, "BuildPage") });
+const buildRoute = createRoute({ getParentRoute: () => rootRoute, path: "/build", component: lazyRouteComponent(page.build, "BuildPage"), validateSearch: listSearch });
 
 const newSpecRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -164,7 +179,10 @@ const experimentsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/experiments",
   component: lazyRouteComponent(page.experiments, "ExperimentsPage"),
-  validateSearch: (s: Record<string, unknown>): { archived?: boolean | undefined } => ({ archived: s.archived === true || s.archived === "true" ? true : undefined }),
+  validateSearch: (s: Record<string, unknown>): { archived?: boolean | undefined; q?: string | undefined } => ({
+    archived: s.archived === true || s.archived === "true" ? true : undefined,
+    q: queryParam(s.q),
+  }),
 });
 
 const experimentRoute = createRoute({
@@ -175,7 +193,7 @@ const experimentRoute = createRoute({
   validateSearch: (s: Record<string, unknown>): RunsSearch => ({ ...validateRunsSearch(s), experiment: undefined }),
 });
 
-const modelsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/models", component: lazyRouteComponent(page.models, "ModelsPage") });
+const modelsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/models", component: lazyRouteComponent(page.models, "ModelsPage"), validateSearch: listSearch });
 
 const modelRoute = createRoute({ getParentRoute: () => rootRoute, path: "/models/$modelId", component: lazyRouteComponent(page.models, "ModelPage") });
 
@@ -200,16 +218,24 @@ const scoreRoute = createRoute({
   }),
 });
 
-export const CATALOG_TABS = ["models", "steps", "plots"] as const;
+export const CATALOG_TABS = ["yours", "models", "steps", "plots"] as const;
+const CATALOG_DIFFICULTIES = ["beginner", "intermediate", "expert"] as const;
 
 const catalogRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/catalog",
   component: lazyRouteComponent(page.catalog, "CatalogPage"),
   // M3.5: without a tab the page browses About cards; `about=kind:id` opens one card.
-  validateSearch: (s: Record<string, unknown>): { tab?: (typeof CATALOG_TABS)[number] | undefined; about?: string | undefined } => ({
+  // v0.21: `q` is the text of the search box of the browse view; `kind` (the pill, an About
+  // kind: the page knows the names) and `difficulty` are its two filters.
+  validateSearch: (
+    s: Record<string, unknown>,
+  ): { tab?: (typeof CATALOG_TABS)[number] | undefined; about?: string | undefined; q?: string | undefined; kind?: string | undefined; difficulty?: (typeof CATALOG_DIFFICULTIES)[number] | undefined } => ({
     tab: oneOf(s.tab, CATALOG_TABS),
     about: typeof s.about === "string" && /^[a-z_]{1,32}:[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*$/.test(s.about) ? s.about : undefined,
+    q: queryParam(s.q),
+    kind: typeof s.kind === "string" && /^[a-z_]{1,32}$/.test(s.kind) ? s.kind : undefined,
+    difficulty: oneOf(s.difficulty, CATALOG_DIFFICULTIES),
   }),
 });
 
@@ -308,8 +334,10 @@ const integrationsRoute = createRoute({
   component: lazyRouteComponent(page.integrations, "IntegrationsPage"),
   validateSearch: (
     s: Record<string, unknown>,
-  ): { tab?: IntegrationTab | undefined; model?: string | undefined; version?: number | undefined; plot?: string | undefined } => ({
+  ): { tab?: IntegrationTab | undefined; model?: string | undefined; version?: number | undefined; plot?: string | undefined; q?: string | undefined } => ({
     tab: oneOf(s.tab, INTEGRATION_TABS),
+    // v0.21: the text of the search box of the Endpoints tab.
+    q: queryParam(s.q),
     // A model plot to save and share (from the plot gallery's "Share").
     model: idParam(s.model),
     version: positiveInt(s.version),
@@ -378,7 +406,10 @@ const workflowsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/workflows",
   component: lazyRouteComponent(page.workflows, "WorkflowsPage"),
-  validateSearch: (s: Record<string, unknown>): { tab?: "workflows" | "templates" | undefined } => ({ tab: oneOf(s.tab, ["workflows", "templates"] as const) }),
+  validateSearch: (s: Record<string, unknown>): { tab?: "workflows" | "templates" | undefined; q?: string | undefined } => ({
+    tab: oneOf(s.tab, ["workflows", "templates"] as const),
+    q: queryParam(s.q),
+  }),
 });
 
 const newWorkflowRoute = createRoute({
@@ -460,11 +491,68 @@ const modelValidationsRoute = createRoute({
 export const DASHBOARD_TABS = ["setup", "inputs", "access", "history", "preview"] as const;
 export type DashboardTab = (typeof DASHBOARD_TABS)[number];
 
+export interface DashboardsSearch {
+  status?: "draft" | "published" | "archived" | undefined;
+  /** v0.18: open the New dashboard dialog (the checklist and the dashboard tour)… */
+  new?: true | undefined;
+  /** …with this model picked as the source. */
+  model?: string | undefined;
+  /** v0.21: the text of the search box. */
+  q?: string | undefined;
+}
+
 const dashboardsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/dashboards",
   component: lazyRouteComponent(page.dashboards, "DashboardsPage"),
-  validateSearch: (s: Record<string, unknown>): { status?: "draft" | "published" | "archived" | undefined } => ({ status: oneOf(s.status, ["draft", "published", "archived"] as const) }),
+  validateSearch: (s: Record<string, unknown>): DashboardsSearch => ({
+    status: oneOf(s.status, ["draft", "published", "archived"] as const),
+    new: s.new === true || s.new === "true" || s.new === 1 || s.new === "1" ? true : undefined,
+    model: idParam(s.model),
+    q: queryParam(s.q),
+  }),
+});
+
+// ----------------------------------------------------------------------------- v0.18
+
+export const LIBRARY_TAB_IDS = ["models", "prep", "charts", "workflows"] as const;
+export const LIBRARY_NEW_IDS = ["model", "preset", "prep", "chart"] as const;
+
+/**
+ * The search of Make your own. A copy of `features/library/search.ts validateLibrarySearch`
+ * (the page validates again with it): the router is in the entry chunk, which must not import
+ * `features/library` (share links and the client portal load the entry).
+ */
+export interface LibraryRouteSearch {
+  tab?: (typeof LIBRARY_TAB_IDS)[number] | undefined;
+  item?: string | undefined;
+  new?: (typeof LIBRARY_NEW_IDS)[number] | undefined;
+  source?: string | undefined;
+  base?: string | undefined;
+  /** v0.21: the text of the search box of the lists. */
+  q?: string | undefined;
+  /** v0.21: the "Show archived" chip of the lists is on. */
+  archived?: boolean | undefined;
+}
+
+function dottedCatalogId(v: unknown): string | undefined {
+  const id = catalogId(v);
+  return id && id.includes(".") ? id : undefined;
+}
+
+const libraryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/library",
+  component: lazyRouteComponent(page.library, "LibraryPage"),
+  validateSearch: (s: Record<string, unknown>): LibraryRouteSearch => ({
+    tab: oneOf(s.tab, LIBRARY_TAB_IDS),
+    item: typeof s.item === "string" && /^lib_[0-9a-z]{26}$/.test(s.item) ? s.item : undefined,
+    new: oneOf(s.new, LIBRARY_NEW_IDS),
+    source: dottedCatalogId(s.source),
+    base: dottedCatalogId(s.base),
+    q: queryParam(s.q),
+    archived: s.archived === true || s.archived === "true" ? true : undefined,
+  }),
 });
 
 const dashboardRoute = createRoute({
@@ -472,6 +560,33 @@ const dashboardRoute = createRoute({
   path: "/dashboards/$dashboardId",
   component: lazyRouteComponent(page.dashboards, "DashboardPage"),
   validateSearch: (s: Record<string, unknown>): { tab?: DashboardTab | undefined } => ({ tab: oneOf(s.tab, DASHBOARD_TABS) }),
+});
+
+// ----------------------------------------------------------------------------- v0.19
+
+/** A plugin id (`plg_` + ULID) or version id (`plv_` + ULID), as `mapi_spec.plugins` mints them. */
+function pluginIdParam(v: unknown, prefix: "plg_" | "plv_"): string | undefined {
+  return typeof v === "string" && v.length === 30 && v.startsWith(prefix) && /^[0-9a-z]{26}$/.test(v.slice(4)) ? v : undefined;
+}
+
+const pluginNewRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/plugins/new",
+  component: lazyRouteComponent(page.plugins, "PluginUploadPage"),
+  // the plugin to upload a new version of (from a plugin page)
+  validateSearch: (s: Record<string, unknown>): { plugin?: string | undefined } => ({ plugin: pluginIdParam(s.plugin, "plg_") }),
+});
+
+const pluginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/plugins/$pluginId",
+  component: lazyRouteComponent(page.plugins, "PluginPage"),
+});
+
+const pluginVersionRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/plugins/$pluginId/versions/$versionId",
+  component: lazyRouteComponent(page.plugins, "PluginVersionPage"),
 });
 
 export const routeTree = rootRoute.addChildren([
@@ -521,6 +636,10 @@ export const routeTree = rootRoute.addChildren([
   modelValidationsRoute,
   dashboardsRoute,
   dashboardRoute,
+  libraryRoute,
+  pluginNewRoute,
+  pluginRoute,
+  pluginVersionRoute,
 ]);
 
 export function createAppRouter(queryClient: QueryClient) {

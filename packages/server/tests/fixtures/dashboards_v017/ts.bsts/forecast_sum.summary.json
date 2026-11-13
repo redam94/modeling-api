@@ -1,0 +1,63 @@
+{
+ "conditioning": {
+  "conditioned": false,
+  "dim": "t",
+  "fit_end": "2019-12-01",
+  "horizon_source": "rows",
+  "message": "Forecast from the end of the fitted history (2019-12-01); no actuals were supplied. 12 periods forecast from 2020-01-01 to 2020-12-01.",
+  "n_actuals": 0,
+  "n_series": 1,
+  "parameters": "fitted",
+  "periods": 12,
+  "revised": 0,
+  "series": [
+   {
+    "forecast_from": "2020-01-01",
+    "forecast_to": "2020-12-01",
+    "missing": 0,
+    "n_actuals": 0,
+    "n_forecast": 12,
+    "origin": "2019-12-01",
+    "revised": 0,
+    "series": {}
+   }
+  ],
+  "series_conditioned": 0,
+  "truncated": false
+ },
+ "tables": [
+  {
+   "columns": [
+    "mean",
+    "hdi_90_lower",
+    "hdi_90_upper"
+   ],
+   "dims": [],
+   "rows": [
+    [
+     13453.797971921698,
+     13386.821127767822,
+     13564.78629026609
+    ]
+   ],
+   "variable": "level"
+  },
+  {
+   "columns": [
+    "mean",
+    "hdi_90_lower",
+    "hdi_90_upper"
+   ],
+   "dims": [],
+   "rows": [
+    [
+     13296.150968559528,
+     12787.916439364466,
+     13690.784405699846
+    ]
+   ],
+   "variable": "y_hat"
+  }
+ ],
+ "truncated": false
+}

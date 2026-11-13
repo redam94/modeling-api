@@ -64,6 +64,10 @@ def test_migrations_round_trip_and_match_the_models(scratch_db: str) -> None:
 M3_CHAIN = ("0007_guided", "0008_endpoints_webhooks", "0009_plots_embeds", "0010_trust_lifecycle")
 M35_CHAIN = ("0011_workflows", "0012_governance")
 V016_CHAIN = ("0018_client_dashboards", "0019_dashboard_hardening")
+V017_CHAIN = ("0020_any_model_dashboards",)
+V018_CHAIN = ("0021_v018_library_onboarding",)
+V019_CHAIN = ("0022_plugins", "0023_session_auth_time")
+V020_CHAIN = ("0024_dashboard_chat",)
 CHAIN = (
     *M3_CHAIN,
     *M35_CHAIN,
@@ -73,6 +77,10 @@ CHAIN = (
     "0016_experiments_media",
     "0017_collections",
     *V016_CHAIN,
+    *V017_CHAIN,
+    *V018_CHAIN,
+    *V019_CHAIN,
+    *V020_CHAIN,
 )
 
 
@@ -103,6 +111,21 @@ def test_m3_migrations_are_linear_and_step_down_and_up(scratch_db: str) -> None:
         "dashboard_readouts",
         "dashboard_shares",
         "dashboard_refit_requests",
+        "dashboard_assets",
+        "library_items",
+        "library_item_revisions",
+        "onboarding_progress",
+        "tenant_samples",
+        "tenant_plugin_settings",
+        "user_verifications",
+        "plugins",
+        "plugin_uploads",
+        "plugin_versions",
+        "plugin_describes",
+        "plugin_approvals",
+        "dashboard_chat_settings",
+        "dashboard_chat_transcripts",
+        "dashboard_chat_usage",
     }
     assert new_tables <= _tables(scratch_db)
     for target in reversed(("0006_executor_disable", *CHAIN[:-1])):

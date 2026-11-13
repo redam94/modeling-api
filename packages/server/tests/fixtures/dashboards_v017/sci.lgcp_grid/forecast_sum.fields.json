@@ -1,0 +1,151 @@
+{
+ "caption_plain": "Shows each output of the score on its grid. Select the mean, the uncertainty or a draw. Use the slider to go through the frames.",
+ "fields": [
+  {
+   "color": "single",
+   "colormap": "magma",
+   "description": "Events per cell and period: the expected intensity, or a predictive count draw",
+   "downsampled": false,
+   "encoding": "log10",
+   "facet": {},
+   "frames": [
+    {
+     "draws": [
+      {
+       "data": "9In0iQZ/9IkAAONNKrD+/wAAAAAAANzI3MgkMf//JDEZckhi//////////8kMQAAJDH//wAA//8kMcWb",
+       "hi": 1.568201724066995,
+       "lo": 0.0
+      },
+      {
+       "data": "AADaZ/K3YKkAAIZBhkG0z/7/JJj//7TPd/K0z4ZBAAAMgwyD2meGQf///////9pnrOL/////2mf/////",
+       "hi": 1.1760912590556813,
+       "lo": 0.0
+      },
+      {
+       "data": "//8AAGZmJlH//wAAAAB+1ZiZAAAAAOF2/v////////9mZkyi////////MzP//yZRZmb//wAA//8zM+F2",
+       "hi": 1.505149978319906,
+       "lo": 0.0
+      },
+      {
+       "data": "/////ySXVVVVVdY11jX+/wLBAADWNVVVg6EAAAAA////////AADWNf//////////rWv//wAA//8AAP//",
+       "hi": 1.4313637641589874,
+       "lo": 0.0
+      },
+      {
+       "data": "//8AAICn1Tf//6SBpIHS6Pz4AADVN5D8m86bzv////+Ap/7/gKf//wAA///VN6SBAAAAAAAA1TcAAKpv",
+       "hi": 1.380211241711606,
+       "lo": 0.0
+      },
+      {
+       "data": "//8AAABK0qsAAEl1AAD/3f+T////k0i/0qsAAP////8ASv//AAAAAABKAAD//////v8AAABK//9Jdf7/",
+       "hi": 1.0413926851582251,
+       "lo": 0.0
+      },
+      {
+       "data": "////////N6z/////aDlKhf7///8AAEqF+LUAAP////9oOWg5z3L///////9oOWSUN6z///////8AAM9y",
+       "hi": 1.3424226808222062,
+       "lo": 0.0
+      },
+      {
+       "data": "//8AAAJ9P7oCff//P7r+/1VVVVWDoYrzAn0AAP/////WNf////8AAP//AAD/////VVXWNf///////wJ9",
+       "hi": 1.4313637641589874,
+       "lo": 0.0
+      },
+      {
+       "data": "//8AAJ0u////////Hbb+/zpd/////xHpuNWdLv/////hScOTAACdLv//4UnhSQAA4UkAAP//AACdLjts",
+       "hi": 1.6532125137753437,
+       "lo": 0.0
+      },
+      {
+       "data": "//8AAKE+a5FCff//0q+F4GuRoT7//6E+h8ahPgAA/////+WhRGNrkf//AAChPkJ9/v8AAAAAa5FCfQAA",
+       "hi": 1.2304489213782739,
+       "lo": 0.0
+      },
+      {
+       "data": "VVVVVamq/v8/h1VVP4cixo7vAAAAACLGju+pqgAA//8AAAAA////////////////IsY/h////////z+H",
+       "hi": 0.9030899869919435,
+       "lo": 0.0
+      },
+      {
+       "data": "40IAAP2RXLnjQn6srKD+/ymcZ1Safua+5r4Wbf//MyopnPnDZ1QWbf//MypnVHl2xoUAADMqMyowjBZt",
+       "hi": 1.8260748027008264,
+       "lo": 0.0
+      },
+      {
+       "data": "AAD//8FdwlD//1tx/38QtMJQ//9hKOfT/v8ihv/////BkCjEW3H//2Eo//8AQP//YGjBXf//wlAAAABA",
+       "hi": 1.9084850188786497,
+       "lo": 0.0
+      },
+      {
+       "data": "qm/VNwAAKchUkP2w/v/S6CnIAAAAAFSQ/bCqb35Y///VN/2wpIHVN/////+kgaSBVJD//9U3AADVN/2w",
+       "hi": 1.380211241711606,
+       "lo": 0.0
+      },
+      {
+       "data": "AAD//4uOZD1kPU1hsZ7+/8h6//8AAE1hyHoAAAAA//9NYWQ9WKwAAP////9NYSy4j/UAAE1hAAAAALGe",
+       "hi": 1.255272505103306,
+       "lo": 0.0
+      },
+      {
+       "data": "//9NYU1hyHoAAIuOZD3+/2Q9AABkPU1hLLhkPf////8AAIuO/////////////wAAi47//////////8h6",
+       "hi": 1.255272505103306,
+       "lo": 0.0
+      }
+     ],
+     "mean": {
+      "data": "qi/lPK6MhLIsZ3d9zMP+/1XPLFKaYuzgOeemiucgAACmhBKV6nU1W7cH1jtdUnWP3seKJr1FthePaVis",
+      "hi": 1.3399480616943509,
+      "lo": -0.2557070168773237
+     },
+     "q05": {
+      "data": "////////6Af/////6Af+/8By/////0CxQLH/////////////////////////////AAD/////////////",
+      "hi": 0.6989700043360189,
+      "lo": -0.022276394711151747
+     },
+     "q95": {
+      "data": "sDewN4uGrrHfYgZ/7sD+/8/HtVZvY5vfQN2LhgAgAAAld2mNaW21VgAgtTbfYmmNlspOIbU2tTa1drq1",
+      "hi": 1.7096938697277912,
+      "lo": 0.3010299956639812
+     },
+     "sd": {
+      "data": "FDwqNFF28r2SWVp+rsD+/+T2fWBZYmbamuDvg6AWAABAeySRTnvnbQUm9k8YVZi6EO7xN6KM9R+Adee8",
+      "hi": 1.1874886719483595,
+      "lo": -0.048189191175645366
+     }
+    }
+   ],
+   "height": 6,
+   "kind": "scalar",
+   "log": true,
+   "n_draws": 200,
+   "omitted_frames": 0,
+   "origin": "lower",
+   "output": "rate",
+   "rgb_scale": "uint8",
+   "source_height": 6,
+   "source_width": 5,
+   "width": 5,
+   "x_coords": [
+    0,
+    1,
+    2,
+    3,
+    4
+   ],
+   "x_dim": "col",
+   "y_coords": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "y_dim": "row"
+  }
+ ],
+ "format": "mapi.model-explorer.fields/v1",
+ "kind": "expected",
+ "omitted": [],
+ "warnings_plain": []
+}

@@ -1,0 +1,23 @@
+# A team workflow template (docs/extend/workflow-templates.md): a complete workflow
+# document with an About card. `make docs-test` validates it with the node contracts.
+apiVersion: mapi/v1
+kind: WorkflowTemplate
+metadata:
+  name: weekly-readiness
+  title: "Weekly data readiness"
+  summary: "Checks new weekly data for a wandering level before anyone fits a model."
+  tags: [weekly, checks]
+  about:
+    title: "Weekly data readiness"
+    summary_plain: "Runs a stationarity test on the target. Use it on new data every week."
+    use_when: ["New weekly data arrived and you want to check it first"]
+document:
+  apiVersion: mapi/v1
+  kind: Workflow
+  metadata: {name: weekly-readiness, project: default}
+  inputs:
+    data: {type: dataset}
+  nodes:
+    - {id: adf, use: test.adf, inputs: {data: inputs.data}}
+  outputs:
+    adf: adf.result

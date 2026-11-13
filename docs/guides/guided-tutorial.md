@@ -1,4 +1,4 @@
-# Your first analysis in Guided mode <span class="mapi-badge">v0.4</span>
+# Your first MMM in Guided mode <span class="mapi-badge">v0.4</span>
 
 Guided mode takes you from a spreadsheet to a trustworthy answer. You do not write YAML, and
 you do not need to know statistics. You select what you want to learn. You answer some
@@ -12,6 +12,12 @@ The tutorial takes about ten minutes. If you do not have your own data, use the 
 repository, `apps/web/e2e/fixtures/guided-geo-mmm.csv`. The sample has 40 weeks, two markets,
 spend for TV, search and social, and an average price. The screenshots come from the web app
 in mock mode (`pnpm --filter @mapi/web dev:mock`). Thus the numbers are only examples.
+
+!!! tip "New in v0.18: a sample project and tours"
+    Want to see a finished analysis first? On Home, **Start here** offers a one-click sample
+    project: a real fit on two years of example data, with a report and what-if sliders.
+    The **Take the 2-minute tour** entry in your user menu shows where everything lives. See
+    [Start here](start-here.md).
 
 !!! tip "Every step has its own address"
     The app saves an analysis immediately when you upload its data. Each step has its own URL

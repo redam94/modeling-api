@@ -283,7 +283,7 @@ The CLI removes escape sequences before it prints.
   report ([M2 verification](../operations/m2-verification.md#known-gaps-not-cloud-specific)).
   The platform enforces placement by trust tier in all cases.
 - **The browser sign-in does not accept the tokens of Identity Platform yet.** Use Google or a
-  different OpenID provider ([Authentication](../guides/authentication.md#identity-platform)).
+  different OpenID provider ([Sign in](../guides/authentication.md#identity-platform)).
 - **Public workspaces need an enforcing executor.** Sign-up makes `public` workspaces. These
   run only on `docker-gvisor`, or on Cloud Run Jobs when we verify its DNS enforcement. A
   deployment with neither executor cannot run their work. Neither executor ran in the M3

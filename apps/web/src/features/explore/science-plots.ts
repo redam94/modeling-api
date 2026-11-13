@@ -268,7 +268,7 @@ export function mapPlot(view: MapView, layer: number, frame: number | null = nul
   const budget = MAX_SANDBOX_ROWS;
   const groups: { c: number; name: string; color: string }[] = [
     ...Array.from({ length: nClass }, (_, c) => ({ c, name: breaks.length > 1 ? `${fmtNum(breaks[c]!)} – ${fmtNum(breaks[c + 1]!)}` : fmtNum(breaks[0] ?? 0), color: hexOf("viridis", nClass > 1 ? c / (nClass - 1) : 0.5) })),
-    { c: -1, name: "No value", color: "#c1c7cd" },
+    { c: -1, name: "No value", color: "#d2d2d7" },
   ];
   for (const g of groups) {
     const rows: Row[] = [];
@@ -405,7 +405,7 @@ export function nodeLinkPlot(entry: NetworkEntry, attr: string | null = null): S
         x2: { field: "x2" },
         y2: { field: "y2" },
         opacity: entry.weighted ? { field: "w", type: "quantitative", scale: { type: "symlog", range: [0.15, 0.8] }, legend: null } : { value: 0.55 },
-        ...(entry.signed ? { color: { field: "sign", type: "nominal", title: "Sign", scale: { domain: ["positive", "negative"], range: ["#1f6fb4", "#c20021"] } } } : { color: { value: "#8b919a" } }),
+        ...(entry.signed ? { color: { field: "sign", type: "nominal", title: "Sign", scale: { domain: ["positive", "negative"], range: ["#1d93a5", "#c00f2c"] } } } : { color: { value: "#86868b" } }),
       },
     });
   }
@@ -470,7 +470,7 @@ export function dendrogramPlot(view: TreeView, traits: readonly string[] = []): 
     width: 360,
     height,
     layer: [
-      { data: { name: "connectors" }, mark: { type: "rule", strokeWidth: 1, color: "#8b919a" }, encoding: { x: { field: "x", type: "quantitative", title: "Distance from the root" }, y: yEnc, y2: { field: "y2" } } },
+      { data: { name: "connectors" }, mark: { type: "rule", strokeWidth: 1, color: "#86868b" }, encoding: { x: { field: "x", type: "quantitative", title: "Distance from the root" }, y: yEnc, y2: { field: "y2" } } },
       {
         data: { name: "branches" },
         mark: { type: "rule", strokeWidth: 1.2 },
@@ -583,7 +583,7 @@ export function rosePlot(entry: CircularEntry): SciPlot | null {
     const max = Math.max(0, ...g.counts);
     if (finite(g.mean_direction) && finite(g.resultant_length) && max > 0) {
       const deg = (g.mean_direction / entry.period) * 360;
-      traces.push({ type: "scatterpolar", subplot: id, mode: "lines", r: [0, Math.max(0, Math.min(1, g.resultant_length)) * max], theta: [deg, deg], line: { width: 3, color: "#c20021" }, hoverinfo: "skip", name: "Mean direction" });
+      traces.push({ type: "scatterpolar", subplot: id, mode: "lines", r: [0, Math.max(0, Math.min(1, g.resultant_length)) * max], theta: [deg, deg], line: { width: 3, color: "#c00f2c" }, hoverinfo: "skip", name: "Mean direction" });
     }
     const col = k % cols;
     const row = Math.floor(k / cols);

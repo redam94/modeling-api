@@ -53,7 +53,7 @@ Two more limits of v0.3 are not cloud facts, but they are important on the first
 
 - Browser sign-in uses an OpenID provider with an authorization-code endpoint (Google by
   default). The server does not accept the tokens of Identity Platform yet. Refer to
-  [Authentication](../guides/authentication.md#identity-platform).
+  [Sign in](../guides/authentication.md#identity-platform).
 - The nightly security suite has no probe Job in Terraform yet
   ([Security suite](security-suite.md#where-the-probes-run)).
 
@@ -206,6 +206,18 @@ The secret is an *ephemeral* Terraform variable. Terraform writes it to Secret M
 new version and never keeps it. When you rotate the secret, increase
 `oidc_client_secret_version`. Add the identity providers that you want to Identity Platform.
 Use the console, or `google_identity_platform_*_idp_config` resources outside this module.
+
+The dashboard chat (v0.20) is off by default. To use Gemini, set the provider and write the
+key once in the same way:
+
+```bash
+export TF_VAR_gemini_api_key='...'          # a paid-tier Gemini Developer API key
+# in terraform.tfvars: chat_provider = "gemini" and gemini_api_key_version = 1
+```
+
+Terraform writes the key to Secret Manager as a new version and never keeps it. Only the API
+service can read it. When you rotate the key, increase `gemini_api_key_version`. Refer to
+[Ask about your dashboard](../guides/ask-about-your-dashboard.md#for-operators).
 
 ### 5. Build and push the images
 

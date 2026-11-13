@@ -65,6 +65,8 @@ class VerifiedIdentity:
     email: str | None
     email_verified: bool
     name: str | None
+    auth_time: datetime | None = None
+    """The ``auth_time`` claim: when the person last authenticated at the IdP (v0.19)."""
 
 
 def session_key(cookie_value: str) -> str:
@@ -217,8 +219,10 @@ async def create_session(
     *,
     ip_hash: str | None = None,
     user_agent_hash: str | None = None,
+    auth_time: datetime | None = None,
 ) -> tuple[str, m.WebSession]:
-    """A new session: returns the cookie value (shown once) and the row (keyed by its hash)."""
+    """A new session: returns the cookie value (shown once) and the row (keyed by its hash).
+    ``auth_time`` is the ID token's (when the person last authenticated at the IdP)."""
     value = secrets.token_urlsafe(32)
     ts = now()
     row = m.WebSession(
@@ -230,6 +234,7 @@ async def create_session(
         expires_at=ts + SESSION_ABSOLUTE_TTL,
         ip_hash=ip_hash,
         user_agent_hash=user_agent_hash,
+        auth_time=auth_time,
     )
     s.add(row)
     await s.flush()
@@ -309,6 +314,7 @@ async def save_login(s: AsyncSession, tx: LoginTransaction) -> str:
             code_verifier=tx.code_verifier,
             return_to=tx.return_to,
             created_at=tx.created_at,
+            reauth=tx.reauth,
         )
     )
     # opportunistic clean-up of abandoned logins
@@ -336,6 +342,7 @@ async def pop_login(s: AsyncSession, cookie_value: str) -> LoginTransaction | No
         code_verifier=row.code_verifier,
         return_to=row.return_to,
         created_at=row.created_at,
+        reauth=bool(row.reauth),
     )
 
 

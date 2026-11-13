@@ -46,3 +46,19 @@ export function dm(t: string): string {
   const m = ISO_DATE.exec(t);
   return m ? `${m[3]}/${m[2]}` : t;
 }
+
+/**
+ * The axis label of each date of `ts`: DD/MM while those are all different; else, when every
+ * date is the first of its month (months, quarters, years), MM/YYYY; else DD/MM/YY. So a
+ * quarterly axis over several years never shows "01/10" four times.
+ */
+export function axisDate(ts: readonly string[]): (t: string) => string {
+  const dates = ts.map((t) => ISO_DATE.exec(t)).filter((m): m is RegExpExecArray => m !== null);
+  const short = new Set(dates.map((m) => `${m[3]}/${m[2]}`));
+  if (short.size === dates.length) return dm;
+  if (dates.every((m) => m[3] === "01")) {
+    const monthly = new Set(dates.map((m) => `${m[2]}/${m[1]}`));
+    if (monthly.size === dates.length) return (t) => { const m = ISO_DATE.exec(t); return m ? `${m[2]}/${m[1]}` : t; };
+  }
+  return (t) => { const m = ISO_DATE.exec(t); return m ? `${m[3]}/${m[2]}/${(m[1] ?? "").slice(2)}` : t; };
+}

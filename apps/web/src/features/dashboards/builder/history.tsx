@@ -1,8 +1,8 @@
 /**
  * Builder › History: what waits for the analyst and everything the dashboard produced.
  *
- * - Waiting for review: uploads (`pending_review`) to publish into the clients' history or
- *   hide (plan §10.2).
+ * - Waiting for review: uploads and kept tried cases (`pending_review`) to publish into the
+ *   clients' history or hide (plan §10.2). A tried case shows its inputs and its prediction.
  * - Refit requests (§10.4), next to them: approve (publishes the readout, adds the numbers as
  *   a new dataset version and starts the refit workflow as you; needs the runner role) or
  *   reject (nothing runs).
@@ -10,7 +10,7 @@
  *   and the published revisions.
  */
 import { Link } from "@tanstack/react-router";
-import { Check, EyeOff, RefreshCw, Send, X } from "lucide-react";
+import { Bookmark, Check, ChevronDown, ChevronRight, EyeOff, RefreshCw, Send, X } from "lucide-react";
 import { useState } from "react";
 
 import { can } from "@/api/access";
@@ -25,8 +25,10 @@ import { useWorkflows } from "@/features/workflows/api";
 import { absoluteTime, relativeTime } from "@/lib/format";
 import { toast } from "@/stores/toast";
 
-import { useAnalystReadouts, useApproveRefit, useDashboardRevisions, useHideReadout, usePublishReadout, useRefitRequests, useRefreshDashboard, useRejectRefit } from "../api";
-import { Section } from "../readout/parts";
+import { useAnalystReadouts, useApproveRefit, useDashboardRevisions, useHideReadout, useKeepTriedCase, useMemberClient, usePublishReadout, useRefitRequests, useRefreshDashboard, useRejectRefit } from "../api";
+import { dashboardErrorMessage, toClientDashboard, useReadout } from "../client";
+import { inputLabels, PredictionView } from "../readout/panels/results";
+import { Section, Working } from "../readout/parts";
 import { historyRow, KIND_WORD } from "../readout/readout-model";
 import type { Dashboard, DashboardRefitRequest, ReadoutHeader } from "../types";
 import { refitApprovePermission } from "./spec-form";
@@ -92,9 +94,32 @@ function Tags({ h }: { h: ReadoutHeader }) {
   );
 }
 
+/** Keep somebody's private tried case (an editor): it stops expiring and waits for review. */
+function KeepButton({ dashboardId, h, canReview }: { dashboardId: string; h: ReadoutHeader; canReview: boolean }) {
+  const keep = useKeepTriedCase(dashboardId);
+  return (
+    <Button
+      size="sm"
+      variant="secondary"
+      disabled={!canReview || keep.isPending || h.status !== "ready"}
+      title={h.status !== "ready" ? "The readout is not ready yet." : "It stops expiring and waits for review, so you can publish it."}
+      aria-label={`Keep tried case ${h.seq}`}
+      onClick={() =>
+        keep.mutate(h.seq, {
+          onSuccess: () => toast.success("Tried case kept", `${h.title} waits for review.`),
+          onError: (e) => toast.error("The tried case was not kept", errorMessage(e)),
+        })
+      }
+    >
+      <Bookmark /> Keep
+    </Button>
+  );
+}
+
 function ReviewButtons({ dashboardId, h, canReview }: { dashboardId: string; h: ReadoutHeader; canReview: boolean }) {
   const publish = usePublishReadout(dashboardId);
   const hide = useHideReadout(dashboardId);
+  if (h.kind === "prediction" && h.visibility === "private") return <KeepButton dashboardId={dashboardId} h={h} canReview={canReview} />;
   if (h.kind === "scenario" || h.visibility === "private") return null;
   const busy = publish.isPending || hide.isPending;
   return (
@@ -136,26 +161,60 @@ function ReviewButtons({ dashboardId, h, canReview }: { dashboardId: string; h: 
   );
 }
 
+/** A kept tried case: the values the client tried and what the model predicted. */
+function TriedCase({ dashboard, seq }: { dashboard: Dashboard; seq: number }) {
+  const client = useMemberClient(dashboard.id, { spec: "published" });
+  const q = useReadout(client, seq);
+  if (q.isError) return <InlineMessage tone="error">{dashboardErrorMessage(q.error)}</InlineMessage>;
+  if (!q.data) return <Working>Loading the tried case…</Working>;
+  const view = toClientDashboard(dashboard, null, dashboard.published_revision ? "published" : "draft");
+  const prediction = q.data.snapshot?.prediction;
+  return prediction ? <PredictionView dashboard={view} result={prediction} labels={inputLabels(view)} /> : <p className="text-sm text-muted-foreground">{q.data.snapshot?.lead ?? "No prediction to show."}</p>;
+}
+
+function PendingItem({ dashboard, h, canReview }: { dashboard: Dashboard; h: ReadoutHeader; canReview: boolean }) {
+  const [open, setOpen] = useState(false);
+  const tried = h.kind === "prediction";
+  return (
+    <li data-readout={h.seq} data-kind={h.kind} className="grid gap-3 rounded-lg border p-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <span className="grid min-w-0 gap-1">
+          <span className="font-medium [overflow-wrap:anywhere]">{h.title}</span>
+          <span className="text-xs text-muted-foreground">
+            {tried ? "Tried case" : KIND_WORD[h.kind]} · {tried ? "kept" : "sent"} {relativeTime(h.created_at)}
+          </span>
+          <Tags h={h} />
+        </span>
+        <ReviewButtons dashboardId={dashboard.id} h={h} canReview={canReview} />
+      </div>
+      {tried && h.status === "ready" ? (
+        <div className="grid gap-2">
+          <div>
+            <Button size="sm" variant="ghost" aria-expanded={open} onClick={() => setOpen(!open)}>
+              {open ? <ChevronDown /> : <ChevronRight />} {open ? "Hide the case" : "Show the case"}
+            </Button>
+          </div>
+          {open ? <TriedCase dashboard={dashboard} seq={h.seq} /> : null}
+        </div>
+      ) : null}
+    </li>
+  );
+}
+
 function PendingSection({ dashboard, canReview }: { dashboard: Dashboard; canReview: boolean }) {
   const pending = useAnalystReadouts(dashboard.id, { visibility: "pending_review" }, { poll: true });
   return (
-    <Section title="Waiting for review" description="Uploads that clients and share links sent. The uploader already sees the result. Publish it into everyone's history, or hide it.">
+    <Section
+      title="Waiting for review"
+      description="Uploads that clients and share links sent, and tried cases that clients kept. The sender already sees the result. Publish it into everyone's history, or hide it."
+    >
       <QueryView query={pending}>
         {(page) => {
           const items = (page.items ?? []).filter((h) => h.status !== "failed");
           return items.length ? (
             <ul className="grid gap-3" aria-label="Readouts waiting for review">
               {items.map((h) => (
-                <li key={h.seq} data-readout={h.seq} className="flex flex-wrap items-start justify-between gap-3 rounded-lg border p-3">
-                  <span className="grid min-w-0 gap-1">
-                    <span className="font-medium [overflow-wrap:anywhere]">{h.title}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {KIND_WORD[h.kind]} · sent {relativeTime(h.created_at)}
-                    </span>
-                    <Tags h={h} />
-                  </span>
-                  <ReviewButtons dashboardId={dashboard.id} h={h} canReview={canReview} />
-                </li>
+                <PendingItem key={h.seq} dashboard={dashboard} h={h} canReview={canReview} />
               ))}
             </ul>
           ) : (
@@ -186,7 +245,7 @@ function RefitSection({ dashboard }: { dashboard: Dashboard }) {
         wfName ? (
           <>
             Uploaders can ask you to refit the model with their numbers. Approving starts{" "}
-            <Link to="/workflows/$workflowId" params={{ workflowId: wfId ?? "" }} className="text-primary hover:underline">
+            <Link to="/workflows/$workflowId" params={{ workflowId: wfId ?? "" }} className="link">
               {wfName}
             </Link>{" "}
             as you. Nothing runs before you approve.
@@ -243,7 +302,7 @@ function RefitSection({ dashboard }: { dashboard: Dashboard }) {
                   ) : null}
                   {r.note ? <p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">Note: {r.note}</p> : null}
                   {r.workflow_run_id ? (
-                    <Link to="/workflow-runs/$runId" params={{ runId: r.workflow_run_id }} className="text-sm text-primary hover:underline">
+                    <Link to="/workflow-runs/$runId" params={{ runId: r.workflow_run_id }} className="link text-sm">
                       Open the refit run <Mono>{r.workflow_run_id}</Mono>
                     </Link>
                   ) : null}

@@ -9,7 +9,7 @@ from sklearn.linear_model import Ridge
 
 
 class LinearDemand(SklearnModel[PointSettings]):
-    id = "t.acme.linear_demand"
+    id = "acme.linear_demand"
     version = "1.0.0"
     capabilities: ClassVar[Capabilities] = capabilities_for("none").model_copy(
         update={"contribution_scale": "additive"}  # a linear model decomposes exactly
@@ -27,7 +27,7 @@ data = demand_dataset()  # a store x sku x week demand panel
 report = check_model(
     LinearDemand,
     ModelFixture(
-        spec=demand_spec("t.acme.linear_demand@^1", {"estimator": None}),
+        spec=demand_spec("acme.linear_demand@^1", {"estimator": None}),
         data=data,
         raw_schema=demand_schema(data),
         registry=demand_registry(),

@@ -9,10 +9,11 @@ import {
   Info,
   Radio,
   Stethoscope,
+  Upload,
   WifiOff,
   Workflow as WorkflowIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 
 import { useModelVersionById, useRun } from "@/api/queries";
 import { runName, runTags } from "@/api/tracking";
@@ -42,14 +43,19 @@ import { RunActions } from "@/features/runs/run-actions";
 import { hasUnsavedNotes, RunNotes } from "@/features/runs/run-notes";
 import type { NotesEdit } from "@/features/runs/run-patch";
 import { RunPlotsCard } from "@/features/runs/run-plots";
+import { sentenceCase } from "@/features/search/kinds";
+import { useRecordRecent } from "@/features/search/use-record-recent";
 import { useRunEvents } from "@/hooks/use-run-events";
 import { absoluteTime, elapsedSeconds, formatBytes, formatDuration, formatNumber, relativeTime, shortId } from "@/lib/format";
 import { runCostView } from "@/lib/cost";
-import { isTerminal, STATE_META } from "@/lib/run-state";
+import { isPluginRunKind, isTerminal, STATE_META } from "@/lib/run-state";
 import { cn } from "@/lib/utils";
 import type { RunTab } from "@/router";
 
 const route = getRouteApi("/runs/$runId");
+
+/** v0.18: the team's chart templates on the fit's model version (lazy; signed-in pages only). */
+const YourChartsForVersion = lazy(() => import("@/features/library/your-charts").then((m) => ({ default: m.YourChartsForVersion })));
 
 function RunCostValue({ run }: { run: Run }) {
   const c = runCostView(run.cost);
@@ -153,6 +159,32 @@ function OutputLink({ mvId }: { mvId: string }) {
   );
 }
 
+/**
+ * v0.19 (D20): the "Uploaded code" badge. A run counts when it is an upload check
+ * (`plugin_inspect`/`plugin_describe`), when the model version it made or used was built with
+ * an upload (`lineage.overlays`), or when the server ran it without a sandbox in development
+ * (`DEV_MODE_ISOLATION`). Inline string tests: this page never imports `features/plugins`.
+ */
+function UploadedCodeBadge({ run, events }: { run: Run; events: readonly RunEventView[] }) {
+  const mv = useModelVersionById(run.output_model_version_id ?? run.model_version_id);
+  const dev = events.some((e) => (e.payload as Record<string, unknown>)?.code === "DEV_MODE_ISOLATION");
+  const overlays = (mv.data?.lineage as { overlays?: unknown[] } | undefined)?.overlays ?? [];
+  if (!isPluginRunKind(run.kind) && !dev && overlays.length === 0) return null;
+  return (
+    <span
+      data-testid="run-uploaded-badge"
+      title={dev ? "This run used uploaded code without a sandbox (development only)." : "This run used code uploaded by your workspace. It ran in a sandbox."}
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap",
+        dev ? "bg-attention-soft text-attention" : "bg-accent text-accent-foreground",
+      )}
+    >
+      <Upload aria-hidden className="size-3" />
+      Uploaded code{dev ? " · no sandbox" : ""}
+    </span>
+  );
+}
+
 /** M3.5: a workflow run opens in its run monitor; a step of a workflow links to its workflow run. */
 function WorkflowRunLink({ run }: { run: Run }) {
   const target = run.kind === "workflow" ? run.id : run.parent_run_id && run.labels?.["workflow"] ? run.parent_run_id : null;
@@ -171,6 +203,8 @@ export function RunDetailPage() {
   const { tab } = route.useSearch();
   const navigate = useNavigate({ from: "/runs/$runId" });
   const run = useRun(runId);
+  // v0.21: the visit shows under Recent in the search, with what the search shows for a run.
+  useRecordRecent(run.data ? { group: "runs", title: runName(run.data) || run.data.id, secondary: `${sentenceCase(run.data.kind)} · ${run.data.state} · ${run.data.id}`, href: `/runs/${run.data.id}` } : null);
   const stream = useRunEvents(run.data);
   // The Notes edit lives here, above the tabs: switching tabs unmounts the tab content.
   const [notesEdit, setNotesEdit] = useState<NotesEdit | null>(null);
@@ -186,6 +220,7 @@ export function RunDetailPage() {
   return (
     <>
       <PageHeader
+        crumbs={[{ label: "Runs", to: "/runs" }, { label: name ?? shortId(r.id) }]}
         title={
           <span className="flex flex-wrap items-center gap-3">
             {name ? <span className="[overflow-wrap:anywhere]" data-testid="run-name">{name}</span> : <span className="capitalize">{r.kind}</span>}
@@ -204,6 +239,7 @@ export function RunDetailPage() {
             {runCostView(r.cost) ? <span title={runCostView(r.cost)?.detail}>cost {runCostView(r.cost)?.text}</span> : null}
             <StreamStatus status={stream.status} terminal={terminal} />
             {Object.keys(tags).length ? <TagBadges tags={tags} max={5} /> : null}
+            <UploadedCodeBadge run={r} events={stream.events} />
           </>
         }
         actions={
@@ -256,6 +292,11 @@ export function RunDetailPage() {
                 </Card>
               ) : null}
               <RunPlotsCard run={r} />
+              {r.output_model_version_id ? (
+                <Suspense fallback={null}>
+                  <YourChartsForVersion mvId={r.output_model_version_id} />
+                </Suspense>
+              ) : null}
             </div>
             <div className="grid min-w-0 content-start gap-5">
               {r.output_model_version_id ? (
@@ -281,7 +322,7 @@ export function RunDetailPage() {
                       [
                         "Spec",
                         r.spec_id ? (
-                          <Link key="s" to="/build/$specId" params={{ specId: r.spec_id }} search={{ rev: r.spec_revision ?? undefined }} className="hover:underline">
+                          <Link key="s" to="/build/$specId" params={{ specId: r.spec_id }} search={{ rev: r.spec_revision ?? undefined }} className="link">
                             <Mono>
                               {shortId(r.spec_id)} r{r.spec_revision}
                             </Mono>
@@ -292,8 +333,8 @@ export function RunDetailPage() {
                       ],
                       ["Experiment", <RunExperimentLink key="e" experimentId={r.experiment_id} />],
                       ["Model version", r.model_version_id ? <Mono key="m">{shortId(r.model_version_id)}</Mono> : "—"],
-                      ["Dataset", r.dataset_id ? <Link key="d" to="/datasets/$datasetId" params={{ datasetId: r.dataset_id }} className="hover:underline"><Mono>{shortId(r.dataset_id)}</Mono></Link> : "—"],
-                      ["Retry of", r.retry_of ? <Link key="r" to="/runs/$runId" params={{ runId: r.retry_of }} className="hover:underline"><Mono>{shortId(r.retry_of)}</Mono></Link> : "—"],
+                      ["Dataset", r.dataset_id ? <Link key="d" to="/datasets/$datasetId" params={{ datasetId: r.dataset_id }} className="link"><Mono>{shortId(r.dataset_id)}</Mono></Link> : "—"],
+                      ["Retry of", r.retry_of ? <Link key="r" to="/runs/$runId" params={{ runId: r.retry_of }} className="link"><Mono>{shortId(r.retry_of)}</Mono></Link> : "—"],
                       ["Spec hash", r.spec_hash ? <Mono key="h" title={r.spec_hash}>{shortId(r.spec_hash)}</Mono> : "—"],
                       ["Cost", <RunCostValue key="cost" run={r} />],
                     ]}

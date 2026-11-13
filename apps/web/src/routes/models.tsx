@@ -1,17 +1,21 @@
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Boxes, Columns2, Gauge, ShieldCheck, Telescope, Wallet } from "lucide-react";
+import { Columns2, Gauge, ShieldCheck, Telescope, Wallet } from "lucide-react";
+import { lazy, Suspense } from "react";
 
 import { useModel, useModels, useModelVersion, useModelVersions } from "@/api/queries";
 import type { Model, ModelVersion } from "@/api/types";
 import { CopyButton, EmptyState, ErrorNotice, KeyValues, LoadingRows, Mono, PageHeader, QueryView } from "@/components/common";
 import { DataTable } from "@/components/data-table";
+import { ListNoMatches, ListToolbar, matchesQuery, toolbarShown } from "@/components/list-toolbar";
+import { EmptyArt } from "@/components/brand/empty-art";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/overlays";
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/ui/primitives";
 import { ValidationStatusBadge } from "@/features/explore/governance-panel";
 import { DiagnosticsTable, PreprocessViewer, ProvenancePanel, ScorecardView, TreeBrowser } from "@/features/models/inspect";
 import { PlotGallery } from "@/features/plots/plot-gallery";
+import { useRecordRecent } from "@/features/search/use-record-recent";
 import { formatNumber, relativeTime, shortId } from "@/lib/format";
 
 const modelColumns: ColumnDef<Model, unknown>[] = [
@@ -29,31 +33,88 @@ const modelColumns: ColumnDef<Model, unknown>[] = [
   { accessorKey: "updated_at", header: "Updated", cell: ({ row }) => relativeTime(row.original.updated_at) },
 ];
 
+const listRoute = getRouteApi("/models");
+
 export function ModelsPage() {
   const models = useModels();
   const navigate = useNavigate();
+  const q = listRoute.useSearch().q ?? "";
+  const setQuery = (next: string) => void navigate({ to: "/models", search: { q: next || undefined }, replace: true });
+  const items = models.data?.items;
+  const more = Boolean(models.data?.next_cursor);
+  const rows = q && items ? items.filter((m) => matchesQuery(q, [m.name], [m.ref])) : (items ?? []);
   return (
     <>
-      <PageHeader title="Models" description="Each successful fit makes a verified, signed model version." />
-      <QueryView query={models}>
-        {(page) =>
-          page.items.length ? (
-            <DataTable
-              label="Models"
-              data={page.items}
-              columns={modelColumns}
-              getRowId={(m) => m.id}
-              filterPlaceholder="Filter models"
-              onRowClick={(m) => void navigate({ to: "/models/$modelId", params: { modelId: m.id } })}
-            />
-          ) : (
-            <EmptyState icon={<Boxes />} title="No models yet">
-              Fit a spec on the Build page. When the fit is successful and the server verifies its outputs, the model version shows here.
-            </EmptyState>
-          )
-        }
-      </QueryView>
+      <PageHeader
+        eyebrow="Fitted and signed"
+        title="Models"
+        description="Each successful fit makes a verified, signed model version. Open one to read its scorecard, plots and diagnostics."
+      />
+      {/* A block, not a grid: a grid item around the table would take the width of the table on a phone. */}
+      <div className="space-y-3">
+        {/* Outside the query view: a link with ?q= shows its text while the list loads and when the project has no model. */}
+        {toolbarShown(q, items?.length) ? <ListToolbar things="models" value={q} onChange={setQuery} count={items ? { shown: rows.length, total: items.length, more } : undefined} /> : null}
+        <QueryView query={models}>
+          {(page) => {
+            return page.items.length ? (
+              <div className="grid gap-3">
+                {rows.length ? (
+                  <DataTable
+                    label="Models"
+                    data={rows}
+                    columns={modelColumns}
+                    getRowId={(m) => m.id}
+                    onRowClick={(m) => void navigate({ to: "/models/$modelId", params: { modelId: m.id } })}
+                  />
+                ) : (
+                  <ListNoMatches things="models" query={q} firstPage={more ? page.items.length : undefined} onClear={() => setQuery("")} />
+                )}
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                <EmptyState
+                  title="No models yet"
+                  illustration={<EmptyArt kind="models" />}
+                  primaryAction={
+                    <Button asChild className="rounded-full">
+                      <Link to="/build">Fit a spec</Link>
+                    </Button>
+                  }
+                  action={
+                    <Button asChild variant="outline" className="rounded-full">
+                      <Link to="/guided">Start a guided analysis</Link>
+                    </Button>
+                  }
+                >
+                  Your fitted models land here. Fit a spec on the Build page: when the fit is successful and the server verifies its outputs, the model version shows here.
+                </EmptyState>
+                <EmptyHints
+                  hints={[
+                    ["Signed", "Each version has a signature, so you know it is the one that was fitted."],
+                    ["Scored", "A sanity scorecard checks the fit, the forecast and the data."],
+                    ["Ready to use", "Score it, explore what-ifs or plan a budget from the version page."],
+                  ]}
+                />
+              </div>
+            );
+          }}
+        </QueryView>
+      </div>
     </>
+  );
+}
+
+/** Three small cards under an empty state: what the page gives you once it has something in it. */
+function EmptyHints({ hints }: { hints: [string, string][] }) {
+  return (
+    <ul className="grid gap-4 md:grid-cols-3">
+      {hints.map(([title, body]) => (
+        <li key={title} className="rounded-2xl border bg-card p-5">
+          <p className="font-display text-lg font-semibold tracking-[-0.02em]">{title}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{body}</p>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -82,12 +143,17 @@ const modelRoute = getRouteApi("/models/$modelId");
 export function ModelPage() {
   const { modelId } = modelRoute.useParams();
   const model = useModel(modelId);
+  useRecordRecent(
+    model.data
+      ? { group: "models", title: model.data.name, secondary: model.data.latest_version ? `Version ${model.data.latest_version} · ${model.data.id}` : model.data.id, href: `/models/${model.data.id}` }
+      : null,
+  );
   const versions = useModelVersions(modelId);
   const navigate = useNavigate();
   if (model.isError) return <ErrorNotice error={model.error} title="The app could not load this model" />;
   return (
     <>
-      <PageHeader title={model.data?.name ?? "Model"} meta={model.data ? <Mono>{model.data.ref}</Mono> : null} />
+      <PageHeader crumbs={[{ label: "Models", to: "/models" }, { label: model.data?.name ?? "Model" }]} title={model.data?.name ?? "Model"} meta={model.data ? <Mono>{model.data.ref}</Mono> : null} />
       <QueryView query={versions}>
         {(page) => (
           <DataTable
@@ -107,12 +173,17 @@ export function ModelPage() {
 
 const versionRoute = getRouteApi("/models/$modelId/versions/$version");
 
+/** v0.18: the team's chart templates on this version (lazy; signed-in pages only). */
+const YourCharts = lazy(() => import("@/features/library/your-charts").then((m) => ({ default: m.YourCharts })));
+
 export function ModelVersionPage() {
   const { modelId, version } = versionRoute.useParams();
   const { tab } = versionRoute.useSearch();
   const navigate = useNavigate({ from: "/models/$modelId/versions/$version" });
   const v = Number(version);
   const mv = useModelVersion(modelId, Number.isInteger(v) && v > 0 ? v : undefined);
+  const modelName = useModel(modelId).data?.name;
+  useRecordRecent(mv.data && modelName ? { group: "models", title: `${modelName} v${mv.data.version}`, secondary: `Model version · ${modelId}`, href: `/models/${modelId}/versions/${mv.data.version}` } : null);
   if (!Number.isInteger(v) || v < 1) return <ErrorNotice error={new Error("The version must be a positive integer.")} />;
   if (mv.isPending) return <LoadingRows rows={6} />;
   if (mv.isError) return <ErrorNotice error={mv.error} title="The app could not load this model version" />;
@@ -121,6 +192,7 @@ export function ModelVersionPage() {
   return (
     <>
       <PageHeader
+        crumbs={[{ label: "Models", to: "/models" }, { label: modelName ?? "Model", to: "/models/$modelId", params: { modelId } }, { label: `Version ${v}` }]}
         title={
           <span className="flex items-center gap-2">
             <Mono className="text-[22px]">{d.ref}</Mono>
@@ -133,7 +205,7 @@ export function ModelVersionPage() {
             {d.scorecard ? <Badge variant={OVERALL[d.scorecard.overall]}>scorecard {d.scorecard.overall}</Badge> : null}
             <ValidationStatusBadge modelId={modelId} version={v} />
             {caps ? <span>{caps.inference} · {caps.representation}</span> : null}
-            <Link to="/runs/$runId" params={{ runId: d.run_id }} className="hover:underline">fit run {shortId(d.run_id)}</Link>
+            <Link to="/runs/$runId" params={{ runId: d.run_id }} className="link">fit run {shortId(d.run_id)}</Link>
             <span>{relativeTime(d.created_at)}</span>
           </>
         }
@@ -228,7 +300,12 @@ export function ModelVersionPage() {
           <DiagnosticsTable diagnostics={d.diagnostics ?? []} capabilities={caps} />
         </TabsContent>
         <TabsContent value="plots">
-          <PlotGallery modelId={modelId} version={v} />
+          <div className="grid gap-5">
+            <PlotGallery modelId={modelId} version={v} />
+            <Suspense fallback={null}>
+              <YourCharts modelId={modelId} version={v} />
+            </Suspense>
+          </div>
         </TabsContent>
         <TabsContent value="tree">
           <TreeBrowser mv={d} />

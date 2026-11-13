@@ -1,0 +1,658 @@
+{
+ "bundle_ui_artifacts": [
+  "ui/explore/diagnostics.json",
+  "ui/explore/fit.json",
+  "ui/explore/index.json",
+  "ui/explore/params.json",
+  "ui/explore/plots/fit.json",
+  "ui/explore/plots/params.json",
+  "ui/explore/plots/residuals.json",
+  "ui/explore/residuals.json",
+  "ui/preprocess.json",
+  "ui/summaries.json",
+  "ui/tree_index.json"
+ ],
+ "capabilities": {
+  "checkpointable": false,
+  "conditions_on_actuals": true,
+  "contribution_scale": "none",
+  "decision": false,
+  "deterministic_given_seed": true,
+  "evidence": false,
+  "fast_score": false,
+  "identified_quantities": [],
+  "inference": "kalman",
+  "loo_invalid_reason": "statsmodels estimates are maximum-likelihood or least-squares point estimates without posterior draws; use holdout or backtest metrics instead of LOO",
+  "loo_valid": false,
+  "owns": [],
+  "recommend": false,
+  "representation": "quantiles",
+  "score_modes": [
+   "evaluate",
+   "forecast",
+   "predict"
+  ]
+ },
+ "fit_metrics": [
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:39:16.025216-04:00",
+   "key": "coverage_90",
+   "labels": {},
+   "last": 0.875,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:39:16.025216-04:00",
+   "max": 0.875,
+   "min": 0.875
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:39:16.025264-04:00",
+   "key": "mae",
+   "labels": {},
+   "last": 2.0545795769689463,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:39:16.025264-04:00",
+   "max": 2.0545795769689463,
+   "min": 2.0545795769689463
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:39:16.025301-04:00",
+   "key": "mape",
+   "labels": {},
+   "last": 10.371587192855236,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:39:16.025301-04:00",
+   "max": 10.371587192855236,
+   "min": 10.371587192855236
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:39:16.025332-04:00",
+   "key": "rmse",
+   "labels": {},
+   "last": 2.624718389622321,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:39:16.025332-04:00",
+   "max": 2.624718389622321,
+   "min": 2.624718389622321
+  }
+ ],
+ "fit_run": "run_01m5fazv0pccgg5x3w4bmwavc7",
+ "inputs": {
+  "input_table": {
+   "columns": [
+    {
+     "description": "The period (yyyy-MM-dd)",
+     "dims": [],
+     "freq": "W-SUN",
+     "name": "t",
+     "role": "coord"
+    },
+    {
+     "description": "A level of geo",
+     "dims": [],
+     "freq": null,
+     "name": "geo",
+     "role": "coord"
+    },
+    {
+     "description": "The actual (leave empty for the periods to forecast)",
+     "dims": [
+      "geo",
+      "t"
+     ],
+     "freq": null,
+     "name": "y",
+     "role": "target"
+    },
+    {
+     "description": "Necessary on each period, also on the periods to forecast",
+     "dims": [
+      "geo",
+      "t"
+     ],
+     "freq": null,
+     "name": "price",
+     "role": "driver"
+    },
+    {
+     "description": "Necessary on each period, also on the periods to forecast",
+     "dims": [
+      "geo",
+      "t"
+     ],
+     "freq": null,
+     "name": "promo",
+     "role": "driver"
+    }
+   ],
+   "conditions_on_actuals": true,
+   "horizon_dim": "t",
+   "rows": [
+    [
+     "2024-11-03",
+     "north",
+     null,
+     null,
+     null
+    ],
+    [
+     "2024-11-03",
+     "south",
+     null,
+     null,
+     null
+    ],
+    [
+     "2024-11-10",
+     "north",
+     null,
+     null,
+     null
+    ],
+    [
+     "2024-11-10",
+     "south",
+     null,
+     null,
+     null
+    ]
+   ]
+  },
+  "max_inline_bytes": 5242880,
+  "model_ref": "model://default/v017-sm-arimax-4bec7d-model@v1",
+  "snapshot": {
+   "conditions_on_actuals": true,
+   "fit_coords": {
+    "geo": {
+     "contiguous": true,
+     "end": null,
+     "freq": null,
+     "kind": "categorical",
+     "size": 3,
+     "start": null,
+     "step": null,
+     "values": [
+      "north",
+      "south",
+      "west"
+     ]
+    },
+    "t": {
+     "contiguous": true,
+     "end": "2024-10-27T00:00:00",
+     "freq": "W-SUN",
+     "kind": "time",
+     "size": 96,
+     "start": "2023-01-01T00:00:00",
+     "step": null,
+     "values": null
+    }
+   },
+   "future_required": [
+    "price",
+    "promo"
+   ],
+   "horizon_dim": "t",
+   "input_schema": {
+    "dims": {
+     "geo": {
+      "description": null,
+      "freq": null,
+      "kind": "categorical",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "fixed"
+     },
+     "t": {
+      "description": null,
+      "freq": "W-SUN",
+      "kind": "time",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "extend"
+     }
+    },
+    "layout": "dense",
+    "ragged": [],
+    "vars": {
+     "price": {
+      "bounds": null,
+      "description": null,
+      "dims": [
+       "geo",
+       "t"
+      ],
+      "dtype": "float64",
+      "future_required": true,
+      "index_of": null,
+      "missing": "forbid",
+      "missing_sentinel": null,
+      "role": "covariate",
+      "units": "EUR"
+     },
+     "promo": {
+      "bounds": null,
+      "description": null,
+      "dims": [
+       "geo",
+       "t"
+      ],
+      "dtype": "float64",
+      "future_required": true,
+      "index_of": null,
+      "missing": "forbid",
+      "missing_sentinel": null,
+      "role": "covariate",
+      "units": null
+     },
+     "y": {
+      "bounds": null,
+      "description": null,
+      "dims": [
+       "geo",
+       "t"
+      ],
+      "dtype": "float64",
+      "future_required": false,
+      "index_of": null,
+      "missing": "forbid",
+      "missing_sentinel": null,
+      "role": "target",
+      "units": "units"
+     }
+    }
+   },
+   "inputs_stage": "raw",
+   "representation": "quantiles",
+   "schema_hash": "sha256:c1a04903221eba5a91b00fd8f50569b8fe7b4634bae5fbaff1b5aced57da7c43",
+   "score_modes": [
+    "evaluate",
+    "forecast",
+    "predict"
+   ]
+  }
+ },
+ "manifest_outputs": null,
+ "model_ref": "model://default/v017-sm-arimax-4bec7d-model@v1",
+ "plugin": "ts.sarimax@1.0.0",
+ "scorecard": {
+  "items": [
+   {
+    "category": "holdout",
+    "check": "holdout.mape",
+    "code": "HOLDOUT_MAPE",
+    "docs_anchor": "check-holdout-mape",
+    "message_expert": "mape 10.37% over 24 held-out values",
+    "message_plain": "The forecast error on the holdout periods was 10%.",
+    "metric": "mape",
+    "status": "warn",
+    "suggested_action": "Look for gaps or one-time events in the last periods of data. Add holidays or controls that explain them.",
+    "threshold": 0.1,
+    "title": "Holdout error",
+    "value": 0.10371587192855236
+   },
+   {
+    "category": "holdout",
+    "check": "holdout.coverage_90",
+    "code": "HOLDOUT_COVERAGE",
+    "docs_anchor": "check-holdout-coverage-90",
+    "message_expert": "coverage_90 0.875 over 24 held-out values",
+    "message_plain": "88% of the holdout values were in the 90% range. This is correct.",
+    "metric": "coverage_90",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 0.1,
+    "title": "The uncertainty is correct",
+    "value": 0.875
+   },
+   {
+    "category": "data",
+    "check": "data.missing",
+    "code": "DATA_MISSING",
+    "docs_anchor": "check-data-missing",
+    "message_expert": "0 of 864 values missing",
+    "message_plain": "Only 0% of the values are missing.",
+    "metric": "missing_fraction",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 0.05,
+    "title": "Few missing values",
+    "value": 0.0
+   },
+   {
+    "category": "data",
+    "check": "data.history",
+    "code": "DATA_HISTORY",
+    "docs_anchor": "check-data-history",
+    "message_expert": "96 periods at W-SUN (52 per year) along 't' at the model stage",
+    "message_plain": "There are only 1.8 years of history. The seasonal effects are not certain.",
+    "metric": "history_years",
+    "status": "warn",
+    "suggested_action": "If you have more history, add it.",
+    "threshold": 2.0,
+    "title": "Enough history",
+    "value": 1.8461538461538463
+   }
+  ],
+  "overall": "warn",
+  "skipped": {
+   "convergence.divergences": "the model has no posterior draws (the fit did not use MCMC)",
+   "convergence.ess": "the model has no posterior draws (the fit did not use MCMC)",
+   "convergence.rhat": "the model has no posterior draws (the fit did not use MCMC)",
+   "data.spend_variation": "the dataset has no spend variable along time",
+   "holdout.hit_rate": "only models of a categorical target (choice models) report a hit rate. Evaluate accuracy_lift on one of these models",
+   "plausibility.baseline_share": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.negative_roi": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.prior_overlap": "the fit kept no prior draws (set fit.prior_predictive or fit.keep.prior)",
+   "plausibility.roi_absurd": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.share_outlier": "the model has no response curves (outputs.derived: response_curves)"
+  }
+ },
+ "scores": {
+  "forecast_8__canonical": {
+   "captured": [
+    "forecast_8__canonical.summary.json",
+    "forecast_8__canonical.result.json"
+   ],
+   "inline": false,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-sm-arimax-4bec7d-future@v1",
+    "horizon": {
+     "dim": "t",
+     "periods": 8
+    },
+    "kind": "ScoreRequest",
+    "mode": "forecast",
+    "model": "model://default/v017-sm-arimax-4bec7d-model@v1",
+    "output": {
+     "names": "canonical",
+     "summary": [
+      "median",
+      "eti_90"
+     ]
+    }
+   },
+   "run_id": "run_01m5fb11cmhw3j7h5zswyr70af",
+   "state": "succeeded"
+  },
+  "forecast_8__predictive": {
+   "captured": [
+    "forecast_8__predictive.summary.json",
+    "forecast_8__predictive.result.json"
+   ],
+   "inline": false,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-sm-arimax-4bec7d-future@v1",
+    "horizon": {
+     "dim": "t",
+     "periods": 8
+    },
+    "kind": "ScoreRequest",
+    "mode": "forecast",
+    "model": "model://default/v017-sm-arimax-4bec7d-model@v1",
+    "output": {
+     "kind": "predictive",
+     "summary": [
+      "median",
+      "eti_90"
+     ]
+    }
+   },
+   "run_id": "run_01m5fb0qkbg372cn0myhvnexnb",
+   "state": "succeeded"
+  },
+  "forecast_8__readout": {
+   "captured": [
+    "forecast_8__readout.summary.json",
+    "forecast_8__readout.result.json"
+   ],
+   "inline": false,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-sm-arimax-4bec7d-future@v1",
+    "horizon": {
+     "dim": "t",
+     "periods": 8
+    },
+    "kind": "ScoreRequest",
+    "mode": "forecast",
+    "model": "model://default/v017-sm-arimax-4bec7d-model@v1",
+    "output": {
+     "summary": [
+      "median",
+      "eti_90"
+     ]
+    }
+   },
+   "run_id": "run_01m5fb0gev4979mpsej149wjgy",
+   "state": "succeeded"
+  },
+  "forecast_sum_geo": {
+   "captured": [],
+   "code": "CAPABILITY_UNSUPPORTED",
+   "inline": false,
+   "issues": [
+    {
+     "code": "CAPABILITY_UNSUPPORTED",
+     "context": {},
+     "message": "cannot aggregate 'quantiles' output: Quantiles are marginal per cell; summing quantiles is not a quantile of the sum.",
+     "pointer": "/output/aggregate",
+     "severity": "error",
+     "suggested_action": null,
+     "untrusted_text": null
+    }
+   ],
+   "refused": "CapabilityError: validation failed with 1 error. The first error is at /output/aggregate: cannot aggregate 'quantiles' output: Quantiles are marginal per cell; summing quantiles is not a quantile of the sum.",
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-sm-arimax-4bec7d-future@v1",
+    "horizon": {
+     "dim": "t",
+     "periods": 8
+    },
+    "kind": "ScoreRequest",
+    "mode": "forecast",
+    "model": "model://default/v017-sm-arimax-4bec7d-model@v1",
+    "output": {
+     "aggregate": {
+      "over": [
+       "geo"
+      ]
+     }
+    }
+   }
+  },
+  "predict_tail__canonical": {
+   "captured": [
+    "predict_tail__canonical.summary.json",
+    "predict_tail__canonical.result.json"
+   ],
+   "inline": false,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-sm-arimax-4bec7d-tail-12@v1",
+    "kind": "ScoreRequest",
+    "mode": "predict",
+    "model": "model://default/v017-sm-arimax-4bec7d-model@v1",
+    "output": {
+     "names": "canonical",
+     "summary": [
+      "median",
+      "eti_90"
+     ]
+    }
+   },
+   "run_id": "run_01m5fb28mwrerq9pya9wa44my5",
+   "state": "succeeded"
+  },
+  "predict_tail__predictive": {
+   "captured": [
+    "predict_tail__predictive.summary.json",
+    "predict_tail__predictive.result.json"
+   ],
+   "inline": false,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-sm-arimax-4bec7d-tail-12@v1",
+    "kind": "ScoreRequest",
+    "mode": "predict",
+    "model": "model://default/v017-sm-arimax-4bec7d-model@v1",
+    "output": {
+     "kind": "predictive",
+     "summary": [
+      "median",
+      "eti_90"
+     ]
+    }
+   },
+   "run_id": "run_01m5fb1yvah42faqw9rpagqr0a",
+   "state": "succeeded"
+  },
+  "predict_tail__readout": {
+   "captured": [
+    "predict_tail__readout.summary.json",
+    "predict_tail__readout.result.json"
+   ],
+   "inline": false,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-sm-arimax-4bec7d-tail-12@v1",
+    "kind": "ScoreRequest",
+    "mode": "predict",
+    "model": "model://default/v017-sm-arimax-4bec7d-model@v1",
+    "output": {
+     "summary": [
+      "median",
+      "eti_90"
+     ]
+    }
+   },
+   "run_id": "run_01m5fb1r7h04trdph4fkwaw280",
+   "state": "succeeded"
+  }
+ },
+ "size": "tiny",
+ "source": "conformance fixture sm_arimax",
+ "spec": {
+  "apiVersion": "mapi/v1",
+  "data": {
+   "bind": {
+    "dims": {
+     "t": "date"
+    },
+    "vars": {
+     "y": "sales"
+    }
+   },
+   "dataset": "dataset://default/v017-sm-arimax-4bec7d-data@v1",
+   "split": {
+    "dim": "t",
+    "kind": "time_holdout",
+    "last": 8
+   }
+  },
+  "evaluate": {
+   "metrics": [
+    "rmse",
+    "mae",
+    "mape",
+    "coverage_90"
+   ]
+  },
+  "kind": "ModelSpec",
+  "metadata": {
+   "labels": {
+    "corpus": "sm_arimax"
+   },
+   "name": "v017-sm-arimax-4bec7d-model",
+   "project": "default"
+  },
+  "model": {
+   "fit": {
+    "mode": "evaluate_then_refit",
+    "seed": 5
+   },
+   "settings": {
+    "exog": [
+     "price",
+     "promo"
+    ],
+    "order": [
+     1,
+     0,
+     0
+    ],
+    "series_dims": [
+     "geo"
+    ]
+   },
+   "use": "ts.sarimax@^1"
+  },
+  "outputs": {
+   "plots": [
+    "core.ppc_fan",
+    "core.fit_vs_actual",
+    "core.residuals_over_time"
+   ]
+  }
+ },
+ "version_metrics": {
+  "coverage_90": 0.875,
+  "mae": 2.0545795769689463,
+  "mape": 10.371587192855236,
+  "rmse": 2.624718389622321
+ }
+}
