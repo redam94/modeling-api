@@ -1,0 +1,276 @@
+{
+  "$defs": {
+    "InputTable": {
+      "description": "An endpoint's inline input as one long table: a header row (:attr:`columns`, the\ncoordinate columns first), then one row per coordinate - the layout of a spreadsheet's\nInput sheet and of :func:`mapi_spec.xrjson.xrjson_from_rows`.\n\nFor a forecasting endpoint :attr:`rows` lists the periods after the fitted history (the\nother dims' first levels), every value empty: fill the target where you have actuals and\nleave it empty for the periods to forecast (:mod:`mapi_spec.actuals`). Dates are ISO\n``yyyy-MM-dd``.",
+      "examples": [
+        {
+          "columns": [
+            {
+              "description": "The period (yyyy-MM-dd)",
+              "freq": "MS",
+              "name": "t",
+              "role": "coord"
+            },
+            {
+              "description": "The actual (leave empty for the periods to forecast)",
+              "dims": [
+                "t"
+              ],
+              "name": "y",
+              "role": "target"
+            },
+            {
+              "description": "Necessary on each period, also on the periods to forecast",
+              "dims": [
+                "t"
+              ],
+              "name": "price",
+              "role": "driver"
+            }
+          ],
+          "conditions_on_actuals": true,
+          "horizon_dim": "t",
+          "rows": [
+            [
+              "1961-01-01",
+              null,
+              null
+            ],
+            [
+              "1961-02-01",
+              null,
+              null
+            ]
+          ]
+        }
+      ],
+      "properties": {
+        "columns": {
+          "items": {
+            "$ref": "#/$defs/InputTableColumn"
+          },
+          "maxItems": 300,
+          "title": "Columns",
+          "type": "array"
+        },
+        "conditions_on_actuals": {
+          "default": false,
+          "title": "Conditions On Actuals",
+          "type": "boolean"
+        },
+        "horizon_dim": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Horizon Dim"
+        },
+        "rows": {
+          "items": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "maxItems": 200,
+          "title": "Rows",
+          "type": "array"
+        }
+      },
+      "title": "InputTable",
+      "type": "object"
+    },
+    "InputTableColumn": {
+      "description": "One column of an :class:`InputTable`.",
+      "properties": {
+        "description": {
+          "default": "",
+          "maxLength": 500,
+          "title": "Description",
+          "type": "string"
+        },
+        "dims": {
+          "description": "The dims a value column varies along",
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "title": "Dims",
+          "type": "array"
+        },
+        "freq": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The frequency of a time coordinate",
+          "title": "Freq"
+        },
+        "name": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "coord",
+            "target",
+            "driver",
+            "input"
+          ],
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "role"
+      ],
+      "title": "InputTableColumn",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-ActualsTemplate.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "``GET \u2026/actuals/template``: the table an upload fills in (the pinned version's inline\ninput table plus the KPI column). ``mode`` says what happens to the numbers:\n``conditioned`` (the forecast is updated with them) or ``compared`` (the model's\nprediction is compared with them; the model does not change).",
+  "examples": [
+    {
+      "example_csv": "week,orders,tv\n2026-10-25,,\n",
+      "input_table": {
+        "columns": [
+          {
+            "freq": "W-SUN",
+            "name": "week",
+            "role": "coord"
+          },
+          {
+            "dims": [
+              "week"
+            ],
+            "name": "orders",
+            "role": "target"
+          },
+          {
+            "dims": [
+              "week"
+            ],
+            "name": "tv",
+            "role": "driver"
+          }
+        ],
+        "horizon_dim": "week",
+        "rows": [
+          [
+            "2026-10-25",
+            null,
+            null
+          ]
+        ]
+      },
+      "kpi_column": "orders",
+      "max_rows": 520,
+      "mode": "compared"
+    }
+  ],
+  "properties": {
+    "example_csv": {
+      "maxLength": 65536,
+      "title": "Example Csv",
+      "type": "string"
+    },
+    "id_column": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Id Column"
+    },
+    "input_table": {
+      "$ref": "#/$defs/InputTable"
+    },
+    "kpi_column": {
+      "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Kpi Column",
+      "type": "string"
+    },
+    "label_column": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Label Column"
+    },
+    "match": {
+      "default": "time",
+      "enum": [
+        "time",
+        "row"
+      ],
+      "title": "Match",
+      "type": "string"
+    },
+    "max_rows": {
+      "default": 520,
+      "maximum": 5000,
+      "minimum": 1,
+      "title": "Max Rows",
+      "type": "integer"
+    },
+    "mode": {
+      "enum": [
+        "conditioned",
+        "compared"
+      ],
+      "title": "Mode",
+      "type": "string"
+    }
+  },
+  "required": [
+    "mode",
+    "input_table",
+    "kpi_column",
+    "example_csv"
+  ],
+  "title": "ActualsTemplate",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

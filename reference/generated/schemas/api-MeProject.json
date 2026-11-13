@@ -1,8 +1,9 @@
 {
   "$defs": {
     "ProjectRole": {
-      "description": "Project roles, ordered ``viewer < editor < runner < admin`` (each includes the last).",
+      "description": "Project roles, ordered ``client < viewer < editor < runner < admin`` (each includes the\nlast).\n\n``client`` (v0.16) is rank 0: every rule needs at least ``viewer`` except the dashboard\nreads and inputs, so a client sees only the published dashboards granted to them. A\nclient membership is always project-scoped (:func:`check_role_scope`), and the server\nlets a client reach only :data:`mapi_spec.api.CLIENT_OPERATIONS`.",
       "enum": [
+        "client",
         "viewer",
         "editor",
         "runner",

@@ -1,0 +1,30 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-RefitRequestDecision.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``POST \u2026/refit-requests/{request_id}:approve`` or ``:reject``: an optional note.",
+  "examples": [
+    {
+      "note": "Refit with the October numbers."
+    },
+    {}
+  ],
+  "properties": {
+    "note": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Note"
+    }
+  },
+  "title": "RefitRequestDecision",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

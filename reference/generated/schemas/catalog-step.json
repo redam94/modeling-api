@@ -294,6 +294,34 @@
     "kind": {
       "$ref": "#/$defs/StepKind"
     },
+    "overlay_hash": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "v0.19: the sha256 of the uploaded wheel the step comes from",
+      "title": "Overlay Hash"
+    },
+    "provider": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "v0.18: the distribution that installed a non-built-in step",
+      "title": "Provider"
+    },
     "provides": {
       "description": "Preprocessing a model may declare it owns (ModelManifest owns); such a step is rejected on the target/media variables of a model that owns it",
       "items": {

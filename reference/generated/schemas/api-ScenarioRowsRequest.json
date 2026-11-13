@@ -1,0 +1,77 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-ScenarioRowsRequest.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``POST \u2026/predictions``: up to 20 rows of the scenario inputs (names as the form's\n``inputs``; missing values take the defaults). The server checks every value against\nthe published revision's defs and refuses (never clips) a value out of range.",
+  "examples": [
+    {
+      "label": "Two prices",
+      "rows": [
+        {
+          "price": 18.0
+        },
+        {
+          "price": 22.5
+        }
+      ]
+    },
+    {
+      "rows": [
+        {
+          "promo": true,
+          "store": "s_new",
+          "week": "2026-11-01"
+        }
+      ]
+    }
+  ],
+  "properties": {
+    "label": {
+      "anyOf": [
+        {
+          "maxLength": 80,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Label"
+    },
+    "rows": {
+      "items": {
+        "patternProperties": {
+          "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "maxItems": 20,
+      "minItems": 1,
+      "title": "Rows",
+      "type": "array"
+    }
+  },
+  "required": [
+    "rows"
+  ],
+  "title": "ScenarioRowsRequest",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

@@ -1,0 +1,57 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-PluginDecision.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Approve or reject a version. The digests must be the ones the page showed (else\n``PLUGIN_STATE_CONFLICT``); a rejection needs a ``note``.",
+  "examples": [
+    {
+      "base_image_digest": "sha256:efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef",
+      "describe_digest": "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+      "overlay_sha256": "sha256:abababababababababababababababababababababababababababababababab"
+    },
+    {
+      "base_image_digest": "sha256:efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef",
+      "describe_digest": "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+      "note": "The recipe sends data to an external host.",
+      "overlay_sha256": "sha256:abababababababababababababababababababababababababababababababab"
+    }
+  ],
+  "properties": {
+    "base_image_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Base Image Digest",
+      "type": "string"
+    },
+    "describe_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Describe Digest",
+      "type": "string"
+    },
+    "note": {
+      "anyOf": [
+        {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Note"
+    },
+    "overlay_sha256": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Overlay Sha256",
+      "type": "string"
+    }
+  },
+  "required": [
+    "overlay_sha256",
+    "describe_digest",
+    "base_image_digest"
+  ],
+  "title": "PluginDecision",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

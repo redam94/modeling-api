@@ -107,7 +107,9 @@
         "workflow_node",
         "explore",
         "governance",
-        "inspect"
+        "inspect",
+        "plugin_inspect",
+        "plugin_describe"
       ],
       "title": "RunKind",
       "type": "string"
@@ -232,6 +234,16 @@
       ],
       "default": null,
       "title": "Overlay Hash"
+    },
+    "overlay_hashes": {
+      "description": "v0.19: the sha256 of every overlay the supervisor verified and mounted",
+      "items": {
+        "pattern": "^sha256:[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "maxItems": 8,
+      "title": "Overlay Hashes",
+      "type": "array"
     },
     "prefix": {
       "maxLength": 1024,

@@ -1,0 +1,79 @@
+{
+  "$defs": {
+    "ChatAudiences": {
+      "additionalProperties": false,
+      "description": "Who may chat when chat is on: members, client users with a grant, share links.",
+      "properties": {
+        "clients": {
+          "default": true,
+          "title": "Clients",
+          "type": "boolean"
+        },
+        "members": {
+          "default": true,
+          "title": "Members",
+          "type": "boolean"
+        },
+        "share_links": {
+          "default": false,
+          "title": "Share Links",
+          "type": "boolean"
+        }
+      },
+      "title": "ChatAudiences",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-ChatSettingsUpdate.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``PUT \u2026/chat/settings`` with ``If-Match: <etag>``: the whole settings document.",
+  "examples": [
+    {
+      "audiences": {
+        "clients": true,
+        "members": true,
+        "share_links": false
+      },
+      "enabled": true,
+      "keep_transcripts": false,
+      "share_tokens_per_day": 50000,
+      "tokens_per_day": 200000
+    }
+  ],
+  "properties": {
+    "audiences": {
+      "$ref": "#/$defs/ChatAudiences"
+    },
+    "enabled": {
+      "title": "Enabled",
+      "type": "boolean"
+    },
+    "keep_transcripts": {
+      "title": "Keep Transcripts",
+      "type": "boolean"
+    },
+    "share_tokens_per_day": {
+      "maximum": 1000000,
+      "minimum": 0,
+      "title": "Share Tokens Per Day",
+      "type": "integer"
+    },
+    "tokens_per_day": {
+      "maximum": 5000000,
+      "minimum": 0,
+      "title": "Tokens Per Day",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "enabled",
+    "audiences",
+    "keep_transcripts",
+    "tokens_per_day",
+    "share_tokens_per_day"
+  ],
+  "title": "ChatSettingsUpdate",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

@@ -1,0 +1,32 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-PluginClaim.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Claim a short name: the namespace becomes ``t_<tenant code>_<short_name>``.",
+  "examples": [
+    {
+      "short_name": "acme",
+      "title": "Acme store tools"
+    }
+  ],
+  "properties": {
+    "short_name": {
+      "pattern": "^[a-z][a-z0-9]{1,15}$",
+      "title": "Short Name",
+      "type": "string"
+    },
+    "title": {
+      "maxLength": 120,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    }
+  },
+  "required": [
+    "short_name",
+    "title"
+  ],
+  "title": "PluginClaim",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

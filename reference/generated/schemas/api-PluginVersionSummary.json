@@ -1,0 +1,142 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-PluginVersionSummary.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "One uploaded version of a plugin (lists).",
+  "examples": [
+    {
+      "describe_digest": "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+      "exports": {
+        "model": 1,
+        "node": 1,
+        "plot": 1,
+        "step": 1,
+        "template": 1
+      },
+      "id": "plv_01jbz3q2x8m9v7k5h4g3f2e1d1",
+      "overlay_sha256": "sha256:abababababababababababababababababababababababababababababababab",
+      "plugin_id": "plg_01jbz3q2x8m9v7k5h4g3f2e1d0",
+      "scope": "private",
+      "state": "kit_passed",
+      "uploaded_at": "2026-10-22T09:30:00Z",
+      "uploaded_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+      "version": "0.1.0"
+    }
+  ],
+  "properties": {
+    "describe_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Describe Digest"
+    },
+    "exports": {
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "propertyNames": {
+        "enum": [
+          "model",
+          "step",
+          "plot",
+          "node",
+          "template"
+        ]
+      },
+      "title": "Exports",
+      "type": "object"
+    },
+    "id": {
+      "examples": [
+        "plv_01jbz3q2x8m9v7k5h4g3f2e1d1"
+      ],
+      "pattern": "^plv_[0-9a-z]{26}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "overlay_sha256": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Overlay Sha256"
+    },
+    "plugin_id": {
+      "examples": [
+        "plg_01jbz3q2x8m9v7k5h4g3f2e1d0"
+      ],
+      "pattern": "^plg_[0-9a-z]{26}$",
+      "title": "Plugin Id",
+      "type": "string"
+    },
+    "scope": {
+      "description": "Who may use it now: only the uploader (private), the whole tenant, or nobody",
+      "enum": [
+        "private",
+        "tenant",
+        "none"
+      ],
+      "title": "Scope",
+      "type": "string"
+    },
+    "state": {
+      "enum": [
+        "uploaded",
+        "inspecting",
+        "inspect_failed",
+        "describing",
+        "kit_failed",
+        "kit_passed",
+        "awaiting_approval",
+        "approved",
+        "rejected",
+        "yanked",
+        "purged"
+      ],
+      "title": "State",
+      "type": "string"
+    },
+    "uploaded_at": {
+      "format": "date-time",
+      "title": "Uploaded At",
+      "type": "string"
+    },
+    "uploaded_by": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Uploaded By",
+      "type": "string"
+    },
+    "version": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[0-9][0-9A-Za-z.+!-]*$",
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "plugin_id",
+    "version",
+    "state",
+    "scope",
+    "uploaded_by",
+    "uploaded_at"
+  ],
+  "title": "PluginVersionSummary",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

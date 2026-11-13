@@ -1,0 +1,859 @@
+/* Mono building blocks: bands, tiles, figures, steps, link rows, chips, scroll reveal.
+   How to use them from Markdown is at the top of mono.css. */
+
+/* ----------------------------------------------------------------------------- bands */
+
+.mono-band {
+  position: relative;
+  padding: clamp(72px, 11vw, 150px) 0;
+  background-color: var(--mono-bg);
+  color: var(--mono-ink);
+}
+.mono-band--alt {
+  background-color: var(--mono-bg-alt);
+}
+.mono-band--tight {
+  padding: clamp(48px, 7vw, 96px) 0;
+}
+.mono-band--flush-top {
+  padding-top: 0;
+}
+/* .mono-band--dark takes the dark tokens (mono.css), so it is dark in both schemes */
+.mono-band--dark {
+  background-color: var(--mono-bg);
+  color: var(--mono-ink);
+}
+
+.mono-wrap {
+  max-width: calc(var(--mono-wrap) + 2 * var(--mono-gutter));
+  margin: 0 auto;
+  padding: 0 var(--mono-gutter);
+}
+.mono-wrap--narrow {
+  max-width: 764px;
+}
+.mono-wrap > :first-child {
+  margin-top: 0;
+}
+.mono-wrap > :last-child {
+  margin-bottom: 0;
+}
+.mono-center {
+  text-align: center;
+}
+.md-typeset .mono-center > :is(.mono-lead, .mono-headline, .mono-display, .mono-kicker, p) {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* A full-bleed page (home.html): anything that is not a band gets the column. */
+.mono-home__body > :not(.mono-band) {
+  max-width: calc(var(--mono-wrap) + 2 * var(--mono-gutter));
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--mono-gutter);
+  padding-right: var(--mono-gutter);
+}
+
+/* Art: drawn on black, so it shows in dark scheme and in dark bands only. */
+.mono-hero--home {
+  --hero-art: url("../assets/brand/hero-home.webp");
+}
+.mono-hero--learn {
+  --hero-art: url("../assets/brand/hero-learn.webp");
+}
+.mono-hero--guides {
+  --hero-art: url("../assets/brand/hero-guides.webp");
+}
+.mono-hero--extend {
+  --hero-art: url("../assets/brand/hero-extend.webp");
+}
+.mono-hero--reference {
+  --hero-art: url("../assets/brand/hero-reference.webp");
+}
+.mono-hero--operate {
+  --hero-art: url("../assets/brand/hero-operate.webp");
+}
+.mono-404 {
+  --hero-art: url("../assets/brand/hero-404.webp");
+}
+
+[data-md-color-scheme="slate"] .mono-band--hero,
+.mono-band--dark.mono-band--hero {
+  background:
+    radial-gradient(ellipse 42% 75% at 50% 50%, var(--mono-bg) 35%, color-mix(in srgb, var(--mono-bg) 25%, transparent) 100%),
+    var(--hero-art, none) center / cover no-repeat,
+    var(--mono-bg);
+}
+/* A left-aligned head clears the left side, not the centre. The art is in the right 23% of
+   its file. The scrim is solid to 60% of the width and then lets the art come in slowly, so
+   the art has no hard left edge. */
+[data-md-color-scheme="slate"] .mono-band--hero.mono-band--left,
+.mono-band--dark.mono-band--hero.mono-band--left {
+  background:
+    linear-gradient(90deg, var(--mono-bg) 60%, color-mix(in srgb, var(--mono-bg) 25%, transparent) 100%),
+    var(--hero-art, none) right center / cover no-repeat,
+    var(--mono-bg);
+}
+@media screen and (max-width: 53.75em) {
+  [data-md-color-scheme="slate"] .mono-band--hero,
+  .mono-band--dark.mono-band--hero,
+  [data-md-color-scheme="slate"] .mono-band--hero.mono-band--left,
+  .mono-band--dark.mono-band--hero.mono-band--left {
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--mono-bg) 20%, transparent), var(--mono-bg) 70%),
+      var(--hero-art, none) center top / auto 55% no-repeat,
+      var(--mono-bg);
+  }
+}
+
+/* corner textures, screen-blended so they also sit on --mono-bg-alt */
+[data-md-color-scheme="slate"] .mono-band:is(.tex-contours, .tex-lattice, .tex-curves),
+.mono-band--dark:is(.tex-contours, .tex-lattice, .tex-curves) {
+  background-image: var(--tex);
+  background-position: var(--tex-pos);
+  background-size: 100% auto;
+  background-repeat: no-repeat;
+  background-blend-mode: screen;
+}
+.tex-contours {
+  --tex: url("../assets/brand/tex-contours.webp");
+  --tex-pos: right bottom;
+}
+.tex-lattice {
+  --tex: url("../assets/brand/tex-lattice.webp");
+  --tex-pos: right top;
+}
+.tex-curves {
+  --tex: url("../assets/brand/tex-curves.webp");
+  --tex-pos: left bottom;
+}
+
+/* ------------------------------------------------------------------------------ type */
+
+.md-typeset .mono-kicker {
+  margin: 0 0 12px;
+  max-width: none;
+  color: var(--mono-muted);
+  font-size: clamp(17px, 2vw, 21px);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+}
+.md-typeset .mono-display {
+  margin: 0;
+  max-width: 14ch;
+  color: var(--mono-ink);
+  font-size: clamp(44px, 8.4vw, 96px);
+  font-weight: 600;
+  letter-spacing: -0.028em;
+  line-height: 1.04;
+  text-wrap: balance;
+}
+.md-typeset .mono-headline {
+  margin: 0;
+  max-width: 18ch;
+  color: var(--mono-ink);
+  font-size: clamp(34px, 5.4vw, 64px);
+  font-weight: 600;
+  letter-spacing: -0.024em;
+  line-height: 1.06;
+  text-wrap: balance;
+}
+.md-typeset .mono-headline--s {
+  max-width: 22ch;
+  font-size: clamp(28px, 3.6vw, 44px);
+}
+.md-typeset :is(.mono-display, .mono-headline) .headerlink {
+  display: none;
+}
+/* running copy: a grey sentence with the key phrases in full ink */
+.md-typeset .mono-lead {
+  margin: 22px 0 0;
+  max-width: 34em;
+  color: var(--mono-muted);
+  font-size: clamp(19px, 2.1vw, 24px);
+  font-weight: 600;
+  letter-spacing: -0.017em;
+  line-height: 1.36;
+  text-wrap: pretty;
+}
+.md-typeset .mono-lead :is(strong, b) {
+  color: var(--mono-ink);
+  font-weight: 600;
+}
+.md-typeset .mono-lead code {
+  font-weight: 500;
+}
+
+/* a text link with a chevron */
+.md-typeset .mono-more,
+.mono-more {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  color: var(--mono-ink);
+  font-size: clamp(17px, 1.8vw, 21px);
+  font-weight: 400;
+  letter-spacing: -0.012em;
+  text-decoration: none;
+}
+.mono-more::after {
+  content: "";
+  width: 0.42em;
+  height: 0.42em;
+  border-top: 1.5px solid currentColor;
+  border-right: 1.5px solid currentColor;
+  transform: rotate(45deg) translateY(-0.08em);
+  transition: transform 0.25s var(--mono-ease);
+}
+.md-typeset .mono-more:hover,
+.md-typeset .mono-more:focus {
+  text-decoration: underline;
+  text-decoration-color: currentColor;
+}
+.mono-more:hover::after {
+  transform: translateX(3px) rotate(45deg) translateY(-0.08em);
+}
+
+.mono-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 26px;
+  margin-top: 30px;
+}
+.mono-center .mono-actions,
+.mono-center > .mono-actions {
+  justify-content: center;
+}
+.md-typeset .mono-actions > p {
+  display: contents;
+}
+.md-typeset .mono-actions .md-button {
+  margin: 0;
+}
+
+/* ----------------------------------------------------------------------------- tiles */
+/* Two ways to write a tile in Markdown (see mono.css):
+   1. A list inside <div class="mono-tiles mono-tiles--3" markdown>: each item is a tile.
+   2. <div class="mono-tile mono-span-7" markdown> inside .mono-tiles, for a chosen width.
+   In both, the .mono-more link covers the whole tile. A template may also use
+   <a class="mono-tile">. */
+
+.mono-tiles {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 20px;
+  margin-top: clamp(40px, 6vw, 72px);
+}
+.md-typeset .mono-tiles > ul {
+  display: contents;
+}
+.md-typeset .mono-tile,
+.md-typeset .mono-tiles > ul > li {
+  grid-column: span 6;
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  min-height: 300px;
+  margin: 0;
+  padding: clamp(26px, 3.4vw, 44px);
+  overflow: hidden;
+  border-radius: var(--mono-radius-l);
+  background: var(--mono-bg-alt);
+  color: var(--mono-ink);
+  list-style: none;
+  text-align: left;
+  text-decoration: none;
+}
+.md-typeset .mono-band--alt .mono-tile,
+.md-typeset .mono-band--alt .mono-tiles > ul > li {
+  background: var(--mono-bg);
+}
+.md-typeset .mono-span-4,
+.md-typeset .mono-tiles--3 > ul > li {
+  grid-column: span 4;
+}
+.md-typeset .mono-span-5 {
+  grid-column: span 5;
+}
+.md-typeset .mono-span-6 {
+  grid-column: span 6;
+}
+.md-typeset .mono-span-7 {
+  grid-column: span 7;
+}
+.md-typeset .mono-span-8 {
+  grid-column: span 8;
+}
+.md-typeset .mono-span-12 {
+  grid-column: span 12;
+}
+/* list form, rows of 7 + 5 then 5 + 7 */
+.md-typeset .mono-tiles--7-5 > ul > li:nth-child(4n + 1),
+.md-typeset .mono-tiles--7-5 > ul > li:nth-child(4n + 4) {
+  grid-column: span 7;
+}
+.md-typeset .mono-tiles--7-5 > ul > li:nth-child(4n + 2),
+.md-typeset .mono-tiles--7-5 > ul > li:nth-child(4n + 3) {
+  grid-column: span 5;
+}
+.md-typeset :is(.mono-tile, .mono-tiles > ul > li) :is(h2, h3) {
+  margin: 0;
+  max-width: none;
+  color: var(--mono-ink);
+  font-size: clamp(24px, 2.6vw, 32px);
+  font-weight: 600;
+  letter-spacing: -0.022em;
+  line-height: 1.12;
+  text-wrap: balance;
+}
+.md-typeset :is(.mono-tile, .mono-tiles > ul > li) .headerlink {
+  display: none;
+}
+.md-typeset :is(.mono-tile, .mono-tiles > ul > li) p {
+  margin: 12px 0 0;
+  max-width: 36em;
+  color: var(--mono-muted);
+  font-size: 17px;
+  letter-spacing: -0.011em;
+  line-height: 1.47;
+  text-wrap: pretty;
+}
+.md-typeset :is(.mono-tile, .mono-tiles > ul > li) p strong {
+  color: var(--mono-ink);
+  font-weight: 600;
+}
+.md-typeset :is(.mono-tile, .mono-tiles > ul > li) > p:has(> .mono-icon:only-child) {
+  margin: 0;
+}
+.md-typeset :is(.mono-tile, .mono-tiles > ul > li) > :is(.mono-more, p:has(> .mono-more:only-child)) {
+  margin-top: auto;
+  padding-top: 22px;
+}
+.md-typeset :is(.mono-tile, .mono-tiles > ul > li) .mono-more {
+  font-size: 17px;
+}
+/* the link covers the tile */
+.md-typeset div.mono-tile .mono-more::before,
+.md-typeset .mono-tiles > ul > li .mono-more::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+/* keyboard focus on that link rings the tile */
+.md-typeset :is(div.mono-tile, .mono-tiles > ul > li):has(.mono-more:focus-visible) {
+  outline: 2px solid var(--mono-ink);
+  outline-offset: 3px;
+}
+.md-typeset :is(div.mono-tile, .mono-tiles > ul > li) .mono-more:focus-visible {
+  outline: none;
+}
+/* the soft glow in the top-right corner, on dark surfaces only */
+.mono-tile::before,
+.md-typeset .mono-tiles > ul > li::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: url("../assets/brand/bg-card.webp") right top / cover no-repeat;
+  opacity: var(--mono-card-glow);
+  mix-blend-mode: screen;
+  transition: opacity 0.5s var(--mono-ease);
+  pointer-events: none;
+}
+a.mono-tile,
+.md-typeset .mono-tile:has(.mono-more),
+.md-typeset .mono-tiles > ul > li:has(.mono-more) {
+  transition: transform 0.5s var(--mono-ease);
+}
+a.mono-tile:hover,
+.md-typeset .mono-tile:has(.mono-more):hover,
+.md-typeset .mono-tiles > ul > li:has(.mono-more):hover {
+  transform: scale(1.012);
+}
+a.mono-tile:hover::before,
+.md-typeset .mono-tile:has(.mono-more):hover::before,
+.md-typeset .mono-tiles > ul > li:has(.mono-more):hover::before {
+  opacity: calc(var(--mono-card-glow) * 1.8);
+}
+.md-typeset .mono-tile:hover .mono-more,
+.md-typeset .mono-tiles > ul > li:hover .mono-more {
+  text-decoration: none;
+}
+.mono-tile:hover .mono-more::after,
+.md-typeset .mono-tiles > ul > li:hover .mono-more::after {
+  transform: translateX(3px) rotate(45deg) translateY(-0.08em);
+}
+@media screen and (max-width: 53.75em) {
+  .md-typeset .mono-tile,
+  .md-typeset .mono-tiles > ul > li,
+  .md-typeset .mono-tiles > ul > li:nth-child(n),
+  .md-typeset :is(.mono-span-4, .mono-span-5, .mono-span-6, .mono-span-7, .mono-span-8) {
+    grid-column: span 12;
+    min-height: 0;
+  }
+}
+
+/* A 56px icon drawn on black. Dark: screen. Light: invert, turn the hue back, multiply. */
+.md-typeset .mono-icon,
+.mono-icon {
+  display: block;
+  width: 56px;
+  height: 56px;
+  margin: -6px 0 20px -6px;
+  filter: var(--mono-icon-filter);
+  mix-blend-mode: var(--mono-icon-blend);
+}
+
+/* --------------------------------------------------------------------------- figures */
+
+.mono-figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 36px 28px;
+  margin-top: clamp(40px, 6vw, 72px);
+  text-align: left;
+}
+.md-typeset .mono-figure-num {
+  margin: 0;
+  max-width: none;
+  color: var(--mono-ink);
+  font-size: clamp(44px, 6vw, 72px);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.md-typeset .mono-figure-num.is-orange {
+  color: var(--mono-orange);
+}
+.md-typeset .mono-figure-num.is-blue {
+  color: var(--mono-blue);
+}
+.md-typeset .mono-figure-num.is-green {
+  color: var(--mono-green);
+}
+.md-typeset .mono-figure-num.is-red {
+  color: var(--mono-red);
+}
+.md-typeset .mono-figures p:not(.mono-figure-num) {
+  margin: 12px 0 0;
+  max-width: 24em;
+  color: var(--mono-muted);
+  font-size: 15px;
+  line-height: 1.4;
+}
+/* Figures in a left-aligned head with art: the row ends at 73% of the width of the page, so
+   no number and no label is on the art (which starts at 77%). The row keeps four columns;
+   on a narrow desktop it has two. Below 53.75em the art is above the text (see the bands). */
+@media screen and (min-width: 53.76em) {
+  .mono-band--hero.mono-band--left .mono-figures {
+    max-width: calc(73vw - max(var(--mono-gutter), 50vw - var(--mono-wrap) / 2));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media screen and (min-width: 60em) {
+  .mono-band--hero.mono-band--left .mono-figures {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* ------------------------------------------------------------------------------ steps */
+/* <ol class="mono-steps">, or a numbered Markdown list in <div class="mono-steps" markdown>. */
+
+.md-typeset ol.mono-steps,
+.md-typeset .mono-steps > ol {
+  display: grid;
+  gap: 2px;
+  margin: clamp(36px, 5vw, 64px) 0 0;
+  padding: 0;
+  max-width: none;
+  list-style: none;
+  counter-reset: mono-step;
+  text-align: left;
+}
+.md-typeset ol.mono-steps > li,
+.md-typeset .mono-steps > ol > li {
+  counter-increment: mono-step;
+  position: relative;
+  margin: 0;
+  padding: 26px clamp(20px, 3vw, 36px) 26px calc(clamp(20px, 3vw, 36px) + 84px);
+  background: var(--mono-bg-alt);
+}
+.md-typeset .mono-band--alt ol.mono-steps > li,
+.md-typeset .mono-band--alt .mono-steps > ol > li {
+  background: var(--mono-bg);
+}
+.md-typeset ol.mono-steps > li:first-child,
+.md-typeset .mono-steps > ol > li:first-child {
+  border-radius: var(--mono-radius-l) var(--mono-radius-l) 0 0;
+}
+.md-typeset ol.mono-steps > li:last-child,
+.md-typeset .mono-steps > ol > li:last-child {
+  border-radius: 0 0 var(--mono-radius-l) var(--mono-radius-l);
+}
+.md-typeset ol.mono-steps > li::before,
+.md-typeset .mono-steps > ol > li::before {
+  content: counter(mono-step);
+  position: absolute;
+  top: 24px;
+  left: clamp(20px, 3vw, 36px);
+  color: var(--mono-faint);
+  font-size: 40px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.md-typeset :is(ol.mono-steps, .mono-steps > ol) > li :is(h3, h4) {
+  margin: 0;
+  color: var(--mono-ink);
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  line-height: 1.25;
+}
+.md-typeset :is(ol.mono-steps, .mono-steps > ol) > li .headerlink {
+  display: none;
+}
+.md-typeset :is(ol.mono-steps, .mono-steps > ol) > li p {
+  margin: 6px 0 0;
+  max-width: 60ch;
+  color: var(--mono-muted);
+  font-size: 15.5px;
+}
+.md-typeset :is(ol.mono-steps, .mono-steps > ol) > li p strong {
+  color: var(--mono-ink);
+}
+@media screen and (max-width: 35em) {
+  .md-typeset ol.mono-steps > li,
+  .md-typeset .mono-steps > ol > li {
+    padding-left: clamp(20px, 3vw, 36px);
+    padding-top: 74px;
+  }
+}
+
+/* ------------------------------------------------------------------------------ links */
+/* Stacked link rows. <ul class="mono-links">, or a Markdown list of links inside
+   <div class="mono-links" markdown>. Inside a link: bold = the title, plain text = one
+   line of description, italic = a short label at the right. */
+
+.md-typeset ul.mono-links,
+.md-typeset .mono-links > ul {
+  display: grid;
+  gap: 2px;
+  margin: 28px 0 0;
+  padding: 0;
+  max-width: none;
+  list-style: none;
+  text-align: left;
+}
+.md-typeset :is(ul.mono-links, .mono-links > ul) > li {
+  margin: 0;
+}
+/* The link is a block and only the title is a line of its own. (As a flex column, each
+   inline part of the description, such as a name in code, was a row of its own.) */
+.md-typeset :is(ul.mono-links, .mono-links > ul) > li > a {
+  position: relative;
+  display: block;
+  padding: 16px 110px 16px 22px;
+  background: var(--mono-bg-alt);
+  color: var(--mono-muted);
+  font-size: 14.5px;
+  line-height: 1.4;
+  text-decoration: none;
+  transition: background-color 0.2s;
+}
+.md-typeset .mono-band--alt :is(ul.mono-links, .mono-links > ul) > li > a {
+  background: var(--mono-bg);
+}
+.md-typeset :is(ul.mono-links, .mono-links > ul) > li:first-child > a {
+  border-radius: var(--mono-radius-m) var(--mono-radius-m) 0 0;
+}
+.md-typeset :is(ul.mono-links, .mono-links > ul) > li:last-child > a {
+  border-radius: 0 0 var(--mono-radius-m) var(--mono-radius-m);
+}
+.md-typeset :is(ul.mono-links, .mono-links > ul) > li:only-child > a {
+  border-radius: var(--mono-radius-m);
+}
+.md-typeset :is(ul.mono-links, .mono-links > ul) > li > a:hover,
+.md-typeset :is(ul.mono-links, .mono-links > ul) > li > a:focus {
+  background: color-mix(in srgb, var(--mono-ink) 9%, var(--mono-bg));
+  color: var(--mono-ink-2);
+}
+.md-typeset :is(ul.mono-links, .mono-links > ul) > li > a:is(:hover, :focus) :is(i, em) {
+  color: var(--mono-ink-2);
+}
+.md-typeset :is(ul.mono-links, .mono-links > ul) > li > a :is(b, strong) {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--mono-ink);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+}
+/* a name in code in the description: --mono-muted on the chip is below 4.5:1 */
+.md-typeset :is(ul.mono-links, .mono-links > ul) > li > a code {
+  color: var(--mono-ink-2);
+}
+.md-typeset :is(ul.mono-links, .mono-links > ul) > li > a :is(i, em) {
+  position: absolute;
+  top: 50%;
+  right: 22px;
+  transform: translateY(-50%);
+  color: var(--mono-subtle);
+  font-size: 13px;
+  font-style: normal;
+}
+@media screen and (max-width: 35em) {
+  .md-typeset :is(ul.mono-links, .mono-links > ul) > li > a {
+    padding-right: 22px;
+  }
+  .md-typeset :is(ul.mono-links, .mono-links > ul) > li > a :is(i, em) {
+    position: static;
+    display: block;
+    margin-top: 2px;
+    transform: none;
+  }
+}
+
+/* ------------------------------------------------------------------------------ chips */
+
+.md-typeset .mono-chip,
+.mono-chip {
+  display: inline-block;
+  padding: 3px 11px;
+  border-radius: var(--mono-radius-pill);
+  background: color-mix(in srgb, var(--mono-ink) 8%, transparent);
+  color: var(--mono-ink-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.4;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.mono-chip.is-orange {
+  background: var(--mono-orange-soft);
+  color: var(--mono-orange-text);
+}
+.mono-chip.is-blue {
+  background: var(--mono-blue-soft);
+  color: var(--mono-blue-text);
+}
+.mono-chip.is-green {
+  background: var(--mono-green-soft);
+  color: var(--mono-green-text);
+}
+.mono-chip.is-red {
+  background: var(--mono-red-soft);
+  color: var(--mono-red-text);
+}
+
+/* ----------------------------------------------------------------------------- reveal */
+/* mono.js adds .mono-reveal to <html> when it will animate. Blocks that are on screen at
+   that moment stay as they are; the others fade in and rise as they scroll into view.
+   Without the script, in print and with reduced motion every block is simply visible. */
+
+.mono-reveal [data-reveal] {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.9s var(--mono-ease), transform 0.9s var(--mono-ease);
+  transition-delay: calc(var(--i, 0) * 90ms);
+}
+.mono-reveal [data-reveal].is-in {
+  opacity: 1;
+  transform: none;
+}
+.mono-reveal [data-reveal].is-still {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mono-reveal [data-reveal] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .md-typeset .grid.cards > :is(ul, ol) > li:hover,
+  .md-typeset .grid > .card:hover,
+  a.mono-tile:hover,
+  .md-typeset .mono-tile:hover,
+  .md-typeset .mono-tiles > ul > li:hover {
+    transform: none;
+  }
+}
+
+@media print {
+  .mono-reveal [data-reveal] {
+    opacity: 1;
+    transform: none;
+  }
+  /* no fill and no art on paper; the selectors repeat the ones that draw art above */
+  .mono-band,
+  .mono-band--alt,
+  .mono-band--dark,
+  [data-md-color-scheme="slate"] .mono-band--hero,
+  .mono-band--dark.mono-band--hero,
+  [data-md-color-scheme="slate"] .mono-band--hero.mono-band--left,
+  .mono-band--dark.mono-band--hero.mono-band--left,
+  [data-md-color-scheme="slate"] .mono-band:is(.tex-contours, .tex-lattice, .tex-curves),
+  .mono-band--dark:is(.tex-contours, .tex-lattice, .tex-curves) {
+    padding: 24px 0;
+    background: none;
+    color: #1d1d1f;
+  }
+  .mono-tile,
+  .md-typeset .mono-tiles > ul > li {
+    min-height: 0;
+    border: 1px solid #d2d2d7;
+    background: none;
+    break-inside: avoid;
+  }
+  .mono-tile::before,
+  .md-typeset .mono-tiles > ul > li::before {
+    display: none;
+  }
+}
+
+/* ------------------------------------------------- home and landing pages (v0.21, T6) */
+/* Additions for docs/index.md and the section landing pages (guides/index.md,
+   reference/index.md). The blocks above do not change.
+
+     + mono-tiles--routes   a tile holds two or three .mono-more links; no link covers the
+                            tile, and the links stack at the bottom
+     + mono-tiles--4        four tiles in a row (three on a narrow desktop; with
+                            mono-tiles--compact, two on a phone)
+     + mono-tiles--compact  small tiles for a list of tasks: a 44px icon, a short title and
+                            one link or one line
+     mono-tour              two columns: a .mono-steps block at the left and a .mapi-shots
+                            block with at most two screenshots at the right */
+
+.md-typeset .mono-tiles--routes > ul > li .mono-more::before {
+  content: none;
+}
+.md-typeset .mono-tiles--routes > ul > li:has(.mono-more):hover {
+  transform: none;
+}
+.md-typeset .mono-tiles--routes > ul > li > p:has(> .mono-more) ~ p:has(> .mono-more) {
+  margin-top: 0;
+  padding-top: 10px;
+}
+.md-typeset .mono-tiles--routes > ul > li:has(.mono-more:focus-visible) {
+  outline: none;
+}
+.md-typeset .mono-tiles--routes > ul > li .mono-more:focus-visible {
+  outline: 2px solid var(--mono-ink);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+.md-typeset .mono-tiles--routes > ul > li .mono-more:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.md-typeset .mono-tiles--4 > ul > li {
+  grid-column: span 3;
+}
+.md-typeset .mono-tiles--compact {
+  gap: 16px;
+  margin-top: clamp(28px, 4vw, 44px);
+}
+.md-typeset .mono-tiles--compact > ul > li {
+  min-height: 0;
+  padding: 26px 26px 24px;
+}
+.md-typeset .mono-tiles--compact > ul > li :is(h2, h3) {
+  font-size: 21px;
+  letter-spacing: -0.016em;
+  line-height: 1.2;
+}
+.md-typeset .mono-tiles--compact > ul > li p {
+  margin-top: 8px;
+  font-size: 15px;
+  line-height: 1.4;
+}
+.md-typeset .mono-tiles--compact > ul > li .mono-more {
+  font-size: 15px;
+}
+.md-typeset .mono-tiles--compact > ul > li > p:has(> .mono-more:only-child) {
+  padding-top: 12px;
+}
+.md-typeset .mono-tiles--compact .mono-icon {
+  width: 44px;
+  height: 44px;
+  margin: -4px 0 14px -4px;
+}
+@media screen and (max-width: 76.25em) {
+  .md-typeset .mono-tiles--4 > ul > li {
+    grid-column: span 4;
+  }
+}
+@media screen and (max-width: 53.75em) {
+  .md-typeset .mono-tiles--compact {
+    gap: 12px;
+  }
+  .md-typeset .mono-tiles--compact > ul > li:nth-child(n) {
+    padding: 20px 18px 18px;
+  }
+  /* the twelve task tiles stay two in a row on a phone; three tiles stack */
+  .md-typeset .mono-tiles--compact.mono-tiles--4 > ul > li:nth-child(n) {
+    grid-column: span 6;
+  }
+}
+/* the screenshots of the product tour: space above the row, and the link below it */
+.md-typeset .mono-band .mapi-shots {
+  margin: clamp(28px, 4vw, 44px) 0 0;
+}
+/* the captures have different heights: show the top of each in one frame */
+.md-typeset .mono-band .mapi-shots img.mapi-shot {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  object-position: top left;
+  background: #fff;
+}
+.md-typeset .mono-band .mapi-shots + .mono-actions {
+  margin-top: 28px;
+}
+/* + mono-tour: the product tour of the home page. The steps and the link to the tutorial are
+   at the left, and at most two screenshots are at the right, so the band is one screen high
+   and not two. On a narrow screen the two parts stack. */
+.md-typeset .mono-tour {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: clamp(20px, 3vw, 32px);
+  align-items: start;
+  margin-top: clamp(28px, 4vw, 44px);
+}
+.md-typeset .mono-tour .mono-steps > ol,
+.md-typeset .mono-band .mono-tour > .mapi-shots {
+  margin: 0;
+}
+.md-typeset .mono-tour > .mapi-shots {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+.md-typeset .mono-band .mono-tour > .mapi-shots img.mapi-shot {
+  aspect-ratio: 16 / 9;
+}
+.md-typeset .mono-tour .mono-actions {
+  margin-top: 24px;
+}
+@media screen and (max-width: 59.984375em) {
+  .md-typeset .mono-tour {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+/* a link in the label of a figure keeps the colour of the label and shows an underline */
+.md-typeset .mono-figures p:not(.mono-figure-num) a {
+  color: var(--mono-ink);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+  text-underline-offset: 3px;
+}

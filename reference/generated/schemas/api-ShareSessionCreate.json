@@ -1,0 +1,39 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-ShareSessionCreate.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``POST /v1/share-sessions``: exchange a share token (and its passcode) for a session.\nThe token is sent once, in this body; the page strips it from the URL first.",
+  "examples": [
+    {
+      "token": "mpd_7k2m9q4x0123456789abcdefghjkmnpqrstvwxyz"
+    }
+  ],
+  "properties": {
+    "passcode": {
+      "anyOf": [
+        {
+          "format": "password",
+          "maxLength": 128,
+          "type": "string",
+          "writeOnly": true
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Passcode"
+    },
+    "token": {
+      "pattern": "^mpd_[0-9a-hjkmnp-tv-z]{40}$",
+      "title": "Token",
+      "type": "string"
+    }
+  },
+  "required": [
+    "token"
+  ],
+  "title": "ShareSessionCreate",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

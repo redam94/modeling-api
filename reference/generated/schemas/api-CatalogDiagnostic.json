@@ -1,0 +1,106 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-CatalogDiagnostic.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Something the runner could not put into the catalog, or put there with a change.\n\n``message`` is platform-authored plain text; anything a plugin wrote (an exception\nmessage, an id it exported) goes in ``untrusted_text`` and is shown as text only.",
+  "examples": [
+    {
+      "code": "namespace_reserved",
+      "distribution": "acme-models",
+      "entry_point": "acme",
+      "group": "mapi.models",
+      "id": "mmm.acme_mix",
+      "message": "The namespace 'mmm' belongs to the built-in plugins."
+    }
+  ],
+  "properties": {
+    "code": {
+      "enum": [
+        "load_error",
+        "namespace_reserved",
+        "id_collision",
+        "schema_unsafe",
+        "about_incomplete",
+        "node_contract_invalid",
+        "template_invalid",
+        "deprecated"
+      ],
+      "title": "Code",
+      "type": "string"
+    },
+    "distribution": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Distribution"
+    },
+    "entry_point": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Entry Point"
+    },
+    "group": {
+      "description": "The entry-point group (mapi.models, ...) or the check",
+      "maxLength": 64,
+      "title": "Group",
+      "type": "string"
+    },
+    "id": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "The catalog id concerned",
+      "title": "Id"
+    },
+    "message": {
+      "description": "Trusted, platform-authored text",
+      "maxLength": 500,
+      "title": "Message",
+      "type": "string"
+    },
+    "untrusted_text": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Plugin-originated text; render as text only",
+      "title": "Untrusted Text"
+    }
+  },
+  "required": [
+    "code",
+    "group",
+    "message"
+  ],
+  "title": "CatalogDiagnostic",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

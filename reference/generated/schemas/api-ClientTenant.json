@@ -1,0 +1,48 @@
+{
+  "$defs": {
+    "TenantStatus": {
+      "description": "``suspended`` tenants are read-only; ``deleting`` tenants are inaccessible.",
+      "enum": [
+        "active",
+        "suspended",
+        "deleting"
+      ],
+      "title": "TenantStatus",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-ClientTenant.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "The tenant as a caller whose every grant there is the ``client`` role sees it (v0.16):\nits id, name and status only. The trust tier, residency and the operator's status\nreason are the tenant's own business.",
+  "examples": [
+    {
+      "id": "acme",
+      "name": "Acme Retail",
+      "status": "active"
+    }
+  ],
+  "properties": {
+    "id": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+      "title": "Id",
+      "type": "string"
+    },
+    "name": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/TenantStatus",
+      "default": "active"
+    }
+  },
+  "required": [
+    "id",
+    "name"
+  ],
+  "title": "ClientTenant",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

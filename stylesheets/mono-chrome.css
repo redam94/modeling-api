@@ -1,0 +1,1139 @@
+/* Mono chrome: header, tabs, drawer, search dialog, sidebars, page head, footer.
+   Tokens and the block vocabulary are in mono.css. */
+
+/* ---------------------------------------------------------------------------- header */
+/* A 48px frosted bar. The hairline shows only after the page scrolls (mono.js sets
+   .is-scrolled). */
+
+.md-header.mono-header {
+  height: var(--mono-nav-h);
+  background: var(--mono-nav-bg);
+  background: color-mix(in srgb, var(--mono-nav-base) 78%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid transparent;
+  box-shadow: none;
+  color: var(--mono-ink);
+  transition: border-color 0.3s var(--mono-ease), transform 0.25s var(--mono-ease);
+}
+.md-header.mono-header.is-scrolled {
+  border-bottom-color: var(--mono-line-soft);
+}
+.md-header.mono-header.md-header--shadow {
+  box-shadow: none;
+}
+
+.md-header__inner.mono-header__inner {
+  height: 100%;
+  padding: 0 var(--mono-gutter);
+  gap: 20px;
+}
+/* Desktop: three columns (brand, tabs, tools). The two side columns have the same width, so
+   the tabs are in the centre of the page. In a flex row they were in the centre of the space
+   that the brand and the tools leave, which is 18px to the left. */
+@media screen and (min-width: 76.25em) {
+  .md-header__inner.mono-header__inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+  }
+  .md-header__button.md-logo.mono-brand,
+  .md-header__button.md-logo.mono-brand:not([hidden]) {
+    justify-self: start;
+  }
+}
+
+/* brand: the mark and the wordmark */
+.md-header__button.md-logo.mono-brand,
+.md-header__button.md-logo.mono-brand:not([hidden]) {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  flex: none;
+  color: var(--mono-ink);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  white-space: nowrap;
+}
+.md-header__button.md-logo.mono-brand:hover {
+  opacity: 1;
+}
+.md-header__button.md-logo .mono-mark,
+.md-nav__title .md-nav__button.md-logo .mono-mark {
+  display: block;
+  width: 22px;
+  height: 22px;
+}
+.mono-mark__top {
+  fill: var(--mono-blue);
+}
+.mono-mark__mid {
+  fill: currentColor;
+}
+.mono-mark__low {
+  fill: var(--mono-orange);
+}
+
+/* tabs: centred pill links in the header row (the middle column of the desktop grid) */
+.mono-tabs {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.mono-tabs::-webkit-scrollbar {
+  display: none;
+}
+/* The row scrolls sideways when it is too wide, so it clips. The padding is the room for
+   the focus ring of a tab (2px, with a 3px gap). */
+.mono-tabs__list {
+  display: flex;
+  gap: 4px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+}
+.mono-tabs__link {
+  display: block;
+  padding: 6px 10px;
+  border-radius: var(--mono-radius-pill);
+  color: var(--mono-ink-2);
+  font-size: 0.625rem;
+  letter-spacing: -0.005em;
+  line-height: 1.2;
+  white-space: nowrap;
+  transition: color 0.2s, background-color 0.2s;
+}
+.mono-tabs__link:hover {
+  color: var(--mono-ink);
+}
+.mono-tabs__link[aria-current] {
+  color: var(--mono-ink);
+  background: color-mix(in srgb, var(--mono-ink) 8%, transparent);
+}
+@media screen and (max-width: 82em) {
+  .mono-tabs__list {
+    gap: 0;
+  }
+  .mono-tabs__link {
+    padding: 6px 8px;
+  }
+}
+
+/* tools: search pill, palette toggle, menu button */
+.mono-header__tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  justify-self: end;
+}
+
+.mono-search-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 10px 0 9px;
+  border-radius: var(--mono-radius-pill);
+  background: color-mix(in srgb, var(--mono-ink) 7%, transparent);
+  /* --mono-muted on this tint is below 4.5:1 */
+  color: var(--mono-ink-2);
+  font-size: 0.625rem;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.2s, color 0.2s;
+}
+.mono-search-btn:hover {
+  background: color-mix(in srgb, var(--mono-ink) 12%, transparent);
+  color: var(--mono-ink);
+}
+.mono-search-btn svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.mono-search-btn__kbd {
+  padding: 1px 5px;
+  border: 1px solid var(--mono-line);
+  border-radius: 5px;
+  color: var(--mono-ink-2);
+  font: 500 11px/1.3 var(--mono-font);
+  white-space: nowrap;
+}
+.no-js .mono-search-btn {
+  display: none;
+}
+
+/* quiet icon buttons: palette toggle and menu */
+.mono-header .md-header__option {
+  align-items: center;
+}
+.mono-header .md-header__button.md-icon,
+.mono-header .md-header__button.mono-menu-btn {
+  width: 34px;
+  height: 34px;
+  margin: 0;
+  padding: 8px;
+  border-radius: 50%;
+  color: var(--mono-ink-2);
+  transition: background-color 0.2s, color 0.2s;
+}
+.mono-header .md-header__button.md-icon:hover,
+.mono-header .md-header__button.mono-menu-btn:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--mono-ink) 7%, transparent);
+  color: var(--mono-ink);
+}
+.mono-header .md-header__button.md-icon svg,
+.mono-header .md-header__button.mono-menu-btn svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+.mono-header .md-header__button.mono-menu-btn {
+  color: var(--mono-ink);
+}
+@media screen and (min-width: 76.25em) {
+  .mono-header .md-header__button.mono-menu-btn {
+    display: none;
+  }
+}
+
+/* Below Material's drawer breakpoint the tabs live in the drawer. */
+@media screen and (max-width: 76.234375em) {
+  .mono-tabs {
+    display: none;
+  }
+  .mono-header__tools {
+    margin-left: auto;
+  }
+}
+/* Small screens: the search pill is an icon. */
+@media screen and (max-width: 59.984375em) {
+  .mono-search-btn {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    justify-content: center;
+    background: transparent;
+    color: var(--mono-ink);
+  }
+  .mono-search-btn svg {
+    width: 17px;
+    height: 17px;
+  }
+  .mono-search-btn__text,
+  .mono-search-btn__kbd {
+    display: none;
+  }
+  .md-header__inner.mono-header__inner {
+    gap: 10px;
+    padding: 0 12px 0 var(--mono-gutter);
+  }
+  .mono-header__tools {
+    gap: 2px;
+  }
+}
+
+/* ---------------------------------------------------------------------------- drawer */
+/* Below 76.25em Material's navigation sidebar is a drawer. Here it is a sheet under the
+   header: large 600-weight rows with hairlines. The header stays on top, so the menu
+   button closes it again. */
+
+@media screen and (max-width: 76.234375em) {
+  [dir="ltr"] .md-sidebar--primary,
+  [dir="rtl"] .md-sidebar--primary {
+    left: 0;
+    right: 0;
+  }
+  .md-sidebar--primary {
+    top: var(--mono-nav-h);
+    width: 100%;
+    height: calc(100% - var(--mono-nav-h));
+    z-index: 3;
+    background: var(--mono-bg);
+    box-shadow: none;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition: opacity 0.3s var(--mono-ease), transform 0.3s var(--mono-ease), visibility 0.3s;
+  }
+  [data-md-toggle="drawer"]:checked ~ .md-container .md-sidebar--primary {
+    box-shadow: none;
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+  }
+  /* the sheet covers the page, so no dimming layer */
+  .md-overlay,
+  [data-md-toggle="drawer"]:checked ~ .md-overlay {
+    display: none;
+  }
+
+  .md-nav--primary,
+  .md-nav--primary .md-nav {
+    background: var(--mono-bg);
+  }
+  /* the header already shows the brand */
+  .md-nav--primary > .md-nav__title[for="__drawer"] {
+    display: none;
+  }
+  /* a nested level opens with a quiet "back" row */
+  .md-nav--primary .md-nav__title {
+    height: auto;
+    padding: 16px var(--mono-gutter) 12px 50px;
+    background: none;
+    color: var(--mono-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.3;
+    border-bottom: 1px solid var(--mono-line-soft);
+  }
+  .md-nav--primary .md-nav__title .md-nav__icon {
+    top: 13px;
+    left: 16px;
+    margin: 0;
+  }
+  [dir="ltr"] .md-nav--primary .md-nav__title .md-nav__icon {
+    left: 16px;
+  }
+  .md-nav--primary .md-nav__title ~ .md-nav__list {
+    box-shadow: none;
+    padding: 4px var(--mono-gutter) 28px;
+    scroll-snap-type: none;
+  }
+  .md-nav--primary .md-nav__item {
+    border-top: 0;
+    border-bottom: 1px solid var(--mono-line-soft);
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+  }
+  .md-nav--primary .md-nav__link {
+    padding: 11px 0;
+    color: var(--mono-ink-2);
+  }
+  .md-nav--primary .md-nav__item--active > .md-nav__link,
+  .md-nav--primary .md-nav__link--active {
+    color: var(--mono-ink);
+  }
+  /* deeper levels are lists of pages: smaller rows */
+  .md-nav--primary .md-nav .md-nav .md-nav__item,
+  .md-nav--primary .md-nav--secondary .md-nav__item {
+    font-size: 0.85rem;
+    font-weight: 500;
+    letter-spacing: -0.012em;
+  }
+  .md-nav--primary .md-nav .md-nav .md-nav__link,
+  .md-nav--primary .md-nav--secondary .md-nav__link {
+    padding: 10px 0;
+  }
+  .md-nav--primary .md-nav__link .md-nav__icon {
+    color: var(--mono-faint);
+  }
+  [dir="ltr"] .md-nav--primary .md-nav--secondary .md-nav .md-nav__link {
+    padding-left: 16px;
+  }
+  [dir="ltr"] .md-nav--primary .md-nav--secondary .md-nav .md-nav .md-nav__link {
+    padding-left: 32px;
+  }
+}
+
+/* ---------------------------------------------------------------------------- search */
+/* A centred panel over a blurred page. It is hidden with opacity, not with visibility,
+   because Material focuses the input to open it. */
+
+.mono-search {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  align-items: start;
+  justify-items: center;
+  padding: 12vh 16px 16px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s var(--mono-ease);
+}
+[data-md-toggle="search"]:checked ~ .mono-search {
+  opacity: 1;
+  pointer-events: auto;
+}
+.mono-search__scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--mono-scrim);
+  cursor: default;
+}
+[data-md-toggle="search"]:checked ~ .mono-search .mono-search__scrim {
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  backdrop-filter: blur(18px) saturate(160%);
+}
+.mono-search__panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(680px, 100%);
+  max-height: 72vh;
+  overflow: hidden;
+  background: var(--mono-bg-raise);
+  border: 1px solid var(--mono-line-soft);
+  border-radius: var(--mono-radius-m);
+  /* the one large shadow in the theme */
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.35);
+  transform: translateY(-12px) scale(0.985);
+  transition: transform 0.3s var(--mono-ease);
+}
+[data-md-toggle="search"]:checked ~ .mono-search .mono-search__panel {
+  transform: none;
+}
+
+.mono-search__field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: none;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--mono-line-soft);
+}
+.mono-search__field > svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  color: var(--mono-muted);
+}
+.mono-search__input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--mono-ink);
+  font-family: var(--mono-font);
+  font-size: 21px;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+}
+.mono-search__input::placeholder {
+  color: var(--mono-subtle);
+  opacity: 1;
+}
+.mono-search__clear {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: 50%;
+  color: var(--mono-ink);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.mono-search__clear:hover {
+  background: color-mix(in srgb, var(--mono-ink) 8%, transparent);
+}
+.mono-search__clear svg {
+  width: 16px;
+  height: 16px;
+}
+.mono-search__input:placeholder-shown ~ .mono-search__clear {
+  display: none;
+}
+.mono-search__esc {
+  flex: none;
+  padding: 3px 7px;
+  border: 1px solid var(--mono-line);
+  border-radius: 6px;
+  color: var(--mono-muted);
+  font: 500 11px/1.3 var(--mono-font);
+  cursor: pointer;
+}
+.mono-search__esc:hover {
+  color: var(--mono-ink);
+  border-color: var(--mono-muted);
+}
+
+.mono-search__output {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.mono-search__scroll {
+  overflow-y: auto;
+  padding: 8px;
+  outline: none;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--mono-line) transparent;
+}
+
+/* group labels: the count line, "Try", and the section name above a result */
+.mono-search .md-search-result__meta,
+.mono-search__label,
+.mono-search__section {
+  display: block;
+  margin: 0;
+  padding: 12px 12px 4px;
+  background: none;
+  color: var(--mono-subtle);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+/* with an empty box the "Try" list replaces the count line */
+.mono-search.is-empty .md-search-result {
+  display: none;
+}
+
+.mono-search__try ul,
+.mono-search .md-search-result__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mono-search .md-search-result__item {
+  box-shadow: none;
+}
+.mono-search__try a,
+.mono-search .md-search-result__link {
+  display: block;
+  border-radius: var(--mono-radius-s);
+  outline: none;
+  color: var(--mono-ink);
+  transition: background-color 0.2s;
+}
+.mono-search__try a {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 12px;
+}
+.mono-search__try a:hover,
+.mono-search__try a:focus,
+.mono-search .md-search-result__link:hover,
+.mono-search .md-search-result__link:focus {
+  background: color-mix(in srgb, var(--mono-ink) 7%, transparent);
+}
+/* on the tinted row the grey text steps up one level, to keep 4.5:1 */
+.mono-search__try a:is(:hover, :focus) i,
+.mono-search .md-search-result__link:is(:hover, :focus) :is(.mono-search__teaser, .mono-search__section, .md-search-result__terms) {
+  color: var(--mono-ink-2);
+}
+.mono-search__try b {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.mono-search__try i {
+  flex: none;
+  color: var(--mono-subtle);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 500;
+}
+
+/* one result: section label, title, one line of text */
+.mono-search .md-search-result__article {
+  padding: 0 0 8px;
+  overflow: hidden;
+}
+[dir="ltr"] .mono-search .md-search-result__article {
+  padding-left: 0;
+}
+.mono-search .md-search-result__icon {
+  display: none;
+}
+.mono-search .md-search-result .md-typeset {
+  color: var(--mono-muted);
+  font-size: 13.5px;
+  line-height: 1.45;
+  letter-spacing: 0;
+}
+.mono-search .md-search-result .md-typeset h1,
+.mono-search .md-search-result .md-typeset h2 {
+  margin: 0;
+  padding: 10px 12px 0;
+  color: var(--mono-ink);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  max-width: none;
+}
+.mono-search .md-search-result__section + .md-search-result__article h1,
+.mono-search .mono-search__section + h1,
+.mono-search .mono-search__section + h2 {
+  padding-top: 0;
+}
+.mono-search .md-search-result__article > .md-tags {
+  display: none;
+}
+/* mono.js folds the text after the title into this one line */
+.mono-search .md-search-result__article > .mono-search__teaser {
+  display: block;
+  margin: 2px 0 0;
+  padding: 0 12px;
+  max-width: none;
+  overflow: hidden;
+  color: var(--mono-muted);
+  font-size: 13.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mono-search .md-search-result__article > .md-search-result__terms {
+  display: block;
+  margin: 2px 0 0;
+  padding: 0 12px;
+  color: var(--mono-subtle);
+  font-size: 12px;
+  font-style: normal;
+}
+/* matches: bold with the 2px orange underline, never a fill */
+.mono-search .md-search-result mark,
+.mono-search .md-search-result .md-typeset h1 mark,
+.mono-search .md-search-result .md-typeset h2 mark {
+  background: none;
+  color: var(--mono-ink);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: var(--mono-orange);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+/* "N more on this page" */
+.mono-search .md-search-result__more > summary {
+  position: static;
+  border-radius: var(--mono-radius-s);
+}
+.mono-search .md-search-result__more > summary > div {
+  padding: 2px 12px 8px;
+  color: var(--mono-subtle);
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: var(--mono-radius-s);
+}
+.mono-search .md-search-result__more > summary:hover > div,
+.mono-search .md-search-result__more > summary:focus > div {
+  background: color-mix(in srgb, var(--mono-ink) 7%, transparent);
+  color: var(--mono-ink);
+}
+.mono-search .md-search-result__more[open] > summary {
+  background: none;
+}
+.mono-search .md-search-result__more .md-search-result__link {
+  margin-left: 12px;
+}
+
+.mono-search__hints {
+  display: flex;
+  flex: none;
+  gap: 18px;
+  margin: 0;
+  padding: 10px 20px;
+  border-top: 1px solid var(--mono-line-soft);
+  color: var(--mono-subtle);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.mono-search__hints kbd {
+  display: inline-block;
+  min-width: 18px;
+  margin-right: 3px;
+  padding: 1px 5px;
+  border: 1px solid var(--mono-line);
+  border-radius: 5px;
+  color: var(--mono-muted);
+  font: 500 11px/1.3 var(--mono-font);
+  text-align: center;
+}
+@media (hover: none), (max-width: 44.984375em) {
+  .mono-search__hints {
+    display: none;
+  }
+}
+@media screen and (max-width: 44.984375em) {
+  .mono-search {
+    padding: 64px 12px 12px;
+  }
+  .mono-search__panel {
+    max-height: calc(100dvh - 76px);
+  }
+  .mono-search__input {
+    font-size: 19px;
+  }
+}
+
+/* ---------------------------------------------------------------------------- layout */
+
+.md-main__inner {
+  margin-top: 0;
+  padding-top: 8px;
+}
+.md-content__inner {
+  padding-top: 0;
+  margin-bottom: clamp(56px, 7vw, 96px);
+}
+.md-content__inner::before {
+  height: 0;
+}
+/* small screens: the text column lines up with the header and the page head */
+@media screen and (max-width: 76.234375em) {
+  .md-content__inner {
+    margin-left: var(--mono-gutter);
+    margin-right: var(--mono-gutter);
+  }
+}
+@media screen and (min-width: 76.25em) {
+  .md-sidebar {
+    top: var(--mono-nav-h);
+  }
+  .md-header--lifted ~ .md-container .md-sidebar {
+    top: var(--mono-nav-h);
+  }
+}
+
+/* --------------------------------------------------------------------------- page head */
+/* The breadcrumbs and the page title, above the columns. In dark scheme the section's art
+   sits at the right edge behind a scrim that keeps the left side clear. Light is plain.
+   The band is inside <main>: main.html closes Material's grid before the band and opens it
+   again after the band. The first grid is empty and takes no space. */
+
+.md-main__inner:has(+ .mono-pagehead) {
+  display: none;
+}
+/* Material gives the grid the height of <main>. With the band above it, that is too high. */
+.mono-pagehead + .md-main__inner {
+  height: auto;
+}
+.mono-pagehead {
+  position: relative;
+  background: var(--mono-bg);
+}
+.mono-pagehead__inner {
+  padding: clamp(28px, 4.4vw, 56px) var(--mono-gutter) clamp(10px, 1.4vw, 18px);
+}
+.mono-pagehead__title > h1 {
+  margin: 0;
+}
+/* a title that is a name in code (the Python API pages): plain monospace, not a chip */
+.mono-pagehead__title > h1 code {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+}
+[data-md-color-scheme="slate"] .mono-pagehead {
+  background:
+    linear-gradient(180deg, transparent 55%, var(--mono-bg) 100%),
+    linear-gradient(90deg, var(--mono-bg) 40%, color-mix(in srgb, var(--mono-bg) 25%, transparent) 80%),
+    var(--mono-hero-art, none) right center / cover no-repeat,
+    var(--mono-bg);
+}
+[data-mono-section="home"] {
+  --mono-hero-art: url("../assets/brand/hero-home.webp");
+}
+[data-mono-section="learn"] {
+  --mono-hero-art: url("../assets/brand/hero-learn.webp");
+}
+[data-mono-section="guides"] {
+  --mono-hero-art: url("../assets/brand/hero-guides.webp");
+}
+[data-mono-section="extend"] {
+  --mono-hero-art: url("../assets/brand/hero-extend.webp");
+}
+[data-mono-section="reference"] {
+  --mono-hero-art: url("../assets/brand/hero-reference.webp");
+}
+[data-mono-section="operate"] {
+  --mono-hero-art: url("../assets/brand/hero-operate.webp");
+}
+@media screen and (max-width: 59.984375em) {
+  [data-md-color-scheme="slate"] .mono-pagehead {
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--mono-bg) 35%, transparent), var(--mono-bg) 92%),
+      var(--mono-hero-art, none) right top / auto 100% no-repeat,
+      var(--mono-bg);
+  }
+}
+
+/* breadcrumbs: a muted kicker row */
+.md-path {
+  margin: 0 0 10px;
+  padding: 0;
+  overflow: visible;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  color: var(--mono-muted);
+}
+.md-content > .md-path {
+  margin: 0 0.8rem 10px;
+  padding-top: clamp(20px, 3vw, 36px);
+}
+@media screen and (min-width: 76.25em) {
+  .md-content > .md-path {
+    margin: 0 1.2rem 10px;
+  }
+}
+.md-path__list {
+  flex-wrap: wrap;
+  gap: 2px 6px;
+}
+.md-path__item:not(:first-child) {
+  gap: 6px;
+}
+.md-path__item:not(:first-child)::before {
+  width: 0.36em;
+  height: 0.36em;
+  margin: 0 3px 0 1px;
+  background: none;
+  -webkit-mask-image: none;
+  mask-image: none;
+  border-top: 1.5px solid var(--mono-faint);
+  border-right: 1.5px solid var(--mono-faint);
+  transform: rotate(45deg);
+  align-self: center;
+}
+.md-path__link {
+  color: var(--mono-muted);
+  transition: color 0.2s;
+}
+.md-path__link:hover,
+.md-path__link:focus {
+  color: var(--mono-ink);
+}
+
+/* -------------------------------------------------------------------------- sidebars */
+/* Quiet lists on a 1.5px rail. The active item is ink, 600, with an ink rail. */
+
+.md-sidebar {
+  padding: 4px 0 28px;
+}
+.md-nav {
+  font-size: 0.675rem;
+  line-height: 1.35;
+  letter-spacing: -0.005em;
+}
+@media screen and (min-width: 76.25em) {
+  .md-sidebar--primary .md-sidebar__scrollwrap,
+  .md-sidebar--secondary .md-sidebar__scrollwrap {
+    margin: 0;
+    /* A long list fades out at the edges of its pane, with no hard cut. The fades are in the
+       padding of the pane (6px at the top, 20px at the bottom), so the first and the last
+       link, and their focus rings, are clear of them when the list is at its start or end. */
+    -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 6px, #000 calc(100% - 20px), transparent 100%);
+    mask-image: linear-gradient(180deg, transparent 0, #000 6px, #000 calc(100% - 20px), transparent 100%);
+    padding-top: 6px;
+    padding-bottom: 24px;
+    /* a link that gets the focus scrolls to a position that is clear of the two fades */
+    scroll-padding: 8px 0 24px;
+  }
+  [dir="ltr"] .md-sidebar--primary .md-sidebar__inner {
+    padding-right: 0;
+    padding-left: var(--mono-gutter);
+  }
+  [dir="ltr"] .md-nav--primary .md-nav__list {
+    padding-left: 0;
+  }
+  [dir="ltr"] .md-nav--lifted > .md-nav__list > .md-nav__item > .md-nav:not(.md-nav--secondary),
+  [dir="ltr"] .md-nav__item--section > .md-nav {
+    margin-left: 0;
+  }
+
+  /* the tab's own name, and the group names inside it: small grey labels */
+  .md-nav--lifted > .md-nav__list > .md-nav__item--active > .md-nav__link,
+  .md-nav__item--section > .md-nav__link,
+  .md-nav__item--section > .md-nav__link[for] {
+    margin: 0 0 8px;
+    padding: 0 12px;
+    background: none;
+    box-shadow: none;
+    color: var(--mono-subtle);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0;
+  }
+  .md-nav--lifted > .md-nav__list > .md-nav__item--active > .md-nav__link {
+    position: static;
+  }
+  .md-nav__item--section > .md-nav__link.md-nav__container > a {
+    padding: 0;
+    border: 0;
+    color: inherit;
+    font-weight: inherit;
+  }
+  .md-nav__item--section {
+    margin: 22px 0 0;
+  }
+  .md-nav--lifted > .md-nav__list > .md-nav__item--active.md-nav__item--section {
+    margin: 0;
+  }
+
+  /* links on the rail */
+  .md-nav--primary .md-nav__item > .md-nav__link[href],
+  .md-nav--primary .md-nav__item > .md-nav__link[for]:not([for="__toc"]),
+  .md-nav--primary .md-nav__item > .md-nav__container {
+    margin: 2px 0 0;
+    padding: 5px 12px;
+    border-left: 1.5px solid var(--mono-line-soft);
+    color: var(--mono-muted);
+    transition: color 0.2s, border-color 0.2s;
+  }
+  [dir="ltr"] .md-nav--primary .md-nav__item > .md-nav__link {
+    margin-right: 0;
+  }
+  .md-nav--primary .md-nav__container > .md-nav__link {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    color: inherit;
+  }
+  .md-nav--primary .md-nav__item > .md-nav__link[href]:hover,
+  .md-nav--primary .md-nav__item > .md-nav__link[for]:hover,
+  .md-nav--primary .md-nav__item > .md-nav__container:hover {
+    color: var(--mono-ink);
+  }
+  .md-nav--primary .md-nav__item > .md-nav__link--active[href],
+  .md-nav--primary .md-nav__item > .md-nav__container:has(> .md-nav__link--active) {
+    border-left-color: var(--mono-ink);
+    color: var(--mono-ink);
+    font-weight: 600;
+  }
+  /* a nested group inside a group: indented, same rail */
+  .md-nav--primary .md-nav__item--nested:not(.md-nav__item--section) > .md-nav .md-nav__link[href] {
+    padding-left: 24px;
+    font-size: 12.5px;
+  }
+  .md-nav__icon {
+    color: var(--mono-faint);
+  }
+}
+
+/* table of contents (right) */
+.md-nav--secondary .md-nav__title,
+.md-nav--primary .md-nav__title {
+  color: var(--mono-subtle);
+}
+@media screen and (min-width: 60em) {
+  .md-sidebar--secondary .md-nav--secondary > .md-nav__title {
+    margin: 0 0 10px;
+    padding: 0 12px;
+    background: none;
+    box-shadow: none;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0;
+    position: static;
+  }
+  [dir="ltr"] .md-sidebar--secondary .md-nav--secondary .md-nav__list {
+    padding-left: 0;
+    padding-bottom: 0;
+  }
+  .md-sidebar--secondary .md-nav {
+    margin-bottom: 0;
+  }
+  .md-sidebar--secondary .md-nav__item > .md-nav__link {
+    margin: 2px 0 0;
+    padding: 5px 12px;
+    border-left: 1.5px solid var(--mono-line-soft);
+    color: var(--mono-muted);
+    transition: color 0.2s, border-color 0.2s;
+  }
+  [dir="ltr"] .md-sidebar--secondary .md-nav__item > .md-nav__link {
+    margin-right: 0;
+  }
+  .md-sidebar--secondary .md-nav .md-nav .md-nav__link {
+    padding-left: 24px;
+    font-size: 12.5px;
+  }
+  .md-sidebar--secondary .md-nav .md-nav .md-nav .md-nav__link {
+    padding-left: 36px;
+  }
+  .md-sidebar--secondary .md-nav__link:hover {
+    color: var(--mono-ink);
+  }
+  .md-sidebar--secondary .md-nav__link--passed {
+    color: var(--mono-muted);
+  }
+  .md-sidebar--secondary .md-nav__item > .md-nav__link--active {
+    border-left-color: var(--mono-ink);
+    color: var(--mono-ink);
+    font-weight: 600;
+  }
+  .md-sidebar--secondary .md-nav__link code {
+    background: none;
+    padding: 0;
+    color: inherit;
+    font-size: 0.92em;
+  }
+}
+
+/* ---------------------------------------------------------------------------- footer */
+/* Previous and next as two quiet tiles on the page surface; then the --bg-alt band. */
+
+.md-footer {
+  background: var(--mono-bg);
+  color: var(--mono-ink);
+}
+.md-footer__inner {
+  gap: 20px;
+  padding: 0 var(--mono-gutter) clamp(40px, 5vw, 64px);
+  overflow: visible;
+}
+.md-footer__inner:not([hidden]) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.md-footer__link {
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 20px 22px;
+  border-radius: var(--mono-radius-m);
+  background: var(--mono-bg-alt);
+  transition: background-color 0.2s;
+}
+.md-footer__link:hover,
+.md-footer__link:focus {
+  opacity: 1;
+  background: color-mix(in srgb, var(--mono-ink) 9%, var(--mono-bg));
+}
+.md-footer__link:is(:hover, :focus) .md-footer__direction {
+  color: var(--mono-ink-2);
+}
+.md-footer__link--next {
+  grid-column: 2;
+  margin: 0;
+}
+[dir="ltr"] .md-footer__link--next {
+  margin-left: 0;
+}
+.md-footer__button {
+  margin: 0;
+  padding: 0;
+  color: var(--mono-faint);
+}
+.md-footer__button svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+.md-footer__title {
+  max-width: none;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+}
+.md-footer__direction {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--mono-muted);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  opacity: 1;
+}
+@media screen and (max-width: 44.984375em) {
+  .md-footer__inner:not([hidden]) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .md-footer__link--next {
+    grid-column: 1;
+  }
+  .md-footer__link--prev .md-footer__title {
+    display: block;
+  }
+}
+
+.md-footer-meta {
+  background: var(--mono-bg-alt);
+}
+.md-footer-meta__inner {
+  padding: 28px var(--mono-gutter) 36px;
+}
+.md-copyright {
+  margin: 0;
+  padding: 0;
+  color: var(--mono-muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.md-copyright__highlight {
+  color: var(--mono-muted);
+}
+html .md-footer-meta.md-typeset a {
+  color: var(--mono-muted);
+  text-decoration: none;
+}
+html .md-footer-meta.md-typeset a:hover,
+html .md-footer-meta.md-typeset a:focus {
+  color: var(--mono-ink);
+  text-decoration: underline;
+}
+
+/* back to top: a pill */
+.md-top {
+  top: calc(var(--mono-nav-h) + 16px);
+  padding: 6px 14px 6px 10px;
+  border: 1px solid var(--mono-line-soft);
+  border-radius: var(--mono-radius-pill);
+  background: var(--mono-bg-raise);
+  box-shadow: none;
+  color: var(--mono-ink-2);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+.md-top:hover,
+.md-top:focus {
+  background: var(--mono-ink);
+  border-color: var(--mono-ink);
+  color: var(--mono-bg);
+}
+.md-top svg {
+  width: 16px;
+  height: 16px;
+  vertical-align: -4px;
+}
+
+/* ------------------------------------------------------------------------ full-bleed */
+/* home.html and 404.html put <span class="mono-fullbleed"> before <main>. */
+
+.mono-fullbleed ~ .md-main > .md-main__inner {
+  display: block;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+.mono-fullbleed ~ .md-main .md-content__inner {
+  margin: 0;
+  padding: 0;
+}
+
+/* ----------------------------------------------------------------------------- print */
+
+@media print {
+  .mono-search,
+  .mono-pagehead .md-path,
+  .md-top {
+    display: none;
+  }
+  .mono-pagehead,
+  [data-md-color-scheme="slate"] .mono-pagehead {
+    background: none;
+  }
+  .mono-pagehead__inner {
+    padding: 0 0 12px;
+  }
+}

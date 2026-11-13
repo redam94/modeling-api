@@ -1,0 +1,153 @@
+{
+  "$defs": {
+    "ChatAudiences": {
+      "additionalProperties": false,
+      "description": "Who may chat when chat is on: members, client users with a grant, share links.",
+      "properties": {
+        "clients": {
+          "default": true,
+          "title": "Clients",
+          "type": "boolean"
+        },
+        "members": {
+          "default": true,
+          "title": "Members",
+          "type": "boolean"
+        },
+        "share_links": {
+          "default": false,
+          "title": "Share Links",
+          "type": "boolean"
+        }
+      },
+      "title": "ChatAudiences",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-ChatSettingsView.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "``GET``/``PUT \u2026/chat/settings`` (editors). ``etag`` is the ``If-Match`` value of the\nnext update; ``used_today_tokens`` and ``est_micros_today`` cover the current UTC day;\n``transcript_days`` is how long the server keeps chats (``MAPI_CHAT_TRANSCRIPT_TTL_DAYS``).",
+  "examples": [
+    {
+      "audiences": {
+        "clients": true,
+        "members": true,
+        "share_links": false
+      },
+      "dashboard_id": "dsh_01jaf3k1m2n3p4q5r6s7t8v9w0",
+      "enabled": true,
+      "est_micros_today": 4210,
+      "etag": "\"c3\"",
+      "keep_transcripts": false,
+      "share_tokens_per_day": 50000,
+      "tokens_per_day": 200000,
+      "transcript_days": 30,
+      "updated_at": "2026-10-15T09:30:00Z",
+      "updated_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+      "used_today_tokens": 12480,
+      "version": 3
+    }
+  ],
+  "properties": {
+    "audiences": {
+      "$ref": "#/$defs/ChatAudiences"
+    },
+    "dashboard_id": {
+      "examples": [
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+      ],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Dashboard Id",
+      "type": "string"
+    },
+    "enabled": {
+      "default": false,
+      "title": "Enabled",
+      "type": "boolean"
+    },
+    "est_micros_today": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Est Micros Today",
+      "type": "integer"
+    },
+    "etag": {
+      "pattern": "^\"c[0-9]+\"$",
+      "title": "Etag",
+      "type": "string"
+    },
+    "keep_transcripts": {
+      "default": false,
+      "title": "Keep Transcripts",
+      "type": "boolean"
+    },
+    "share_tokens_per_day": {
+      "default": 50000,
+      "maximum": 1000000,
+      "minimum": 0,
+      "title": "Share Tokens Per Day",
+      "type": "integer"
+    },
+    "tokens_per_day": {
+      "default": 200000,
+      "maximum": 5000000,
+      "minimum": 0,
+      "title": "Tokens Per Day",
+      "type": "integer"
+    },
+    "transcript_days": {
+      "default": 30,
+      "minimum": 0,
+      "title": "Transcript Days",
+      "type": "integer"
+    },
+    "updated_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Updated At"
+    },
+    "updated_by": {
+      "anyOf": [
+        {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Updated By"
+    },
+    "used_today_tokens": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Used Today Tokens",
+      "type": "integer"
+    },
+    "version": {
+      "default": 1,
+      "minimum": 1,
+      "title": "Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "dashboard_id",
+    "etag"
+  ],
+  "title": "ChatSettingsView",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

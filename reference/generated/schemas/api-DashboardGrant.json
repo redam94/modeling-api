@@ -1,0 +1,65 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-DashboardGrant.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A client user who may see the dashboard (they hold a membership of the project).",
+  "examples": [
+    {
+      "created_at": "2026-10-15T09:30:00Z",
+      "display_name": "Cleo Client",
+      "email": "cleo@acme-retail.example",
+      "granted_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+      "user_id": "usr_01jaf3c1l2i3e4n5t6a7b8c9d0"
+    }
+  ],
+  "properties": {
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "display_name": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Display Name"
+    },
+    "email": {
+      "anyOf": [
+        {
+          "maxLength": 320,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Email"
+    },
+    "granted_by": {
+      "maxLength": 128,
+      "title": "Granted By",
+      "type": "string"
+    },
+    "user_id": {
+      "maxLength": 128,
+      "title": "User Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "user_id",
+    "granted_by",
+    "created_at"
+  ],
+  "title": "DashboardGrant",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

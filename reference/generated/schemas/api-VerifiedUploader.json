@@ -1,0 +1,77 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-VerifiedUploader.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "An editor a tenant admin attested (identity-verified for uploads).",
+  "examples": [
+    {
+      "display_name": "Eve Editor",
+      "email": "eve@example.com",
+      "method": "admin_attested",
+      "user_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+      "verified_at": "2026-10-22T09:30:00Z",
+      "verified_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k9"
+    }
+  ],
+  "properties": {
+    "display_name": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Display Name"
+    },
+    "email": {
+      "anyOf": [
+        {
+          "maxLength": 320,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Email"
+    },
+    "method": {
+      "enum": [
+        "admin_attested",
+        "provider"
+      ],
+      "title": "Method",
+      "type": "string"
+    },
+    "user_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "User Id",
+      "type": "string"
+    },
+    "verified_at": {
+      "format": "date-time",
+      "title": "Verified At",
+      "type": "string"
+    },
+    "verified_by": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Verified By",
+      "type": "string"
+    }
+  },
+  "required": [
+    "user_id",
+    "method",
+    "verified_by",
+    "verified_at"
+  ],
+  "title": "VerifiedUploader",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

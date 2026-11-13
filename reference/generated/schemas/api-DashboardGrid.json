@@ -1,0 +1,258 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-DashboardGrid.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "``GET \u2026/grid``: the pinned version's response grid (``ui/grids/response_curves.json``),\nclipped to the dashboard's channels and slider ranges. The browser evaluates the\nsliders with it (``whatif.ts``); no run is made.",
+  "examples": [
+    {
+      "baseline": [
+        2600.0,
+        2700.0
+      ],
+      "channels": [
+        "tv",
+        "search"
+      ],
+      "contribution": [
+        [
+          [
+            700.0,
+            1000.0,
+            1150.0
+          ],
+          [
+            300.0,
+            500.0,
+            620.0
+          ]
+        ],
+        [
+          [
+            650.0,
+            950.0,
+            1100.0
+          ],
+          [
+            320.0,
+            520.0,
+            650.0
+          ]
+        ]
+      ],
+      "current_spend": [
+        52000.0,
+        18000.0
+      ],
+      "draws": 2,
+      "format": "mapi.response-grid/v1",
+      "kpi": "orders",
+      "kpi_units": "orders",
+      "multipliers": [
+        0.5,
+        1.0,
+        1.5
+      ],
+      "periods": 52,
+      "spend": [
+        [
+          26000.0,
+          52000.0,
+          78000.0
+        ],
+        [
+          9000.0,
+          18000.0,
+          27000.0
+        ]
+      ],
+      "spend_units": "EUR"
+    }
+  ],
+  "properties": {
+    "baseline": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Baseline"
+    },
+    "channels": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 64,
+      "minItems": 1,
+      "title": "Channels",
+      "type": "array"
+    },
+    "contribution": {
+      "items": {
+        "items": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "type": "array"
+      },
+      "title": "Contribution",
+      "type": "array"
+    },
+    "contribution_by_geo": {
+      "anyOf": [
+        {
+          "items": {
+            "items": {
+              "items": {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              "type": "array"
+            },
+            "type": "array"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Contribution By Geo"
+    },
+    "current_spend": {
+      "items": {
+        "type": "number"
+      },
+      "title": "Current Spend",
+      "type": "array"
+    },
+    "draws": {
+      "maximum": 500,
+      "minimum": 1,
+      "title": "Draws",
+      "type": "integer"
+    },
+    "format": {
+      "const": "mapi.response-grid/v1",
+      "default": "mapi.response-grid/v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "geos": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 256,
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Geos"
+    },
+    "kpi": {
+      "maxLength": 128,
+      "title": "Kpi",
+      "type": "string"
+    },
+    "kpi_units": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Kpi Units"
+    },
+    "multipliers": {
+      "items": {
+        "type": "number"
+      },
+      "maxItems": 202,
+      "minItems": 2,
+      "title": "Multipliers",
+      "type": "array"
+    },
+    "periods": {
+      "minimum": 1,
+      "title": "Periods",
+      "type": "integer"
+    },
+    "spend": {
+      "items": {
+        "items": {
+          "type": "number"
+        },
+        "type": "array"
+      },
+      "title": "Spend",
+      "type": "array"
+    },
+    "spend_by_geo": {
+      "anyOf": [
+        {
+          "items": {
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "type": "array"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Spend By Geo"
+    },
+    "spend_units": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Spend Units"
+    }
+  },
+  "required": [
+    "kpi",
+    "periods",
+    "channels",
+    "multipliers",
+    "draws",
+    "contribution",
+    "spend",
+    "current_spend"
+  ],
+  "title": "DashboardGrid",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

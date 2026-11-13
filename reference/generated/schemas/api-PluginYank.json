@@ -1,0 +1,42 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-PluginYank.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Withdraw a version (``security`` also cancels queued and running runs that use it).",
+  "examples": [
+    {
+      "note": "Use 0.2.0.",
+      "reason": "superseded"
+    }
+  ],
+  "properties": {
+    "note": {
+      "anyOf": [
+        {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Note"
+    },
+    "reason": {
+      "enum": [
+        "withdrawn",
+        "security",
+        "superseded"
+      ],
+      "title": "Reason",
+      "type": "string"
+    }
+  },
+  "required": [
+    "reason"
+  ],
+  "title": "PluginYank",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

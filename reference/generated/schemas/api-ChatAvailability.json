@@ -1,0 +1,89 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-ChatAvailability.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "``GET \u2026/chat``: may the caller chat on this dashboard, and what to show first.",
+  "examples": [
+    {
+      "enabled_for_me": true,
+      "keeps_transcripts": false,
+      "model": "gemini-3.1-flash-lite",
+      "suggestions": [
+        "What does the latest readout show?",
+        "What changed since the last readout?",
+        "How accurate is the model?",
+        "Explain the main numbers in plain words."
+      ],
+      "transcript_days": 30
+    },
+    {
+      "enabled_for_me": false,
+      "reason": "off",
+      "suggestions": []
+    }
+  ],
+  "properties": {
+    "enabled_for_me": {
+      "title": "Enabled For Me",
+      "type": "boolean"
+    },
+    "keeps_transcripts": {
+      "default": false,
+      "title": "Keeps Transcripts",
+      "type": "boolean"
+    },
+    "model": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Model"
+    },
+    "reason": {
+      "anyOf": [
+        {
+          "enum": [
+            "off",
+            "audience",
+            "layout",
+            "region",
+            "provider",
+            "killswitch",
+            "budget"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reason"
+    },
+    "suggestions": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 4,
+      "title": "Suggestions",
+      "type": "array"
+    },
+    "transcript_days": {
+      "default": 30,
+      "minimum": 0,
+      "title": "Transcript Days",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "enabled_for_me"
+  ],
+  "title": "ChatAvailability",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

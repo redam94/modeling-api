@@ -1,6 +1,65 @@
 {
   "$defs": {
     "JsonValue": {},
+    "OverlayMount": {
+      "additionalProperties": false,
+      "description": "v0.19: one uploaded wheel a run mounts. The dispatcher signs ``get`` for this run's\ntenant only (generation-pinned); the supervisor checks the sha256 of the download against\n``pin.sha256`` before it extracts anything.",
+      "properties": {
+        "get": {
+          "$ref": "#/$defs/SignedGet"
+        },
+        "pin": {
+          "$ref": "#/$defs/OverlayPin"
+        },
+        "size": {
+          "minimum": 1,
+          "title": "Size",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "pin",
+        "get",
+        "size"
+      ],
+      "title": "OverlayMount",
+      "type": "object"
+    },
+    "OverlayPin": {
+      "additionalProperties": false,
+      "description": "One uploaded plugin version a run uses: which version, its namespace and the sha256 of\nthe wheel the control plane stored. Set by the control plane, never by a caller.",
+      "examples": [
+        {
+          "namespace": "t_k3vq7m_acme",
+          "plugin_version_id": "plv_01jbz3q2x8m9v7k5h4g3f2e1d1",
+          "sha256": "sha256:abababababababababababababababababababababababababababababababab"
+        }
+      ],
+      "properties": {
+        "namespace": {
+          "pattern": "^t_([a-z2-7]{6})_([a-z][a-z0-9]{1,15})$",
+          "title": "Namespace",
+          "type": "string"
+        },
+        "plugin_version_id": {
+          "pattern": "^plv_[0-9a-z]{26}$",
+          "title": "Plugin Version Id",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "plugin_version_id",
+        "namespace",
+        "sha256"
+      ],
+      "title": "OverlayPin",
+      "type": "object"
+    },
     "PostPolicy": {
       "additionalProperties": false,
       "description": "A V4 POST policy: multipart form uploads of any key under ``prefix``.\n\nThe uploader posts ``multipart/form-data`` to ``url`` with every entry of ``fields``,\nthen ``key`` (which must start with ``prefix``), then the ``file`` part last. The storage\nservice rejects bodies outside ``content_length_range`` and keys outside the prefix.\n\nA ``create_only`` policy cannot replace an existing object (its signed conditions carry\n``x-goog-if-generation-match: 0``), so the holder can neither overwrite the write-once\nmanifest nor swap an output after it was written.",
@@ -117,7 +176,9 @@
         "workflow_node",
         "explore",
         "governance",
-        "inspect"
+        "inspect",
+        "plugin_inspect",
+        "plugin_describe"
       ],
       "title": "RunKind",
       "type": "string"
@@ -629,6 +690,15 @@
       },
       "title": "Outputs",
       "type": "object"
+    },
+    "overlays": {
+      "description": "v0.19: the uploaded wheels this run mounts (exactly the run's pins)",
+      "items": {
+        "$ref": "#/$defs/OverlayMount"
+      },
+      "maxItems": 8,
+      "title": "Overlays",
+      "type": "array"
     },
     "project_id": {
       "examples": [

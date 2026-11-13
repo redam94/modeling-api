@@ -1,0 +1,23 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-PluginSettingsPatch.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Turn private use of kit-passed uploads on or off for the tenant.",
+  "examples": [
+    {
+      "private_use": false
+    }
+  ],
+  "properties": {
+    "private_use": {
+      "title": "Private Use",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "private_use"
+  ],
+  "title": "PluginSettingsPatch",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

@@ -1,0 +1,130 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-LibraryItem.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A library item (its documents are in :class:`LibraryRevision`).",
+  "examples": [
+    {
+      "archived": false,
+      "created_at": "2026-10-15T09:30:00Z",
+      "created_by": "usr_analyst",
+      "etag": "\"r3\"",
+      "id": "lib_01jaf3q2x8m9v7k5h4g3f2e1d0",
+      "kind": "model_recipe",
+      "latest_revision": 3,
+      "name": "store-sales",
+      "project_id": "growth",
+      "scope": "project",
+      "summary": "",
+      "tags": [
+        "retail"
+      ],
+      "title": "Store sales with promo lift",
+      "updated_at": "2026-10-15T09:30:00Z"
+    }
+  ],
+  "properties": {
+    "archived": {
+      "default": false,
+      "title": "Archived",
+      "type": "boolean"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "created_by": {
+      "title": "Created By",
+      "type": "string"
+    },
+    "etag": {
+      "description": "The latest revision as an ETag: \"r<latest_revision>\"",
+      "title": "Etag",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^lib_[0-9a-z]{26}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "model_recipe",
+        "prep_preset",
+        "chart_template",
+        "workflow_template"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "latest_revision": {
+      "minimum": 1,
+      "title": "Latest Revision",
+      "type": "integer"
+    },
+    "name": {
+      "maxLength": 64,
+      "title": "Name",
+      "type": "string"
+    },
+    "project_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Project Id"
+    },
+    "scope": {
+      "enum": [
+        "project",
+        "tenant"
+      ],
+      "title": "Scope",
+      "type": "string"
+    },
+    "summary": {
+      "default": "",
+      "maxLength": 300,
+      "title": "Summary",
+      "type": "string"
+    },
+    "tags": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 8,
+      "title": "Tags",
+      "type": "array"
+    },
+    "title": {
+      "maxLength": 120,
+      "title": "Title",
+      "type": "string"
+    },
+    "updated_at": {
+      "format": "date-time",
+      "title": "Updated At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "kind",
+    "scope",
+    "name",
+    "title",
+    "latest_revision",
+    "created_by",
+    "created_at",
+    "updated_at",
+    "etag"
+  ],
+  "title": "LibraryItem",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

@@ -16,6 +16,10 @@
     {
       "global_spend_cap_micros": 500000000,
       "reason": "daily cap for the beta"
+    },
+    {
+      "chat_enabled": false,
+      "reason": "model provider incident"
     }
   ],
   "properties": {
@@ -24,6 +28,19 @@
       "description": "Also cancel every unfinished run of tenant-uploaded code, queued or already placed on an executor. Requires untrusted_execution_enabled=false in the same update. Without it, pausing only holds new work and in-flight runs continue",
       "title": "Cancel Untrusted Runs",
       "type": "boolean"
+    },
+    "chat_enabled": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "v0.20: turn dashboard chat off (or on again) for every tenant",
+      "title": "Chat Enabled"
     },
     "clear_spend_cap": {
       "default": false,

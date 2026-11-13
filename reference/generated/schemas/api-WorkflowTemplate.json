@@ -300,6 +300,16 @@
       "title": "Id",
       "type": "string"
     },
+    "source": {
+      "default": "builtin",
+      "description": "v0.18: 'plugin' for a template an installed plugin added",
+      "enum": [
+        "builtin",
+        "plugin"
+      ],
+      "title": "Source",
+      "type": "string"
+    },
     "tags": {
       "items": {
         "type": "string"

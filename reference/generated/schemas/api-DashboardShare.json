@@ -1,0 +1,146 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-DashboardShare.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A share link as listed (never its token; ``display`` is ``mpd_\u2026<last 4>``).",
+  "examples": [
+    {
+      "allowed_inputs": [],
+      "created_at": "2026-10-15T09:30:00Z",
+      "created_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+      "display": "mpd_\u2026wxyz",
+      "expires_at": "2026-11-14T09:30:00Z",
+      "has_passcode": false,
+      "id": "dss_01jaf3t1v2w3x4y5z6a7b8c9d0",
+      "label": "Board pack",
+      "last_viewed_at": "2026-10-15T09:30:00Z",
+      "status": "active",
+      "views": 4
+    }
+  ],
+  "properties": {
+    "allowed_inputs": {
+      "items": {
+        "enum": [
+          "whatif",
+          "actuals",
+          "scenario_rows",
+          "batch"
+        ],
+        "type": "string"
+      },
+      "maxItems": 4,
+      "title": "Allowed Inputs",
+      "type": "array"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "created_by": {
+      "maxLength": 128,
+      "title": "Created By",
+      "type": "string"
+    },
+    "display": {
+      "maxLength": 16,
+      "title": "Display",
+      "type": "string"
+    },
+    "expires_at": {
+      "format": "date-time",
+      "title": "Expires At",
+      "type": "string"
+    },
+    "has_passcode": {
+      "default": false,
+      "title": "Has Passcode",
+      "type": "boolean"
+    },
+    "id": {
+      "examples": [
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+      ],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "label": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Label"
+    },
+    "last_viewed_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Last Viewed At"
+    },
+    "locked_until": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Locked Until"
+    },
+    "revoked_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Revoked At"
+    },
+    "status": {
+      "enum": [
+        "active",
+        "expired",
+        "revoked"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "views": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Views",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "id",
+    "display",
+    "status",
+    "expires_at",
+    "created_by",
+    "created_at"
+  ],
+  "title": "DashboardShare",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

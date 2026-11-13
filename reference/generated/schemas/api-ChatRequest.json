@@ -1,0 +1,130 @@
+{
+  "$defs": {
+    "ChatTurn": {
+      "additionalProperties": false,
+      "description": "One turn of a conversation: plain text.\n\nA ``user`` turn has no ``sig`` and at most :data:`CHAT_MAX_USER_CHARS` characters. An\n``assistant`` turn carries the ``sig`` the server returned with it, unchanged.",
+      "examples": [
+        {
+          "role": "user",
+          "text": "What changed since the last readout?"
+        },
+        {
+          "role": "assistant",
+          "sig": "q3Jx8m1V0bYH7kQf2nTzL5cWd9pR4sAe6uGiOjKvXyw",
+          "text": "Revenue went up by 4% (readout 12)."
+        }
+      ],
+      "properties": {
+        "role": {
+          "enum": [
+            "user",
+            "assistant"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "sig": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9_-]{43}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sig"
+        },
+        "text": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "text"
+      ],
+      "title": "ChatTurn",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-ChatRequest.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``POST /v1/dashboards/{dashboard_id}/chat`` and ``POST /v1/shared/chat``.\n\n``messages`` is the conversation so far plus the new question: it starts and ends with a\n``user`` turn and the roles alternate. ``conversation_id`` is ``None`` on the first\nmessage (the server makes one). ``readout_seq`` tells the assistant which readout the\nperson is looking at.",
+  "examples": [
+    {
+      "messages": [
+        {
+          "role": "user",
+          "text": "What changed since the last readout?"
+        }
+      ]
+    },
+    {
+      "conversation_id": "cnv_01jaf3t1v2w3x4y5z6a7b8c9d0",
+      "messages": [
+        {
+          "role": "user",
+          "text": "What changed since the last readout?"
+        },
+        {
+          "role": "assistant",
+          "sig": "q3Jx8m1V0bYH7kQf2nTzL5cWd9pR4sAe6uGiOjKvXyw",
+          "text": "Revenue went up by 4%."
+        },
+        {
+          "role": "user",
+          "text": "Which tile changed most?"
+        }
+      ],
+      "readout_seq": 12
+    }
+  ],
+  "properties": {
+    "conversation_id": {
+      "anyOf": [
+        {
+          "pattern": "^cnv_[0-9a-z]{26}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Conversation Id"
+    },
+    "messages": {
+      "items": {
+        "$ref": "#/$defs/ChatTurn"
+      },
+      "maxItems": 20,
+      "minItems": 1,
+      "title": "Messages",
+      "type": "array"
+    },
+    "readout_seq": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Readout Seq"
+    }
+  },
+  "required": [
+    "messages"
+  ],
+  "title": "ChatRequest",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

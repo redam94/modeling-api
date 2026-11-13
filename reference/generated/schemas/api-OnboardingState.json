@@ -1,0 +1,150 @@
+{
+  "$defs": {
+    "TourProgress": {
+      "additionalProperties": false,
+      "description": "Where the user is in one tour. ``updated_at`` is set by the server on merge.",
+      "properties": {
+        "status": {
+          "enum": [
+            "in_progress",
+            "completed",
+            "dismissed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "step": {
+          "default": 0,
+          "description": "Index of the current step",
+          "maximum": 50,
+          "minimum": 0,
+          "title": "Step",
+          "type": "integer"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "updated_at"
+      ],
+      "title": "TourProgress",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-OnboardingState.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "The checklist and tour progress of the calling user in one tenant.",
+  "examples": [
+    {
+      "version": 0
+    },
+    {
+      "checklist": {
+        "open_sample": "2026-10-15T09:30:00Z",
+        "took_tour": "2026-10-15T09:30:00Z"
+      },
+      "checklist_dismissed": false,
+      "hidden_samples": [],
+      "tips_off": false,
+      "tours": {
+        "welcome": {
+          "status": "completed",
+          "step": 5,
+          "updated_at": "2026-10-15T09:30:00Z"
+        }
+      },
+      "version": 4,
+      "welcomed_at": "2026-10-15T09:30:00Z"
+    }
+  ],
+  "properties": {
+    "checklist": {
+      "additionalProperties": {
+        "format": "date-time",
+        "type": "string"
+      },
+      "description": "Completed steps and when they were completed",
+      "propertyNames": {
+        "enum": [
+          "took_tour",
+          "open_sample",
+          "fit_model",
+          "read_results",
+          "try_whatif",
+          "make_dashboard",
+          "own_data",
+          "make_your_own"
+        ]
+      },
+      "title": "Checklist",
+      "type": "object"
+    },
+    "checklist_dismissed": {
+      "default": false,
+      "title": "Checklist Dismissed",
+      "type": "boolean"
+    },
+    "hidden_samples": {
+      "description": "Sample projects the user hid from the Start-here hub",
+      "items": {
+        "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+        "type": "string"
+      },
+      "maxItems": 8,
+      "title": "Hidden Samples",
+      "type": "array"
+    },
+    "tips_off": {
+      "default": false,
+      "description": "The user turned the welcome dialog and tips off",
+      "title": "Tips Off",
+      "type": "boolean"
+    },
+    "tours": {
+      "additionalProperties": {
+        "$ref": "#/$defs/TourProgress"
+      },
+      "propertyNames": {
+        "enum": [
+          "welcome",
+          "data",
+          "fit",
+          "results",
+          "whatif",
+          "dashboard",
+          "make_your_own"
+        ]
+      },
+      "title": "Tours",
+      "type": "object"
+    },
+    "version": {
+      "default": 0,
+      "description": "Bumped on every change; the ETag of the state",
+      "minimum": 0,
+      "title": "Version",
+      "type": "integer"
+    },
+    "welcomed_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "When the user first saw (and closed) the welcome dialog",
+      "title": "Welcomed At"
+    }
+  },
+  "title": "OnboardingState",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

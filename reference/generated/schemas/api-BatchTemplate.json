@@ -1,0 +1,148 @@
+{
+  "$defs": {
+    "BatchColumn": {
+      "description": "One column of a batch file (``input`` names the scenario input that checks it).",
+      "properties": {
+        "choices": {
+          "items": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "maxItems": 200,
+          "title": "Choices",
+          "type": "array"
+        },
+        "max": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max"
+        },
+        "min": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min"
+        },
+        "name": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "role": {
+          "enum": [
+            "id",
+            "driver"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "type": {
+          "default": "number",
+          "enum": [
+            "number",
+            "integer",
+            "choice",
+            "date",
+            "toggle",
+            "text"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "role"
+      ],
+      "title": "BatchColumn",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-BatchTemplate.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "``GET \u2026/batch/template``: the columns of a batch file, an example CSV and the cap.",
+  "examples": [
+    {
+      "columns": [
+        {
+          "name": "case_id",
+          "role": "id",
+          "type": "text"
+        },
+        {
+          "max": 120,
+          "min": 0,
+          "name": "tenure",
+          "role": "driver",
+          "type": "number"
+        },
+        {
+          "choices": [
+            "basic",
+            "plus"
+          ],
+          "name": "plan",
+          "role": "driver",
+          "type": "choice"
+        }
+      ],
+      "example_csv": "case_id,tenure,plan\nc1,12,basic\nc2,40,plus\n",
+      "id_column": "case_id",
+      "max_rows": 2000
+    }
+  ],
+  "properties": {
+    "columns": {
+      "items": {
+        "$ref": "#/$defs/BatchColumn"
+      },
+      "maxItems": 64,
+      "minItems": 1,
+      "title": "Columns",
+      "type": "array"
+    },
+    "example_csv": {
+      "maxLength": 65536,
+      "title": "Example Csv",
+      "type": "string"
+    },
+    "id_column": {
+      "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Id Column",
+      "type": "string"
+    },
+    "max_rows": {
+      "maximum": 5000,
+      "minimum": 1,
+      "title": "Max Rows",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "columns",
+    "id_column",
+    "example_csv",
+    "max_rows"
+  ],
+  "title": "BatchTemplate",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

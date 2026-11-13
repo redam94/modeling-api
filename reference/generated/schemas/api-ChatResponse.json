@@ -1,0 +1,364 @@
+{
+  "$defs": {
+    "ChatTurn": {
+      "additionalProperties": false,
+      "description": "One turn of a conversation: plain text.\n\nA ``user`` turn has no ``sig`` and at most :data:`CHAT_MAX_USER_CHARS` characters. An\n``assistant`` turn carries the ``sig`` the server returned with it, unchanged.",
+      "examples": [
+        {
+          "role": "user",
+          "text": "What changed since the last readout?"
+        },
+        {
+          "role": "assistant",
+          "sig": "q3Jx8m1V0bYH7kQf2nTzL5cWd9pR4sAe6uGiOjKvXyw",
+          "text": "Revenue went up by 4% (readout 12)."
+        }
+      ],
+      "properties": {
+        "role": {
+          "enum": [
+            "user",
+            "assistant"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "sig": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9_-]{43}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sig"
+        },
+        "text": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "text"
+      ],
+      "title": "ChatTurn",
+      "type": "object"
+    },
+    "ChatUsage": {
+      "description": "Model tokens spent by one turn (all model calls of the turn together).",
+      "examples": [
+        {
+          "input_tokens": 3120,
+          "model": "gemini-3.1-flash-lite",
+          "output_tokens": 96,
+          "thought_tokens": 0,
+          "total_tokens": 3216
+        }
+      ],
+      "properties": {
+        "input_tokens": {
+          "minimum": 0,
+          "title": "Input Tokens",
+          "type": "integer"
+        },
+        "model": {
+          "maxLength": 64,
+          "title": "Model",
+          "type": "string"
+        },
+        "output_tokens": {
+          "minimum": 0,
+          "title": "Output Tokens",
+          "type": "integer"
+        },
+        "thought_tokens": {
+          "minimum": 0,
+          "title": "Thought Tokens",
+          "type": "integer"
+        },
+        "total_tokens": {
+          "description": "What the daily budgets count",
+          "minimum": 0,
+          "title": "Total Tokens",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "input_tokens",
+        "output_tokens",
+        "thought_tokens",
+        "total_tokens",
+        "model"
+      ],
+      "title": "ChatUsage",
+      "type": "object"
+    },
+    "ErrorCode": {
+      "description": "Stable error codes. See :data:`ERROR_INFO` for HTTP status and titles.",
+      "enum": [
+        "SCHEMA_INVALID",
+        "SPEC_PARSE_ERROR",
+        "PAYLOAD_TOO_LARGE",
+        "UNSUPPORTED_API_VERSION",
+        "REF_UNRESOLVED",
+        "SETTINGS_INVALID",
+        "BINDING_INVALID",
+        "SPLIT_INVALID",
+        "LEAKAGE_RISK",
+        "DIM_POLICY_LOOSENED",
+        "SCHEMA_DYNAMIC",
+        "SIDE_TABLE_COVERAGE",
+        "PLOT_UNSAFE",
+        "UNSEEN_LEVELS",
+        "COORD_NOT_ALLOWED",
+        "HORIZON_EXCEEDS_FIT",
+        "MISSING_FUTURE_COVARIATE",
+        "NON_CONTIGUOUS_EXTENSION",
+        "CAPABILITY_UNSUPPORTED",
+        "RECURSIVE_UNSUPPORTED",
+        "MODE_NOT_SUPPORTED",
+        "QUOTA_EXCEEDED",
+        "RATE_LIMITED",
+        "UNAUTHENTICATED",
+        "FORBIDDEN",
+        "NOT_FOUND",
+        "CONFLICT",
+        "IDEMPOTENCY_CONFLICT",
+        "PRECONDITION_FAILED",
+        "USER_CODE_ERROR",
+        "RESOURCE_EXHAUSTED",
+        "INFRA_ERROR",
+        "INTEGRITY_FAILURE",
+        "TIMEOUT",
+        "SANDBOX_VIOLATION",
+        "CANCELLED",
+        "INTERNAL_ERROR",
+        "GUIDED_ANSWERS_INVALID",
+        "BUSINESS_PRIORS_INVALID",
+        "CALIBRATION_UNSUPPORTED",
+        "IMPORT_UNSUPPORTED",
+        "SCENARIO_OUT_OF_RANGE",
+        "PROMOTION_BLOCKED",
+        "OVERRIDE_REQUIRED",
+        "WEBHOOK_URL_BLOCKED",
+        "WEBHOOK_SIGNATURE_INVALID",
+        "EMBED_NOT_ALLOWED",
+        "LINK_EXPIRED",
+        "EMAIL_NOT_ALLOWED",
+        "TERMS_NOT_ACCEPTED",
+        "EMAIL_NOT_VERIFIED",
+        "IDENTITY_VERIFICATION_REQUIRED",
+        "ABOUT_INCOMPLETE",
+        "CHOOSER_ANSWER_INVALID",
+        "WORKFLOW_INVALID",
+        "EXPRESSION_INVALID",
+        "EXPRESSION_ERROR",
+        "NODE_UNKNOWN",
+        "SCHEDULE_INVALID",
+        "WORKFLOW_NOT_RUNNABLE",
+        "POLICY_INVALID",
+        "VALIDATION_TRANSITION_INVALID",
+        "SELF_APPROVAL_FORBIDDEN",
+        "NOT_VALIDATED",
+        "EXPLORE_INVALID",
+        "OPTIMIZE_INFEASIBLE",
+        "ACTUALS_NOT_SUPPORTED",
+        "ACTUALS_INVALID",
+        "NOT_READY",
+        "INGEST_UNSAFE_FILE",
+        "DASHBOARD_NOT_PUBLISHED",
+        "DASHBOARD_INPUT_DISABLED",
+        "DASHBOARD_LIVE_PAUSED",
+        "DASHBOARD_RUN_LIMIT",
+        "DASHBOARD_SPEC_STALE",
+        "SHARE_PASSCODE_REQUIRED",
+        "SHARE_PASSCODE_INVALID",
+        "SHARE_LOCKED",
+        "INVALID_ROLE_SCOPE",
+        "DASHBOARD_INPUT_INVALID",
+        "DASHBOARD_BATCH_TOO_LARGE",
+        "DASHBOARD_DOWNLOAD_GONE",
+        "DASHBOARD_LAYOUT_RETIRED",
+        "LIBRARY_INVALID",
+        "LIBRARY_DATA_SHAPE",
+        "SCHEMA_UNSAFE",
+        "EXTENSION_UNAVAILABLE",
+        "SAMPLES_DISABLED",
+        "PREVIEW_DISABLED",
+        "PLUGIN_REFUSED",
+        "PLUGIN_NAMESPACE_TAKEN",
+        "PLUGIN_VERSION_EXISTS",
+        "PLUGIN_STATE_CONFLICT",
+        "PLUGIN_UNAVAILABLE",
+        "UPLOADED_CODE_NOT_SHAREABLE",
+        "UNTRUSTED_PLACEMENT_UNAVAILABLE",
+        "REAUTH_REQUIRED",
+        "CHAT_DISABLED",
+        "CHAT_UNAVAILABLE",
+        "CHAT_BUDGET_EXHAUSTED",
+        "CHAT_HISTORY_INVALID",
+        "READ_TOKEN_LIMIT"
+      ],
+      "title": "ErrorCode",
+      "type": "string"
+    },
+    "JsonValue": {},
+    "ToolCallSummary": {
+      "description": "One tool call the assistant made in a turn (shown as a chip; never the result).\n\n``args`` larger than :data:`CHAT_MAX_TOOL_ARGS_BYTES` are replaced by\n``{\"_truncated\": true}``.",
+      "examples": [
+        {
+          "args": {
+            "seq": 12
+          },
+          "ms": 41,
+          "name": "get_readout",
+          "ok": true
+        },
+        {
+          "args": {
+            "panel_id": "nope"
+          },
+          "code": "NOT_FOUND",
+          "ms": 12,
+          "name": "get_panel",
+          "ok": false
+        }
+      ],
+      "properties": {
+        "args": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Args",
+          "type": "object"
+        },
+        "code": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorCode"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "ms": {
+          "minimum": 0,
+          "title": "Ms",
+          "type": "integer"
+        },
+        "name": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "ok": {
+          "title": "Ok",
+          "type": "boolean"
+        },
+        "truncated": {
+          "default": false,
+          "description": "The result was trimmed to fit the budget",
+          "title": "Truncated",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "name",
+        "ok",
+        "ms"
+      ],
+      "title": "ToolCallSummary",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-ChatResponse.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "The answer to a :class:`ChatRequest`. Send ``reply`` back unchanged in the next\nrequest's ``messages``.",
+  "examples": [
+    {
+      "conversation_id": "cnv_01jaf3t1v2w3x4y5z6a7b8c9d0",
+      "notices": [],
+      "reply": {
+        "role": "assistant",
+        "sig": "q3Jx8m1V0bYH7kQf2nTzL5cWd9pR4sAe6uGiOjKvXyw",
+        "text": "Revenue went up by 4% from readout 11 to readout 12."
+      },
+      "tool_calls": [
+        {
+          "args": {
+            "a_seq": 11,
+            "b_seq": 12
+          },
+          "ms": 38,
+          "name": "compare_readouts",
+          "ok": true
+        }
+      ],
+      "transcript_kept": false,
+      "usage": {
+        "input_tokens": 3120,
+        "model": "gemini-3.1-flash-lite",
+        "output_tokens": 96,
+        "thought_tokens": 0,
+        "total_tokens": 3216
+      }
+    }
+  ],
+  "properties": {
+    "conversation_id": {
+      "pattern": "^cnv_[0-9a-z]{26}$",
+      "title": "Conversation Id",
+      "type": "string"
+    },
+    "notices": {
+      "items": {
+        "enum": [
+          "unverified_numbers",
+          "tool_limit",
+          "truncated",
+          "budget_low",
+          "transcript_kept"
+        ],
+        "type": "string"
+      },
+      "title": "Notices",
+      "type": "array"
+    },
+    "reply": {
+      "$ref": "#/$defs/ChatTurn"
+    },
+    "tool_calls": {
+      "items": {
+        "$ref": "#/$defs/ToolCallSummary"
+      },
+      "maxItems": 6,
+      "title": "Tool Calls",
+      "type": "array"
+    },
+    "transcript_kept": {
+      "default": false,
+      "title": "Transcript Kept",
+      "type": "boolean"
+    },
+    "usage": {
+      "$ref": "#/$defs/ChatUsage"
+    }
+  },
+  "required": [
+    "conversation_id",
+    "reply",
+    "usage"
+  ],
+  "title": "ChatResponse",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

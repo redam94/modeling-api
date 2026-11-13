@@ -1,0 +1,30 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-PluginUploadComplete.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "The wheel is uploaded: check it. ``project`` pays for the pipeline runs.",
+  "examples": [
+    {
+      "project": "growth",
+      "request_approval": false
+    }
+  ],
+  "properties": {
+    "project": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+      "title": "Project",
+      "type": "string"
+    },
+    "request_approval": {
+      "default": false,
+      "title": "Request Approval",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "project"
+  ],
+  "title": "PluginUploadComplete",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

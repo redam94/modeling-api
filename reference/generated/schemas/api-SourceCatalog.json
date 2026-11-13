@@ -1,0 +1,644 @@
+{
+  "$defs": {
+    "CatalogInput": {
+      "description": "An input a scenario row or batch column can bind (a variable or a dim), with its\ndeclared bounds and the fit data's range (``profile_min``/``profile_max``: defaults\nthat the analyst must confirm).",
+      "properties": {
+        "bound_max": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bound Max"
+        },
+        "bound_min": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bound Min"
+        },
+        "date_max": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Date Max"
+        },
+        "date_min": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Date Min"
+        },
+        "dim": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dim"
+        },
+        "dtype": {
+          "anyOf": [
+            {
+              "maxLength": 32,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dtype"
+        },
+        "kind": {
+          "enum": [
+            "number",
+            "integer",
+            "choice",
+            "date",
+            "toggle",
+            "text"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "levels": {
+          "items": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "maxItems": 200,
+          "title": "Levels",
+          "type": "array"
+        },
+        "policy": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DimPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "profile_max": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Profile Max"
+        },
+        "profile_min": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Profile Min"
+        },
+        "var": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Var"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "CatalogInput",
+      "type": "object"
+    },
+    "CatalogMetric": {
+      "description": "A metric logged by the fit run (``labels`` ``{}`` is the scalar value).",
+      "properties": {
+        "key": {
+          "pattern": "^[a-z][a-z0-9_]{0,63}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "labels": {
+          "additionalProperties": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "maxProperties": 4,
+          "title": "Labels",
+          "type": "object"
+        },
+        "last": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last"
+        }
+      },
+      "required": [
+        "key"
+      ],
+      "title": "CatalogMetric",
+      "type": "object"
+    },
+    "CatalogOutput": {
+      "description": "One output a panel can bind: its summary table ``name`` (the score summary names it\nas the manifest does; only the dim columns take the dataset names), dims, shape and\nrepresentation, and what may be asked of it.\n\n``centre`` is the centre column the readout selector gives (draws ``mean``, quantiles\n``median``, interval ``point``, point ``mean``); ``predictive_ok`` is false when a\npredictive score would not give an outcome range (point outputs, which refuse\n``kind: predictive``, and outputs that ignore it, e.g. ``sci.lgcp_grid`` ``total``):\nthe panel then falls back to the ``mean`` band with a caption.",
+      "properties": {
+        "centre": {
+          "default": "mean",
+          "enum": [
+            "mean",
+            "median",
+            "q50",
+            "p50",
+            "point"
+          ],
+          "title": "Centre",
+          "type": "string"
+        },
+        "classes": {
+          "items": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "title": "Classes",
+          "type": "array"
+        },
+        "dims": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Dims",
+          "type": "array"
+        },
+        "intents": {
+          "items": {
+            "enum": [
+              "fan",
+              "line",
+              "bars",
+              "range",
+              "diverging",
+              "scatter",
+              "residuals",
+              "calibration",
+              "confusion",
+              "probability_bars",
+              "field",
+              "area_bars",
+              "effect",
+              "accuracy_history",
+              "decomposition",
+              "state_sequence"
+            ],
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Intents",
+          "type": "array"
+        },
+        "manifest_name": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Manifest Name",
+          "type": "string"
+        },
+        "meaning": {
+          "anyOf": [
+            {
+              "enum": [
+                "value",
+                "class_probability",
+                "state_probability",
+                "rate",
+                "effect"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Meaning"
+        },
+        "name": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "predictive_ok": {
+          "default": false,
+          "title": "Predictive Ok",
+          "type": "boolean"
+        },
+        "reduces": {
+          "items": {
+            "enum": [
+              "none",
+              "select",
+              "last",
+              "next",
+              "mean",
+              "sum",
+              "share_above",
+              "top_class"
+            ],
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Reduces",
+          "type": "array"
+        },
+        "representation": {
+          "$ref": "#/$defs/Representation"
+        },
+        "shape": {
+          "enum": [
+            "grid",
+            "areal",
+            "classification",
+            "time",
+            "categorical",
+            "scalar"
+          ],
+          "title": "Shape",
+          "type": "string"
+        },
+        "stats": {
+          "items": {
+            "enum": [
+              "centre",
+              "low",
+              "high",
+              "value"
+            ],
+            "type": "string"
+          },
+          "maxItems": 4,
+          "title": "Stats",
+          "type": "array"
+        },
+        "time_dim": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Time Dim"
+        },
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        }
+      },
+      "required": [
+        "name",
+        "manifest_name",
+        "shape",
+        "representation"
+      ],
+      "title": "CatalogOutput",
+      "type": "object"
+    },
+    "CatalogPicture": {
+      "description": "An embeddable plot of the model version (platform recipe provenance only).",
+      "properties": {
+        "plot_id": {
+          "maxLength": 128,
+          "title": "Plot Id",
+          "type": "string"
+        },
+        "recipe": {
+          "maxLength": 128,
+          "title": "Recipe",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "plot_id",
+        "recipe",
+        "title"
+      ],
+      "title": "CatalogPicture",
+      "type": "object"
+    },
+    "DimPolicy": {
+      "description": "What may happen to a dim's coordinates at score time.",
+      "enum": [
+        "fixed",
+        "extend",
+        "new_levels"
+      ],
+      "title": "DimPolicy",
+      "type": "string"
+    },
+    "Representation": {
+      "description": "How a model encodes uncertainty in its outputs.",
+      "enum": [
+        "draws",
+        "quantiles",
+        "interval",
+        "point",
+        "moments"
+      ],
+      "title": "Representation",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-SourceCatalog.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "``GET \u2026/sources``: what the draft's model version offers to panels and inputs\n(cached per model version). ``row_policy`` is the policy of ``row_dim`` (``fixed``\nrows: no scenario rows or batch except horizon-only); ``views``: the guided views the\nversion's runs write.",
+  "examples": [
+    {
+      "inputs": [
+        {
+          "dim": "geo",
+          "kind": "choice",
+          "levels": [
+            "north",
+            "south"
+          ],
+          "policy": "fixed"
+        }
+      ],
+      "metrics": [
+        {
+          "key": "mape",
+          "last": 6.2
+        },
+        {
+          "key": "coverage_90",
+          "last": 0.88
+        }
+      ],
+      "namespace": "ts",
+      "outputs": [
+        {
+          "centre": "median",
+          "dims": [
+            "geo",
+            "date"
+          ],
+          "intents": [
+            "fan",
+            "line",
+            "range"
+          ],
+          "manifest_name": "y_hat",
+          "name": "y_hat",
+          "predictive_ok": true,
+          "reduces": [
+            "none",
+            "select",
+            "last",
+            "next"
+          ],
+          "representation": "quantiles",
+          "shape": "time",
+          "stats": [
+            "centre",
+            "low",
+            "high"
+          ],
+          "time_dim": "date"
+        }
+      ],
+      "score_modes": [
+        "predict",
+        "forecast"
+      ],
+      "time_dim": "date",
+      "views": []
+    }
+  ],
+  "properties": {
+    "conditions_on_actuals": {
+      "default": false,
+      "title": "Conditions On Actuals",
+      "type": "boolean"
+    },
+    "family": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Family"
+    },
+    "has_grid": {
+      "default": false,
+      "title": "Has Grid",
+      "type": "boolean"
+    },
+    "input_kind": {
+      "default": "dataset",
+      "enum": [
+        "dataset",
+        "tree",
+        "collection"
+      ],
+      "title": "Input Kind",
+      "type": "string"
+    },
+    "inputs": {
+      "items": {
+        "$ref": "#/$defs/CatalogInput"
+      },
+      "maxItems": 128,
+      "title": "Inputs",
+      "type": "array"
+    },
+    "metrics": {
+      "items": {
+        "$ref": "#/$defs/CatalogMetric"
+      },
+      "maxItems": 500,
+      "title": "Metrics",
+      "type": "array"
+    },
+    "namespace": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Namespace"
+    },
+    "outputs": {
+      "items": {
+        "$ref": "#/$defs/CatalogOutput"
+      },
+      "maxItems": 64,
+      "title": "Outputs",
+      "type": "array"
+    },
+    "pictures": {
+      "items": {
+        "$ref": "#/$defs/CatalogPicture"
+      },
+      "maxItems": 64,
+      "title": "Pictures",
+      "type": "array"
+    },
+    "row_dim": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Row Dim"
+    },
+    "row_policy": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DimPolicy"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "score_modes": {
+      "items": {
+        "enum": [
+          "predict",
+          "forecast",
+          "counterfactual",
+          "simulate",
+          "filter",
+          "evaluate"
+        ],
+        "type": "string"
+      },
+      "maxItems": 6,
+      "title": "Score Modes",
+      "type": "array"
+    },
+    "scorecard": {
+      "items": {
+        "maxLength": 64,
+        "type": "string"
+      },
+      "maxItems": 64,
+      "title": "Scorecard",
+      "type": "array"
+    },
+    "time_dim": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Time Dim"
+    },
+    "views": {
+      "items": {
+        "enum": [
+          "forecast",
+          "fields",
+          "counterfactual"
+        ],
+        "type": "string"
+      },
+      "maxItems": 3,
+      "title": "Views",
+      "type": "array"
+    }
+  },
+  "title": "SourceCatalog",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

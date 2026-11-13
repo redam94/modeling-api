@@ -1,0 +1,54 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-ScenarioSave.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``POST \u2026/scenarios``: keep a scenario as a private readout (grid result, ready at\nonce), or with ``exact`` (when the dashboard allows it) as the result of a score run.",
+  "examples": [
+    {
+      "label": "Shift TV to search",
+      "multipliers": {
+        "search": 1.3,
+        "tv": 0.8
+      }
+    },
+    {
+      "exact": true,
+      "multipliers": {
+        "tv": 0.8
+      }
+    }
+  ],
+  "properties": {
+    "exact": {
+      "default": false,
+      "title": "Exact",
+      "type": "boolean"
+    },
+    "label": {
+      "anyOf": [
+        {
+          "maxLength": 80,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Label"
+    },
+    "multipliers": {
+      "maxProperties": 40,
+      "patternProperties": {
+        "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+          "type": "number"
+        }
+      },
+      "title": "Multipliers",
+      "type": "object"
+    }
+  },
+  "title": "ScenarioSave",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

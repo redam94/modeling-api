@@ -1,0 +1,90 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-PluginDecisionRecord.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "One approval or rejection of a version, with the digests the reviewer saw.",
+  "examples": [
+    {
+      "approver_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k9",
+      "approver_name": "Ada Admin",
+      "base_image_digest": "sha256:efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef",
+      "decided_at": "2026-10-22T09:30:00Z",
+      "decision": "approve",
+      "describe_digest": "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+      "overlay_sha256": "sha256:abababababababababababababababababababababababababababababababab"
+    }
+  ],
+  "properties": {
+    "approver_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Approver Id",
+      "type": "string"
+    },
+    "approver_name": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Approver Name"
+    },
+    "base_image_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Base Image Digest",
+      "type": "string"
+    },
+    "decided_at": {
+      "format": "date-time",
+      "title": "Decided At",
+      "type": "string"
+    },
+    "decision": {
+      "enum": [
+        "approve",
+        "reject"
+      ],
+      "title": "Decision",
+      "type": "string"
+    },
+    "describe_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Describe Digest",
+      "type": "string"
+    },
+    "note": {
+      "anyOf": [
+        {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Untrusted text",
+      "title": "Note"
+    },
+    "overlay_sha256": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Overlay Sha256",
+      "type": "string"
+    }
+  },
+  "required": [
+    "decision",
+    "approver_id",
+    "overlay_sha256",
+    "describe_digest",
+    "base_image_digest",
+    "decided_at"
+  ],
+  "title": "PluginDecisionRecord",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

@@ -1,5 +1,38 @@
 {
   "$defs": {
+    "ClientTenant": {
+      "description": "The tenant as a caller whose every grant there is the ``client`` role sees it (v0.16):\nits id, name and status only. The trust tier, residency and the operator's status\nreason are the tenant's own business.",
+      "examples": [
+        {
+          "id": "acme",
+          "name": "Acme Retail",
+          "status": "active"
+        }
+      ],
+      "properties": {
+        "id": {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/TenantStatus",
+          "default": "active"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "title": "ClientTenant",
+      "type": "object"
+    },
     "MeProject": {
       "description": "A project the caller can act in, with the caller's effective role there.",
       "examples": [
@@ -39,8 +72,9 @@
       "type": "object"
     },
     "ProjectRole": {
-      "description": "Project roles, ordered ``viewer < editor < runner < admin`` (each includes the last).",
+      "description": "Project roles, ordered ``client < viewer < editor < runner < admin`` (each includes the\nlast).\n\n``client`` (v0.16) is rank 0: every rule needs at least ``viewer`` except the dashboard\nreads and inputs, so a client sees only the published dashboards granted to them. A\nclient membership is always project-scoped (:func:`check_role_scope`), and the server\nlets a client reach only :data:`mapi_spec.api.CLIENT_OPERATIONS`.",
       "enum": [
+        "client",
         "viewer",
         "editor",
         "runner",
@@ -157,7 +191,7 @@
   },
   "$id": "https://schemas.mapi.dev/v1/api-MeTenant.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "description": "A tenant the caller belongs to; ``role`` is the tenant-wide role (``None`` when the\ncaller only has project memberships).",
+  "description": "A tenant the caller belongs to; ``role`` is the tenant-wide role (``None`` when the\ncaller only has project memberships). ``tenant`` is a :class:`ClientTenant` when every\ngrant of the caller in the tenant is the ``client`` role.",
   "examples": [
     {
       "projects": [
@@ -199,7 +233,15 @@
       "default": null
     },
     "tenant": {
-      "$ref": "#/$defs/Tenant"
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Tenant"
+        },
+        {
+          "$ref": "#/$defs/ClientTenant"
+        }
+      ],
+      "title": "Tenant"
     }
   },
   "required": [

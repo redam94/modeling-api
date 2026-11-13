@@ -1,0 +1,4744 @@
+{
+  "$defs": {
+    "AccuracyPoint": {
+      "description": "One published actuals readout in the accuracy history.",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "n": {
+          "default": 0,
+          "minimum": 0,
+          "title": "N",
+          "type": "integer"
+        },
+        "period": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "format": "date",
+                  "type": "string"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Period"
+        },
+        "seq": {
+          "minimum": 1,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "values": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxProperties": 16,
+          "propertyNames": {
+            "enum": [
+              "n",
+              "mae",
+              "rmse",
+              "mape",
+              "wape",
+              "smape",
+              "bias",
+              "r2",
+              "band_hit_rate",
+              "accuracy",
+              "brier",
+              "log_score",
+              "auc",
+              "effect_total",
+              "effect_relative"
+            ]
+          },
+          "title": "Values",
+          "type": "object"
+        }
+      },
+      "required": [
+        "seq",
+        "created_at"
+      ],
+      "title": "AccuracyPoint",
+      "type": "object"
+    },
+    "ActualsAccuracy": {
+      "description": "How close the model's predictions were to uploaded actuals (:func:`metrics_of`).\n\n``mape`` and ``band_hit_rate`` are percentages (as ``compare.ts``); ``bias`` is the mean of\npredicted \u2212 actual in KPI units (above 0: the model expected more).",
+      "properties": {
+        "band_hit_rate": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Band Hit Rate"
+        },
+        "bias": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bias"
+        },
+        "mae": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mae"
+        },
+        "mape": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mape"
+        },
+        "n": {
+          "default": 0,
+          "minimum": 0,
+          "title": "N",
+          "type": "integer"
+        },
+        "r2": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "R2"
+        },
+        "rmse": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rmse"
+        },
+        "smape": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Smape"
+        },
+        "wape": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Wape"
+        }
+      },
+      "title": "ActualsAccuracy",
+      "type": "object"
+    },
+    "BarRow": {
+      "properties": {
+        "high": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "High"
+        },
+        "label": {
+          "maxLength": 64,
+          "title": "Label",
+          "type": "string"
+        },
+        "low": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Low"
+        },
+        "tag": {
+          "anyOf": [
+            {
+              "maxLength": 32,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tag"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "title": "BarRow",
+      "type": "object"
+    },
+    "BarsBlock": {
+      "properties": {
+        "approximate": {
+          "default": false,
+          "title": "Approximate",
+          "type": "boolean"
+        },
+        "caption": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Caption"
+        },
+        "intent": {
+          "default": "bars",
+          "enum": [
+            "fan",
+            "line",
+            "bars",
+            "range",
+            "diverging",
+            "scatter",
+            "residuals",
+            "calibration",
+            "confusion",
+            "probability_bars",
+            "field",
+            "area_bars",
+            "effect",
+            "accuracy_history",
+            "decomposition",
+            "state_sequence"
+          ],
+          "title": "Intent",
+          "type": "string"
+        },
+        "kind": {
+          "const": "bars",
+          "default": "bars",
+          "title": "Kind",
+          "type": "string"
+        },
+        "panel_id": {
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "title": "Panel Id",
+          "type": "string"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/BarRow"
+          },
+          "maxItems": 60,
+          "title": "Rows",
+          "type": "array"
+        },
+        "title": {
+          "maxLength": 80,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "panel_id",
+        "title"
+      ],
+      "title": "BarsBlock",
+      "type": "object"
+    },
+    "BatchClassCount": {
+      "properties": {
+        "count": {
+          "minimum": 0,
+          "title": "Count",
+          "type": "integer"
+        },
+        "label": {
+          "maxLength": 64,
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "count"
+      ],
+      "title": "BatchClassCount",
+      "type": "object"
+    },
+    "BatchDownload": {
+      "description": "Whether ``\u2026/readouts/{seq}/predictions.csv`` can be downloaded (by its owner).",
+      "properties": {
+        "available": {
+          "default": false,
+          "title": "Available",
+          "type": "boolean"
+        },
+        "bytes_estimate": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Bytes Estimate",
+          "type": "integer"
+        },
+        "rows": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Rows",
+          "type": "integer"
+        }
+      },
+      "title": "BatchDownload",
+      "type": "object"
+    },
+    "BatchForm": {
+      "description": "The \"Score a file\" form: the columns a file needs and its row cap.",
+      "properties": {
+        "columns": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 64,
+          "title": "Columns",
+          "type": "array"
+        },
+        "id_column": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Id Column",
+          "type": "string"
+        },
+        "max_rows": {
+          "maximum": 5000,
+          "minimum": 1,
+          "title": "Max Rows",
+          "type": "integer"
+        },
+        "outputs": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 4,
+          "title": "Outputs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "max_rows",
+        "id_column"
+      ],
+      "title": "BatchForm",
+      "type": "object"
+    },
+    "BatchStats": {
+      "description": "The spread of the row centres of one output (never an interval).",
+      "properties": {
+        "max": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max"
+        },
+        "mean": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mean"
+        },
+        "min": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min"
+        },
+        "p10": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "P10"
+        },
+        "p50": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "P50"
+        },
+        "p90": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "P90"
+        }
+      },
+      "title": "BatchStats",
+      "type": "object"
+    },
+    "BatchSummary": {
+      "properties": {
+        "class_counts": {
+          "items": {
+            "$ref": "#/$defs/BatchClassCount"
+          },
+          "maxItems": 20,
+          "title": "Class Counts",
+          "type": "array"
+        },
+        "download": {
+          "$ref": "#/$defs/BatchDownload"
+        },
+        "histogram": {
+          "items": {
+            "$ref": "#/$defs/HistogramBin"
+          },
+          "maxItems": 20,
+          "title": "Histogram",
+          "type": "array"
+        },
+        "n_rows": {
+          "minimum": 0,
+          "title": "N Rows",
+          "type": "integer"
+        },
+        "n_scored": {
+          "minimum": 0,
+          "title": "N Scored",
+          "type": "integer"
+        },
+        "outputs": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 4,
+          "title": "Outputs",
+          "type": "array"
+        },
+        "preview": {
+          "items": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "object"
+          },
+          "maxItems": 20,
+          "title": "Preview",
+          "type": "array"
+        },
+        "share_positive": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Share Positive"
+        },
+        "stats": {
+          "maxProperties": 4,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "$ref": "#/$defs/BatchStats"
+            }
+          },
+          "title": "Stats",
+          "type": "object"
+        }
+      },
+      "required": [
+        "n_rows",
+        "n_scored"
+      ],
+      "title": "BatchSummary",
+      "type": "object"
+    },
+    "CalibrationBin": {
+      "properties": {
+        "n": {
+          "minimum": 0,
+          "title": "N",
+          "type": "integer"
+        },
+        "observed": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Observed",
+          "type": "number"
+        },
+        "p_mean": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "P Mean",
+          "type": "number"
+        }
+      },
+      "required": [
+        "p_mean",
+        "observed",
+        "n"
+      ],
+      "title": "CalibrationBin",
+      "type": "object"
+    },
+    "CalibrationBlock": {
+      "properties": {
+        "approximate": {
+          "default": false,
+          "title": "Approximate",
+          "type": "boolean"
+        },
+        "bins": {
+          "items": {
+            "$ref": "#/$defs/CalibrationBin"
+          },
+          "maxItems": 20,
+          "title": "Bins",
+          "type": "array"
+        },
+        "caption": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Caption"
+        },
+        "kind": {
+          "const": "calibration",
+          "default": "calibration",
+          "title": "Kind",
+          "type": "string"
+        },
+        "panel_id": {
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "title": "Panel Id",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 80,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "panel_id",
+        "title"
+      ],
+      "title": "CalibrationBlock",
+      "type": "object"
+    },
+    "ChannelDef": {
+      "additionalProperties": false,
+      "description": "One media channel and the range its what-if slider covers (``1`` = the current plan).",
+      "examples": [
+        {
+          "label": "TV",
+          "max_mult": 1.5,
+          "min_mult": 0.5,
+          "name": "tv"
+        }
+      ],
+      "properties": {
+        "label": {
+          "maxLength": 60,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "max_mult": {
+          "default": 1.5,
+          "maximum": 5,
+          "title": "Max Mult",
+          "type": "number"
+        },
+        "min_mult": {
+          "default": 0.5,
+          "minimum": 0,
+          "title": "Min Mult",
+          "type": "number"
+        },
+        "name": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "step": {
+          "default": 0.05,
+          "exclusiveMinimum": 0,
+          "title": "Step",
+          "type": "number"
+        }
+      },
+      "required": [
+        "name",
+        "label"
+      ],
+      "title": "ChannelDef",
+      "type": "object"
+    },
+    "ChannelReadout": {
+      "description": "One channel row of the scorecard (``roi`` per unit of spend, ``mroi`` at the margin).\n\n``spend`` and ``contribution`` are per readout period (the response grid's window totals\ndivided by its ``periods``), like the KPI tiles.",
+      "properties": {
+        "contribution": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Contribution"
+        },
+        "label": {
+          "maxLength": 60,
+          "title": "Label",
+          "type": "string"
+        },
+        "mroi": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mroi"
+        },
+        "name": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "roi": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Roi"
+        },
+        "roi_high": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Roi High"
+        },
+        "roi_low": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Roi Low"
+        },
+        "share": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Share of the media contribution, 0-1",
+          "title": "Share"
+        },
+        "spend": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Spend"
+        },
+        "zone": {
+          "anyOf": [
+            {
+              "enum": [
+                "headroom",
+                "optimal",
+                "over",
+                "no_payback"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Zone"
+        }
+      },
+      "required": [
+        "name",
+        "label"
+      ],
+      "title": "ChannelReadout",
+      "type": "object"
+    },
+    "ClassAccuracy": {
+      "description": "How right a classifier was (``threshold`` and ``positive`` for a binary one;\n``rate_pred``/``rate_obs`` the predicted and observed share of ``positive``).",
+      "properties": {
+        "accuracy": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Accuracy"
+        },
+        "auc": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Auc"
+        },
+        "bins": {
+          "items": {
+            "$ref": "#/$defs/CalibrationBin"
+          },
+          "maxItems": 20,
+          "title": "Bins",
+          "type": "array"
+        },
+        "brier": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Brier"
+        },
+        "confusion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ConfusionMatrix"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "kind": {
+          "const": "classification",
+          "default": "classification",
+          "title": "Kind",
+          "type": "string"
+        },
+        "log_score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Log Score"
+        },
+        "n": {
+          "default": 0,
+          "minimum": 0,
+          "title": "N",
+          "type": "integer"
+        },
+        "positive": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Positive"
+        },
+        "rate_obs": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rate Obs"
+        },
+        "rate_pred": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rate Pred"
+        },
+        "threshold": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Threshold"
+        }
+      },
+      "title": "ClassAccuracy",
+      "type": "object"
+    },
+    "ClientDashboard": {
+      "description": "What a client user or a share link sees: the published revision only, with no ids of\npeople and no model internals. ``ends_at`` is the share link's expiry (share views).\n\nLayout 2 (v0.17) adds ``preset``, ``subject`` (``kpi`` is derived from it), the panels to\nlay out, the forms of the inputs and ``sections``; ``upgrade_note`` is the one-time\nplain note after the automatic upgrade (the page lets each viewer dismiss it).",
+      "examples": [
+        {
+          "channels": [
+            {
+              "label": "TV",
+              "name": "tv"
+            },
+            {
+              "label": "Paid search",
+              "max_mult": 2.0,
+              "min_mult": 0.5,
+              "name": "search"
+            }
+          ],
+          "client_name": "Acme Retail",
+          "ends_at": "2026-11-14T09:30:00Z",
+          "id": "dsh_01jaf3r1s2t3v4w5x6y7z8a9b0",
+          "inputs": {
+            "actuals": true,
+            "actuals_mode": "compared",
+            "exact": true,
+            "refit_requests": true,
+            "whatif": true
+          },
+          "kpi": {
+            "label": "Orders",
+            "unit": "count",
+            "value_per_unit": 42.0,
+            "variable": "orders"
+          },
+          "latest_readout": {
+            "created_at": "2026-10-15T09:30:00Z",
+            "kind": "refresh",
+            "model_ref": "model://growth/eu-geo-mmm@v3",
+            "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+            "period": [
+              "2026-10-12",
+              "2026-10-18"
+            ],
+            "ready_at": "2026-10-15T09:30:00Z",
+            "seq": 12,
+            "snapshot": {
+              "channels": [
+                {
+                  "contribution": 2300.0,
+                  "label": "TV",
+                  "mroi": 0.9,
+                  "name": "tv",
+                  "roi": 1.86,
+                  "roi_high": 2.5,
+                  "roi_low": 1.2,
+                  "share": 0.55,
+                  "spend": 52000.0,
+                  "zone": "over"
+                },
+                {
+                  "contribution": 1910.0,
+                  "label": "Paid search",
+                  "mroi": 3.1,
+                  "name": "search",
+                  "roi": 4.46,
+                  "share": 0.45,
+                  "spend": 18000.0,
+                  "zone": "headroom"
+                }
+              ],
+              "lead": "Media brought 4,210 orders this week. This is 3% more than the model expects.",
+              "notes_plain": [
+                "The model was fitted on data to 18/10/2026."
+              ],
+              "series": [
+                {
+                  "label": "Orders",
+                  "name": "orders",
+                  "points": [
+                    {
+                      "actual": 4150.0,
+                      "high": 4400.0,
+                      "low": 3800.0,
+                      "mean": 4100.0,
+                      "t": "2026-10-11"
+                    },
+                    {
+                      "actual": 4210.0,
+                      "high": 4390.0,
+                      "low": 3790.0,
+                      "mean": 4090.0,
+                      "t": "2026-10-18"
+                    }
+                  ]
+                }
+              ],
+              "source_run_ids": [
+                "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+              ],
+              "technical": {
+                "draws": 300,
+                "model_ref": "model://growth/eu-geo-mmm@v3"
+              },
+              "tiles": [
+                {
+                  "caption": "Likely range 3,890 to 4,530",
+                  "delta": 0.03,
+                  "delta_basis": "the model's expectation",
+                  "delta_dir": "up",
+                  "high": 4530.0,
+                  "key": "expected",
+                  "label": "Orders from media",
+                  "low": 3890.0,
+                  "unit": "count",
+                  "value": 4210.0
+                },
+                {
+                  "caption": "Each 1 EUR of media brought 2.40 EUR",
+                  "delta_dir": "flat",
+                  "key": "return_on_media",
+                  "label": "Return on media",
+                  "unit": "ratio",
+                  "value": 2.4
+                }
+              ]
+            },
+            "status": "ready",
+            "title": "Week ending 18/10/2026",
+            "trigger": "workflow",
+            "visibility": "published"
+          },
+          "live_inputs": "ok",
+          "period_label": "week",
+          "summary": "How media spend drives online orders, updated every Monday.",
+          "tabs": [
+            "this_period",
+            "trends",
+            "scenarios",
+            "update",
+            "history"
+          ],
+          "tiles": [
+            "expected",
+            "vs_expected",
+            "return_on_media",
+            "in_range_spend"
+          ],
+          "title": "Weekly media results"
+        }
+      ],
+      "properties": {
+        "batch_form": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BatchForm"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "channels": {
+          "items": {
+            "$ref": "#/$defs/ChannelDef"
+          },
+          "maxItems": 40,
+          "title": "Channels",
+          "type": "array"
+        },
+        "client_name": {
+          "anyOf": [
+            {
+              "maxLength": 80,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Client Name"
+        },
+        "ends_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ends At"
+        },
+        "id": {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "inputs": {
+          "$ref": "#/$defs/EffectiveInputs"
+        },
+        "kpi": {
+          "$ref": "#/$defs/KpiDef"
+        },
+        "latest_readout": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Readout"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "layout_version": {
+          "default": 1,
+          "maximum": 2,
+          "minimum": 1,
+          "title": "Layout Version",
+          "type": "integer"
+        },
+        "live_inputs": {
+          "default": "ok",
+          "enum": [
+            "ok",
+            "paused"
+          ],
+          "title": "Live Inputs",
+          "type": "string"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "panels_meta": {
+          "items": {
+            "$ref": "#/$defs/PanelMeta"
+          },
+          "maxItems": 24,
+          "title": "Panels Meta",
+          "type": "array"
+        },
+        "period_label": {
+          "default": "week",
+          "enum": [
+            "week",
+            "month",
+            "quarter",
+            "year",
+            "day",
+            "period",
+            "case"
+          ],
+          "title": "Period Label",
+          "type": "string"
+        },
+        "preset": {
+          "anyOf": [
+            {
+              "enum": [
+                "mmm_planner",
+                "forecast",
+                "regression",
+                "classifier",
+                "causal_impact",
+                "field_map",
+                "image",
+                "generic"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Preset"
+        },
+        "scenario_form": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ScenarioForm"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "sections": {
+          "items": {
+            "enum": [
+              "overview",
+              "try",
+              "accuracy",
+              "batch",
+              "history"
+            ],
+            "type": "string"
+          },
+          "maxItems": 5,
+          "title": "Sections",
+          "type": "array"
+        },
+        "show_technical": {
+          "default": false,
+          "title": "Show Technical",
+          "type": "boolean"
+        },
+        "subject": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SubjectDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "maxLength": 600,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Summary"
+        },
+        "tabs": {
+          "items": {
+            "enum": [
+              "this_period",
+              "trends",
+              "scenarios",
+              "update",
+              "history"
+            ],
+            "type": "string"
+          },
+          "title": "Tabs",
+          "type": "array"
+        },
+        "tiles": {
+          "items": {
+            "enum": [
+              "expected",
+              "vs_expected",
+              "return_on_media",
+              "in_range_spend",
+              "accuracy",
+              "index",
+              "panel"
+            ],
+            "type": "string"
+          },
+          "maxItems": 4,
+          "title": "Tiles",
+          "type": "array"
+        },
+        "title": {
+          "maxLength": 120,
+          "title": "Title",
+          "type": "string"
+        },
+        "upgrade_note": {
+          "anyOf": [
+            {
+              "maxLength": 400,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Upgrade Note"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "kpi"
+      ],
+      "title": "ClientDashboard",
+      "type": "object"
+    },
+    "ConfusionBlock": {
+      "properties": {
+        "approximate": {
+          "default": false,
+          "title": "Approximate",
+          "type": "boolean"
+        },
+        "caption": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Caption"
+        },
+        "counts": {
+          "items": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "maxItems": 20,
+          "title": "Counts",
+          "type": "array"
+        },
+        "kind": {
+          "const": "confusion",
+          "default": "confusion",
+          "title": "Kind",
+          "type": "string"
+        },
+        "labels": {
+          "items": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Labels",
+          "type": "array"
+        },
+        "panel_id": {
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "title": "Panel Id",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 80,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "panel_id",
+        "title"
+      ],
+      "title": "ConfusionBlock",
+      "type": "object"
+    },
+    "ConfusionMatrix": {
+      "description": "``counts[i][j]``: cases of actual class ``labels[i]`` predicted as ``labels[j]``.",
+      "properties": {
+        "counts": {
+          "items": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "maxItems": 20,
+          "title": "Counts",
+          "type": "array"
+        },
+        "labels": {
+          "items": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Labels",
+          "type": "array"
+        }
+      },
+      "title": "ConfusionMatrix",
+      "type": "object"
+    },
+    "DimBind": {
+      "additionalProperties": false,
+      "description": "The input picks a coordinate of a dim (a store, a period).",
+      "properties": {
+        "dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        }
+      },
+      "required": [
+        "dim"
+      ],
+      "title": "DimBind",
+      "type": "object"
+    },
+    "EffectAccuracy": {
+      "description": "The updated effect of a causal model: \u03a3 actual \u2212 the counterfactual, with its range.",
+      "properties": {
+        "high": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "High"
+        },
+        "kind": {
+          "const": "effect",
+          "default": "effect",
+          "title": "Kind",
+          "type": "string"
+        },
+        "low": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Low"
+        },
+        "n_periods": {
+          "default": 0,
+          "minimum": 0,
+          "title": "N Periods",
+          "type": "integer"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "relative": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Relative"
+        },
+        "total": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total"
+        }
+      },
+      "title": "EffectAccuracy",
+      "type": "object"
+    },
+    "EffectiveInputs": {
+      "description": "What the viewer may do: the published spec's inputs, narrowed by a share link's\n``allowed_inputs``. ``refit_requests``: an upload may ask for a refit.",
+      "properties": {
+        "accuracy_kind": {
+          "anyOf": [
+            {
+              "enum": [
+                "error",
+                "classification",
+                "effect"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Accuracy Kind"
+        },
+        "actuals": {
+          "default": false,
+          "title": "Actuals",
+          "type": "boolean"
+        },
+        "actuals_mode": {
+          "anyOf": [
+            {
+              "enum": [
+                "conditioned",
+                "compared"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Actuals Mode"
+        },
+        "batch": {
+          "default": false,
+          "title": "Batch",
+          "type": "boolean"
+        },
+        "exact": {
+          "default": false,
+          "title": "Exact",
+          "type": "boolean"
+        },
+        "refit_requests": {
+          "default": false,
+          "title": "Refit Requests",
+          "type": "boolean"
+        },
+        "scenario_rows": {
+          "default": false,
+          "title": "Scenario Rows",
+          "type": "boolean"
+        },
+        "whatif": {
+          "default": false,
+          "title": "Whatif",
+          "type": "boolean"
+        }
+      },
+      "title": "EffectiveInputs",
+      "type": "object"
+    },
+    "ErrorAccuracy": {
+      "description": "Errors of numeric predictions (``mape``, ``wape``, ``smape`` and ``band_hit_rate`` in\npercent; ``bias`` = mean of predicted \u2212 actual).",
+      "properties": {
+        "band_hit_rate": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Band Hit Rate"
+        },
+        "bias": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bias"
+        },
+        "kind": {
+          "const": "error",
+          "default": "error",
+          "title": "Kind",
+          "type": "string"
+        },
+        "mae": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mae"
+        },
+        "mape": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mape"
+        },
+        "n": {
+          "default": 0,
+          "minimum": 0,
+          "title": "N",
+          "type": "integer"
+        },
+        "r2": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "R2"
+        },
+        "rmse": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rmse"
+        },
+        "smape": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Smape"
+        },
+        "wape": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Wape"
+        }
+      },
+      "title": "ErrorAccuracy",
+      "type": "object"
+    },
+    "ErrorCode": {
+      "description": "Stable error codes. See :data:`ERROR_INFO` for HTTP status and titles.",
+      "enum": [
+        "SCHEMA_INVALID",
+        "SPEC_PARSE_ERROR",
+        "PAYLOAD_TOO_LARGE",
+        "UNSUPPORTED_API_VERSION",
+        "REF_UNRESOLVED",
+        "SETTINGS_INVALID",
+        "BINDING_INVALID",
+        "SPLIT_INVALID",
+        "LEAKAGE_RISK",
+        "DIM_POLICY_LOOSENED",
+        "SCHEMA_DYNAMIC",
+        "SIDE_TABLE_COVERAGE",
+        "PLOT_UNSAFE",
+        "UNSEEN_LEVELS",
+        "COORD_NOT_ALLOWED",
+        "HORIZON_EXCEEDS_FIT",
+        "MISSING_FUTURE_COVARIATE",
+        "NON_CONTIGUOUS_EXTENSION",
+        "CAPABILITY_UNSUPPORTED",
+        "RECURSIVE_UNSUPPORTED",
+        "MODE_NOT_SUPPORTED",
+        "QUOTA_EXCEEDED",
+        "RATE_LIMITED",
+        "UNAUTHENTICATED",
+        "FORBIDDEN",
+        "NOT_FOUND",
+        "CONFLICT",
+        "IDEMPOTENCY_CONFLICT",
+        "PRECONDITION_FAILED",
+        "USER_CODE_ERROR",
+        "RESOURCE_EXHAUSTED",
+        "INFRA_ERROR",
+        "INTEGRITY_FAILURE",
+        "TIMEOUT",
+        "SANDBOX_VIOLATION",
+        "CANCELLED",
+        "INTERNAL_ERROR",
+        "GUIDED_ANSWERS_INVALID",
+        "BUSINESS_PRIORS_INVALID",
+        "CALIBRATION_UNSUPPORTED",
+        "IMPORT_UNSUPPORTED",
+        "SCENARIO_OUT_OF_RANGE",
+        "PROMOTION_BLOCKED",
+        "OVERRIDE_REQUIRED",
+        "WEBHOOK_URL_BLOCKED",
+        "WEBHOOK_SIGNATURE_INVALID",
+        "EMBED_NOT_ALLOWED",
+        "LINK_EXPIRED",
+        "EMAIL_NOT_ALLOWED",
+        "TERMS_NOT_ACCEPTED",
+        "EMAIL_NOT_VERIFIED",
+        "IDENTITY_VERIFICATION_REQUIRED",
+        "ABOUT_INCOMPLETE",
+        "CHOOSER_ANSWER_INVALID",
+        "WORKFLOW_INVALID",
+        "EXPRESSION_INVALID",
+        "EXPRESSION_ERROR",
+        "NODE_UNKNOWN",
+        "SCHEDULE_INVALID",
+        "WORKFLOW_NOT_RUNNABLE",
+        "POLICY_INVALID",
+        "VALIDATION_TRANSITION_INVALID",
+        "SELF_APPROVAL_FORBIDDEN",
+        "NOT_VALIDATED",
+        "EXPLORE_INVALID",
+        "OPTIMIZE_INFEASIBLE",
+        "ACTUALS_NOT_SUPPORTED",
+        "ACTUALS_INVALID",
+        "NOT_READY",
+        "INGEST_UNSAFE_FILE",
+        "DASHBOARD_NOT_PUBLISHED",
+        "DASHBOARD_INPUT_DISABLED",
+        "DASHBOARD_LIVE_PAUSED",
+        "DASHBOARD_RUN_LIMIT",
+        "DASHBOARD_SPEC_STALE",
+        "SHARE_PASSCODE_REQUIRED",
+        "SHARE_PASSCODE_INVALID",
+        "SHARE_LOCKED",
+        "INVALID_ROLE_SCOPE",
+        "DASHBOARD_INPUT_INVALID",
+        "DASHBOARD_BATCH_TOO_LARGE",
+        "DASHBOARD_DOWNLOAD_GONE",
+        "DASHBOARD_LAYOUT_RETIRED",
+        "LIBRARY_INVALID",
+        "LIBRARY_DATA_SHAPE",
+        "SCHEMA_UNSAFE",
+        "EXTENSION_UNAVAILABLE",
+        "SAMPLES_DISABLED",
+        "PREVIEW_DISABLED",
+        "PLUGIN_REFUSED",
+        "PLUGIN_NAMESPACE_TAKEN",
+        "PLUGIN_VERSION_EXISTS",
+        "PLUGIN_STATE_CONFLICT",
+        "PLUGIN_UNAVAILABLE",
+        "UPLOADED_CODE_NOT_SHAREABLE",
+        "UNTRUSTED_PLACEMENT_UNAVAILABLE",
+        "REAUTH_REQUIRED",
+        "CHAT_DISABLED",
+        "CHAT_UNAVAILABLE",
+        "CHAT_BUDGET_EXHAUSTED",
+        "CHAT_HISTORY_INVALID",
+        "READ_TOKEN_LIMIT"
+      ],
+      "title": "ErrorCode",
+      "type": "string"
+    },
+    "FieldBlock": {
+      "description": "A 2-D field map (at most 64 \u00d7 64 cells, 8 frames). Without ``missing_code`` (blocks\nbuilt before v0.17.0's fix) code ``c`` maps to ``vmin + c / 255 * (vmax - vmin)``; with\nit, the value codes are ``0`` \u2026 ``254`` and map to ``vmin + c / 254 * (vmax - vmin)``,\nand ``missing_code`` (255) is a cell with no value (drawn transparent, left out of the\nstatistics). Values are on log10 when ``log``.",
+      "properties": {
+        "approximate": {
+          "default": false,
+          "title": "Approximate",
+          "type": "boolean"
+        },
+        "caption": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Caption"
+        },
+        "colormap": {
+          "default": "viridis",
+          "enum": [
+            "viridis",
+            "magma",
+            "cividis",
+            "gray",
+            "diverging"
+          ],
+          "title": "Colormap",
+          "type": "string"
+        },
+        "frames": {
+          "items": {
+            "$ref": "#/$defs/FieldFrame"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Frames",
+          "type": "array"
+        },
+        "height": {
+          "maximum": 64,
+          "minimum": 1,
+          "title": "Height",
+          "type": "integer"
+        },
+        "kind": {
+          "const": "field",
+          "default": "field",
+          "title": "Kind",
+          "type": "string"
+        },
+        "log": {
+          "default": false,
+          "title": "Log",
+          "type": "boolean"
+        },
+        "missing_code": {
+          "anyOf": [
+            {
+              "const": 255,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Missing Code"
+        },
+        "panel_id": {
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "title": "Panel Id",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 80,
+          "title": "Title",
+          "type": "string"
+        },
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        },
+        "vmax": {
+          "title": "Vmax",
+          "type": "number"
+        },
+        "vmin": {
+          "title": "Vmin",
+          "type": "number"
+        },
+        "width": {
+          "maximum": 64,
+          "minimum": 1,
+          "title": "Width",
+          "type": "integer"
+        },
+        "x_label": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "X Label"
+        },
+        "y_label": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Y Label"
+        }
+      },
+      "required": [
+        "panel_id",
+        "title",
+        "width",
+        "height",
+        "frames",
+        "vmin",
+        "vmax"
+      ],
+      "title": "FieldBlock",
+      "type": "object"
+    },
+    "FieldFrame": {
+      "description": "One frame of a field: ``width * height`` uint8 codes (row-major), base64 encoded.",
+      "properties": {
+        "codes_b64": {
+          "maxLength": 8192,
+          "title": "Codes B64",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 64,
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "codes_b64"
+      ],
+      "title": "FieldFrame",
+      "type": "object"
+    },
+    "ForecastConditioning": {
+      "description": "What a forecast was conditioned on: the fitted history, the supplied actuals and where\nthe forecast periods came from. ``parameters`` is always ``fitted``: conditioning never\nre-estimates the model. ``message`` says the same in plain language.",
+      "examples": [
+        {
+          "actuals_through": "1961-03-01",
+          "conditioned": true,
+          "dim": "t",
+          "fit_end": "1960-12-01",
+          "horizon_source": "horizon",
+          "message": "Forecast updated with 3 actuals (1961-01-01 to 1961-03-01) after the fitted history, which ends 1960-12-01; the model's parameters were not re-estimated. 8 periods forecast from 1961-04-01 to 1961-11-01.",
+          "n_actuals": 3,
+          "n_series": 1,
+          "parameters": "fitted",
+          "periods": 8,
+          "revised": 0,
+          "series": [
+            {
+              "actuals_through": "1961-03-01",
+              "first_actual": "1961-01-01",
+              "forecast_from": "1961-04-01",
+              "forecast_to": "1961-11-01",
+              "missing": 0,
+              "n_actuals": 3,
+              "n_forecast": 8,
+              "origin": "1961-03-01",
+              "revised": 0,
+              "series": {}
+            }
+          ],
+          "series_conditioned": 1,
+          "truncated": false
+        },
+        {
+          "conditioned": false,
+          "dim": "t",
+          "fit_end": "1960-12-01",
+          "horizon_source": "horizon",
+          "message": "Forecast from the end of the fitted history (1960-12-01); no actuals were supplied. 8 periods forecast from 1961-01-01 to 1961-08-01.",
+          "n_actuals": 0,
+          "periods": 8,
+          "series": [
+            {
+              "forecast_from": "1961-01-01",
+              "forecast_to": "1961-08-01",
+              "n_actuals": 0,
+              "n_forecast": 8,
+              "origin": "1960-12-01"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "actuals_through": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The latest actual over every series",
+          "title": "Actuals Through"
+        },
+        "conditioned": {
+          "description": "Whether any supplied actual was used",
+          "title": "Conditioned",
+          "type": "boolean"
+        },
+        "dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "fit_end": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            }
+          ],
+          "description": "The last period of the fitted history",
+          "title": "Fit End"
+        },
+        "horizon_source": {
+          "enum": [
+            "rows",
+            "horizon"
+          ],
+          "title": "Horizon Source",
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 2000,
+          "title": "Message",
+          "type": "string"
+        },
+        "n_actuals": {
+          "description": "Actuals used, over every series",
+          "minimum": 0,
+          "title": "N Actuals",
+          "type": "integer"
+        },
+        "n_series": {
+          "default": 1,
+          "minimum": 0,
+          "title": "N Series",
+          "type": "integer"
+        },
+        "parameters": {
+          "const": "fitted",
+          "default": "fitted",
+          "title": "Parameters",
+          "type": "string"
+        },
+        "periods": {
+          "description": "Forecast periods (the most over series)",
+          "minimum": 0,
+          "title": "Periods",
+          "type": "integer"
+        },
+        "revised": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Revised",
+          "type": "integer"
+        },
+        "series": {
+          "items": {
+            "$ref": "#/$defs/SeriesConditioning"
+          },
+          "maxItems": 1000,
+          "title": "Series",
+          "type": "array"
+        },
+        "series_conditioned": {
+          "default": 0,
+          "description": "Series with at least one actual",
+          "minimum": 0,
+          "title": "Series Conditioned",
+          "type": "integer"
+        },
+        "truncated": {
+          "default": false,
+          "description": "More series than MAX_CONDITIONING_SERIES",
+          "title": "Truncated",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "dim",
+        "fit_end",
+        "conditioned",
+        "n_actuals",
+        "horizon_source",
+        "periods",
+        "message"
+      ],
+      "title": "ForecastConditioning",
+      "type": "object"
+    },
+    "HistogramBin": {
+      "properties": {
+        "count": {
+          "minimum": 0,
+          "title": "Count",
+          "type": "integer"
+        },
+        "hi": {
+          "title": "Hi",
+          "type": "number"
+        },
+        "lo": {
+          "title": "Lo",
+          "type": "number"
+        }
+      },
+      "required": [
+        "lo",
+        "hi",
+        "count"
+      ],
+      "title": "HistogramBin",
+      "type": "object"
+    },
+    "HorizonDef": {
+      "additionalProperties": false,
+      "description": "How many periods ahead a forecast scenario row reaches.",
+      "properties": {
+        "default": {
+          "maximum": 104,
+          "minimum": 1,
+          "title": "Default",
+          "type": "integer"
+        },
+        "dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "max": {
+          "maximum": 104,
+          "minimum": 1,
+          "title": "Max",
+          "type": "integer"
+        },
+        "min": {
+          "default": 1,
+          "maximum": 104,
+          "minimum": 1,
+          "title": "Min",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "dim",
+        "max",
+        "default"
+      ],
+      "title": "HorizonDef",
+      "type": "object"
+    },
+    "Issue": {
+      "additionalProperties": false,
+      "description": "One problem found while validating a document, located by a JSON pointer.",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "context": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Context",
+          "type": "object"
+        },
+        "message": {
+          "description": "Trusted, platform-authored text",
+          "maxLength": 2000,
+          "title": "Message",
+          "type": "string"
+        },
+        "pointer": {
+          "default": "",
+          "description": "RFC 6901 JSON pointer into the submitted document",
+          "title": "Pointer",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity",
+          "default": "error"
+        },
+        "suggested_action": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggested Action"
+        },
+        "untrusted_text": {
+          "anyOf": [
+            {
+              "maxLength": 8000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "User/plugin-originated text; render as text only",
+          "title": "Untrusted Text"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "Issue",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "KpiBlock": {
+      "properties": {
+        "approximate": {
+          "default": false,
+          "title": "Approximate",
+          "type": "boolean"
+        },
+        "caption": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Caption"
+        },
+        "kind": {
+          "const": "kpi",
+          "default": "kpi",
+          "title": "Kind",
+          "type": "string"
+        },
+        "panel_id": {
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "title": "Panel Id",
+          "type": "string"
+        },
+        "tile": {
+          "$ref": "#/$defs/KpiValue"
+        },
+        "title": {
+          "maxLength": 80,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "panel_id",
+        "title",
+        "tile"
+      ],
+      "title": "KpiBlock",
+      "type": "object"
+    },
+    "KpiDef": {
+      "additionalProperties": false,
+      "description": "The business result the dashboard reports (a model output variable).\n\n``value_per_unit`` (currency per unit of a ``count`` KPI, e.g. the margin of one order)\ngives a breakeven return, so the channel zones can be shown for count KPIs too.",
+      "examples": [
+        {
+          "label": "Orders",
+          "unit": "count",
+          "value_per_unit": 42.0,
+          "variable": "orders"
+        },
+        {
+          "currency": "EUR",
+          "label": "Revenue",
+          "unit": "currency",
+          "variable": "revenue"
+        }
+      ],
+      "properties": {
+        "currency": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "ISO 4217 code",
+          "title": "Currency"
+        },
+        "decimals": {
+          "default": 0,
+          "maximum": 4,
+          "minimum": 0,
+          "title": "Decimals",
+          "type": "integer"
+        },
+        "label": {
+          "maxLength": 60,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "unit": {
+          "enum": [
+            "count",
+            "currency",
+            "ratio",
+            "percent"
+          ],
+          "title": "Unit",
+          "type": "string"
+        },
+        "value_per_unit": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value Per Unit"
+        },
+        "variable": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Variable",
+          "type": "string"
+        }
+      },
+      "required": [
+        "variable",
+        "label",
+        "unit"
+      ],
+      "title": "KpiDef",
+      "type": "object"
+    },
+    "KpiValue": {
+      "description": "One KPI tile: a value with its plain caption and the change against ``delta_basis``.",
+      "properties": {
+        "approximate": {
+          "default": false,
+          "description": "Layout 2: the value is a sum or mean of point predictions",
+          "title": "Approximate",
+          "type": "boolean"
+        },
+        "caption": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Caption",
+          "type": "string"
+        },
+        "delta": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Delta"
+        },
+        "delta_basis": {
+          "anyOf": [
+            {
+              "maxLength": 80,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Delta Basis"
+        },
+        "delta_dir": {
+          "default": "flat",
+          "enum": [
+            "up",
+            "down",
+            "flat",
+            "alert"
+          ],
+          "title": "Delta Dir",
+          "type": "string"
+        },
+        "high": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "High"
+        },
+        "key": {
+          "enum": [
+            "expected",
+            "vs_expected",
+            "return_on_media",
+            "in_range_spend",
+            "accuracy",
+            "index",
+            "panel"
+          ],
+          "title": "Key",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 80,
+          "title": "Label",
+          "type": "string"
+        },
+        "low": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Low"
+        },
+        "panel_id": {
+          "anyOf": [
+            {
+              "maxLength": 32,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Layout 2: the KPI panel",
+          "title": "Panel Id"
+        },
+        "unit": {
+          "enum": [
+            "count",
+            "currency",
+            "ratio",
+            "percent",
+            "index",
+            "probability",
+            "number",
+            "label",
+            "rate"
+          ],
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "required": [
+        "key",
+        "label",
+        "unit"
+      ],
+      "title": "KpiValue",
+      "type": "object"
+    },
+    "NoteBlock": {
+      "properties": {
+        "approximate": {
+          "default": false,
+          "title": "Approximate",
+          "type": "boolean"
+        },
+        "caption": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Caption"
+        },
+        "kind": {
+          "const": "note",
+          "default": "note",
+          "title": "Kind",
+          "type": "string"
+        },
+        "panel_id": {
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "title": "Panel Id",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 1200,
+          "title": "Text",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 80,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "panel_id",
+        "title",
+        "text"
+      ],
+      "title": "NoteBlock",
+      "type": "object"
+    },
+    "PanelMeta": {
+      "description": "A panel as a client page lays it out (no sources, no model internals).",
+      "properties": {
+        "caption": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Caption"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "intent": {
+          "anyOf": [
+            {
+              "enum": [
+                "fan",
+                "line",
+                "bars",
+                "range",
+                "diverging",
+                "scatter",
+                "residuals",
+                "calibration",
+                "confusion",
+                "probability_bars",
+                "field",
+                "area_bars",
+                "effect",
+                "accuracy_history",
+                "decomposition",
+                "state_sequence"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Intent"
+        },
+        "kind": {
+          "enum": [
+            "kpi",
+            "chart",
+            "table",
+            "note",
+            "recipe",
+            "mmm"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 80,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "title"
+      ],
+      "title": "PanelMeta",
+      "type": "object"
+    },
+    "PictureBlock": {
+      "description": "A revision asset (PNG) served same-origin: ``\u2026/assets/{asset_id}``.",
+      "properties": {
+        "alt": {
+          "maxLength": 300,
+          "title": "Alt",
+          "type": "string"
+        },
+        "approximate": {
+          "default": false,
+          "title": "Approximate",
+          "type": "boolean"
+        },
+        "asset_id": {
+          "pattern": "^dsa_[0-9a-z]{26}$",
+          "title": "Asset Id",
+          "type": "string"
+        },
+        "caption": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Caption"
+        },
+        "height": {
+          "maximum": 4096,
+          "minimum": 1,
+          "title": "Height",
+          "type": "integer"
+        },
+        "kind": {
+          "const": "picture",
+          "default": "picture",
+          "title": "Kind",
+          "type": "string"
+        },
+        "panel_id": {
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "title": "Panel Id",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 80,
+          "title": "Title",
+          "type": "string"
+        },
+        "width": {
+          "maximum": 4096,
+          "minimum": 1,
+          "title": "Width",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "panel_id",
+        "title",
+        "asset_id",
+        "alt",
+        "width",
+        "height"
+      ],
+      "title": "PictureBlock",
+      "type": "object"
+    },
+    "PredictionResult": {
+      "description": "The result of scenario rows. ``band``: the kind of range (``outcome``: one new result;\n``mean``: the average; ``none``).",
+      "properties": {
+        "approximate": {
+          "default": false,
+          "title": "Approximate",
+          "type": "boolean"
+        },
+        "band": {
+          "default": "outcome",
+          "enum": [
+            "outcome",
+            "mean",
+            "none"
+          ],
+          "title": "Band",
+          "type": "string"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/PredictionRow"
+          },
+          "maxItems": 20,
+          "title": "Rows",
+          "type": "array"
+        }
+      },
+      "title": "PredictionResult",
+      "type": "object"
+    },
+    "PredictionRow": {
+      "properties": {
+        "inputs": {
+          "maxProperties": 64,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "title": "Inputs",
+          "type": "object"
+        },
+        "outputs": {
+          "maxProperties": 4,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "$ref": "#/$defs/PredictionValue"
+            }
+          },
+          "title": "Outputs",
+          "type": "object"
+        }
+      },
+      "title": "PredictionRow",
+      "type": "object"
+    },
+    "PredictionValue": {
+      "description": "One output of one scenario row: its centre and range (``label``/``probability``:\nthe most probable class of a classifier).",
+      "properties": {
+        "centre": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Centre"
+        },
+        "high": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "High"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        },
+        "low": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Low"
+        },
+        "probability": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Probability"
+        }
+      },
+      "title": "PredictionValue",
+      "type": "object"
+    },
+    "Problem": {
+      "additionalProperties": false,
+      "description": "RFC 7807 problem document with mapi extensions (``code``, ``errors``, ``untrusted_text``).",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "detail": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detail"
+        },
+        "errors": {
+          "items": {
+            "$ref": "#/$defs/Issue"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "instance": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Instance"
+        },
+        "status": {
+          "maximum": 599,
+          "minimum": 100,
+          "title": "Status",
+          "type": "integer"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "trace_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Trace Id"
+        },
+        "type": {
+          "default": "about:blank",
+          "title": "Type",
+          "type": "string"
+        },
+        "untrusted_text": {
+          "anyOf": [
+            {
+              "maxLength": 65536,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Untrusted Text"
+        }
+      },
+      "required": [
+        "title",
+        "status",
+        "code"
+      ],
+      "title": "Problem",
+      "type": "object"
+    },
+    "Readout": {
+      "description": "A readout with its snapshot (``None`` until ``ready``) or the problem that stopped it.",
+      "examples": [
+        {
+          "created_at": "2026-10-15T09:30:00Z",
+          "kind": "refresh",
+          "model_ref": "model://growth/eu-geo-mmm@v3",
+          "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+          "period": [
+            "2026-10-12",
+            "2026-10-18"
+          ],
+          "ready_at": "2026-10-15T09:30:00Z",
+          "seq": 12,
+          "snapshot": {
+            "channels": [
+              {
+                "contribution": 2300.0,
+                "label": "TV",
+                "mroi": 0.9,
+                "name": "tv",
+                "roi": 1.86,
+                "roi_high": 2.5,
+                "roi_low": 1.2,
+                "share": 0.55,
+                "spend": 52000.0,
+                "zone": "over"
+              },
+              {
+                "contribution": 1910.0,
+                "label": "Paid search",
+                "mroi": 3.1,
+                "name": "search",
+                "roi": 4.46,
+                "share": 0.45,
+                "spend": 18000.0,
+                "zone": "headroom"
+              }
+            ],
+            "lead": "Media brought 4,210 orders this week. This is 3% more than the model expects.",
+            "notes_plain": [
+              "The model was fitted on data to 18/10/2026."
+            ],
+            "series": [
+              {
+                "label": "Orders",
+                "name": "orders",
+                "points": [
+                  {
+                    "actual": 4150.0,
+                    "high": 4400.0,
+                    "low": 3800.0,
+                    "mean": 4100.0,
+                    "t": "2026-10-11"
+                  },
+                  {
+                    "actual": 4210.0,
+                    "high": 4390.0,
+                    "low": 3790.0,
+                    "mean": 4090.0,
+                    "t": "2026-10-18"
+                  }
+                ]
+              }
+            ],
+            "source_run_ids": [
+              "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+            ],
+            "technical": {
+              "draws": 300,
+              "model_ref": "model://growth/eu-geo-mmm@v3"
+            },
+            "tiles": [
+              {
+                "caption": "Likely range 3,890 to 4,530",
+                "delta": 0.03,
+                "delta_basis": "the model's expectation",
+                "delta_dir": "up",
+                "high": 4530.0,
+                "key": "expected",
+                "label": "Orders from media",
+                "low": 3890.0,
+                "unit": "count",
+                "value": 4210.0
+              },
+              {
+                "caption": "Each 1 EUR of media brought 2.40 EUR",
+                "delta_dir": "flat",
+                "key": "return_on_media",
+                "label": "Return on media",
+                "unit": "ratio",
+                "value": 2.4
+              }
+            ]
+          },
+          "status": "ready",
+          "title": "Week ending 18/10/2026",
+          "trigger": "workflow",
+          "visibility": "published"
+        }
+      ],
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "endpoint_revision": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Endpoint Revision"
+        },
+        "kind": {
+          "enum": [
+            "baseline",
+            "refresh",
+            "scenario",
+            "actuals",
+            "prediction",
+            "batch"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "mine": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Whether the caller made this readout (its own tried case, file or upload); set on the readout list and reads, null where the caller is not known",
+          "title": "Mine"
+        },
+        "model_ref": {
+          "maxLength": 512,
+          "title": "Model Ref",
+          "type": "string"
+        },
+        "model_version_id": {
+          "maxLength": 128,
+          "title": "Model Version Id",
+          "type": "string"
+        },
+        "period": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "format": "date",
+                  "type": "string"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Period"
+        },
+        "problem": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Problem"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "ready_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ready At"
+        },
+        "refit_status": {
+          "anyOf": [
+            {
+              "enum": [
+                "open",
+                "approved",
+                "rejected",
+                "superseded",
+                "failed"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Refit Status"
+        },
+        "seq": {
+          "minimum": 1,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "snapshot": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReadoutSnapshot"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "status": {
+          "enum": [
+            "queued",
+            "running",
+            "materialising",
+            "ready",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "title": "Title",
+          "type": "string"
+        },
+        "trigger": {
+          "enum": [
+            "publish",
+            "manual",
+            "whatif",
+            "actuals",
+            "workflow",
+            "endpoint",
+            "scenario_rows",
+            "batch"
+          ],
+          "title": "Trigger",
+          "type": "string"
+        },
+        "visibility": {
+          "enum": [
+            "published",
+            "private",
+            "pending_review",
+            "hidden"
+          ],
+          "title": "Visibility",
+          "type": "string"
+        }
+      },
+      "required": [
+        "seq",
+        "kind",
+        "trigger",
+        "visibility",
+        "status",
+        "title",
+        "model_version_id",
+        "model_ref",
+        "created_at"
+      ],
+      "title": "Readout",
+      "type": "object"
+    },
+    "ReadoutSnapshot": {
+      "description": "What a readout shows, built server-side and capped at :data:`MAX_READOUT_BYTES`.\n\n``lead`` is one plain sentence; ``notes_plain`` are at most :data:`MAX_NOTES` plain notes;\n``technical`` is shown behind the \"Show technical notes\" toggle. Raw arrays, plots and\nsummaries are never copied in: ``source_run_ids`` keep the provenance.",
+      "properties": {
+        "accuracy": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActualsAccuracy"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "accuracy_detail": {
+          "anyOf": [
+            {
+              "discriminator": {
+                "mapping": {
+                  "classification": "#/$defs/ClassAccuracy",
+                  "effect": "#/$defs/EffectAccuracy",
+                  "error": "#/$defs/ErrorAccuracy"
+                },
+                "propertyName": "kind"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/ErrorAccuracy"
+                },
+                {
+                  "$ref": "#/$defs/ClassAccuracy"
+                },
+                {
+                  "$ref": "#/$defs/EffectAccuracy"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Accuracy Detail"
+        },
+        "accuracy_history": {
+          "items": {
+            "$ref": "#/$defs/AccuracyPoint"
+          },
+          "maxItems": 104,
+          "title": "Accuracy History",
+          "type": "array"
+        },
+        "batch": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BatchSummary"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "channels": {
+          "items": {
+            "$ref": "#/$defs/ChannelReadout"
+          },
+          "maxItems": 40,
+          "title": "Channels",
+          "type": "array"
+        },
+        "conditioning": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ForecastConditioning"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "input_fingerprint": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Input Fingerprint"
+        },
+        "inputs_echo": {
+          "items": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "object"
+          },
+          "maxItems": 20,
+          "title": "Inputs Echo",
+          "type": "array"
+        },
+        "lead": {
+          "maxLength": 400,
+          "title": "Lead",
+          "type": "string"
+        },
+        "notes_plain": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Notes Plain",
+          "type": "array"
+        },
+        "panels": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "bars": "#/$defs/BarsBlock",
+                "calibration": "#/$defs/CalibrationBlock",
+                "confusion": "#/$defs/ConfusionBlock",
+                "field": "#/$defs/FieldBlock",
+                "kpi": "#/$defs/KpiBlock",
+                "note": "#/$defs/NoteBlock",
+                "picture": "#/$defs/PictureBlock",
+                "scatter": "#/$defs/ScatterBlock",
+                "series": "#/$defs/SeriesBlock",
+                "table": "#/$defs/TableBlock",
+                "unavailable": "#/$defs/UnavailableBlock"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/KpiBlock"
+              },
+              {
+                "$ref": "#/$defs/SeriesBlock"
+              },
+              {
+                "$ref": "#/$defs/BarsBlock"
+              },
+              {
+                "$ref": "#/$defs/ScatterBlock"
+              },
+              {
+                "$ref": "#/$defs/CalibrationBlock"
+              },
+              {
+                "$ref": "#/$defs/ConfusionBlock"
+              },
+              {
+                "$ref": "#/$defs/FieldBlock"
+              },
+              {
+                "$ref": "#/$defs/TableBlock"
+              },
+              {
+                "$ref": "#/$defs/NoteBlock"
+              },
+              {
+                "$ref": "#/$defs/PictureBlock"
+              },
+              {
+                "$ref": "#/$defs/UnavailableBlock"
+              }
+            ]
+          },
+          "maxItems": 24,
+          "title": "Panels",
+          "type": "array"
+        },
+        "prediction": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PredictionResult"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "preset": {
+          "anyOf": [
+            {
+              "enum": [
+                "mmm_planner",
+                "forecast",
+                "regression",
+                "classifier",
+                "causal_impact",
+                "field_map",
+                "image",
+                "generic"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Preset"
+        },
+        "scenario": {
+          "anyOf": [
+            {
+              "patternProperties": {
+                "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scenario"
+        },
+        "schema_version": {
+          "default": 1,
+          "maximum": 2,
+          "minimum": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "series": {
+          "items": {
+            "$ref": "#/$defs/Series"
+          },
+          "maxItems": 42,
+          "title": "Series",
+          "type": "array"
+        },
+        "source_run_ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Source Run Ids",
+          "type": "array"
+        },
+        "technical": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "maxProperties": 64,
+          "title": "Technical",
+          "type": "object"
+        },
+        "tiles": {
+          "items": {
+            "$ref": "#/$defs/KpiValue"
+          },
+          "maxItems": 6,
+          "title": "Tiles",
+          "type": "array"
+        }
+      },
+      "required": [
+        "lead"
+      ],
+      "title": "ReadoutSnapshot",
+      "type": "object"
+    },
+    "ScatterBlock": {
+      "properties": {
+        "approximate": {
+          "default": false,
+          "title": "Approximate",
+          "type": "boolean"
+        },
+        "caption": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Caption"
+        },
+        "intent": {
+          "default": "scatter",
+          "enum": [
+            "fan",
+            "line",
+            "bars",
+            "range",
+            "diverging",
+            "scatter",
+            "residuals",
+            "calibration",
+            "confusion",
+            "probability_bars",
+            "field",
+            "area_bars",
+            "effect",
+            "accuracy_history",
+            "decomposition",
+            "state_sequence"
+          ],
+          "title": "Intent",
+          "type": "string"
+        },
+        "kind": {
+          "const": "scatter",
+          "default": "scatter",
+          "title": "Kind",
+          "type": "string"
+        },
+        "panel_id": {
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "title": "Panel Id",
+          "type": "string"
+        },
+        "points": {
+          "items": {
+            "$ref": "#/$defs/ScatterPoint"
+          },
+          "maxItems": 520,
+          "title": "Points",
+          "type": "array"
+        },
+        "title": {
+          "maxLength": 80,
+          "title": "Title",
+          "type": "string"
+        },
+        "x_label": {
+          "anyOf": [
+            {
+              "maxLength": 80,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "X Label"
+        },
+        "y_label": {
+          "anyOf": [
+            {
+              "maxLength": 80,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Y Label"
+        }
+      },
+      "required": [
+        "panel_id",
+        "title"
+      ],
+      "title": "ScatterBlock",
+      "type": "object"
+    },
+    "ScatterPoint": {
+      "properties": {
+        "x": {
+          "title": "X",
+          "type": "number"
+        },
+        "y": {
+          "title": "Y",
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "title": "ScatterPoint",
+      "type": "object"
+    },
+    "ScenarioForm": {
+      "description": "The \"Try a case\" form a client fills in (the revision's scenario input defs).",
+      "properties": {
+        "horizon": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HorizonDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "inputs": {
+          "items": {
+            "$ref": "#/$defs/ScenarioInputDef"
+          },
+          "maxItems": 16,
+          "title": "Inputs",
+          "type": "array"
+        },
+        "max_rows": {
+          "maximum": 20,
+          "minimum": 1,
+          "title": "Max Rows",
+          "type": "integer"
+        },
+        "outputs": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 4,
+          "title": "Outputs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "max_rows"
+      ],
+      "title": "ScenarioForm",
+      "type": "object"
+    },
+    "ScenarioInputDef": {
+      "additionalProperties": false,
+      "description": "One value a client may edit in a scenario row (or a batch column, when ranges are\nenforced). ``number``/``integer`` need ``min`` < ``max`` (and at most\n:data:`MAX_SCENARIO_STEPS` steps); ``choice`` needs ``choices``; ``date`` needs\n``date_min``/``date_max``. ``applies``: per row, or for the forecast horizon.",
+      "properties": {
+        "applies": {
+          "default": "row",
+          "enum": [
+            "row",
+            "horizon"
+          ],
+          "title": "Applies",
+          "type": "string"
+        },
+        "bind": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VarBind"
+            },
+            {
+              "$ref": "#/$defs/DimBind"
+            }
+          ],
+          "title": "Bind"
+        },
+        "choices": {
+          "items": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "maxItems": 200,
+          "title": "Choices",
+          "type": "array"
+        },
+        "date_max": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Date Max"
+        },
+        "date_min": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Date Min"
+        },
+        "default": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "maxLength": 128,
+              "type": "string"
+            }
+          ],
+          "title": "Default"
+        },
+        "help": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Help"
+        },
+        "label": {
+          "maxLength": 60,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "max": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max"
+        },
+        "min": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min"
+        },
+        "name": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "step": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Step"
+        },
+        "type": {
+          "enum": [
+            "number",
+            "integer",
+            "choice",
+            "date",
+            "toggle"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "label",
+        "bind",
+        "type",
+        "default"
+      ],
+      "title": "ScenarioInputDef",
+      "type": "object"
+    },
+    "Series": {
+      "properties": {
+        "label": {
+          "maxLength": 80,
+          "title": "Label",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 128,
+          "title": "Name",
+          "type": "string"
+        },
+        "points": {
+          "items": {
+            "$ref": "#/$defs/SeriesPoint"
+          },
+          "maxItems": 520,
+          "title": "Points",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "label"
+      ],
+      "title": "Series",
+      "type": "object"
+    },
+    "SeriesBlock": {
+      "description": "Lines or fans over time or categories (``split_at``: where the forecast starts).",
+      "properties": {
+        "approximate": {
+          "default": false,
+          "title": "Approximate",
+          "type": "boolean"
+        },
+        "caption": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Caption"
+        },
+        "intent": {
+          "enum": [
+            "fan",
+            "line",
+            "bars",
+            "range",
+            "diverging",
+            "scatter",
+            "residuals",
+            "calibration",
+            "confusion",
+            "probability_bars",
+            "field",
+            "area_bars",
+            "effect",
+            "accuracy_history",
+            "decomposition",
+            "state_sequence"
+          ],
+          "title": "Intent",
+          "type": "string"
+        },
+        "kind": {
+          "const": "series",
+          "default": "series",
+          "title": "Kind",
+          "type": "string"
+        },
+        "panel_id": {
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "title": "Panel Id",
+          "type": "string"
+        },
+        "series": {
+          "items": {
+            "$ref": "#/$defs/Series"
+          },
+          "maxItems": 12,
+          "title": "Series",
+          "type": "array"
+        },
+        "split_at": {
+          "anyOf": [
+            {
+              "maxLength": 32,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Split At"
+        },
+        "title": {
+          "maxLength": 80,
+          "title": "Title",
+          "type": "string"
+        },
+        "x_kind": {
+          "default": "time",
+          "enum": [
+            "time",
+            "category"
+          ],
+          "title": "X Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "panel_id",
+        "title",
+        "intent"
+      ],
+      "title": "SeriesBlock",
+      "type": "object"
+    },
+    "SeriesConditioning": {
+      "description": "What one series' forecast was conditioned on.\n\n``series`` holds the series' labels on the target's other dims (empty for a single\nseries). ``origin`` is the last period the forecast starts from: the last actual, or the\nend of the fitted history when the series has none.",
+      "examples": [
+        {
+          "actuals_through": "1961-03-01",
+          "first_actual": "1961-01-01",
+          "forecast_from": "1961-04-01",
+          "forecast_to": "1961-11-01",
+          "missing": 0,
+          "n_actuals": 3,
+          "n_forecast": 8,
+          "origin": "1961-03-01",
+          "revised": 0,
+          "series": {}
+        }
+      ],
+      "properties": {
+        "actuals_through": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The last supplied actual",
+          "title": "Actuals Through"
+        },
+        "first_actual": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "First Actual"
+        },
+        "forecast_from": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Forecast From"
+        },
+        "forecast_to": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Forecast To"
+        },
+        "missing": {
+          "default": 0,
+          "description": "Empty periods between the fitted history and the last actual, filtered as missing observations (only models that accept missing targets)",
+          "minimum": 0,
+          "title": "Missing",
+          "type": "integer"
+        },
+        "n_actuals": {
+          "description": "Periods with a supplied actual",
+          "minimum": 0,
+          "title": "N Actuals",
+          "type": "integer"
+        },
+        "n_forecast": {
+          "default": 0,
+          "minimum": 0,
+          "title": "N Forecast",
+          "type": "integer"
+        },
+        "origin": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            }
+          ],
+          "title": "Origin"
+        },
+        "revised": {
+          "default": 0,
+          "description": "Actuals inside the fitted range: they replaced the fitted values",
+          "minimum": 0,
+          "title": "Revised",
+          "type": "integer"
+        },
+        "series": {
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                }
+              ]
+            }
+          },
+          "title": "Series",
+          "type": "object"
+        }
+      },
+      "required": [
+        "n_actuals",
+        "origin"
+      ],
+      "title": "SeriesConditioning",
+      "type": "object"
+    },
+    "SeriesPoint": {
+      "properties": {
+        "actual": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Actual"
+        },
+        "high": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "High"
+        },
+        "low": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Low"
+        },
+        "mean": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mean"
+        },
+        "t": {
+          "description": "The period (ISO date)",
+          "maxLength": 32,
+          "title": "T",
+          "type": "string"
+        }
+      },
+      "required": [
+        "t"
+      ],
+      "title": "SeriesPoint",
+      "type": "object"
+    },
+    "Severity": {
+      "description": "How bad an :class:`Issue` is. Only ``error`` blocks submission.",
+      "enum": [
+        "info",
+        "warning",
+        "error"
+      ],
+      "title": "Severity",
+      "type": "string"
+    },
+    "SubjectDef": {
+      "additionalProperties": false,
+      "description": "What the dashboard is about (the main output and how to show its numbers).\n\n``positive_label`` is the class a classifier reports the chance of; ``value_per_unit``\n(currency per unit of a count) is for the MMM planner only.",
+      "examples": [
+        {
+          "currency": "EUR",
+          "label": "Sales",
+          "unit": "currency",
+          "variable": "y_hat"
+        },
+        {
+          "label": "Chance of churn",
+          "positive_label": "churned",
+          "unit": "probability",
+          "variable": "y_hat"
+        }
+      ],
+      "properties": {
+        "currency": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "ISO 4217 code",
+          "title": "Currency"
+        },
+        "decimals": {
+          "default": 0,
+          "maximum": 6,
+          "minimum": 0,
+          "title": "Decimals",
+          "type": "integer"
+        },
+        "label": {
+          "maxLength": 60,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "positive_label": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Positive Label"
+        },
+        "unit": {
+          "enum": [
+            "count",
+            "currency",
+            "ratio",
+            "percent",
+            "index",
+            "probability",
+            "number",
+            "label",
+            "rate"
+          ],
+          "title": "Unit",
+          "type": "string"
+        },
+        "value_per_unit": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value Per Unit"
+        },
+        "variable": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Variable",
+          "type": "string"
+        }
+      },
+      "required": [
+        "variable",
+        "label",
+        "unit"
+      ],
+      "title": "SubjectDef",
+      "type": "object"
+    },
+    "TableBlock": {
+      "properties": {
+        "approximate": {
+          "default": false,
+          "title": "Approximate",
+          "type": "boolean"
+        },
+        "caption": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Caption"
+        },
+        "columns": {
+          "items": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "maxItems": 12,
+          "title": "Columns",
+          "type": "array"
+        },
+        "kind": {
+          "const": "table",
+          "default": "table",
+          "title": "Kind",
+          "type": "string"
+        },
+        "panel_id": {
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "title": "Panel Id",
+          "type": "string"
+        },
+        "rows": {
+          "items": {
+            "items": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "maxItems": 50,
+          "title": "Rows",
+          "type": "array"
+        },
+        "title": {
+          "maxLength": 80,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "panel_id",
+        "title"
+      ],
+      "title": "TableBlock",
+      "type": "object"
+    },
+    "UnavailableBlock": {
+      "description": "A panel whose source was missing at materialise (one panel never fails a readout).",
+      "properties": {
+        "approximate": {
+          "default": false,
+          "title": "Approximate",
+          "type": "boolean"
+        },
+        "caption": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Caption"
+        },
+        "kind": {
+          "const": "unavailable",
+          "default": "unavailable",
+          "title": "Kind",
+          "type": "string"
+        },
+        "panel_id": {
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "title": "Panel Id",
+          "type": "string"
+        },
+        "reason": {
+          "maxLength": 200,
+          "title": "Reason",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 80,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "panel_id",
+        "title",
+        "reason"
+      ],
+      "title": "UnavailableBlock",
+      "type": "object"
+    },
+    "VarBind": {
+      "additionalProperties": false,
+      "description": "The input sets an input variable (a driver column).",
+      "properties": {
+        "var": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Var",
+          "type": "string"
+        }
+      },
+      "required": [
+        "var"
+      ],
+      "title": "VarBind",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-ShareSession.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A share session (held in memory by the page, sent as :data:`SHARE_SESSION_HEADER`)\nand the dashboard it opens. Refresh it before ``expires_at`` while the link is valid.",
+  "examples": [
+    {
+      "dashboard": {
+        "channels": [
+          {
+            "label": "TV",
+            "name": "tv"
+          },
+          {
+            "label": "Paid search",
+            "max_mult": 2.0,
+            "min_mult": 0.5,
+            "name": "search"
+          }
+        ],
+        "client_name": "Acme Retail",
+        "ends_at": "2026-11-14T09:30:00Z",
+        "id": "dsh_01jaf3r1s2t3v4w5x6y7z8a9b0",
+        "inputs": {
+          "actuals": true,
+          "actuals_mode": "compared",
+          "exact": true,
+          "refit_requests": true,
+          "whatif": true
+        },
+        "kpi": {
+          "label": "Orders",
+          "unit": "count",
+          "value_per_unit": 42.0,
+          "variable": "orders"
+        },
+        "latest_readout": {
+          "created_at": "2026-10-15T09:30:00Z",
+          "kind": "refresh",
+          "model_ref": "model://growth/eu-geo-mmm@v3",
+          "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+          "period": [
+            "2026-10-12",
+            "2026-10-18"
+          ],
+          "ready_at": "2026-10-15T09:30:00Z",
+          "seq": 12,
+          "snapshot": {
+            "channels": [
+              {
+                "contribution": 2300.0,
+                "label": "TV",
+                "mroi": 0.9,
+                "name": "tv",
+                "roi": 1.86,
+                "roi_high": 2.5,
+                "roi_low": 1.2,
+                "share": 0.55,
+                "spend": 52000.0,
+                "zone": "over"
+              },
+              {
+                "contribution": 1910.0,
+                "label": "Paid search",
+                "mroi": 3.1,
+                "name": "search",
+                "roi": 4.46,
+                "share": 0.45,
+                "spend": 18000.0,
+                "zone": "headroom"
+              }
+            ],
+            "lead": "Media brought 4,210 orders this week. This is 3% more than the model expects.",
+            "notes_plain": [
+              "The model was fitted on data to 18/10/2026."
+            ],
+            "series": [
+              {
+                "label": "Orders",
+                "name": "orders",
+                "points": [
+                  {
+                    "actual": 4150.0,
+                    "high": 4400.0,
+                    "low": 3800.0,
+                    "mean": 4100.0,
+                    "t": "2026-10-11"
+                  },
+                  {
+                    "actual": 4210.0,
+                    "high": 4390.0,
+                    "low": 3790.0,
+                    "mean": 4090.0,
+                    "t": "2026-10-18"
+                  }
+                ]
+              }
+            ],
+            "source_run_ids": [
+              "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+            ],
+            "technical": {
+              "draws": 300,
+              "model_ref": "model://growth/eu-geo-mmm@v3"
+            },
+            "tiles": [
+              {
+                "caption": "Likely range 3,890 to 4,530",
+                "delta": 0.03,
+                "delta_basis": "the model's expectation",
+                "delta_dir": "up",
+                "high": 4530.0,
+                "key": "expected",
+                "label": "Orders from media",
+                "low": 3890.0,
+                "unit": "count",
+                "value": 4210.0
+              },
+              {
+                "caption": "Each 1 EUR of media brought 2.40 EUR",
+                "delta_dir": "flat",
+                "key": "return_on_media",
+                "label": "Return on media",
+                "unit": "ratio",
+                "value": 2.4
+              }
+            ]
+          },
+          "status": "ready",
+          "title": "Week ending 18/10/2026",
+          "trigger": "workflow",
+          "visibility": "published"
+        },
+        "live_inputs": "ok",
+        "period_label": "week",
+        "summary": "How media spend drives online orders, updated every Monday.",
+        "tabs": [
+          "this_period",
+          "trends",
+          "scenarios",
+          "update",
+          "history"
+        ],
+        "tiles": [
+          "expected",
+          "vs_expected",
+          "return_on_media",
+          "in_range_spend"
+        ],
+        "title": "Weekly media results"
+      },
+      "expires_at": "2026-10-15T09:30:00Z",
+      "session": "mps_eyJzaWQiOiJkc3NfMDEiLCJleHAiOjE3OTk5OTk5OTksInYiOjF9.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    }
+  ],
+  "properties": {
+    "dashboard": {
+      "$ref": "#/$defs/ClientDashboard"
+    },
+    "expires_at": {
+      "format": "date-time",
+      "title": "Expires At",
+      "type": "string"
+    },
+    "session": {
+      "pattern": "^mps_[A-Za-z0-9_-]{16,400}\\.[A-Za-z0-9_-]{43}$",
+      "title": "Session",
+      "type": "string"
+    }
+  },
+  "required": [
+    "session",
+    "expires_at",
+    "dashboard"
+  ],
+  "title": "ShareSession",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

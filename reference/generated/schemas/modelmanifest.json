@@ -547,6 +547,20 @@
           "title": "Circular",
           "type": "boolean"
         },
+        "classes_dim": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The dim that holds the classes (or states) of a probability output, e.g. 'class'",
+          "title": "Classes Dim"
+        },
         "description": {
           "anyOf": [
             {
@@ -593,6 +607,26 @@
           ],
           "default": null,
           "description": "Draw the output as a 2-D field (Model Explorer 'fields' section)"
+        },
+        "meaning": {
+          "anyOf": [
+            {
+              "enum": [
+                "value",
+                "class_probability",
+                "state_probability",
+                "rate",
+                "effect"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "What the numbers are (v0.17): a value, a class or state probability, a rate or an effect. Unset: dashboards guess it from the dims and plots",
+          "title": "Meaning"
         },
         "units": {
           "anyOf": [

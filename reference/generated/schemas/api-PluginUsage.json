@@ -1,0 +1,56 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-PluginUsage.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "What uses a version (shown before a yank).",
+  "examples": [
+    {
+      "dashboards": [],
+      "endpoints": [],
+      "model_versions": [
+        "mv_01jbz3q2x8m9v7k5h4g3f2e1d3"
+      ],
+      "runs_30d": 4,
+      "truncated": false
+    }
+  ],
+  "properties": {
+    "dashboards": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 50,
+      "title": "Dashboards",
+      "type": "array"
+    },
+    "endpoints": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 50,
+      "title": "Endpoints",
+      "type": "array"
+    },
+    "model_versions": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 50,
+      "title": "Model Versions",
+      "type": "array"
+    },
+    "runs_30d": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Runs 30D",
+      "type": "integer"
+    },
+    "truncated": {
+      "default": false,
+      "title": "Truncated",
+      "type": "boolean"
+    }
+  },
+  "title": "PluginUsage",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

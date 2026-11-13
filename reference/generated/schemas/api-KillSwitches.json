@@ -14,6 +14,12 @@
     }
   ],
   "properties": {
+    "chat_enabled": {
+      "default": true,
+      "description": "Off: no dashboard chat turn reaches a model",
+      "title": "Chat Enabled",
+      "type": "boolean"
+    },
     "global_spend_cap_micros": {
       "anyOf": [
         {

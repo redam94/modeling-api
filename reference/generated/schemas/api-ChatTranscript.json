@@ -1,0 +1,185 @@
+{
+  "$defs": {
+    "ChatTranscriptSummary": {
+      "description": "One kept conversation (editors). ``principal_label`` is a user's display name or\n``Share link <name>``; it is never an IP address.",
+      "examples": [
+        {
+          "conversation_id": "cnv_01jaf3t1v2w3x4y5z6a7b8c9d0",
+          "expires_at": "2026-11-14T09:34:00Z",
+          "first_at": "2026-10-15T09:30:00Z",
+          "last_at": "2026-10-15T09:34:00Z",
+          "principal_kind": "client",
+          "principal_label": "Dana Client",
+          "turns": 4
+        }
+      ],
+      "properties": {
+        "conversation_id": {
+          "pattern": "^cnv_[0-9a-z]{26}$",
+          "title": "Conversation Id",
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "first_at": {
+          "format": "date-time",
+          "title": "First At",
+          "type": "string"
+        },
+        "last_at": {
+          "format": "date-time",
+          "title": "Last At",
+          "type": "string"
+        },
+        "principal_kind": {
+          "enum": [
+            "member",
+            "client",
+            "share"
+          ],
+          "title": "Principal Kind",
+          "type": "string"
+        },
+        "principal_label": {
+          "maxLength": 200,
+          "title": "Principal Label",
+          "type": "string"
+        },
+        "turns": {
+          "minimum": 0,
+          "title": "Turns",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "conversation_id",
+        "principal_kind",
+        "principal_label",
+        "turns",
+        "first_at",
+        "last_at",
+        "expires_at"
+      ],
+      "title": "ChatTranscriptSummary",
+      "type": "object"
+    },
+    "ChatTranscriptTurn": {
+      "description": "One kept turn: its text and the names of the tools called (never their results).",
+      "examples": [
+        {
+          "at": "2026-10-15T09:30:00Z",
+          "index": 1,
+          "ok": true,
+          "role": "assistant",
+          "text": "Revenue went up by 4%.",
+          "tool_calls": [
+            "compare_readouts"
+          ]
+        }
+      ],
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "index": {
+          "maximum": 63,
+          "minimum": 0,
+          "title": "Index",
+          "type": "integer"
+        },
+        "ok": {
+          "default": true,
+          "title": "Ok",
+          "type": "boolean"
+        },
+        "role": {
+          "enum": [
+            "user",
+            "assistant"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 4000,
+          "title": "Text",
+          "type": "string"
+        },
+        "tool_calls": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 6,
+          "title": "Tool Calls",
+          "type": "array"
+        }
+      },
+      "required": [
+        "index",
+        "role",
+        "text",
+        "at"
+      ],
+      "title": "ChatTranscriptTurn",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-ChatTranscript.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "``GET \u2026/chat/transcripts/{conversation_id}``: a kept conversation, oldest turn first.",
+  "examples": [
+    {
+      "summary": {
+        "conversation_id": "cnv_01jaf3t1v2w3x4y5z6a7b8c9d0",
+        "expires_at": "2026-11-14T09:34:00Z",
+        "first_at": "2026-10-15T09:30:00Z",
+        "last_at": "2026-10-15T09:34:00Z",
+        "principal_kind": "client",
+        "principal_label": "Dana Client",
+        "turns": 4
+      },
+      "turns": [
+        {
+          "at": "2026-10-15T09:30:00Z",
+          "index": 0,
+          "role": "user",
+          "text": "What changed?"
+        },
+        {
+          "at": "2026-10-15T09:30:00Z",
+          "index": 1,
+          "ok": true,
+          "role": "assistant",
+          "text": "Revenue went up by 4%.",
+          "tool_calls": [
+            "compare_readouts"
+          ]
+        }
+      ]
+    }
+  ],
+  "properties": {
+    "summary": {
+      "$ref": "#/$defs/ChatTranscriptSummary"
+    },
+    "turns": {
+      "items": {
+        "$ref": "#/$defs/ChatTranscriptTurn"
+      },
+      "title": "Turns",
+      "type": "array"
+    }
+  },
+  "required": [
+    "summary",
+    "turns"
+  ],
+  "title": "ChatTranscript",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

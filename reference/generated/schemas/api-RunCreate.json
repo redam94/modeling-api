@@ -277,7 +277,9 @@
         "workflow_node",
         "explore",
         "governance",
-        "inspect"
+        "inspect",
+        "plugin_inspect",
+        "plugin_describe"
       ],
       "title": "RunKind",
       "type": "string"

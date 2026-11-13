@@ -1,0 +1,53 @@
+{
+  "$defs": {
+    "JsonValue": {}
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-ChartPreviewRequest.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Preview a chart template document on its source recipe's catalog example.",
+  "examples": [
+    {
+      "document": {
+        "apiVersion": "mapi/v1",
+        "kind": "ChartTemplate",
+        "metadata": {
+          "name": "fit-dots",
+          "title": "Fit as dots"
+        },
+        "plot": {
+          "data": {
+            "name": "points"
+          },
+          "encoding": {
+            "x": {
+              "field": "observed",
+              "type": "quantitative"
+            },
+            "y": {
+              "field": "point",
+              "type": "quantitative"
+            }
+          },
+          "mark": "point"
+        },
+        "source_recipe": "core.fit_vs_actual@^1"
+      }
+    }
+  ],
+  "properties": {
+    "document": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Document",
+      "type": "object"
+    }
+  },
+  "required": [
+    "document"
+  ],
+  "title": "ChartPreviewRequest",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

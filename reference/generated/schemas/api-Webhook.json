@@ -17,7 +17,14 @@
         "model.rejected",
         "model.deprecated",
         "dataset.version.created",
-        "optimize.completed"
+        "optimize.completed",
+        "dashboard.readout.published",
+        "plugin.version.kit_passed",
+        "plugin.version.kit_failed",
+        "plugin.version.awaiting_approval",
+        "plugin.version.approved",
+        "plugin.version.rejected",
+        "plugin.version.yanked"
       ],
       "title": "WebhookEventType",
       "type": "string"

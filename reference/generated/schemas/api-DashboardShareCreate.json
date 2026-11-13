@@ -1,0 +1,74 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-DashboardShareCreate.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``POST \u2026/shares``: a share link (read-only unless ``allowed_inputs`` names inputs,\nwhich needs the runner role: the link spends the publisher's compute). Passcodes are\n8-128 characters and cannot be changed: revoke the link and make a new one.",
+  "examples": [
+    {
+      "expires_in_days": 30,
+      "label": "Board pack"
+    },
+    {
+      "allowed_inputs": [
+        "whatif"
+      ],
+      "expires_in_days": 90,
+      "label": "Acme marketing team"
+    }
+  ],
+  "properties": {
+    "allowed_inputs": {
+      "items": {
+        "enum": [
+          "whatif",
+          "actuals",
+          "scenario_rows",
+          "batch"
+        ],
+        "type": "string"
+      },
+      "title": "Allowed Inputs",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "expires_in_days": {
+      "default": 30,
+      "maximum": 365,
+      "minimum": 1,
+      "title": "Expires In Days",
+      "type": "integer"
+    },
+    "label": {
+      "anyOf": [
+        {
+          "maxLength": 80,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Label"
+    },
+    "passcode": {
+      "anyOf": [
+        {
+          "format": "password",
+          "maxLength": 128,
+          "minLength": 8,
+          "type": "string",
+          "writeOnly": true
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Passcode"
+    }
+  },
+  "title": "DashboardShareCreate",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

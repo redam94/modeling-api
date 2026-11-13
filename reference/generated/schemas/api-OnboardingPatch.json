@@ -1,0 +1,171 @@
+{
+  "$defs": {
+    "TourProgress": {
+      "additionalProperties": false,
+      "description": "Where the user is in one tour. ``updated_at`` is set by the server on merge.",
+      "properties": {
+        "status": {
+          "enum": [
+            "in_progress",
+            "completed",
+            "dismissed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "step": {
+          "default": 0,
+          "description": "Index of the current step",
+          "maximum": 50,
+          "minimum": 0,
+          "title": "Step",
+          "type": "integer"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "updated_at"
+      ],
+      "title": "TourProgress",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-OnboardingPatch.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``PATCH /v1/tenants/{t}/me/onboarding`` (at most 2 KiB). Every field is optional;\nan absent field leaves the state as it is.",
+  "examples": [
+    {
+      "complete": [
+        "took_tour"
+      ]
+    },
+    {
+      "tours": {
+        "fit": {
+          "status": "in_progress",
+          "step": 2,
+          "updated_at": "2026-10-15T09:30:00Z"
+        }
+      },
+      "welcomed": true
+    },
+    {
+      "checklist_dismissed": true,
+      "hide_samples": [
+        "geo_mmm"
+      ]
+    }
+  ],
+  "properties": {
+    "checklist_dismissed": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Checklist Dismissed"
+    },
+    "complete": {
+      "description": "Steps now done",
+      "items": {
+        "enum": [
+          "took_tour",
+          "open_sample",
+          "fit_model",
+          "read_results",
+          "try_whatif",
+          "make_dashboard",
+          "own_data",
+          "make_your_own"
+        ],
+        "type": "string"
+      },
+      "maxItems": 8,
+      "title": "Complete",
+      "type": "array"
+    },
+    "hide_samples": {
+      "items": {
+        "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+        "type": "string"
+      },
+      "maxItems": 8,
+      "title": "Hide Samples",
+      "type": "array"
+    },
+    "tips_off": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Tips Off"
+    },
+    "tours": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/TourProgress"
+          },
+          "propertyNames": {
+            "enum": [
+              "welcome",
+              "data",
+              "fit",
+              "results",
+              "whatif",
+              "dashboard",
+              "make_your_own"
+            ]
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Tours to set (other tours are kept)",
+      "title": "Tours"
+    },
+    "unhide_samples": {
+      "items": {
+        "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+        "type": "string"
+      },
+      "maxItems": 8,
+      "title": "Unhide Samples",
+      "type": "array"
+    },
+    "welcomed": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "true records the first welcome; only a reset clears it",
+      "title": "Welcomed"
+    }
+  },
+  "title": "OnboardingPatch",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

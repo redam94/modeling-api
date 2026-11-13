@@ -1,0 +1,352 @@
+{
+  "$defs": {
+    "ChannelReadout": {
+      "description": "One channel row of the scorecard (``roi`` per unit of spend, ``mroi`` at the margin).\n\n``spend`` and ``contribution`` are per readout period (the response grid's window totals\ndivided by its ``periods``), like the KPI tiles.",
+      "properties": {
+        "contribution": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Contribution"
+        },
+        "label": {
+          "maxLength": 60,
+          "title": "Label",
+          "type": "string"
+        },
+        "mroi": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mroi"
+        },
+        "name": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "roi": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Roi"
+        },
+        "roi_high": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Roi High"
+        },
+        "roi_low": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Roi Low"
+        },
+        "share": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Share of the media contribution, 0-1",
+          "title": "Share"
+        },
+        "spend": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Spend"
+        },
+        "zone": {
+          "anyOf": [
+            {
+              "enum": [
+                "headroom",
+                "optimal",
+                "over",
+                "no_payback"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Zone"
+        }
+      },
+      "required": [
+        "name",
+        "label"
+      ],
+      "title": "ChannelReadout",
+      "type": "object"
+    },
+    "KpiValue": {
+      "description": "One KPI tile: a value with its plain caption and the change against ``delta_basis``.",
+      "properties": {
+        "approximate": {
+          "default": false,
+          "description": "Layout 2: the value is a sum or mean of point predictions",
+          "title": "Approximate",
+          "type": "boolean"
+        },
+        "caption": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Caption",
+          "type": "string"
+        },
+        "delta": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Delta"
+        },
+        "delta_basis": {
+          "anyOf": [
+            {
+              "maxLength": 80,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Delta Basis"
+        },
+        "delta_dir": {
+          "default": "flat",
+          "enum": [
+            "up",
+            "down",
+            "flat",
+            "alert"
+          ],
+          "title": "Delta Dir",
+          "type": "string"
+        },
+        "high": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "High"
+        },
+        "key": {
+          "enum": [
+            "expected",
+            "vs_expected",
+            "return_on_media",
+            "in_range_spend",
+            "accuracy",
+            "index",
+            "panel"
+          ],
+          "title": "Key",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 80,
+          "title": "Label",
+          "type": "string"
+        },
+        "low": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Low"
+        },
+        "panel_id": {
+          "anyOf": [
+            {
+              "maxLength": 32,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Layout 2: the KPI panel",
+          "title": "Panel Id"
+        },
+        "unit": {
+          "enum": [
+            "count",
+            "currency",
+            "ratio",
+            "percent",
+            "index",
+            "probability",
+            "number",
+            "label",
+            "rate"
+          ],
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "required": [
+        "key",
+        "label",
+        "unit"
+      ],
+      "title": "KpiValue",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-WhatIfResult.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A scenario evaluated on the grid: tiles and channel rows as a readout shows them,\n``delta_kpi`` against the current plan and one plain ``lead`` sentence. Every number is\nper readout period (the grid's window totals divided by its ``periods``).",
+  "examples": [
+    {
+      "channels": [
+        {
+          "contribution": 2300.0,
+          "label": "TV",
+          "mroi": 0.9,
+          "name": "tv",
+          "roi": 1.86,
+          "roi_high": 2.5,
+          "roi_low": 1.2,
+          "share": 0.55,
+          "spend": 52000.0,
+          "zone": "over"
+        },
+        {
+          "contribution": 1910.0,
+          "label": "Paid search",
+          "mroi": 3.1,
+          "name": "search",
+          "roi": 4.46,
+          "share": 0.45,
+          "spend": 18000.0,
+          "zone": "headroom"
+        }
+      ],
+      "delta_kpi": 85.0,
+      "lead": "This plan brings about 85 more orders a week than the current plan.",
+      "tiles": [
+        {
+          "caption": "Likely range 3,890 to 4,530",
+          "delta": 0.03,
+          "delta_basis": "the model's expectation",
+          "delta_dir": "up",
+          "high": 4530.0,
+          "key": "expected",
+          "label": "Orders from media",
+          "low": 3890.0,
+          "unit": "count",
+          "value": 4210.0
+        }
+      ]
+    }
+  ],
+  "properties": {
+    "channels": {
+      "items": {
+        "$ref": "#/$defs/ChannelReadout"
+      },
+      "maxItems": 40,
+      "title": "Channels",
+      "type": "array"
+    },
+    "delta_kpi": {
+      "title": "Delta Kpi",
+      "type": "number"
+    },
+    "lead": {
+      "maxLength": 400,
+      "title": "Lead",
+      "type": "string"
+    },
+    "tiles": {
+      "items": {
+        "$ref": "#/$defs/KpiValue"
+      },
+      "maxItems": 6,
+      "title": "Tiles",
+      "type": "array"
+    }
+  },
+  "required": [
+    "delta_kpi",
+    "lead"
+  ],
+  "title": "WhatIfResult",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

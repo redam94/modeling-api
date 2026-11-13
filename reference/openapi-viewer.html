@@ -10,9 +10,38 @@
   <meta name="referrer" content="no-referrer">
   <title>modeling-api HTTP API (v1)</title>
   <style>
-    body { margin: 0; background: #fff; }
-    .mapi-viewer-bar { font: 14px/1.4 system-ui, sans-serif; padding: 8px 16px; border-bottom: 1px solid #e5e5e5; }
-    .mapi-viewer-bar a { color: #4f46e5; }
+    /* The Mono look of the docs (docs/stylesheets/mono.css), for this stand-alone page. */
+    @font-face {
+      font-family: "Inter Variable";
+      font-style: normal;
+      font-display: swap;
+      font-weight: 100 900;
+      src: url("../assets/fonts/inter-latin-wght-normal.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "JetBrains Mono Variable";
+      font-style: normal;
+      font-display: swap;
+      font-weight: 100 800;
+      src: url("../assets/fonts/jetbrains-mono-latin-wght-normal.woff2") format("woff2");
+    }
+    body { margin: 0; background: #ffffff; color: #1d1d1f; }
+    .mapi-viewer-bar {
+      font: 14px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter Variable", "Segoe UI Variable Text", "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      letter-spacing: -0.011em;
+      padding: 12px 22px;
+      border-bottom: 1px solid #e8e8ed;
+      color: #6e6e73;
+    }
+    .mapi-viewer-bar a {
+      color: #1d1d1f;
+      text-decoration: underline;
+      text-decoration-color: #d2d2d7;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 0.18em;
+    }
+    .mapi-viewer-bar a:hover { text-decoration-color: currentColor; }
+    .mapi-viewer-bar a:focus-visible { outline: 2px solid #1d1d1f; outline-offset: 3px; border-radius: 4px; }
   </style>
 </head>
 <body>
@@ -21,7 +50,8 @@
     <a href="generated/openapi.json" download="mapi-openapi.json">openapi.json</a>
   </div>
   <redoc spec-url="generated/openapi.json" expand-responses="200,201,202" required-props-first="true"
-         sort-props-alphabetically="false" hide-hostname="true" native-scrollbars="true"></redoc>
+         sort-props-alphabetically="false" hide-hostname="true" native-scrollbars="true"
+         theme='{"colors":{"primary":{"main":"#1d1d1f"},"success":{"main":"#00865f"},"warning":{"main":"#a04600"},"error":{"main":"#c8102e"},"text":{"primary":"#1d1d1f","secondary":"#6e6e73"},"border":{"dark":"#d2d2d7","light":"#e8e8ed"},"http":{"get":"#0072b2","post":"#00865f","put":"#a04600","patch":"#a04600","delete":"#c8102e","options":"#6e6e73","head":"#6e6e73","basic":"#6e6e73","link":"#0072b2"}},"typography":{"fontSize":"15px","lineHeight":"1.5","fontFamily":"-apple-system, BlinkMacSystemFont, \"SF Pro Text\", \"Inter Variable\", \"Segoe UI Variable Text\", \"Segoe UI\", \"Helvetica Neue\", Helvetica, Arial, sans-serif","fontWeightRegular":"400","fontWeightBold":"600","headings":{"fontFamily":"-apple-system, BlinkMacSystemFont, \"SF Pro Text\", \"Inter Variable\", \"Segoe UI Variable Text\", \"Segoe UI\", \"Helvetica Neue\", Helvetica, Arial, sans-serif","fontWeight":"600","lineHeight":"1.15"},"code":{"fontFamily":"ui-monospace, \"SF Mono\", SFMono-Regular, \"JetBrains Mono Variable\", Menlo, Consolas, monospace","fontSize":"13px","color":"#1d1d1f","backgroundColor":"#f5f5f7"},"links":{"color":"#1d1d1f","visited":"#1d1d1f","hover":"#424245","textDecoration":"underline"}},"sidebar":{"backgroundColor":"#f5f5f7","textColor":"#424245","activeTextColor":"#1d1d1f"},"rightPanel":{"backgroundColor":"#161617","textColor":"#f5f5f7"},"codeBlock":{"backgroundColor":"#000000"},"schema":{"nestedBackground":"#f5f5f7","typeNameColor":"#6e6e73","requireLabelColor":"#c8102e"}}'></redoc>
   <script src="../assets/vendor/redoc/redoc.standalone.js"></script>
 </body>
 </html>

@@ -1,0 +1,2127 @@
+{
+  "$defs": {
+    "AccuracySource": {
+      "additionalProperties": false,
+      "description": "An accuracy metric of the readout's actuals (or its history over readouts).",
+      "properties": {
+        "kind": {
+          "const": "accuracy",
+          "default": "accuracy",
+          "title": "Kind",
+          "type": "string"
+        },
+        "metric": {
+          "enum": [
+            "n",
+            "mae",
+            "rmse",
+            "mape",
+            "wape",
+            "smape",
+            "bias",
+            "r2",
+            "band_hit_rate",
+            "accuracy",
+            "brier",
+            "log_score",
+            "auc",
+            "effect_total",
+            "effect_relative"
+          ],
+          "title": "Metric",
+          "type": "string"
+        }
+      },
+      "required": [
+        "metric"
+      ],
+      "title": "AccuracySource",
+      "type": "object"
+    },
+    "ActualsInputsV2": {
+      "additionalProperties": false,
+      "description": "Actuals for any model type. ``match=\"time\"``: per period, as layout 1;\n``match=\"row\"``: per case, joined on ``id_column`` (the outcome is ``label_column`` or\nthe target). ``threshold``: the probability above which a classifier says \"positive\"\n(the analyst sets it; clients cannot change it).",
+      "properties": {
+        "allow_refit_requests": {
+          "default": false,
+          "title": "Allow Refit Requests",
+          "type": "boolean"
+        },
+        "enabled": {
+          "default": false,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "id_column": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id Column"
+        },
+        "label_column": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label Column"
+        },
+        "match": {
+          "default": "time",
+          "enum": [
+            "time",
+            "row"
+          ],
+          "title": "Match",
+          "type": "string"
+        },
+        "publish": {
+          "default": "review",
+          "enum": [
+            "auto",
+            "review"
+          ],
+          "title": "Publish",
+          "type": "string"
+        },
+        "refit_workflow_id": {
+          "anyOf": [
+            {
+              "examples": [
+                "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+              ],
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Refit Workflow Id"
+        },
+        "threshold": {
+          "default": 0.5,
+          "maximum": 0.95,
+          "minimum": 0.05,
+          "title": "Threshold",
+          "type": "number"
+        }
+      },
+      "title": "ActualsInputsV2",
+      "type": "object"
+    },
+    "BatchDef": {
+      "additionalProperties": false,
+      "description": "Batch scoring: a CSV of up to ``max_rows`` new cases (one ``id_column`` plus the\ndriver columns); with ``enforce_ranges`` every cell is checked like a scenario row.",
+      "properties": {
+        "enabled": {
+          "default": false,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "enforce_ranges": {
+          "default": true,
+          "title": "Enforce Ranges",
+          "type": "boolean"
+        },
+        "id_column": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Id Column",
+          "type": "string"
+        },
+        "max_rows": {
+          "default": 2000,
+          "maximum": 5000,
+          "minimum": 1,
+          "title": "Max Rows",
+          "type": "integer"
+        },
+        "outputs": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 4,
+          "minItems": 1,
+          "title": "Outputs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "outputs",
+        "id_column"
+      ],
+      "title": "BatchDef",
+      "type": "object"
+    },
+    "ChannelDef": {
+      "additionalProperties": false,
+      "description": "One media channel and the range its what-if slider covers (``1`` = the current plan).",
+      "examples": [
+        {
+          "label": "TV",
+          "max_mult": 1.5,
+          "min_mult": 0.5,
+          "name": "tv"
+        }
+      ],
+      "properties": {
+        "label": {
+          "maxLength": 60,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "max_mult": {
+          "default": 1.5,
+          "maximum": 5,
+          "title": "Max Mult",
+          "type": "number"
+        },
+        "min_mult": {
+          "default": 0.5,
+          "minimum": 0,
+          "title": "Min Mult",
+          "type": "number"
+        },
+        "name": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "step": {
+          "default": 0.05,
+          "exclusiveMinimum": 0,
+          "title": "Step",
+          "type": "number"
+        }
+      },
+      "required": [
+        "name",
+        "label"
+      ],
+      "title": "ChannelDef",
+      "type": "object"
+    },
+    "ChartPanel": {
+      "additionalProperties": false,
+      "description": "A native chart (``intent``) of an output or of the accuracy history.",
+      "properties": {
+        "band": {
+          "default": "outcome",
+          "enum": [
+            "outcome",
+            "mean",
+            "none"
+          ],
+          "title": "Band",
+          "type": "string"
+        },
+        "caption": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Caption"
+        },
+        "facet": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Facet"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "intent": {
+          "enum": [
+            "fan",
+            "line",
+            "bars",
+            "range",
+            "diverging",
+            "scatter",
+            "residuals",
+            "calibration",
+            "confusion",
+            "probability_bars",
+            "field",
+            "area_bars",
+            "effect",
+            "accuracy_history",
+            "decomposition",
+            "state_sequence"
+          ],
+          "title": "Intent",
+          "type": "string"
+        },
+        "kind": {
+          "const": "chart",
+          "default": "chart",
+          "title": "Kind",
+          "type": "string"
+        },
+        "max_items": {
+          "default": 20,
+          "maximum": 60,
+          "minimum": 1,
+          "title": "Max Items",
+          "type": "integer"
+        },
+        "reduce": {
+          "$ref": "#/$defs/Reduce"
+        },
+        "source": {
+          "discriminator": {
+            "mapping": {
+              "accuracy": "#/$defs/AccuracySource",
+              "output": "#/$defs/OutputSource"
+            },
+            "propertyName": "kind"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/OutputSource"
+            },
+            {
+              "$ref": "#/$defs/AccuracySource"
+            }
+          ],
+          "title": "Source"
+        },
+        "title": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "intent",
+        "source"
+      ],
+      "title": "ChartPanel",
+      "type": "object"
+    },
+    "DashboardLimitsV2": {
+      "additionalProperties": false,
+      "properties": {
+        "batch_runs_per_day": {
+          "default": 3,
+          "maximum": 50,
+          "minimum": 0,
+          "title": "Batch Runs Per Day",
+          "type": "integer"
+        },
+        "exact_runs_per_day": {
+          "default": 20,
+          "maximum": 500,
+          "minimum": 0,
+          "title": "Exact Runs Per Day",
+          "type": "integer"
+        }
+      },
+      "title": "DashboardLimitsV2",
+      "type": "object"
+    },
+    "DashboardSource": {
+      "additionalProperties": false,
+      "description": "The model a dashboard reads. ``model_version``: ``model_id`` (and ``version``; the\nlatest ready version when omitted) is pinned at publish. ``endpoint``: ``alias`` is\nresolved to its current version and endpoint revision at publish.",
+      "examples": [
+        {
+          "kind": "model_version",
+          "model_id": "eu-geo-mmm",
+          "version": 3
+        },
+        {
+          "alias": "geo-mmm-prod",
+          "kind": "endpoint"
+        }
+      ],
+      "properties": {
+        "alias": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Alias"
+        },
+        "kind": {
+          "enum": [
+            "model_version",
+            "endpoint"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "model_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Id"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "DashboardSource",
+      "type": "object"
+    },
+    "DashboardSpecV2": {
+      "additionalProperties": false,
+      "description": "What a layout 2 dashboard shows (the stored draft and each published revision).\n\n``layout_version`` is required (never a default: the hash rule). Panels are at most\n:data:`MAX_PANELS` (at most :data:`MAX_KPI_PANELS` KPI tiles) with unique ids, of the\nkinds and intents the preset allows (:data:`PRESET_RULES`); ``mmm`` is given exactly for\nthe ``mmm_planner`` preset. Text fields are plain text. The serialised spec holds at most\n:data:`~mapi_spec.dashboards.MAX_SPEC_BYTES`.",
+      "examples": [
+        {
+          "actuals": {
+            "enabled": true,
+            "publish": "auto"
+          },
+          "client_name": "Northwind Outdoor",
+          "layout_version": 2,
+          "limits": {
+            "exact_runs_per_day": 20
+          },
+          "panels": [
+            {
+              "id": "next",
+              "kind": "kpi",
+              "reduce": {
+                "how": "next"
+              },
+              "source": {
+                "kind": "output",
+                "variable": "y_hat"
+              },
+              "title": "Sales next month"
+            },
+            {
+              "good": "down",
+              "id": "typical_error",
+              "kind": "kpi",
+              "source": {
+                "kind": "accuracy",
+                "metric": "mae"
+              },
+              "stat": "value",
+              "title": "Typical error"
+            },
+            {
+              "id": "fan",
+              "intent": "fan",
+              "kind": "chart",
+              "source": {
+                "kind": "output",
+                "variable": "y_hat"
+              },
+              "title": "Sales and forecast"
+            },
+            {
+              "id": "history",
+              "intent": "accuracy_history",
+              "kind": "chart",
+              "source": {
+                "kind": "accuracy",
+                "metric": "mape"
+              },
+              "title": "Accuracy over time"
+            },
+            {
+              "id": "about",
+              "kind": "note",
+              "text": "The forecast starts from the newest month that you sent.",
+              "title": "About these numbers"
+            }
+          ],
+          "period_label": "month",
+          "preset": "forecast",
+          "refresh": {
+            "follow_endpoint": true,
+            "horizon": 6
+          },
+          "scenario_rows": {
+            "enabled": true,
+            "horizon": {
+              "default": 6,
+              "dim": "date",
+              "max": 12,
+              "min": 1
+            },
+            "inputs": [
+              {
+                "applies": "horizon",
+                "bind": {
+                  "var": "price"
+                },
+                "default": 19.5,
+                "label": "Average price",
+                "max": 30,
+                "min": 10,
+                "name": "price",
+                "step": 0.5,
+                "type": "number"
+              }
+            ],
+            "max_rows": 3,
+            "outputs": [
+              "y_hat"
+            ]
+          },
+          "source": {
+            "alias": "sales-forecast",
+            "kind": "endpoint"
+          },
+          "subject": {
+            "currency": "EUR",
+            "label": "Sales",
+            "unit": "currency",
+            "variable": "y_hat"
+          },
+          "summary": "The sales that we expect for the next months.",
+          "title": "Monthly sales forecast"
+        }
+      ],
+      "properties": {
+        "actuals": {
+          "$ref": "#/$defs/ActualsInputsV2"
+        },
+        "batch": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BatchDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "client_name": {
+          "anyOf": [
+            {
+              "maxLength": 80,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Client Name"
+        },
+        "layout_version": {
+          "const": 2,
+          "title": "Layout Version",
+          "type": "integer"
+        },
+        "limits": {
+          "$ref": "#/$defs/DashboardLimitsV2"
+        },
+        "mmm": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MmmPlanner"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "panels": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "chart": "#/$defs/ChartPanel",
+                "kpi": "#/$defs/KpiPanel",
+                "mmm": "#/$defs/MmmPanel",
+                "note": "#/$defs/NotePanel",
+                "recipe": "#/$defs/RecipePanel",
+                "table": "#/$defs/TablePanel"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/KpiPanel"
+              },
+              {
+                "$ref": "#/$defs/ChartPanel"
+              },
+              {
+                "$ref": "#/$defs/TablePanel"
+              },
+              {
+                "$ref": "#/$defs/NotePanel"
+              },
+              {
+                "$ref": "#/$defs/RecipePanel"
+              },
+              {
+                "$ref": "#/$defs/MmmPanel"
+              }
+            ]
+          },
+          "maxItems": 24,
+          "minItems": 1,
+          "title": "Panels",
+          "type": "array"
+        },
+        "period_label": {
+          "default": "period",
+          "enum": [
+            "week",
+            "month",
+            "quarter",
+            "year",
+            "day",
+            "period",
+            "case"
+          ],
+          "title": "Period Label",
+          "type": "string"
+        },
+        "preset": {
+          "enum": [
+            "mmm_planner",
+            "forecast",
+            "regression",
+            "classifier",
+            "causal_impact",
+            "field_map",
+            "image",
+            "generic"
+          ],
+          "title": "Preset",
+          "type": "string"
+        },
+        "refresh": {
+          "$ref": "#/$defs/RefreshPolicy"
+        },
+        "scenario_rows": {
+          "$ref": "#/$defs/ScenarioRowsDef"
+        },
+        "show_technical": {
+          "default": false,
+          "title": "Show Technical",
+          "type": "boolean"
+        },
+        "source": {
+          "$ref": "#/$defs/DashboardSource"
+        },
+        "subject": {
+          "$ref": "#/$defs/SubjectDef"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "maxLength": 600,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Summary"
+        },
+        "title": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "layout_version",
+        "preset",
+        "title",
+        "source",
+        "subject",
+        "panels"
+      ],
+      "title": "DashboardSpecV2",
+      "type": "object"
+    },
+    "DimBind": {
+      "additionalProperties": false,
+      "description": "The input picks a coordinate of a dim (a store, a period).",
+      "properties": {
+        "dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        }
+      },
+      "required": [
+        "dim"
+      ],
+      "title": "DimBind",
+      "type": "object"
+    },
+    "ErrorCode": {
+      "description": "Stable error codes. See :data:`ERROR_INFO` for HTTP status and titles.",
+      "enum": [
+        "SCHEMA_INVALID",
+        "SPEC_PARSE_ERROR",
+        "PAYLOAD_TOO_LARGE",
+        "UNSUPPORTED_API_VERSION",
+        "REF_UNRESOLVED",
+        "SETTINGS_INVALID",
+        "BINDING_INVALID",
+        "SPLIT_INVALID",
+        "LEAKAGE_RISK",
+        "DIM_POLICY_LOOSENED",
+        "SCHEMA_DYNAMIC",
+        "SIDE_TABLE_COVERAGE",
+        "PLOT_UNSAFE",
+        "UNSEEN_LEVELS",
+        "COORD_NOT_ALLOWED",
+        "HORIZON_EXCEEDS_FIT",
+        "MISSING_FUTURE_COVARIATE",
+        "NON_CONTIGUOUS_EXTENSION",
+        "CAPABILITY_UNSUPPORTED",
+        "RECURSIVE_UNSUPPORTED",
+        "MODE_NOT_SUPPORTED",
+        "QUOTA_EXCEEDED",
+        "RATE_LIMITED",
+        "UNAUTHENTICATED",
+        "FORBIDDEN",
+        "NOT_FOUND",
+        "CONFLICT",
+        "IDEMPOTENCY_CONFLICT",
+        "PRECONDITION_FAILED",
+        "USER_CODE_ERROR",
+        "RESOURCE_EXHAUSTED",
+        "INFRA_ERROR",
+        "INTEGRITY_FAILURE",
+        "TIMEOUT",
+        "SANDBOX_VIOLATION",
+        "CANCELLED",
+        "INTERNAL_ERROR",
+        "GUIDED_ANSWERS_INVALID",
+        "BUSINESS_PRIORS_INVALID",
+        "CALIBRATION_UNSUPPORTED",
+        "IMPORT_UNSUPPORTED",
+        "SCENARIO_OUT_OF_RANGE",
+        "PROMOTION_BLOCKED",
+        "OVERRIDE_REQUIRED",
+        "WEBHOOK_URL_BLOCKED",
+        "WEBHOOK_SIGNATURE_INVALID",
+        "EMBED_NOT_ALLOWED",
+        "LINK_EXPIRED",
+        "EMAIL_NOT_ALLOWED",
+        "TERMS_NOT_ACCEPTED",
+        "EMAIL_NOT_VERIFIED",
+        "IDENTITY_VERIFICATION_REQUIRED",
+        "ABOUT_INCOMPLETE",
+        "CHOOSER_ANSWER_INVALID",
+        "WORKFLOW_INVALID",
+        "EXPRESSION_INVALID",
+        "EXPRESSION_ERROR",
+        "NODE_UNKNOWN",
+        "SCHEDULE_INVALID",
+        "WORKFLOW_NOT_RUNNABLE",
+        "POLICY_INVALID",
+        "VALIDATION_TRANSITION_INVALID",
+        "SELF_APPROVAL_FORBIDDEN",
+        "NOT_VALIDATED",
+        "EXPLORE_INVALID",
+        "OPTIMIZE_INFEASIBLE",
+        "ACTUALS_NOT_SUPPORTED",
+        "ACTUALS_INVALID",
+        "NOT_READY",
+        "INGEST_UNSAFE_FILE",
+        "DASHBOARD_NOT_PUBLISHED",
+        "DASHBOARD_INPUT_DISABLED",
+        "DASHBOARD_LIVE_PAUSED",
+        "DASHBOARD_RUN_LIMIT",
+        "DASHBOARD_SPEC_STALE",
+        "SHARE_PASSCODE_REQUIRED",
+        "SHARE_PASSCODE_INVALID",
+        "SHARE_LOCKED",
+        "INVALID_ROLE_SCOPE",
+        "DASHBOARD_INPUT_INVALID",
+        "DASHBOARD_BATCH_TOO_LARGE",
+        "DASHBOARD_DOWNLOAD_GONE",
+        "DASHBOARD_LAYOUT_RETIRED",
+        "LIBRARY_INVALID",
+        "LIBRARY_DATA_SHAPE",
+        "SCHEMA_UNSAFE",
+        "EXTENSION_UNAVAILABLE",
+        "SAMPLES_DISABLED",
+        "PREVIEW_DISABLED",
+        "PLUGIN_REFUSED",
+        "PLUGIN_NAMESPACE_TAKEN",
+        "PLUGIN_VERSION_EXISTS",
+        "PLUGIN_STATE_CONFLICT",
+        "PLUGIN_UNAVAILABLE",
+        "UPLOADED_CODE_NOT_SHAREABLE",
+        "UNTRUSTED_PLACEMENT_UNAVAILABLE",
+        "REAUTH_REQUIRED",
+        "CHAT_DISABLED",
+        "CHAT_UNAVAILABLE",
+        "CHAT_BUDGET_EXHAUSTED",
+        "CHAT_HISTORY_INVALID",
+        "READ_TOKEN_LIMIT"
+      ],
+      "title": "ErrorCode",
+      "type": "string"
+    },
+    "HorizonDef": {
+      "additionalProperties": false,
+      "description": "How many periods ahead a forecast scenario row reaches.",
+      "properties": {
+        "default": {
+          "maximum": 104,
+          "minimum": 1,
+          "title": "Default",
+          "type": "integer"
+        },
+        "dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "max": {
+          "maximum": 104,
+          "minimum": 1,
+          "title": "Max",
+          "type": "integer"
+        },
+        "min": {
+          "default": 1,
+          "maximum": 104,
+          "minimum": 1,
+          "title": "Min",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "dim",
+        "max",
+        "default"
+      ],
+      "title": "HorizonDef",
+      "type": "object"
+    },
+    "Issue": {
+      "additionalProperties": false,
+      "description": "One problem found while validating a document, located by a JSON pointer.",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "context": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Context",
+          "type": "object"
+        },
+        "message": {
+          "description": "Trusted, platform-authored text",
+          "maxLength": 2000,
+          "title": "Message",
+          "type": "string"
+        },
+        "pointer": {
+          "default": "",
+          "description": "RFC 6901 JSON pointer into the submitted document",
+          "title": "Pointer",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity",
+          "default": "error"
+        },
+        "suggested_action": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggested Action"
+        },
+        "untrusted_text": {
+          "anyOf": [
+            {
+              "maxLength": 8000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "User/plugin-originated text; render as text only",
+          "title": "Untrusted Text"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "Issue",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "KpiPanel": {
+      "additionalProperties": false,
+      "description": "A KPI tile. ``stat``: the centre or a bound of an output (``value`` for metrics,\nchecks and accuracy); ``band``: ``outcome`` (the range of one new result, scored as\npredictive), ``mean`` (the range of the average) or ``none``; ``compare``: the change\nagainst the previous published readout; ``good``: which direction is good news.",
+      "properties": {
+        "band": {
+          "default": "outcome",
+          "enum": [
+            "outcome",
+            "mean",
+            "none"
+          ],
+          "title": "Band",
+          "type": "string"
+        },
+        "caption": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Caption"
+        },
+        "compare": {
+          "default": "previous",
+          "enum": [
+            "previous",
+            "none"
+          ],
+          "title": "Compare",
+          "type": "string"
+        },
+        "good": {
+          "default": "up",
+          "enum": [
+            "up",
+            "down",
+            "none"
+          ],
+          "title": "Good",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "kpi",
+          "default": "kpi",
+          "title": "Kind",
+          "type": "string"
+        },
+        "reduce": {
+          "$ref": "#/$defs/Reduce"
+        },
+        "source": {
+          "discriminator": {
+            "mapping": {
+              "accuracy": "#/$defs/AccuracySource",
+              "metric": "#/$defs/MetricSource",
+              "output": "#/$defs/OutputSource",
+              "scorecard": "#/$defs/ScorecardSource",
+              "view": "#/$defs/ViewSource"
+            },
+            "propertyName": "kind"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/OutputSource"
+            },
+            {
+              "$ref": "#/$defs/MetricSource"
+            },
+            {
+              "$ref": "#/$defs/ScorecardSource"
+            },
+            {
+              "$ref": "#/$defs/ViewSource"
+            },
+            {
+              "$ref": "#/$defs/AccuracySource"
+            }
+          ],
+          "title": "Source"
+        },
+        "stat": {
+          "default": "centre",
+          "enum": [
+            "centre",
+            "low",
+            "high",
+            "value"
+          ],
+          "title": "Stat",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "source"
+      ],
+      "title": "KpiPanel",
+      "type": "object"
+    },
+    "MetricSource": {
+      "additionalProperties": false,
+      "description": "A metric logged by the fit run (``labels`` pick one row, e.g. ``{\"unit\": \"s1\"}``;\nthe empty labels are the run's scalar value).",
+      "properties": {
+        "key": {
+          "pattern": "^[a-z][a-z0-9_]{0,63}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "kind": {
+          "const": "metric",
+          "default": "metric",
+          "title": "Kind",
+          "type": "string"
+        },
+        "labels": {
+          "additionalProperties": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "maxProperties": 4,
+          "title": "Labels",
+          "type": "object"
+        },
+        "run": {
+          "const": "fit",
+          "default": "fit",
+          "title": "Run",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key"
+      ],
+      "title": "MetricSource",
+      "type": "object"
+    },
+    "MmmPanel": {
+      "additionalProperties": false,
+      "description": "A part of the media planner (``mmm_planner`` preset only): the layout 1 tiles, the\nchannel scorecard, the changes against the expectation, the return trend or the saved\nscenarios.",
+      "properties": {
+        "caption": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Caption"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "mmm",
+          "default": "mmm",
+          "title": "Kind",
+          "type": "string"
+        },
+        "part": {
+          "enum": [
+            "tiles",
+            "scorecard",
+            "changes",
+            "roi_trend",
+            "scenarios"
+          ],
+          "title": "Part",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "part"
+      ],
+      "title": "MmmPanel",
+      "type": "object"
+    },
+    "MmmPlanner": {
+      "additionalProperties": false,
+      "description": "The media planner part of the ``mmm_planner`` preset (layout 1's channels, what-ifs\nand tiles).",
+      "properties": {
+        "channels": {
+          "items": {
+            "$ref": "#/$defs/ChannelDef"
+          },
+          "maxItems": 40,
+          "minItems": 1,
+          "title": "Channels",
+          "type": "array"
+        },
+        "tiles": {
+          "items": {
+            "enum": [
+              "expected",
+              "vs_expected",
+              "return_on_media",
+              "in_range_spend",
+              "accuracy",
+              "index",
+              "panel"
+            ],
+            "type": "string"
+          },
+          "maxItems": 4,
+          "title": "Tiles",
+          "type": "array"
+        },
+        "whatif": {
+          "$ref": "#/$defs/WhatIfInputs"
+        }
+      },
+      "required": [
+        "channels"
+      ],
+      "title": "MmmPlanner",
+      "type": "object"
+    },
+    "NotePanel": {
+      "additionalProperties": false,
+      "description": "Plain text from the analyst (rendered as text, never HTML or markdown).",
+      "properties": {
+        "caption": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Caption"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "note",
+          "default": "note",
+          "title": "Kind",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 1200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "text"
+      ],
+      "title": "NotePanel",
+      "type": "object"
+    },
+    "OutputSource": {
+      "additionalProperties": false,
+      "description": "A model output (its score summary table; names as the dataset names them).\n``select`` fixes coordinates (``{\"store\": \"s1\"}``) before any reduction.",
+      "properties": {
+        "kind": {
+          "const": "output",
+          "default": "output",
+          "title": "Kind",
+          "type": "string"
+        },
+        "select": {
+          "maxProperties": 8,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            }
+          },
+          "title": "Select",
+          "type": "object"
+        },
+        "variable": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Variable",
+          "type": "string"
+        }
+      },
+      "required": [
+        "variable"
+      ],
+      "title": "OutputSource",
+      "type": "object"
+    },
+    "PresetSuggestion": {
+      "description": "A preset that fits the model version, why, and which inputs it cannot offer.",
+      "properties": {
+        "blocked_inputs": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "title": "Blocked Inputs",
+          "type": "array"
+        },
+        "preset": {
+          "enum": [
+            "mmm_planner",
+            "forecast",
+            "regression",
+            "classifier",
+            "causal_impact",
+            "field_map",
+            "image",
+            "generic"
+          ],
+          "title": "Preset",
+          "type": "string"
+        },
+        "reasons": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "title": "Reasons",
+          "type": "array"
+        }
+      },
+      "required": [
+        "preset"
+      ],
+      "title": "PresetSuggestion",
+      "type": "object"
+    },
+    "RecipePanel": {
+      "additionalProperties": false,
+      "description": "A platform plot recipe: drawn natively when the recipe is in :data:`RECIPE_INTENTS`,\nelse a **picture** of the model version's plot ``plot_id`` (rendered once at publish).",
+      "properties": {
+        "caption": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Caption"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "recipe",
+          "default": "recipe",
+          "title": "Kind",
+          "type": "string"
+        },
+        "output": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Output"
+        },
+        "plot_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Plot Id"
+        },
+        "recipe": {
+          "maxLength": 128,
+          "pattern": "^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_.]*$",
+          "title": "Recipe",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "recipe"
+      ],
+      "title": "RecipePanel",
+      "type": "object"
+    },
+    "Reduce": {
+      "additionalProperties": false,
+      "description": "How an output becomes the panel's numbers.\n\n``select``: the cells of ``source.select``; ``last``/``next``: the last fitted or the\nnext forecast period; ``mean``/``sum`` over dims ``over`` (of draws only the ``sum``\nover the time dim of a forecast: the forecast total, with its range; point outputs\nare allowed and flagged ``approximate``); ``share_above``: the share of cells above\n``threshold``; ``top_class``: the most probable class. The server never adds interval\nbounds.",
+      "properties": {
+        "how": {
+          "default": "none",
+          "enum": [
+            "none",
+            "select",
+            "last",
+            "next",
+            "mean",
+            "sum",
+            "share_above",
+            "top_class"
+          ],
+          "title": "How",
+          "type": "string"
+        },
+        "over": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 4,
+          "title": "Over",
+          "type": "array"
+        },
+        "threshold": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Threshold"
+        }
+      },
+      "title": "Reduce",
+      "type": "object"
+    },
+    "RefreshPolicy": {
+      "additionalProperties": false,
+      "description": "``workflow_id``: a successful run of this workflow (its ``model.score`` or\n``model.forecast`` node) appends a refresh readout. ``follow_endpoint`` (endpoint\nsources only): a promotion publishes a new revision on the new version.",
+      "properties": {
+        "follow_endpoint": {
+          "default": false,
+          "title": "Follow Endpoint",
+          "type": "boolean"
+        },
+        "horizon": {
+          "anyOf": [
+            {
+              "maximum": 104,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Horizon"
+        },
+        "workflow_id": {
+          "anyOf": [
+            {
+              "examples": [
+                "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+              ],
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Workflow Id"
+        }
+      },
+      "title": "RefreshPolicy",
+      "type": "object"
+    },
+    "ScenarioInputDef": {
+      "additionalProperties": false,
+      "description": "One value a client may edit in a scenario row (or a batch column, when ranges are\nenforced). ``number``/``integer`` need ``min`` < ``max`` (and at most\n:data:`MAX_SCENARIO_STEPS` steps); ``choice`` needs ``choices``; ``date`` needs\n``date_min``/``date_max``. ``applies``: per row, or for the forecast horizon.",
+      "properties": {
+        "applies": {
+          "default": "row",
+          "enum": [
+            "row",
+            "horizon"
+          ],
+          "title": "Applies",
+          "type": "string"
+        },
+        "bind": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VarBind"
+            },
+            {
+              "$ref": "#/$defs/DimBind"
+            }
+          ],
+          "title": "Bind"
+        },
+        "choices": {
+          "items": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "maxItems": 200,
+          "title": "Choices",
+          "type": "array"
+        },
+        "date_max": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Date Max"
+        },
+        "date_min": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Date Min"
+        },
+        "default": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "maxLength": 128,
+              "type": "string"
+            }
+          ],
+          "title": "Default"
+        },
+        "help": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Help"
+        },
+        "label": {
+          "maxLength": 60,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "max": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max"
+        },
+        "min": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min"
+        },
+        "name": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "step": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Step"
+        },
+        "type": {
+          "enum": [
+            "number",
+            "integer",
+            "choice",
+            "date",
+            "toggle"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "label",
+        "bind",
+        "type",
+        "default"
+      ],
+      "title": "ScenarioInputDef",
+      "type": "object"
+    },
+    "ScenarioRowsDef": {
+      "additionalProperties": false,
+      "description": "Scenario rows (\"Try a case\"): clients edit ``inputs`` (at most ``max_rows`` rows per\nrequest); ``fixed`` values are sent with every row and never shown; the model scores\n``outputs`` with their uncertainty.",
+      "properties": {
+        "enabled": {
+          "default": false,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "fixed": {
+          "maxProperties": 64,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "title": "Fixed",
+          "type": "object"
+        },
+        "horizon": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HorizonDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "inputs": {
+          "items": {
+            "$ref": "#/$defs/ScenarioInputDef"
+          },
+          "maxItems": 16,
+          "title": "Inputs",
+          "type": "array"
+        },
+        "max_rows": {
+          "default": 5,
+          "maximum": 20,
+          "minimum": 1,
+          "title": "Max Rows",
+          "type": "integer"
+        },
+        "outputs": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 4,
+          "title": "Outputs",
+          "type": "array"
+        }
+      },
+      "title": "ScenarioRowsDef",
+      "type": "object"
+    },
+    "ScorecardSource": {
+      "additionalProperties": false,
+      "description": "One check of the model version's scorecard.",
+      "properties": {
+        "check": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Check",
+          "type": "string"
+        },
+        "kind": {
+          "const": "scorecard",
+          "default": "scorecard",
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "check"
+      ],
+      "title": "ScorecardSource",
+      "type": "object"
+    },
+    "Severity": {
+      "description": "How bad an :class:`Issue` is. Only ``error`` blocks submission.",
+      "enum": [
+        "info",
+        "warning",
+        "error"
+      ],
+      "title": "Severity",
+      "type": "string"
+    },
+    "SubjectDef": {
+      "additionalProperties": false,
+      "description": "What the dashboard is about (the main output and how to show its numbers).\n\n``positive_label`` is the class a classifier reports the chance of; ``value_per_unit``\n(currency per unit of a count) is for the MMM planner only.",
+      "examples": [
+        {
+          "currency": "EUR",
+          "label": "Sales",
+          "unit": "currency",
+          "variable": "y_hat"
+        },
+        {
+          "label": "Chance of churn",
+          "positive_label": "churned",
+          "unit": "probability",
+          "variable": "y_hat"
+        }
+      ],
+      "properties": {
+        "currency": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "ISO 4217 code",
+          "title": "Currency"
+        },
+        "decimals": {
+          "default": 0,
+          "maximum": 6,
+          "minimum": 0,
+          "title": "Decimals",
+          "type": "integer"
+        },
+        "label": {
+          "maxLength": 60,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "positive_label": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Positive Label"
+        },
+        "unit": {
+          "enum": [
+            "count",
+            "currency",
+            "ratio",
+            "percent",
+            "index",
+            "probability",
+            "number",
+            "label",
+            "rate"
+          ],
+          "title": "Unit",
+          "type": "string"
+        },
+        "value_per_unit": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value Per Unit"
+        },
+        "variable": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Variable",
+          "type": "string"
+        }
+      },
+      "required": [
+        "variable",
+        "label",
+        "unit"
+      ],
+      "title": "SubjectDef",
+      "type": "object"
+    },
+    "TablePanel": {
+      "additionalProperties": false,
+      "description": "A table of an output (``columns``: dims and stats, in order).",
+      "properties": {
+        "caption": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Caption"
+        },
+        "columns": {
+          "items": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "maxItems": 12,
+          "title": "Columns",
+          "type": "array"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "table",
+          "default": "table",
+          "title": "Kind",
+          "type": "string"
+        },
+        "max_rows": {
+          "default": 20,
+          "maximum": 50,
+          "minimum": 1,
+          "title": "Max Rows",
+          "type": "integer"
+        },
+        "source": {
+          "$ref": "#/$defs/OutputSource"
+        },
+        "title": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "source"
+      ],
+      "title": "TablePanel",
+      "type": "object"
+    },
+    "VarBind": {
+      "additionalProperties": false,
+      "description": "The input sets an input variable (a driver column).",
+      "properties": {
+        "var": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Var",
+          "type": "string"
+        }
+      },
+      "required": [
+        "var"
+      ],
+      "title": "VarBind",
+      "type": "object"
+    },
+    "ViewSource": {
+      "additionalProperties": false,
+      "description": "A guided view of the readout's run: the forecast total over the horizon, the\ncounterfactual delta, or the conditioning of a forecast on actuals.",
+      "properties": {
+        "kind": {
+          "const": "view",
+          "default": "view",
+          "title": "Kind",
+          "type": "string"
+        },
+        "view": {
+          "enum": [
+            "forecast_total",
+            "counterfactual_delta",
+            "conditioning"
+          ],
+          "title": "View",
+          "type": "string"
+        }
+      },
+      "required": [
+        "view"
+      ],
+      "title": "ViewSource",
+      "type": "object"
+    },
+    "WhatIfInputs": {
+      "additionalProperties": false,
+      "description": "Scenario sliders (the response grid, free) and ``exact`` results (a score run).",
+      "properties": {
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "exact": {
+          "default": false,
+          "title": "Exact",
+          "type": "boolean"
+        }
+      },
+      "title": "WhatIfInputs",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-DashboardPresets.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "``GET /v1/dashboards:presets``: compatible presets, best first, and the compiled\nspec of the first (a starting draft; nothing is saved).",
+  "examples": [
+    {
+      "spec": {
+        "actuals": {
+          "enabled": true,
+          "publish": "auto"
+        },
+        "client_name": "Northwind Outdoor",
+        "layout_version": 2,
+        "limits": {
+          "exact_runs_per_day": 20
+        },
+        "panels": [
+          {
+            "id": "next",
+            "kind": "kpi",
+            "reduce": {
+              "how": "next"
+            },
+            "source": {
+              "kind": "output",
+              "variable": "y_hat"
+            },
+            "title": "Sales next month"
+          },
+          {
+            "good": "down",
+            "id": "typical_error",
+            "kind": "kpi",
+            "source": {
+              "kind": "accuracy",
+              "metric": "mae"
+            },
+            "stat": "value",
+            "title": "Typical error"
+          },
+          {
+            "id": "fan",
+            "intent": "fan",
+            "kind": "chart",
+            "source": {
+              "kind": "output",
+              "variable": "y_hat"
+            },
+            "title": "Sales and forecast"
+          },
+          {
+            "id": "history",
+            "intent": "accuracy_history",
+            "kind": "chart",
+            "source": {
+              "kind": "accuracy",
+              "metric": "mape"
+            },
+            "title": "Accuracy over time"
+          },
+          {
+            "id": "about",
+            "kind": "note",
+            "text": "The forecast starts from the newest month that you sent.",
+            "title": "About these numbers"
+          }
+        ],
+        "period_label": "month",
+        "preset": "forecast",
+        "refresh": {
+          "follow_endpoint": true,
+          "horizon": 6
+        },
+        "scenario_rows": {
+          "enabled": true,
+          "horizon": {
+            "default": 6,
+            "dim": "date",
+            "max": 12,
+            "min": 1
+          },
+          "inputs": [
+            {
+              "applies": "horizon",
+              "bind": {
+                "var": "price"
+              },
+              "default": 19.5,
+              "label": "Average price",
+              "max": 30,
+              "min": 10,
+              "name": "price",
+              "step": 0.5,
+              "type": "number"
+            }
+          ],
+          "max_rows": 3,
+          "outputs": [
+            "y_hat"
+          ]
+        },
+        "source": {
+          "alias": "sales-forecast",
+          "kind": "endpoint"
+        },
+        "subject": {
+          "currency": "EUR",
+          "label": "Sales",
+          "unit": "currency",
+          "variable": "y_hat"
+        },
+        "summary": "The sales that we expect for the next months.",
+        "title": "Monthly sales forecast"
+      },
+      "suggestions": [
+        {
+          "preset": "forecast",
+          "reasons": [
+            "The model forecasts a time output."
+          ]
+        },
+        {
+          "blocked_inputs": [
+            "batch: the model has no row dim"
+          ],
+          "preset": "generic",
+          "reasons": [
+            "Any model."
+          ]
+        }
+      ]
+    }
+  ],
+  "properties": {
+    "issues": {
+      "items": {
+        "$ref": "#/$defs/Issue"
+      },
+      "maxItems": 200,
+      "title": "Issues",
+      "type": "array"
+    },
+    "spec": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DashboardSpecV2"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "suggestions": {
+      "items": {
+        "$ref": "#/$defs/PresetSuggestion"
+      },
+      "maxItems": 8,
+      "title": "Suggestions",
+      "type": "array"
+    }
+  },
+  "title": "DashboardPresets",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

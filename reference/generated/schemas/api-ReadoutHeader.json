@@ -1,0 +1,204 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-ReadoutHeader.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A readout without its snapshot (lists, ``202`` answers while it is being built).\n\n``refit_status`` is the state of the refit request made with an actuals upload (\u00a710.4),\nshown to the uploader and the analysts.",
+  "examples": [
+    {
+      "created_at": "2026-10-15T09:30:00Z",
+      "kind": "refresh",
+      "model_ref": "model://growth/eu-geo-mmm@v3",
+      "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+      "period": [
+        "2026-10-12",
+        "2026-10-18"
+      ],
+      "ready_at": "2026-10-15T09:30:00Z",
+      "seq": 12,
+      "status": "ready",
+      "title": "Week ending 18/10/2026",
+      "trigger": "workflow",
+      "visibility": "published"
+    },
+    {
+      "created_at": "2026-10-15T09:30:00Z",
+      "kind": "scenario",
+      "model_ref": "model://growth/eu-geo-mmm@v3",
+      "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+      "seq": 13,
+      "status": "running",
+      "title": "TV \u221220 %, search +30 %",
+      "trigger": "whatif",
+      "visibility": "private"
+    }
+  ],
+  "properties": {
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "endpoint_revision": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Endpoint Revision"
+    },
+    "kind": {
+      "enum": [
+        "baseline",
+        "refresh",
+        "scenario",
+        "actuals",
+        "prediction",
+        "batch"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "mine": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Whether the caller made this readout (its own tried case, file or upload); set on the readout list and reads, null where the caller is not known",
+      "title": "Mine"
+    },
+    "model_ref": {
+      "maxLength": 512,
+      "title": "Model Ref",
+      "type": "string"
+    },
+    "model_version_id": {
+      "maxLength": 128,
+      "title": "Model Version Id",
+      "type": "string"
+    },
+    "period": {
+      "anyOf": [
+        {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "format": "date",
+              "type": "string"
+            }
+          ],
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Period"
+    },
+    "ready_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Ready At"
+    },
+    "refit_status": {
+      "anyOf": [
+        {
+          "enum": [
+            "open",
+            "approved",
+            "rejected",
+            "superseded",
+            "failed"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Refit Status"
+    },
+    "seq": {
+      "minimum": 1,
+      "title": "Seq",
+      "type": "integer"
+    },
+    "status": {
+      "enum": [
+        "queued",
+        "running",
+        "materialising",
+        "ready",
+        "failed"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "title": {
+      "maxLength": 200,
+      "title": "Title",
+      "type": "string"
+    },
+    "trigger": {
+      "enum": [
+        "publish",
+        "manual",
+        "whatif",
+        "actuals",
+        "workflow",
+        "endpoint",
+        "scenario_rows",
+        "batch"
+      ],
+      "title": "Trigger",
+      "type": "string"
+    },
+    "visibility": {
+      "enum": [
+        "published",
+        "private",
+        "pending_review",
+        "hidden"
+      ],
+      "title": "Visibility",
+      "type": "string"
+    }
+  },
+  "required": [
+    "seq",
+    "kind",
+    "trigger",
+    "visibility",
+    "status",
+    "title",
+    "model_version_id",
+    "model_ref",
+    "created_at"
+  ],
+  "title": "ReadoutHeader",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

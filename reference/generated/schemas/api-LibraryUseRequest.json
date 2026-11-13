@@ -1,0 +1,104 @@
+{
+  "$defs": {
+    "JsonValue": {}
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-LibraryUseRequest.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Use an item: the values of its slots and exposed settings, the dataset to check\nagainst, and for chart templates the model version to apply to.",
+  "examples": [
+    {
+      "dataset": "dataset://growth/store_sales@latest",
+      "slots": {
+        "media": [
+          "tv",
+          "search"
+        ]
+      }
+    }
+  ],
+  "properties": {
+    "dataset": {
+      "anyOf": [
+        {
+          "description": "Dataset reference dataset://project/name@version",
+          "examples": [
+            "dataset://growth/eu_media_daily@latest"
+          ],
+          "pattern": "^dataset://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)(?:@(latest|v\\d{1,9}|\\d{1,9}|sha256:[0-9a-f]{64}))?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Dataset"
+    },
+    "exposed": {
+      "maxProperties": 12,
+      "patternProperties": {
+        "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+          "$ref": "#/$defs/JsonValue"
+        }
+      },
+      "title": "Exposed",
+      "type": "object"
+    },
+    "model_id": {
+      "anyOf": [
+        {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Model Id"
+    },
+    "model_version": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Model Version"
+    },
+    "revision": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Revision"
+    },
+    "slots": {
+      "maxProperties": 16,
+      "patternProperties": {
+        "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+          "$ref": "#/$defs/JsonValue"
+        }
+      },
+      "title": "Slots",
+      "type": "object"
+    }
+  },
+  "title": "LibraryUseRequest",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

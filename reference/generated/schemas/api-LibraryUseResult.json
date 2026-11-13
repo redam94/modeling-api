@@ -1,0 +1,783 @@
+{
+  "$defs": {
+    "DataRef": {
+      "additionalProperties": false,
+      "description": "A dataset stored next to the bundle (path relative to the bundle root).",
+      "properties": {
+        "crc32c": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9+/]{6}==$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Crc32C"
+        },
+        "format": {
+          "default": "arrow",
+          "enum": [
+            "arrow",
+            "json"
+          ],
+          "title": "Format",
+          "type": "string"
+        },
+        "kind": {
+          "const": "data_ref",
+          "title": "Kind",
+          "type": "string"
+        },
+        "path": {
+          "examples": [
+            "ui/plotdata/contrib.arrow"
+          ],
+          "pattern": "^[A-Za-z0-9_.\\-][A-Za-z0-9_.\\-/]{0,511}$",
+          "title": "Path",
+          "type": "string"
+        },
+        "size": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Size"
+        }
+      },
+      "required": [
+        "kind",
+        "path"
+      ],
+      "title": "DataRef",
+      "type": "object"
+    },
+    "ErrorCode": {
+      "description": "Stable error codes. See :data:`ERROR_INFO` for HTTP status and titles.",
+      "enum": [
+        "SCHEMA_INVALID",
+        "SPEC_PARSE_ERROR",
+        "PAYLOAD_TOO_LARGE",
+        "UNSUPPORTED_API_VERSION",
+        "REF_UNRESOLVED",
+        "SETTINGS_INVALID",
+        "BINDING_INVALID",
+        "SPLIT_INVALID",
+        "LEAKAGE_RISK",
+        "DIM_POLICY_LOOSENED",
+        "SCHEMA_DYNAMIC",
+        "SIDE_TABLE_COVERAGE",
+        "PLOT_UNSAFE",
+        "UNSEEN_LEVELS",
+        "COORD_NOT_ALLOWED",
+        "HORIZON_EXCEEDS_FIT",
+        "MISSING_FUTURE_COVARIATE",
+        "NON_CONTIGUOUS_EXTENSION",
+        "CAPABILITY_UNSUPPORTED",
+        "RECURSIVE_UNSUPPORTED",
+        "MODE_NOT_SUPPORTED",
+        "QUOTA_EXCEEDED",
+        "RATE_LIMITED",
+        "UNAUTHENTICATED",
+        "FORBIDDEN",
+        "NOT_FOUND",
+        "CONFLICT",
+        "IDEMPOTENCY_CONFLICT",
+        "PRECONDITION_FAILED",
+        "USER_CODE_ERROR",
+        "RESOURCE_EXHAUSTED",
+        "INFRA_ERROR",
+        "INTEGRITY_FAILURE",
+        "TIMEOUT",
+        "SANDBOX_VIOLATION",
+        "CANCELLED",
+        "INTERNAL_ERROR",
+        "GUIDED_ANSWERS_INVALID",
+        "BUSINESS_PRIORS_INVALID",
+        "CALIBRATION_UNSUPPORTED",
+        "IMPORT_UNSUPPORTED",
+        "SCENARIO_OUT_OF_RANGE",
+        "PROMOTION_BLOCKED",
+        "OVERRIDE_REQUIRED",
+        "WEBHOOK_URL_BLOCKED",
+        "WEBHOOK_SIGNATURE_INVALID",
+        "EMBED_NOT_ALLOWED",
+        "LINK_EXPIRED",
+        "EMAIL_NOT_ALLOWED",
+        "TERMS_NOT_ACCEPTED",
+        "EMAIL_NOT_VERIFIED",
+        "IDENTITY_VERIFICATION_REQUIRED",
+        "ABOUT_INCOMPLETE",
+        "CHOOSER_ANSWER_INVALID",
+        "WORKFLOW_INVALID",
+        "EXPRESSION_INVALID",
+        "EXPRESSION_ERROR",
+        "NODE_UNKNOWN",
+        "SCHEDULE_INVALID",
+        "WORKFLOW_NOT_RUNNABLE",
+        "POLICY_INVALID",
+        "VALIDATION_TRANSITION_INVALID",
+        "SELF_APPROVAL_FORBIDDEN",
+        "NOT_VALIDATED",
+        "EXPLORE_INVALID",
+        "OPTIMIZE_INFEASIBLE",
+        "ACTUALS_NOT_SUPPORTED",
+        "ACTUALS_INVALID",
+        "NOT_READY",
+        "INGEST_UNSAFE_FILE",
+        "DASHBOARD_NOT_PUBLISHED",
+        "DASHBOARD_INPUT_DISABLED",
+        "DASHBOARD_LIVE_PAUSED",
+        "DASHBOARD_RUN_LIMIT",
+        "DASHBOARD_SPEC_STALE",
+        "SHARE_PASSCODE_REQUIRED",
+        "SHARE_PASSCODE_INVALID",
+        "SHARE_LOCKED",
+        "INVALID_ROLE_SCOPE",
+        "DASHBOARD_INPUT_INVALID",
+        "DASHBOARD_BATCH_TOO_LARGE",
+        "DASHBOARD_DOWNLOAD_GONE",
+        "DASHBOARD_LAYOUT_RETIRED",
+        "LIBRARY_INVALID",
+        "LIBRARY_DATA_SHAPE",
+        "SCHEMA_UNSAFE",
+        "EXTENSION_UNAVAILABLE",
+        "SAMPLES_DISABLED",
+        "PREVIEW_DISABLED",
+        "PLUGIN_REFUSED",
+        "PLUGIN_NAMESPACE_TAKEN",
+        "PLUGIN_VERSION_EXISTS",
+        "PLUGIN_STATE_CONFLICT",
+        "PLUGIN_UNAVAILABLE",
+        "UPLOADED_CODE_NOT_SHAREABLE",
+        "UNTRUSTED_PLACEMENT_UNAVAILABLE",
+        "REAUTH_REQUIRED",
+        "CHAT_DISABLED",
+        "CHAT_UNAVAILABLE",
+        "CHAT_BUDGET_EXHAUSTED",
+        "CHAT_HISTORY_INVALID",
+        "READ_TOKEN_LIMIT"
+      ],
+      "title": "ErrorCode",
+      "type": "string"
+    },
+    "InlineArrow": {
+      "additionalProperties": false,
+      "description": "A small Arrow IPC stream embedded as base64.",
+      "properties": {
+        "data": {
+          "maxLength": 2097152,
+          "pattern": "^[A-Za-z0-9+/]*={0,2}$",
+          "title": "Data",
+          "type": "string"
+        },
+        "kind": {
+          "const": "inline_arrow",
+          "title": "Kind",
+          "type": "string"
+        },
+        "rows": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rows"
+        }
+      },
+      "required": [
+        "kind",
+        "data"
+      ],
+      "title": "InlineArrow",
+      "type": "object"
+    },
+    "Issue": {
+      "additionalProperties": false,
+      "description": "One problem found while validating a document, located by a JSON pointer.",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "context": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Context",
+          "type": "object"
+        },
+        "message": {
+          "description": "Trusted, platform-authored text",
+          "maxLength": 2000,
+          "title": "Message",
+          "type": "string"
+        },
+        "pointer": {
+          "default": "",
+          "description": "RFC 6901 JSON pointer into the submitted document",
+          "title": "Pointer",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity",
+          "default": "error"
+        },
+        "suggested_action": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggested Action"
+        },
+        "untrusted_text": {
+          "anyOf": [
+            {
+              "maxLength": 8000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "User/plugin-originated text; render as text only",
+          "title": "Untrusted Text"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "Issue",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "PlotBindings": {
+      "additionalProperties": false,
+      "description": "Role/dim template bindings, e.g. ``{x: \"dim:time\", y: \"role:target\"}``.\n\nTemplates bound this way apply to every model of a family, not one bundle.",
+      "properties": {
+        "band_lower": {
+          "anyOf": [
+            {
+              "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Band Lower"
+        },
+        "band_upper": {
+          "anyOf": [
+            {
+              "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Band Upper"
+        },
+        "color": {
+          "anyOf": [
+            {
+              "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Color"
+        },
+        "column": {
+          "anyOf": [
+            {
+              "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Column"
+        },
+        "facet": {
+          "anyOf": [
+            {
+              "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Facet"
+        },
+        "row": {
+          "anyOf": [
+            {
+              "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Row"
+        },
+        "shape": {
+          "anyOf": [
+            {
+              "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Shape"
+        },
+        "size": {
+          "anyOf": [
+            {
+              "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Size"
+        },
+        "tooltip": {
+          "items": {
+            "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Tooltip",
+          "type": "array"
+        },
+        "x": {
+          "anyOf": [
+            {
+              "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "X"
+        },
+        "y": {
+          "anyOf": [
+            {
+              "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Y"
+        },
+        "y2": {
+          "anyOf": [
+            {
+              "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Y2"
+        }
+      },
+      "title": "PlotBindings",
+      "type": "object"
+    },
+    "PlotProvenance": {
+      "additionalProperties": false,
+      "description": "Who produced a plot: exactly one of ``recipe``, ``plugin`` or ``author``.",
+      "properties": {
+        "author": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Author"
+        },
+        "bundle_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bundle Id"
+        },
+        "generated_at": {
+          "format": "date-time",
+          "title": "Generated At",
+          "type": "string"
+        },
+        "plugin": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Plugin"
+        },
+        "recipe": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recipe"
+        }
+      },
+      "required": [
+        "generated_at"
+      ],
+      "title": "PlotProvenance",
+      "type": "object"
+    },
+    "PlotSpec": {
+      "additionalProperties": false,
+      "description": "A renderable plot. ``spec`` is Vega-Lite JSON or Plotly ``{data, layout, ...}``.",
+      "examples": [
+        {
+          "caption_plain": "The shaded band is where the model expects 90% of weeks.",
+          "datasets": {
+            "fan": {
+              "kind": "data_ref",
+              "path": "ui/plotdata/ppc_fan.arrow"
+            }
+          },
+          "id": "core.ppc_fan",
+          "kind": "vega-lite",
+          "persona": "both",
+          "provenance": {
+            "generated_at": "2026-10-15T09:40:00Z",
+            "recipe": "core.ppc_fan@1.0.0"
+          },
+          "schema_version": "v5",
+          "spec": {
+            "data": {
+              "name": "fan"
+            },
+            "encoding": {
+              "x": {
+                "field": "time",
+                "type": "temporal"
+              },
+              "y": {
+                "field": "lo",
+                "type": "quantitative"
+              },
+              "y2": {
+                "field": "hi"
+              }
+            },
+            "mark": "area"
+          },
+          "title": "Posterior predictive fan"
+        }
+      ],
+      "properties": {
+        "bindings": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PlotBindings"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "caption_plain": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Caption Plain"
+        },
+        "datasets": {
+          "additionalProperties": {
+            "discriminator": {
+              "mapping": {
+                "data_ref": "#/$defs/DataRef",
+                "inline_arrow": "#/$defs/InlineArrow"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/DataRef"
+              },
+              {
+                "$ref": "#/$defs/InlineArrow"
+              }
+            ]
+          },
+          "maxProperties": 64,
+          "title": "Datasets",
+          "type": "object"
+        },
+        "id": {
+          "pattern": "^[A-Za-z0-9_.\\-]{1,128}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "vega-lite",
+            "plotly"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "persona": {
+          "default": "both",
+          "enum": [
+            "guided",
+            "expert",
+            "both"
+          ],
+          "title": "Persona",
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/PlotProvenance"
+        },
+        "schema_version": {
+          "examples": [
+            "v5",
+            "2.35.2"
+          ],
+          "pattern": "^v?\\d+(\\.\\d+){0,2}$",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "spec": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Spec",
+          "type": "object"
+        },
+        "title": {
+          "maxLength": 300,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "kind",
+        "spec",
+        "schema_version",
+        "provenance"
+      ],
+      "title": "PlotSpec",
+      "type": "object"
+    },
+    "Severity": {
+      "description": "How bad an :class:`Issue` is. Only ``error`` blocks submission.",
+      "enum": [
+        "info",
+        "warning",
+        "error"
+      ],
+      "title": "Severity",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-LibraryUseResult.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "What an item compiles to: a spec fragment (model recipes), prep steps (prep presets),\nan applied chart (chart templates) or a workflow document (workflow templates).",
+  "examples": [
+    {
+      "issues": [],
+      "kind": "prep_preset",
+      "labels": {
+        "mapi.library/prep": "lib_01jaf3q2x8m9v7k5h4g3f2e1d0-r2"
+      },
+      "pipeline": [
+        {
+          "id": "p_scale",
+          "use": "core.max_abs_scale@^1",
+          "with": {
+            "over": [
+              "time"
+            ],
+            "vars": [
+              "tv",
+              "search"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "properties": {
+    "issues": {
+      "items": {
+        "$ref": "#/$defs/Issue"
+      },
+      "title": "Issues",
+      "type": "array"
+    },
+    "kind": {
+      "enum": [
+        "model_recipe",
+        "prep_preset",
+        "chart_template",
+        "workflow_template"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "labels": {
+      "patternProperties": {
+        "^[a-z0-9]([a-z0-9_.\\-/]{0,62})$": {
+          "maxLength": 63,
+          "pattern": "^[A-Za-z0-9_.\\-]*$",
+          "type": "string"
+        }
+      },
+      "title": "Labels",
+      "type": "object"
+    },
+    "pipeline": {
+      "anyOf": [
+        {
+          "items": {
+            "additionalProperties": {
+              "$ref": "#/$defs/JsonValue"
+            },
+            "type": "object"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Pipeline"
+    },
+    "plot": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PlotSpec"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "spec_fragment": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Spec Fragment"
+    },
+    "workflow_document": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Workflow Document"
+    }
+  },
+  "required": [
+    "kind"
+  ],
+  "title": "LibraryUseResult",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

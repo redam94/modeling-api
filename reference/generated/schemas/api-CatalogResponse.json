@@ -573,6 +573,20 @@
           "default": null,
           "title": "Overlay Hash"
         },
+        "provider": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "v0.18: the distribution that installed a non-built-in model",
+          "title": "Provider"
+        },
         "yanked": {
           "default": false,
           "title": "Yanked",
@@ -717,6 +731,20 @@
           "title": "Circular",
           "type": "boolean"
         },
+        "classes_dim": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The dim that holds the classes (or states) of a probability output, e.g. 'class'",
+          "title": "Classes Dim"
+        },
         "description": {
           "anyOf": [
             {
@@ -763,6 +791,26 @@
           ],
           "default": null,
           "description": "Draw the output as a 2-D field (Model Explorer 'fields' section)"
+        },
+        "meaning": {
+          "anyOf": [
+            {
+              "enum": [
+                "value",
+                "class_probability",
+                "state_probability",
+                "rate",
+                "effect"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "What the numbers are (v0.17): a value, a class or state probability, a rate or an effect. Unset: dashboards guess it from the dims and plots",
+          "title": "Meaning"
         },
         "units": {
           "anyOf": [
@@ -818,6 +866,34 @@
           "title": "Id",
           "type": "string"
         },
+        "overlay_hash": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "v0.19: the sha256 of the uploaded wheel the recipe comes from",
+          "title": "Overlay Hash"
+        },
+        "pack_label": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "v0.18: the name of the recipe pack shown on the catalog card",
+          "title": "Pack Label"
+        },
         "persona": {
           "default": "both",
           "enum": [
@@ -827,6 +903,20 @@
           ],
           "title": "Persona",
           "type": "string"
+        },
+        "provider": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "v0.18: the distribution that installed a non-built-in recipe",
+          "title": "Provider"
         },
         "requires_groups": {
           "items": {
@@ -842,6 +932,22 @@
           "title": "Requires Representation",
           "type": "array"
         },
+        "settings_schema": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "$ref": "#/$defs/JsonValue"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "v0.18: the recipe's settings as a safe JSON Schema (at most 16 KiB; absent when too large)",
+          "title": "Settings Schema"
+        },
         "summary": {
           "anyOf": [
             {
@@ -855,6 +961,15 @@
           "default": null,
           "description": "One line on what the chart shows (the recipe's summary)",
           "title": "Summary"
+        },
+        "tags": {
+          "items": {
+            "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Tags",
+          "type": "array"
         },
         "title": {
           "maxLength": 200,
@@ -998,6 +1113,34 @@
         },
         "kind": {
           "$ref": "#/$defs/StepKind"
+        },
+        "overlay_hash": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "v0.19: the sha256 of the uploaded wheel the step comes from",
+          "title": "Overlay Hash"
+        },
+        "provider": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "v0.18: the distribution that installed a non-built-in step",
+          "title": "Provider"
         },
         "provides": {
           "description": "Preprocessing a model may declare it owns (ModelManifest owns); such a step is rejected on the target/media variables of a model that owns it",

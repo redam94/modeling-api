@@ -416,6 +416,20 @@
       "title": "Params Schema",
       "type": "object"
     },
+    "plugin": {
+      "anyOf": [
+        {
+          "pattern": "^[a-z][a-z0-9_]{0,62}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "v0.18: the namespace of a plugin node (None for the built-in nodes); the id is '<kind>.<plugin>_<name>'",
+      "title": "Plugin"
+    },
     "result_fields": {
       "additionalProperties": {
         "$ref": "#/$defs/ResultField"

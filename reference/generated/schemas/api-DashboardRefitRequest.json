@@ -1,0 +1,445 @@
+{
+  "$defs": {
+    "ErrorCode": {
+      "description": "Stable error codes. See :data:`ERROR_INFO` for HTTP status and titles.",
+      "enum": [
+        "SCHEMA_INVALID",
+        "SPEC_PARSE_ERROR",
+        "PAYLOAD_TOO_LARGE",
+        "UNSUPPORTED_API_VERSION",
+        "REF_UNRESOLVED",
+        "SETTINGS_INVALID",
+        "BINDING_INVALID",
+        "SPLIT_INVALID",
+        "LEAKAGE_RISK",
+        "DIM_POLICY_LOOSENED",
+        "SCHEMA_DYNAMIC",
+        "SIDE_TABLE_COVERAGE",
+        "PLOT_UNSAFE",
+        "UNSEEN_LEVELS",
+        "COORD_NOT_ALLOWED",
+        "HORIZON_EXCEEDS_FIT",
+        "MISSING_FUTURE_COVARIATE",
+        "NON_CONTIGUOUS_EXTENSION",
+        "CAPABILITY_UNSUPPORTED",
+        "RECURSIVE_UNSUPPORTED",
+        "MODE_NOT_SUPPORTED",
+        "QUOTA_EXCEEDED",
+        "RATE_LIMITED",
+        "UNAUTHENTICATED",
+        "FORBIDDEN",
+        "NOT_FOUND",
+        "CONFLICT",
+        "IDEMPOTENCY_CONFLICT",
+        "PRECONDITION_FAILED",
+        "USER_CODE_ERROR",
+        "RESOURCE_EXHAUSTED",
+        "INFRA_ERROR",
+        "INTEGRITY_FAILURE",
+        "TIMEOUT",
+        "SANDBOX_VIOLATION",
+        "CANCELLED",
+        "INTERNAL_ERROR",
+        "GUIDED_ANSWERS_INVALID",
+        "BUSINESS_PRIORS_INVALID",
+        "CALIBRATION_UNSUPPORTED",
+        "IMPORT_UNSUPPORTED",
+        "SCENARIO_OUT_OF_RANGE",
+        "PROMOTION_BLOCKED",
+        "OVERRIDE_REQUIRED",
+        "WEBHOOK_URL_BLOCKED",
+        "WEBHOOK_SIGNATURE_INVALID",
+        "EMBED_NOT_ALLOWED",
+        "LINK_EXPIRED",
+        "EMAIL_NOT_ALLOWED",
+        "TERMS_NOT_ACCEPTED",
+        "EMAIL_NOT_VERIFIED",
+        "IDENTITY_VERIFICATION_REQUIRED",
+        "ABOUT_INCOMPLETE",
+        "CHOOSER_ANSWER_INVALID",
+        "WORKFLOW_INVALID",
+        "EXPRESSION_INVALID",
+        "EXPRESSION_ERROR",
+        "NODE_UNKNOWN",
+        "SCHEDULE_INVALID",
+        "WORKFLOW_NOT_RUNNABLE",
+        "POLICY_INVALID",
+        "VALIDATION_TRANSITION_INVALID",
+        "SELF_APPROVAL_FORBIDDEN",
+        "NOT_VALIDATED",
+        "EXPLORE_INVALID",
+        "OPTIMIZE_INFEASIBLE",
+        "ACTUALS_NOT_SUPPORTED",
+        "ACTUALS_INVALID",
+        "NOT_READY",
+        "INGEST_UNSAFE_FILE",
+        "DASHBOARD_NOT_PUBLISHED",
+        "DASHBOARD_INPUT_DISABLED",
+        "DASHBOARD_LIVE_PAUSED",
+        "DASHBOARD_RUN_LIMIT",
+        "DASHBOARD_SPEC_STALE",
+        "SHARE_PASSCODE_REQUIRED",
+        "SHARE_PASSCODE_INVALID",
+        "SHARE_LOCKED",
+        "INVALID_ROLE_SCOPE",
+        "DASHBOARD_INPUT_INVALID",
+        "DASHBOARD_BATCH_TOO_LARGE",
+        "DASHBOARD_DOWNLOAD_GONE",
+        "DASHBOARD_LAYOUT_RETIRED",
+        "LIBRARY_INVALID",
+        "LIBRARY_DATA_SHAPE",
+        "SCHEMA_UNSAFE",
+        "EXTENSION_UNAVAILABLE",
+        "SAMPLES_DISABLED",
+        "PREVIEW_DISABLED",
+        "PLUGIN_REFUSED",
+        "PLUGIN_NAMESPACE_TAKEN",
+        "PLUGIN_VERSION_EXISTS",
+        "PLUGIN_STATE_CONFLICT",
+        "PLUGIN_UNAVAILABLE",
+        "UPLOADED_CODE_NOT_SHAREABLE",
+        "UNTRUSTED_PLACEMENT_UNAVAILABLE",
+        "REAUTH_REQUIRED",
+        "CHAT_DISABLED",
+        "CHAT_UNAVAILABLE",
+        "CHAT_BUDGET_EXHAUSTED",
+        "CHAT_HISTORY_INVALID",
+        "READ_TOKEN_LIMIT"
+      ],
+      "title": "ErrorCode",
+      "type": "string"
+    },
+    "Issue": {
+      "additionalProperties": false,
+      "description": "One problem found while validating a document, located by a JSON pointer.",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "context": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Context",
+          "type": "object"
+        },
+        "message": {
+          "description": "Trusted, platform-authored text",
+          "maxLength": 2000,
+          "title": "Message",
+          "type": "string"
+        },
+        "pointer": {
+          "default": "",
+          "description": "RFC 6901 JSON pointer into the submitted document",
+          "title": "Pointer",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity",
+          "default": "error"
+        },
+        "suggested_action": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggested Action"
+        },
+        "untrusted_text": {
+          "anyOf": [
+            {
+              "maxLength": 8000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "User/plugin-originated text; render as text only",
+          "title": "Untrusted Text"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "Issue",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "Problem": {
+      "additionalProperties": false,
+      "description": "RFC 7807 problem document with mapi extensions (``code``, ``errors``, ``untrusted_text``).",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "detail": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detail"
+        },
+        "errors": {
+          "items": {
+            "$ref": "#/$defs/Issue"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "instance": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Instance"
+        },
+        "status": {
+          "maximum": 599,
+          "minimum": 100,
+          "title": "Status",
+          "type": "integer"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "trace_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Trace Id"
+        },
+        "type": {
+          "default": "about:blank",
+          "title": "Type",
+          "type": "string"
+        },
+        "untrusted_text": {
+          "anyOf": [
+            {
+              "maxLength": 65536,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Untrusted Text"
+        }
+      },
+      "required": [
+        "title",
+        "status",
+        "code"
+      ],
+      "title": "Problem",
+      "type": "object"
+    },
+    "Severity": {
+      "description": "How bad an :class:`Issue` is. Only ``error`` blocks submission.",
+      "enum": [
+        "info",
+        "warning",
+        "error"
+      ],
+      "title": "Severity",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-DashboardRefitRequest.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A request, made with an actuals upload, that the analyst refits the model with those\nnumbers (\u00a710.4). At most one ``open`` request per dashboard (a newer one supersedes it).\nApproval publishes the readout, ingests the numbers as a new version of the dashboard's\ndataset and starts ``refit_workflow_id`` as the approver; nothing runs before that.",
+  "examples": [
+    {
+      "created_at": "2026-10-15T09:30:00Z",
+      "dashboard_id": "dsh_01jaf3r1s2t3v4w5x6y7z8a9b0",
+      "id": "drr_01jaf3v1w2x3y4z5a6b7c8d9e0",
+      "readout_seq": 14,
+      "requested_by": "usr_01jaf3c1l2i3e4n5t6a7b8c9d0",
+      "requested_by_kind": "client",
+      "status": "open"
+    },
+    {
+      "created_at": "2026-10-15T09:30:00Z",
+      "dashboard_id": "dsh_01jaf3r1s2t3v4w5x6y7z8a9b0",
+      "dataset_version_id": "dsv_01jaf3y1z2a3b4c5d6e7f8g9h0",
+      "decided_at": "2026-10-15T09:30:00Z",
+      "decided_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+      "id": "drr_01jaf3v1w2x3y4z5a6b7c8d9e0",
+      "readout_seq": 14,
+      "requested_by": "dss_01jaf3t1v2w3x4y5z6a7b8c9d0",
+      "requested_by_kind": "share",
+      "status": "approved",
+      "workflow_run_id": "wfr_01jaf3x1y2z3a4b5c6d7e8f9g0"
+    }
+  ],
+  "properties": {
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "dashboard_id": {
+      "examples": [
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+      ],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Dashboard Id",
+      "type": "string"
+    },
+    "dataset_version_id": {
+      "anyOf": [
+        {
+          "maxLength": 256,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Dataset Version Id"
+    },
+    "decided_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Decided At"
+    },
+    "decided_by": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Decided By"
+    },
+    "id": {
+      "examples": [
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+      ],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "note": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Note"
+    },
+    "problem": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Problem"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "readout_seq": {
+      "minimum": 1,
+      "title": "Readout Seq",
+      "type": "integer"
+    },
+    "requested_by": {
+      "description": "A user id or a share id",
+      "maxLength": 128,
+      "title": "Requested By",
+      "type": "string"
+    },
+    "requested_by_kind": {
+      "enum": [
+        "member",
+        "client",
+        "share"
+      ],
+      "title": "Requested By Kind",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "open",
+        "approved",
+        "rejected",
+        "superseded",
+        "failed"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "workflow_run_id": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Workflow Run Id"
+    }
+  },
+  "required": [
+    "id",
+    "dashboard_id",
+    "readout_seq",
+    "status",
+    "requested_by_kind",
+    "requested_by",
+    "created_at"
+  ],
+  "title": "DashboardRefitRequest",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

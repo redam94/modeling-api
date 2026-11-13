@@ -1,0 +1,38 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-OverlayPin.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "One uploaded plugin version a run uses: which version, its namespace and the sha256 of\nthe wheel the control plane stored. Set by the control plane, never by a caller.",
+  "examples": [
+    {
+      "namespace": "t_k3vq7m_acme",
+      "plugin_version_id": "plv_01jbz3q2x8m9v7k5h4g3f2e1d1",
+      "sha256": "sha256:abababababababababababababababababababababababababababababababab"
+    }
+  ],
+  "properties": {
+    "namespace": {
+      "pattern": "^t_([a-z2-7]{6})_([a-z][a-z0-9]{1,15})$",
+      "title": "Namespace",
+      "type": "string"
+    },
+    "plugin_version_id": {
+      "pattern": "^plv_[0-9a-z]{26}$",
+      "title": "Plugin Version Id",
+      "type": "string"
+    },
+    "sha256": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Sha256",
+      "type": "string"
+    }
+  },
+  "required": [
+    "plugin_version_id",
+    "namespace",
+    "sha256"
+  ],
+  "title": "OverlayPin",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

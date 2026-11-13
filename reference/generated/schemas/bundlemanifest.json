@@ -120,7 +120,9 @@
         "workflow_node",
         "explore",
         "governance",
-        "inspect"
+        "inspect",
+        "plugin_inspect",
+        "plugin_describe"
       ],
       "title": "RunKind",
       "type": "string"
@@ -235,6 +237,16 @@
       ],
       "default": null,
       "title": "Overlay Hash"
+    },
+    "overlay_hashes": {
+      "description": "v0.19: the sha256 of every uploaded wheel the run mounted (from the control plane's runs.overlays)",
+      "items": {
+        "pattern": "^sha256:[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "maxItems": 8,
+      "title": "Overlay Hashes",
+      "type": "array"
     },
     "project_id": {
       "examples": [

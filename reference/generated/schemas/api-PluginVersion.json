@@ -1,0 +1,2798 @@
+{
+  "$defs": {
+    "About": {
+      "additionalProperties": false,
+      "description": "The plain-language card of one catalog item.\n\nEvery field except the expert ones is required, so an About that validates is\nstructurally complete; :func:`about_issues` adds the editorial rules (one or two\nsentences, no jargon in the summary, known chooser tags, related ids that exist).",
+      "examples": [
+        {
+          "assumptions": [
+            "Numbers can be added up (spend, sales); averages are averaged"
+          ],
+          "avoid_when": [
+            "Your data already has one row per week"
+          ],
+          "data_needs": [
+            "A date column"
+          ],
+          "difficulty": "beginner",
+          "example": "Daily TV spend of 100 each day becomes 700 for the week.",
+          "fits": {
+            "goal": [
+              "check_data"
+            ]
+          },
+          "outputs": [
+            "The same columns, one row per week"
+          ],
+          "related": [
+            "core.calendar"
+          ],
+          "summary_plain": "Adds up daily numbers into one number per week (or month), so that every row covers the same length of time.",
+          "title": "Weekly totals",
+          "typical_runtime": "instant",
+          "use_when": [
+            "Your data is daily but you want to plan or report by week"
+          ]
+        }
+      ],
+      "properties": {
+        "assumptions": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "minItems": 1,
+          "title": "Assumptions",
+          "type": "array"
+        },
+        "avoid_when": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "minItems": 1,
+          "title": "Avoid When",
+          "type": "array"
+        },
+        "data_needs": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "minItems": 1,
+          "title": "Data Needs",
+          "type": "array"
+        },
+        "difficulty": {
+          "$ref": "#/$defs/Difficulty"
+        },
+        "example": {
+          "description": "A tiny example",
+          "maxLength": 600,
+          "minLength": 10,
+          "title": "Example",
+          "type": "string"
+        },
+        "expert_notes": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Maths, estimator details, caveats for experts",
+          "title": "Expert Notes"
+        },
+        "fits": {
+          "additionalProperties": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "description": "Chooser tags: question id -> the answers this item suits",
+          "maxProperties": 16,
+          "title": "Fits",
+          "type": "object"
+        },
+        "outputs": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "minItems": 1,
+          "title": "Outputs",
+          "type": "array"
+        },
+        "references": {
+          "items": {
+            "$ref": "#/$defs/AboutReference"
+          },
+          "maxItems": 10,
+          "title": "References",
+          "type": "array"
+        },
+        "related": {
+          "description": "Ids of related catalog items (models, steps, nodes, checks, templates)",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Related",
+          "type": "array"
+        },
+        "summary_plain": {
+          "description": "One or two sentences without jargon: what it does for you",
+          "maxLength": 400,
+          "minLength": 20,
+          "title": "Summary Plain",
+          "type": "string"
+        },
+        "title": {
+          "description": "A human name",
+          "maxLength": 80,
+          "minLength": 3,
+          "title": "Title",
+          "type": "string"
+        },
+        "typical_runtime": {
+          "$ref": "#/$defs/TypicalRuntime"
+        },
+        "use_when": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "minItems": 1,
+          "title": "Use When",
+          "type": "array"
+        }
+      },
+      "required": [
+        "title",
+        "summary_plain",
+        "use_when",
+        "avoid_when",
+        "data_needs",
+        "assumptions",
+        "outputs",
+        "difficulty",
+        "typical_runtime",
+        "example"
+      ],
+      "title": "About",
+      "type": "object"
+    },
+    "AboutReference": {
+      "additionalProperties": false,
+      "description": "A source for the expert detail (a paper, a book chapter, library documentation).",
+      "properties": {
+        "title": {
+          "maxLength": 300,
+          "minLength": 3,
+          "title": "Title",
+          "type": "string"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "pattern": "^https://\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "title": "AboutReference",
+      "type": "object"
+    },
+    "Capabilities": {
+      "additionalProperties": false,
+      "description": "What a model plugin can do (declared in its manifest).",
+      "properties": {
+        "calibration": {
+          "default": [],
+          "description": "Calibration data the model uses from a spec's calibration block (M3)",
+          "items": {
+            "enum": [
+              "business_priors",
+              "lift_tests"
+            ],
+            "type": "string"
+          },
+          "title": "Calibration",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "checkpointable": {
+          "default": false,
+          "title": "Checkpointable",
+          "type": "boolean"
+        },
+        "conditions_on_actuals": {
+          "default": false,
+          "description": "A forecast can be conditioned on actuals sent with the request (target values for periods after, or at the end of, the fitted history): the model updates its state with them without re-estimating its parameters and forecasts from the last actual (mapi_spec.actuals). Models without it refuse such requests with ACTUALS_NOT_SUPPORTED instead of ignoring the actuals",
+          "title": "Conditions On Actuals",
+          "type": "boolean"
+        },
+        "contribution_scale": {
+          "default": "none",
+          "enum": [
+            "additive",
+            "multiplicative",
+            "none"
+          ],
+          "title": "Contribution Scale",
+          "type": "string"
+        },
+        "decision": {
+          "default": false,
+          "title": "Decision",
+          "type": "boolean"
+        },
+        "deterministic_given_seed": {
+          "default": true,
+          "title": "Deterministic Given Seed",
+          "type": "boolean"
+        },
+        "evidence": {
+          "default": false,
+          "title": "Evidence",
+          "type": "boolean"
+        },
+        "fast_score": {
+          "default": false,
+          "title": "Fast Score",
+          "type": "boolean"
+        },
+        "identified_quantities": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "title": "Identified Quantities",
+          "type": "array"
+        },
+        "inference": {
+          "enum": [
+            "mcmc",
+            "vi",
+            "map",
+            "smc",
+            "kalman",
+            "point",
+            "bootstrap",
+            "custom"
+          ],
+          "title": "Inference",
+          "type": "string"
+        },
+        "input": {
+          "default": "dataset",
+          "description": "M4: 'tree' models also receive the whole tree dataset (the bound xr.DataTree) next to the flat pipeline output; 'dataset' models only the flat one. v0.15: 'collection' models implement fit_batches/score_batches and train on every image of an image collection through a lazy loader; they also read plain datasets",
+          "enum": [
+            "dataset",
+            "tree",
+            "collection"
+          ],
+          "title": "Input",
+          "type": "string"
+        },
+        "loo_invalid_reason": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loo Invalid Reason"
+        },
+        "loo_valid": {
+          "default": true,
+          "title": "Loo Valid",
+          "type": "boolean"
+        },
+        "owns": {
+          "default": [],
+          "items": {
+            "enum": [
+              "scaling",
+              "carryover",
+              "inverse_units",
+              "recursion"
+            ],
+            "type": "string"
+          },
+          "title": "Owns",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "recommend": {
+          "default": false,
+          "title": "Recommend",
+          "type": "boolean"
+        },
+        "representation": {
+          "$ref": "#/$defs/Representation"
+        },
+        "score_modes": {
+          "items": {
+            "enum": [
+              "predict",
+              "forecast",
+              "counterfactual",
+              "simulate",
+              "filter",
+              "evaluate"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Score Modes",
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "inference",
+        "representation",
+        "score_modes"
+      ],
+      "title": "Capabilities",
+      "type": "object"
+    },
+    "DataSchemaTemplate": {
+      "additionalProperties": false,
+      "description": "A DataSchema-shaped JSON template plus the settings parameters it depends on.\n\nResolution is pure and static: ``resolve(settings)`` extracts each declared parameter\nfrom the settings (falling back to its default), checks its type/enum, renders the\n:mod:`~mapi_spec.template` placeholders, deep-merges every matching ``case`` and\nvalidates the result as a :class:`DataSchema`.",
+      "properties": {
+        "cases": {
+          "items": {
+            "$ref": "#/$defs/TemplateCase"
+          },
+          "maxItems": 64,
+          "title": "Cases",
+          "type": "array"
+        },
+        "params": {
+          "additionalProperties": {
+            "$ref": "#/$defs/TemplateParam"
+          },
+          "maxProperties": 64,
+          "title": "Params",
+          "type": "object"
+        },
+        "template": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Template",
+          "type": "object"
+        }
+      },
+      "required": [
+        "template"
+      ],
+      "title": "DataSchemaTemplate",
+      "type": "object"
+    },
+    "DerivedDecl": {
+      "additionalProperties": false,
+      "description": "A derived quantity (contributions, response curves, ...).",
+      "properties": {
+        "cache": {
+          "default": "on_demand",
+          "enum": [
+            "fit",
+            "on_demand"
+          ],
+          "title": "Cache",
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "dims": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "title": "Dims",
+          "type": "array"
+        },
+        "name": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        }
+      },
+      "required": [
+        "name",
+        "dims"
+      ],
+      "title": "DerivedDecl",
+      "type": "object"
+    },
+    "Difficulty": {
+      "description": "How much statistical background an item needs to use well.",
+      "enum": [
+        "beginner",
+        "intermediate",
+        "expert"
+      ],
+      "title": "Difficulty",
+      "type": "string"
+    },
+    "EntryPointDecl": {
+      "additionalProperties": false,
+      "description": "An entry point the wheel declares (read from ``entry_points.txt``, never loaded).",
+      "properties": {
+        "group": {
+          "maxLength": 64,
+          "title": "Group",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 128,
+          "title": "Name",
+          "type": "string"
+        },
+        "value": {
+          "maxLength": 256,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "group",
+        "name",
+        "value"
+      ],
+      "title": "EntryPointDecl",
+      "type": "object"
+    },
+    "ErrorCode": {
+      "description": "Stable error codes. See :data:`ERROR_INFO` for HTTP status and titles.",
+      "enum": [
+        "SCHEMA_INVALID",
+        "SPEC_PARSE_ERROR",
+        "PAYLOAD_TOO_LARGE",
+        "UNSUPPORTED_API_VERSION",
+        "REF_UNRESOLVED",
+        "SETTINGS_INVALID",
+        "BINDING_INVALID",
+        "SPLIT_INVALID",
+        "LEAKAGE_RISK",
+        "DIM_POLICY_LOOSENED",
+        "SCHEMA_DYNAMIC",
+        "SIDE_TABLE_COVERAGE",
+        "PLOT_UNSAFE",
+        "UNSEEN_LEVELS",
+        "COORD_NOT_ALLOWED",
+        "HORIZON_EXCEEDS_FIT",
+        "MISSING_FUTURE_COVARIATE",
+        "NON_CONTIGUOUS_EXTENSION",
+        "CAPABILITY_UNSUPPORTED",
+        "RECURSIVE_UNSUPPORTED",
+        "MODE_NOT_SUPPORTED",
+        "QUOTA_EXCEEDED",
+        "RATE_LIMITED",
+        "UNAUTHENTICATED",
+        "FORBIDDEN",
+        "NOT_FOUND",
+        "CONFLICT",
+        "IDEMPOTENCY_CONFLICT",
+        "PRECONDITION_FAILED",
+        "USER_CODE_ERROR",
+        "RESOURCE_EXHAUSTED",
+        "INFRA_ERROR",
+        "INTEGRITY_FAILURE",
+        "TIMEOUT",
+        "SANDBOX_VIOLATION",
+        "CANCELLED",
+        "INTERNAL_ERROR",
+        "GUIDED_ANSWERS_INVALID",
+        "BUSINESS_PRIORS_INVALID",
+        "CALIBRATION_UNSUPPORTED",
+        "IMPORT_UNSUPPORTED",
+        "SCENARIO_OUT_OF_RANGE",
+        "PROMOTION_BLOCKED",
+        "OVERRIDE_REQUIRED",
+        "WEBHOOK_URL_BLOCKED",
+        "WEBHOOK_SIGNATURE_INVALID",
+        "EMBED_NOT_ALLOWED",
+        "LINK_EXPIRED",
+        "EMAIL_NOT_ALLOWED",
+        "TERMS_NOT_ACCEPTED",
+        "EMAIL_NOT_VERIFIED",
+        "IDENTITY_VERIFICATION_REQUIRED",
+        "ABOUT_INCOMPLETE",
+        "CHOOSER_ANSWER_INVALID",
+        "WORKFLOW_INVALID",
+        "EXPRESSION_INVALID",
+        "EXPRESSION_ERROR",
+        "NODE_UNKNOWN",
+        "SCHEDULE_INVALID",
+        "WORKFLOW_NOT_RUNNABLE",
+        "POLICY_INVALID",
+        "VALIDATION_TRANSITION_INVALID",
+        "SELF_APPROVAL_FORBIDDEN",
+        "NOT_VALIDATED",
+        "EXPLORE_INVALID",
+        "OPTIMIZE_INFEASIBLE",
+        "ACTUALS_NOT_SUPPORTED",
+        "ACTUALS_INVALID",
+        "NOT_READY",
+        "INGEST_UNSAFE_FILE",
+        "DASHBOARD_NOT_PUBLISHED",
+        "DASHBOARD_INPUT_DISABLED",
+        "DASHBOARD_LIVE_PAUSED",
+        "DASHBOARD_RUN_LIMIT",
+        "DASHBOARD_SPEC_STALE",
+        "SHARE_PASSCODE_REQUIRED",
+        "SHARE_PASSCODE_INVALID",
+        "SHARE_LOCKED",
+        "INVALID_ROLE_SCOPE",
+        "DASHBOARD_INPUT_INVALID",
+        "DASHBOARD_BATCH_TOO_LARGE",
+        "DASHBOARD_DOWNLOAD_GONE",
+        "DASHBOARD_LAYOUT_RETIRED",
+        "LIBRARY_INVALID",
+        "LIBRARY_DATA_SHAPE",
+        "SCHEMA_UNSAFE",
+        "EXTENSION_UNAVAILABLE",
+        "SAMPLES_DISABLED",
+        "PREVIEW_DISABLED",
+        "PLUGIN_REFUSED",
+        "PLUGIN_NAMESPACE_TAKEN",
+        "PLUGIN_VERSION_EXISTS",
+        "PLUGIN_STATE_CONFLICT",
+        "PLUGIN_UNAVAILABLE",
+        "UPLOADED_CODE_NOT_SHAREABLE",
+        "UNTRUSTED_PLACEMENT_UNAVAILABLE",
+        "REAUTH_REQUIRED",
+        "CHAT_DISABLED",
+        "CHAT_UNAVAILABLE",
+        "CHAT_BUDGET_EXHAUSTED",
+        "CHAT_HISTORY_INVALID",
+        "READ_TOKEN_LIMIT"
+      ],
+      "title": "ErrorCode",
+      "type": "string"
+    },
+    "GridDecl": {
+      "additionalProperties": false,
+      "description": "How to draw an output as a 2-D field (an image, a map, a vector field).\n\n``y`` and ``x`` are the dims of the raster rows and columns; ``y`` runs top to bottom\nunless ``origin`` is ``lower``. ``frame`` names a third dim with one raster per level\n(years, eras, times); ``component`` names a dim of length two that holds the ``(x, y)``\ncomponents of a vector field. Every other dim of the output is reduced over the\nposterior draws only, never over space.",
+      "properties": {
+        "colormap": {
+          "default": "viridis",
+          "enum": [
+            "viridis",
+            "magma",
+            "cividis",
+            "gray",
+            "diverging"
+          ],
+          "title": "Colormap",
+          "type": "string"
+        },
+        "component": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Component"
+        },
+        "frame": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Frame"
+        },
+        "log": {
+          "default": false,
+          "description": "Draw log10 of the value (for counts and intensities)",
+          "title": "Log",
+          "type": "boolean"
+        },
+        "origin": {
+          "default": "upper",
+          "enum": [
+            "upper",
+            "lower"
+          ],
+          "title": "Origin",
+          "type": "string"
+        },
+        "x": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "X",
+          "type": "string"
+        },
+        "y": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Y",
+          "type": "string"
+        }
+      },
+      "required": [
+        "y",
+        "x"
+      ],
+      "title": "GridDecl",
+      "type": "object"
+    },
+    "InspectProblem": {
+      "additionalProperties": false,
+      "description": "One reason the inspect run refuses the wheel. ``message`` is platform-authored;\n``path`` is the archive member concerned (untrusted, normalized).",
+      "properties": {
+        "check": {
+          "enum": [
+            "archive_size",
+            "member_count",
+            "member_size",
+            "ratio",
+            "path_unsafe",
+            "link_member",
+            "special_member",
+            "duplicate_name",
+            "case_collision",
+            "zip_structure",
+            "encrypted",
+            "compression_method",
+            "nested_archive",
+            "native_code",
+            "bytecode",
+            "pth_file",
+            "site_hook",
+            "top_level_name",
+            "namespace_package",
+            "dist_name",
+            "dist_info",
+            "wheel_tag",
+            "data_dir",
+            "entry_point_group",
+            "entry_point_target",
+            "requirement_unlocked",
+            "requirement_url",
+            "requires_python",
+            "metadata_invalid",
+            "text_unsafe",
+            "sha_mismatch"
+          ],
+          "title": "Check",
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 500,
+          "title": "Message",
+          "type": "string"
+        },
+        "path": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Path"
+        }
+      },
+      "required": [
+        "check",
+        "message"
+      ],
+      "title": "InspectProblem",
+      "type": "object"
+    },
+    "Issue": {
+      "additionalProperties": false,
+      "description": "One problem found while validating a document, located by a JSON pointer.",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "context": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Context",
+          "type": "object"
+        },
+        "message": {
+          "description": "Trusted, platform-authored text",
+          "maxLength": 2000,
+          "title": "Message",
+          "type": "string"
+        },
+        "pointer": {
+          "default": "",
+          "description": "RFC 6901 JSON pointer into the submitted document",
+          "title": "Pointer",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity",
+          "default": "error"
+        },
+        "suggested_action": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggested Action"
+        },
+        "untrusted_text": {
+          "anyOf": [
+            {
+              "maxLength": 8000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "User/plugin-originated text; render as text only",
+          "title": "Untrusted Text"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "Issue",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "KitCheck": {
+      "additionalProperties": false,
+      "description": "One kit result. ``message`` comes from the sandbox (untrusted, normalized).",
+      "properties": {
+        "check": {
+          "maxLength": 64,
+          "title": "Check",
+          "type": "string"
+        },
+        "entry_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Entry Id"
+        },
+        "kind": {
+          "enum": [
+            "model",
+            "step",
+            "plot",
+            "node",
+            "template",
+            "package"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "message": {
+          "default": "",
+          "maxLength": 500,
+          "title": "Message",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "pass",
+            "fail",
+            "skipped"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "check",
+        "status"
+      ],
+      "title": "KitCheck",
+      "type": "object"
+    },
+    "ModelCatalogEntry": {
+      "additionalProperties": false,
+      "description": "A model plugin version: its manifest plus registry metadata.",
+      "properties": {
+        "base_image": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "examples": [
+            "base-bayes@2026.10"
+          ],
+          "title": "Base Image"
+        },
+        "manifest": {
+          "$ref": "#/$defs/ModelManifest"
+        },
+        "overlay_hash": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Overlay Hash"
+        },
+        "provider": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "v0.18: the distribution that installed a non-built-in model",
+          "title": "Provider"
+        },
+        "yanked": {
+          "default": false,
+          "title": "Yanked",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "manifest"
+      ],
+      "title": "ModelCatalogEntry",
+      "type": "object"
+    },
+    "ModelManifest": {
+      "additionalProperties": false,
+      "description": "Everything the control plane knows about a model plugin version (static JSON).",
+      "properties": {
+        "about": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/About"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "M3.5: the plain-language About card (required by the catalog rule and the contract kit; optional here so older manifests still parse)"
+        },
+        "artifact_format": {
+          "default": "zarr.zip/v1",
+          "maxLength": 64,
+          "title": "Artifact Format",
+          "type": "string"
+        },
+        "capabilities": {
+          "$ref": "#/$defs/Capabilities"
+        },
+        "derived": {
+          "items": {
+            "$ref": "#/$defs/DerivedDecl"
+          },
+          "title": "Derived",
+          "type": "array"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "family": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_]{0,31}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "M3.5: the model family governance policies match (mmm, forecast, ts_multivariate, tabular, choice, regime); default: the id's namespace",
+          "title": "Family"
+        },
+        "fit_schema": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Fit Schema",
+          "type": "object"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "outputs": {
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "$ref": "#/$defs/OutputDecl"
+            }
+          },
+          "title": "Outputs",
+          "type": "object"
+        },
+        "plots": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Plots",
+          "type": "array"
+        },
+        "resources": {
+          "$ref": "#/$defs/ResourceHint"
+        },
+        "schema_template": {
+          "$ref": "#/$defs/DataSchemaTemplate"
+        },
+        "settings_schema": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Settings Schema",
+          "type": "object"
+        },
+        "side_table_params": {
+          "description": "v0.15: settings keys whose value names a data.side_tables entry the model reads (pretrained weights, for example), like a step's side_table_params",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Side Table Params",
+          "type": "array"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "capabilities",
+        "schema_template"
+      ],
+      "title": "ModelManifest",
+      "type": "object"
+    },
+    "NodeImplementation": {
+      "description": "One node implementation of the catalog (``GET /v1/catalog/workflow-nodes``).",
+      "examples": [
+        {
+          "about": {
+            "assumptions": [
+              "Numbers can be added up (spend, sales); averages are averaged"
+            ],
+            "avoid_when": [
+              "Your data already has one row per week"
+            ],
+            "data_needs": [
+              "A date column"
+            ],
+            "difficulty": "beginner",
+            "example": "Daily TV spend of 100 each day becomes 700 for the week.",
+            "fits": {
+              "goal": [
+                "check_data"
+              ]
+            },
+            "outputs": [
+              "The same columns, one row per week"
+            ],
+            "related": [
+              "core.calendar"
+            ],
+            "summary_plain": "Adds up daily numbers into one number per week (or month), so that every row covers the same length of time.",
+            "title": "Weekly totals",
+            "typical_runtime": "instant",
+            "use_when": [
+              "Your data is daily but you want to plan or report by week"
+            ]
+          },
+          "id": "test.adf",
+          "inputs": {
+            "data": {
+              "description": "The data to work on",
+              "type": "dataset"
+            }
+          },
+          "kind": "test",
+          "outputs": {
+            "result": "test_result"
+          },
+          "params_schema": {
+            "properties": {
+              "alpha": {
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "result_fields": {
+            "p_value": {
+              "description": "The p-value",
+              "type": "number"
+            }
+          },
+          "version": "1.0.0"
+        }
+      ],
+      "properties": {
+        "about": {
+          "$ref": "#/$defs/About"
+        },
+        "cacheable": {
+          "default": true,
+          "description": "Same inputs and params give the same result",
+          "title": "Cacheable",
+          "type": "boolean"
+        },
+        "id": {
+          "pattern": "^[a-z]+\\.[a-z0-9_]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "inputs": {
+          "additionalProperties": {
+            "$ref": "#/$defs/PortSpec"
+          },
+          "title": "Inputs",
+          "type": "object"
+        },
+        "kind": {
+          "$ref": "#/$defs/NodeKind"
+        },
+        "outputs": {
+          "additionalProperties": {
+            "$ref": "#/$defs/PortType"
+          },
+          "title": "Outputs",
+          "type": "object"
+        },
+        "params_schema": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Params Schema",
+          "type": "object"
+        },
+        "plugin": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_]{0,62}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "v0.18: the namespace of a plugin node (None for the built-in nodes); the id is '<kind>.<plugin>_<name>'",
+          "title": "Plugin"
+        },
+        "result_fields": {
+          "additionalProperties": {
+            "$ref": "#/$defs/ResultField"
+          },
+          "title": "Result Fields",
+          "type": "object"
+        },
+        "runs_in": {
+          "default": "sandbox",
+          "enum": [
+            "orchestrator",
+            "sandbox",
+            "child_run"
+          ],
+          "title": "Runs In",
+          "type": "string"
+        },
+        "version": {
+          "default": "1.0.0",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "about"
+      ],
+      "title": "NodeImplementation",
+      "type": "object"
+    },
+    "NodeKind": {
+      "enum": [
+        "test",
+        "transform",
+        "branch",
+        "split",
+        "search",
+        "model",
+        "evaluate",
+        "compare",
+        "select",
+        "governance",
+        "report",
+        "plot",
+        "subworkflow"
+      ],
+      "title": "NodeKind",
+      "type": "string"
+    },
+    "OutputDecl": {
+      "additionalProperties": false,
+      "description": "An output variable the model writes (e.g. ``y_hat``).",
+      "properties": {
+        "circular": {
+          "default": false,
+          "description": "The output is an angle on a circle (a direction, a time of day). The model sets a 'period' attr (one turn, in the output's units) on the scored array; holdout metrics then use the circular mean and wrapped errors, and the score summaries of draws use the circular mean and intervals centred on it, wrapped into [0, period)",
+          "title": "Circular",
+          "type": "boolean"
+        },
+        "classes_dim": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The dim that holds the classes (or states) of a probability output, e.g. 'class'",
+          "title": "Classes Dim"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "dims": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "title": "Dims",
+          "type": "array"
+        },
+        "dims_of": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The output also carries every dim of this input variable (e.g. 'y' for models whose data dims come from settings, such as the sklearn row dims)",
+          "title": "Dims Of"
+        },
+        "grid": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GridDecl"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Draw the output as a 2-D field (Model Explorer 'fields' section)"
+        },
+        "meaning": {
+          "anyOf": [
+            {
+              "enum": [
+                "value",
+                "class_probability",
+                "state_probability",
+                "rate",
+                "effect"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "What the numbers are (v0.17): a value, a class or state probability, a rate or an effect. Unset: dashboards guess it from the dims and plots",
+          "title": "Meaning"
+        },
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        },
+        "units_of": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Take units from this input variable",
+          "title": "Units Of"
+        }
+      },
+      "required": [
+        "dims"
+      ],
+      "title": "OutputDecl",
+      "type": "object"
+    },
+    "PlotCatalogEntry": {
+      "additionalProperties": false,
+      "description": "A plot recipe the runner can produce.",
+      "properties": {
+        "about": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/About"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The plot's About card: what it shows, how to read it, what it needs"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "overlay_hash": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "v0.19: the sha256 of the uploaded wheel the recipe comes from",
+          "title": "Overlay Hash"
+        },
+        "pack_label": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "v0.18: the name of the recipe pack shown on the catalog card",
+          "title": "Pack Label"
+        },
+        "persona": {
+          "default": "both",
+          "enum": [
+            "guided",
+            "expert",
+            "both"
+          ],
+          "title": "Persona",
+          "type": "string"
+        },
+        "provider": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "v0.18: the distribution that installed a non-built-in recipe",
+          "title": "Provider"
+        },
+        "requires_groups": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Requires Groups",
+          "type": "array"
+        },
+        "requires_representation": {
+          "items": {
+            "$ref": "#/$defs/Representation"
+          },
+          "title": "Requires Representation",
+          "type": "array"
+        },
+        "settings_schema": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "$ref": "#/$defs/JsonValue"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "v0.18: the recipe's settings as a safe JSON Schema (at most 16 KiB; absent when too large)",
+          "title": "Settings Schema"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "One line on what the chart shows (the recipe's summary)",
+          "title": "Summary"
+        },
+        "tags": {
+          "items": {
+            "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Tags",
+          "type": "array"
+        },
+        "title": {
+          "maxLength": 200,
+          "title": "Title",
+          "type": "string"
+        },
+        "version": {
+          "default": "1.0.0",
+          "title": "Version",
+          "type": "string"
+        },
+        "yanked": {
+          "default": false,
+          "title": "Yanked",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "title"
+      ],
+      "title": "PlotCatalogEntry",
+      "type": "object"
+    },
+    "PluginDecisionRecord": {
+      "description": "One approval or rejection of a version, with the digests the reviewer saw.",
+      "examples": [
+        {
+          "approver_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k9",
+          "approver_name": "Ada Admin",
+          "base_image_digest": "sha256:efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef",
+          "decided_at": "2026-10-22T09:30:00Z",
+          "decision": "approve",
+          "describe_digest": "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+          "overlay_sha256": "sha256:abababababababababababababababababababababababababababababababab"
+        }
+      ],
+      "properties": {
+        "approver_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Approver Id",
+          "type": "string"
+        },
+        "approver_name": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Approver Name"
+        },
+        "base_image_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Base Image Digest",
+          "type": "string"
+        },
+        "decided_at": {
+          "format": "date-time",
+          "title": "Decided At",
+          "type": "string"
+        },
+        "decision": {
+          "enum": [
+            "approve",
+            "reject"
+          ],
+          "title": "Decision",
+          "type": "string"
+        },
+        "describe_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Describe Digest",
+          "type": "string"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Untrusted text",
+          "title": "Note"
+        },
+        "overlay_sha256": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Overlay Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "decision",
+        "approver_id",
+        "overlay_sha256",
+        "describe_digest",
+        "base_image_digest",
+        "decided_at"
+      ],
+      "title": "PluginDecisionRecord",
+      "type": "object"
+    },
+    "PluginExports": {
+      "additionalProperties": false,
+      "description": "The catalog entries an upload exports (only its own distribution's).",
+      "properties": {
+        "models": {
+          "items": {
+            "$ref": "#/$defs/ModelCatalogEntry"
+          },
+          "maxItems": 64,
+          "title": "Models",
+          "type": "array"
+        },
+        "plots": {
+          "items": {
+            "$ref": "#/$defs/PlotCatalogEntry"
+          },
+          "maxItems": 128,
+          "title": "Plots",
+          "type": "array"
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/StepCatalogEntry"
+          },
+          "maxItems": 128,
+          "title": "Steps",
+          "type": "array"
+        },
+        "workflow_nodes": {
+          "items": {
+            "$ref": "#/$defs/NodeImplementation"
+          },
+          "maxItems": 64,
+          "title": "Workflow Nodes",
+          "type": "array"
+        },
+        "workflow_templates": {
+          "items": {
+            "$ref": "#/$defs/TemplateCatalogEntry"
+          },
+          "maxItems": 32,
+          "title": "Workflow Templates",
+          "type": "array"
+        }
+      },
+      "title": "PluginExports",
+      "type": "object"
+    },
+    "PluginInspection": {
+      "additionalProperties": false,
+      "description": "``plugin/inspection.json``: what the inspect run found (``ok`` = no problem).",
+      "properties": {
+        "archive_sha256": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Archive Sha256",
+          "type": "string"
+        },
+        "dist": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dist"
+        },
+        "entry_points": {
+          "items": {
+            "$ref": "#/$defs/EntryPointDecl"
+          },
+          "maxItems": 500,
+          "title": "Entry Points",
+          "type": "array"
+        },
+        "members": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Members",
+          "type": "integer"
+        },
+        "ok": {
+          "title": "Ok",
+          "type": "boolean"
+        },
+        "problems": {
+          "items": {
+            "$ref": "#/$defs/InspectProblem"
+          },
+          "maxItems": 200,
+          "title": "Problems",
+          "type": "array"
+        },
+        "requires_python": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Requires Python"
+        },
+        "sbom": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PluginSbom"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "top_level": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Top Level",
+          "type": "array"
+        },
+        "uncompressed_bytes": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Uncompressed Bytes",
+          "type": "integer"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        },
+        "wheel_tags": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Wheel Tags",
+          "type": "array"
+        }
+      },
+      "required": [
+        "ok",
+        "archive_sha256"
+      ],
+      "title": "PluginInspection",
+      "type": "object"
+    },
+    "PluginKitReport": {
+      "additionalProperties": false,
+      "description": "Every kit result of a describe run (``ok``: no ``fail``; ``skipped`` is allowed).",
+      "properties": {
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/KitCheck"
+          },
+          "maxItems": 500,
+          "title": "Checks",
+          "type": "array"
+        },
+        "ok": {
+          "title": "Ok",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ok"
+      ],
+      "title": "PluginKitReport",
+      "type": "object"
+    },
+    "PluginSbom": {
+      "additionalProperties": false,
+      "description": "The software bill of materials of an upload: every file and every requirement.",
+      "properties": {
+        "base_image_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Base Image Digest",
+          "type": "string"
+        },
+        "dist": {
+          "maxLength": 128,
+          "title": "Dist",
+          "type": "string"
+        },
+        "files": {
+          "items": {
+            "$ref": "#/$defs/SbomFile"
+          },
+          "maxItems": 2000,
+          "title": "Files",
+          "type": "array"
+        },
+        "format": {
+          "const": "mapi.sbom/v1",
+          "default": "mapi.sbom/v1",
+          "title": "Format",
+          "type": "string"
+        },
+        "license": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "License"
+        },
+        "requires": {
+          "items": {
+            "$ref": "#/$defs/RequirementFact"
+          },
+          "maxItems": 200,
+          "title": "Requires",
+          "type": "array"
+        },
+        "version": {
+          "maxLength": 64,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "dist",
+        "version",
+        "base_image_digest"
+      ],
+      "title": "PluginSbom",
+      "type": "object"
+    },
+    "PortSpec": {
+      "description": "An input port: its type, whether it must be bound and whether it takes several.",
+      "properties": {
+        "description": {
+          "default": "",
+          "maxLength": 300,
+          "title": "Description",
+          "type": "string"
+        },
+        "multiple": {
+          "default": false,
+          "description": "Accepts a list of bindings (e.g. models)",
+          "title": "Multiple",
+          "type": "boolean"
+        },
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "type": {
+          "$ref": "#/$defs/PortType"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "PortSpec",
+      "type": "object"
+    },
+    "PortType": {
+      "description": "What flows along a workflow edge.",
+      "enum": [
+        "dataset",
+        "test_result",
+        "split_plan",
+        "model_version",
+        "metrics",
+        "table",
+        "plot",
+        "report",
+        "evidence"
+      ],
+      "title": "PortType",
+      "type": "string"
+    },
+    "Problem": {
+      "additionalProperties": false,
+      "description": "RFC 7807 problem document with mapi extensions (``code``, ``errors``, ``untrusted_text``).",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "detail": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detail"
+        },
+        "errors": {
+          "items": {
+            "$ref": "#/$defs/Issue"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "instance": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Instance"
+        },
+        "status": {
+          "maximum": 599,
+          "minimum": 100,
+          "title": "Status",
+          "type": "integer"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "trace_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Trace Id"
+        },
+        "type": {
+          "default": "about:blank",
+          "title": "Type",
+          "type": "string"
+        },
+        "untrusted_text": {
+          "anyOf": [
+            {
+              "maxLength": 65536,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Untrusted Text"
+        }
+      },
+      "required": [
+        "title",
+        "status",
+        "code"
+      ],
+      "title": "Problem",
+      "type": "object"
+    },
+    "Representation": {
+      "description": "How a model encodes uncertainty in its outputs.",
+      "enum": [
+        "draws",
+        "quantiles",
+        "interval",
+        "point",
+        "moments"
+      ],
+      "title": "Representation",
+      "type": "string"
+    },
+    "RequirementFact": {
+      "additionalProperties": false,
+      "description": "One ``Requires-Dist`` line and the version the base image has (``None``: missing).",
+      "properties": {
+        "locked_version": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Locked Version"
+        },
+        "marker": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Marker"
+        },
+        "name": {
+          "maxLength": 128,
+          "title": "Name",
+          "type": "string"
+        },
+        "specifier": {
+          "default": "",
+          "maxLength": 256,
+          "title": "Specifier",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "RequirementFact",
+      "type": "object"
+    },
+    "ResourceClass": {
+      "description": "Executor resource class. Ordered: ``S < M < L < XL < GPU``.\n\n``GPU`` is the last (highest-rank) member on purpose: a quota whose\n``max_resource_class`` is below it refuses it, and :meth:`next_up` never offers it.",
+      "enum": [
+        "S",
+        "M",
+        "L",
+        "XL",
+        "GPU"
+      ],
+      "title": "ResourceClass",
+      "type": "string"
+    },
+    "ResourceHint": {
+      "additionalProperties": false,
+      "description": "Resource guidance for scheduling.",
+      "properties": {
+        "default_class": {
+          "$ref": "#/$defs/ResourceClass",
+          "default": "S"
+        },
+        "est_fit_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Est Fit Seconds"
+        },
+        "gpu": {
+          "default": false,
+          "title": "Gpu",
+          "type": "boolean"
+        },
+        "min_class": {
+          "$ref": "#/$defs/ResourceClass",
+          "default": "S"
+        }
+      },
+      "title": "ResourceHint",
+      "type": "object"
+    },
+    "ResultField": {
+      "description": "A field of a node's JSON result that conditions may read (``nodes.<id>.<field>``).",
+      "properties": {
+        "description": {
+          "maxLength": 300,
+          "title": "Description",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "number",
+            "integer",
+            "boolean",
+            "string",
+            "object",
+            "array"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "description"
+      ],
+      "title": "ResultField",
+      "type": "object"
+    },
+    "SbomFile": {
+      "additionalProperties": false,
+      "description": "One archive member: its path, sha256 and uncompressed size.",
+      "properties": {
+        "path": {
+          "maxLength": 255,
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "size": {
+          "minimum": 0,
+          "title": "Size",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "sha256",
+        "size"
+      ],
+      "title": "SbomFile",
+      "type": "object"
+    },
+    "Severity": {
+      "description": "How bad an :class:`Issue` is. Only ``error`` blocks submission.",
+      "enum": [
+        "info",
+        "warning",
+        "error"
+      ],
+      "title": "Severity",
+      "type": "string"
+    },
+    "StepCatalogEntry": {
+      "additionalProperties": false,
+      "description": "Everything static validation needs to know about one step version.\n\n``effect`` and ``context`` are JSON templates over the step's settings (see\n:mod:`mapi_spec.template`). ``var_params``/``dim_params`` name settings fields whose\nvalues are variable/dim names that must exist at the step's input stage, and\n``side_table_params`` name fields that refer to ``data.side_tables`` entries.",
+      "properties": {
+        "about": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/About"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "M3.5: the plain-language About card (the catalog rule requires one)"
+        },
+        "context": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "$ref": "#/$defs/JsonValue"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Context"
+        },
+        "depends_on_target": {
+          "default": false,
+          "title": "Depends On Target",
+          "type": "boolean"
+        },
+        "dim_params": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Dim Params",
+          "type": "array"
+        },
+        "effect": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Effect",
+          "type": "object"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "invertible": {
+          "default": false,
+          "title": "Invertible",
+          "type": "boolean"
+        },
+        "kind": {
+          "$ref": "#/$defs/StepKind"
+        },
+        "overlay_hash": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "v0.19: the sha256 of the uploaded wheel the step comes from",
+          "title": "Overlay Hash"
+        },
+        "provider": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "v0.18: the distribution that installed a non-built-in step",
+          "title": "Provider"
+        },
+        "provides": {
+          "description": "Preprocessing a model may declare it owns (ModelManifest owns); such a step is rejected on the target/media variables of a model that owns it",
+          "items": {
+            "enum": [
+              "scaling",
+              "carryover"
+            ],
+            "type": "string"
+          },
+          "title": "Provides",
+          "type": "array"
+        },
+        "settings_schema": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Settings Schema",
+          "type": "object"
+        },
+        "side_table_params": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Side Table Params",
+          "type": "array"
+        },
+        "stateful": {
+          "description": "Has a fitted State (fit on train only)",
+          "title": "Stateful",
+          "type": "boolean"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Summary"
+        },
+        "summary_plain": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Summary Plain"
+        },
+        "target_vars_param": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "If set, the step depends on the target only when this settings field lists a target-role variable",
+          "title": "Target Vars Param"
+        },
+        "var_params": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Var Params",
+          "type": "array"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        },
+        "yanked": {
+          "default": false,
+          "title": "Yanked",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "kind",
+        "stateful"
+      ],
+      "title": "StepCatalogEntry",
+      "type": "object"
+    },
+    "StepKind": {
+      "description": "RESHAPE changes structure (not invertible past it); VALUE rescales; FEATURE adds.",
+      "enum": [
+        "reshape",
+        "value",
+        "feature"
+      ],
+      "title": "StepKind",
+      "type": "string"
+    },
+    "TemplateCase": {
+      "additionalProperties": false,
+      "description": "Conditional fragment merged into the template when all ``when`` params match.",
+      "properties": {
+        "merge": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Merge",
+          "type": "object"
+        },
+        "when": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "minProperties": 1,
+          "title": "When",
+          "type": "object"
+        }
+      },
+      "required": [
+        "when",
+        "merge"
+      ],
+      "title": "TemplateCase",
+      "type": "object"
+    },
+    "TemplateCatalogEntry": {
+      "additionalProperties": false,
+      "description": "A plugin workflow template (entry-point group ``mapi.workflow_templates``).\n\nThe sibling of :class:`~mapi_spec.workflow_templates.WorkflowTemplate` (which this module\ncannot import: ``workflow`` imports the catalog). The id is ``<namespace>_<name>`` so it\nfits ``POST /v1/workflows {template}``; ``document`` is the workflow document, validated\nagainst the merged node contracts when the control plane loads the catalog.",
+      "properties": {
+        "about": {
+          "$ref": "#/$defs/About"
+        },
+        "document": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Document",
+          "type": "object"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "overlay_hash": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Overlay Hash"
+        },
+        "provider": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Provider"
+        },
+        "tags": {
+          "items": {
+            "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Tags",
+          "type": "array"
+        },
+        "version": {
+          "default": "1.0.0",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "about",
+        "document"
+      ],
+      "title": "TemplateCatalogEntry",
+      "type": "object"
+    },
+    "TemplateParam": {
+      "additionalProperties": false,
+      "description": "A settings value that a :class:`DataSchemaTemplate` depends on.",
+      "properties": {
+        "default": {
+          "$ref": "#/$defs/JsonValue",
+          "default": null
+        },
+        "enum": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/JsonValue"
+              },
+              "maxItems": 256,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Enum"
+        },
+        "path": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Dotted path into the settings (defaults to the parameter name)",
+          "title": "Path"
+        },
+        "required": {
+          "default": false,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "type": {
+          "enum": [
+            "string",
+            "integer",
+            "number",
+            "boolean",
+            "string_list",
+            "integer_list"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "TemplateParam",
+      "type": "object"
+    },
+    "TypicalRuntime": {
+      "description": "Rough wall-clock time on typical data (``S`` resource class).",
+      "enum": [
+        "instant",
+        "seconds",
+        "minutes",
+        "long"
+      ],
+      "title": "TypicalRuntime",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-PluginVersion.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "One version with everything the version page and the reviewer panel show.",
+  "examples": [
+    {
+      "base_image_digest": "sha256:efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef",
+      "describe_digest": "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+      "exports": {
+        "model": 1,
+        "node": 1,
+        "plot": 1,
+        "step": 1,
+        "template": 1
+      },
+      "id": "plv_01jbz3q2x8m9v7k5h4g3f2e1d1",
+      "inspection": {
+        "archive_sha256": "sha256:abababababababababababababababababababababababababababababababab",
+        "dist": "t-k3vq7m-acme",
+        "entry_points": [
+          {
+            "group": "mapi.steps",
+            "name": "acme",
+            "value": "t_k3vq7m_acme.steps:STEPS"
+          }
+        ],
+        "members": 11,
+        "ok": true,
+        "problems": [],
+        "requires_python": ">=3.12",
+        "top_level": [
+          "t_k3vq7m_acme"
+        ],
+        "uncompressed_bytes": 40960,
+        "version": "0.1.0",
+        "wheel_tags": [
+          "py3-none-any"
+        ]
+      },
+      "kit": {
+        "checks": [
+          {
+            "check": "check_step",
+            "entry_id": "t_k3vq7m_acme.winsorize",
+            "kind": "step",
+            "message": "",
+            "status": "pass"
+          }
+        ],
+        "ok": true
+      },
+      "overlay_sha256": "sha256:abababababababababababababababababababababababababababababababab",
+      "plugin_id": "plg_01jbz3q2x8m9v7k5h4g3f2e1d0",
+      "scope": "private",
+      "state": "kit_passed",
+      "uploaded_at": "2026-10-22T09:30:00Z",
+      "uploaded_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+      "urls": [
+        "https://example.org/acme"
+      ],
+      "version": "0.1.0"
+    }
+  ],
+  "properties": {
+    "approvals": {
+      "items": {
+        "$ref": "#/$defs/PluginDecisionRecord"
+      },
+      "title": "Approvals",
+      "type": "array"
+    },
+    "base_image_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Base Image Digest"
+    },
+    "describe_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Describe Digest"
+    },
+    "exports": {
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "propertyNames": {
+        "enum": [
+          "model",
+          "step",
+          "plot",
+          "node",
+          "template"
+        ]
+      },
+      "title": "Exports",
+      "type": "object"
+    },
+    "exports_detail": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PluginExports"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "id": {
+      "examples": [
+        "plv_01jbz3q2x8m9v7k5h4g3f2e1d1"
+      ],
+      "pattern": "^plv_[0-9a-z]{26}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "inspection": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PluginInspection"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "issues": {
+      "items": {
+        "$ref": "#/$defs/Issue"
+      },
+      "title": "Issues",
+      "type": "array"
+    },
+    "kit": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PluginKitReport"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "overlay_sha256": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Overlay Sha256"
+    },
+    "plugin_id": {
+      "examples": [
+        "plg_01jbz3q2x8m9v7k5h4g3f2e1d0"
+      ],
+      "pattern": "^plg_[0-9a-z]{26}$",
+      "title": "Plugin Id",
+      "type": "string"
+    },
+    "problem": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Problem"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "purge_after": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Purge After"
+    },
+    "scope": {
+      "description": "Who may use it now: only the uploader (private), the whole tenant, or nobody",
+      "enum": [
+        "private",
+        "tenant",
+        "none"
+      ],
+      "title": "Scope",
+      "type": "string"
+    },
+    "state": {
+      "enum": [
+        "uploaded",
+        "inspecting",
+        "inspect_failed",
+        "describing",
+        "kit_failed",
+        "kit_passed",
+        "awaiting_approval",
+        "approved",
+        "rejected",
+        "yanked",
+        "purged"
+      ],
+      "title": "State",
+      "type": "string"
+    },
+    "uploaded_at": {
+      "format": "date-time",
+      "title": "Uploaded At",
+      "type": "string"
+    },
+    "uploaded_by": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Uploaded By",
+      "type": "string"
+    },
+    "urls": {
+      "description": "Every About reference URL, for the reviewer",
+      "items": {
+        "type": "string"
+      },
+      "title": "Urls",
+      "type": "array"
+    },
+    "version": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[0-9][0-9A-Za-z.+!-]*$",
+      "title": "Version",
+      "type": "string"
+    },
+    "yank_note": {
+      "anyOf": [
+        {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Yank Note"
+    },
+    "yank_reason": {
+      "anyOf": [
+        {
+          "enum": [
+            "withdrawn",
+            "security",
+            "superseded",
+            "rekit_failed"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Yank Reason"
+    }
+  },
+  "required": [
+    "id",
+    "plugin_id",
+    "version",
+    "state",
+    "scope",
+    "uploaded_by",
+    "uploaded_at"
+  ],
+  "title": "PluginVersion",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

@@ -276,6 +276,18 @@
           },
           "title": "Regions",
           "type": "array"
+        },
+        "runs_untrusted_code": {
+          "default": false,
+          "description": "v0.19: the backend may run uploaded (tenant) code: docker, docker-gvisor and Cloud Run Jobs; local-process only with the dev-only allowance",
+          "title": "Runs Untrusted Code",
+          "type": "boolean"
+        },
+        "untrusted_dev_only": {
+          "default": false,
+          "description": "v0.19: uploaded code runs here only because of the development allowance (MAPI_DEV_ALLOW_LOCAL_UNTRUSTED); the run gets a DEV_MODE_ISOLATION event",
+          "title": "Untrusted Dev Only",
+          "type": "boolean"
         }
       },
       "required": [

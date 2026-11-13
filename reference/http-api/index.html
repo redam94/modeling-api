@@ -12,8 +12,10 @@
         <meta name="author" content="Matthew Reda">
       
       
+        <link rel="canonical" href="https://redam94.github.io/modeling-api/reference/http-api/">
       
-        <link rel="prev" href="../generated/error-codes/">
+      
+        <link rel="prev" href="../generated/extension-points/">
       
       
         <link rel="next" href="../openapi/">
@@ -44,18 +46,16 @@
       
     
     
-      
-        
-        
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
-        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
-      
-    
     
       <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
     
-      <link rel="stylesheet" href="../../stylesheets/extra.css">
+      <link rel="stylesheet" href="../../stylesheets/mono.css">
+    
+      <link rel="stylesheet" href="../../stylesheets/mono-chrome.css">
+    
+      <link rel="stylesheet" href="../../stylesheets/mono-content.css">
+    
+      <link rel="stylesheet" href="../../stylesheets/mono-blocks.css">
     
     <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
@@ -63,6 +63,8 @@
 
     
     
+  <meta name="color-scheme" content="light dark">
+
   </head>
   
   
@@ -92,40 +94,155 @@
     </div>
     
     
-      
-
-  
-
-<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
-  <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="modeling-api" class="md-header__button md-logo" aria-label="modeling-api" data-md-component="logo">
-      
-  <img src="../../assets/logo.svg" alt="logo">
-
+  <a href="#mono-content" class="md-skip mono-skip">Skip to content</a>
+  <header class="md-header mono-header" data-md-component="header">
+  <nav class="md-header__inner md-grid mono-header__inner" aria-label="Header">
+    <a href="../.." class="md-header__button md-logo mono-brand" aria-label="modeling-api" data-md-component="logo">
+      <svg class="mono-mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+  <rect class="mono-mark__top" x="2" y="4" width="20" height="4" rx="2"/>
+  <rect class="mono-mark__mid" x="5" y="10" width="14" height="4" rx="2"/>
+  <rect class="mono-mark__low" x="9" y="16" width="6" height="4" rx="2"/>
+</svg>
+      <span class="mono-brand__name">modeling-api</span>
     </a>
-    <label class="md-header__button md-icon" for="__drawer">
-      
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
-    </label>
-    <div class="md-header__title" data-md-component="header-title">
-      <div class="md-header__ellipsis">
-        <div class="md-header__topic">
-          <span class="md-ellipsis">
-            modeling-api
-          </span>
-        </div>
-        <div class="md-header__topic" data-md-component="header-topic">
-          <span class="md-ellipsis">
-            
-              HTTP API (v1)
-            
-          </span>
-        </div>
-      </div>
-    </div>
     
       
-        <form class="md-header__option" data-md-component="palette">
+<nav class="mono-tabs" aria-label="Tabs" data-md-component="tabs">
+  <ul class="mono-tabs__list">
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="mono-tabs__item">
+        <a href="../.." class="mono-tabs__link" >
+          
+  
+  Home
+
+        </a>
+      </li>
+    
+  
+
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="mono-tabs__item">
+        <a href="../../getting-started/" class="mono-tabs__link" >
+          
+  
+  Learn
+
+        </a>
+      </li>
+    
+  
+
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="mono-tabs__item">
+        <a href="../../guides/" class="mono-tabs__link" >
+          
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="mono-tabs__item">
+        <a href="../../extend/" class="mono-tabs__link" >
+          
+  
+  Extend
+
+        </a>
+      </li>
+    
+  
+
+    
+      
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="mono-tabs__item">
+        <a href="../" class="mono-tabs__link" aria-current="true">
+          
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="mono-tabs__item">
+        <a href="../../operations/" class="mono-tabs__link" >
+          
+  
+  Operate
+
+        </a>
+      </li>
+    
+  
+
+    
+  </ul>
+</nav>
+    
+    <div class="mono-header__tools">
+      
+        
+        
+          <label class="mono-search-btn" for="__search" role="button" tabindex="0" aria-label="Search the documentation" aria-keyshortcuts="/ Control+K Meta+K" data-mono-search-open>
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4.5 4.5"/></svg>
+            <span class="mono-search-btn__text">Search</span>
+            <kbd class="mono-search-btn__kbd" data-mono-kbd>Ctrl K</kbd>
+          </label>
+        
+      
+      
+        
+          <form class="md-header__option" data-md-component="palette">
   
     
     
@@ -148,43 +265,36 @@
     
   
 </form>
-      
-    
-    
-      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
-    
-    
-    
-      
-      
-        <label class="md-header__button md-icon" for="__search">
-          
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
-        </label>
-        <div class="md-search" data-md-component="search" role="dialog">
-  <label class="md-search__overlay" for="__search"></label>
-  <div class="md-search__inner" role="search">
-    <form class="md-search__form" name="search">
-      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
-      <label class="md-search__icon md-icon" for="__search">
         
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
-        
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      
+      
+        <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+      
+      
+      <label class="md-header__button mono-menu-btn" for="__drawer" role="button" tabindex="0" aria-label="Menu">
+        <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M2 6h14M2 12h14"/></svg>
       </label>
-      <nav class="md-search__options" aria-label="Search">
-        
-        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
-          
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-        </button>
-      </nav>
-      
-        <div class="md-search__suggest" data-md-component="search-suggest"></div>
-      
+    </div>
+    
+  </nav>
+</header>
+  
+    
+    
+      <div class="mono-search" data-md-component="search" role="dialog" aria-label="Search the documentation">
+  <label class="mono-search__scrim" for="__search"></label>
+  <div class="mono-search__panel" role="search">
+    <form class="mono-search__field" name="search">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4.5 4.5"/></svg>
+      <input type="text" class="mono-search__input" name="query" aria-label="Search the documentation" placeholder="Search guides, concepts and reference" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <button type="reset" class="mono-search__clear" title="Clear" aria-label="Clear" tabindex="-1">
+        <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="m4.5 4.5 9 9m0-9-9 9"/></svg>
+      </button>
+      <label class="mono-search__esc" for="__search" title="Close">Esc</label>
     </form>
-    <div class="md-search__output">
-      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+    <div class="mono-search__output">
+      <div class="mono-search__scroll" tabindex="-1" data-md-scrollfix>
+        <div class="mono-search__try" data-mono-search-try hidden></div>
         <div class="md-search-result" data-md-component="search-result">
           <div class="md-search-result__meta">
             Initializing search
@@ -193,244 +303,116 @@
         </div>
       </div>
     </div>
+    <p class="mono-search__hints" aria-hidden="true">
+      <span><kbd>&uarr;</kbd><kbd>&darr;</kbd> Move</span>
+      <span><kbd>Enter</kbd> Open</span>
+      <span><kbd>Esc</kbd> Close</span>
+    </p>
   </div>
 </div>
-      
-    
-    
-  </nav>
-  
-    
-      
-<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
-  <div class="md-grid">
-    <ul class="md-tabs__list">
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../.." class="md-tabs__link">
-          
-  
-  
-    
-  
-  Home
 
-        </a>
-      </li>
-    
+
   
 
-      
-        
   
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../../getting-started/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Getting started
 
-        </a>
-      </li>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+<script id="__mono_search" type="application/json">{"popular": [{"hint": "Tutorial", "title": "Your first Guided analysis", "url": "../../guides/guided-tutorial/"}, {"hint": "Learn", "title": "Install modeling-api", "url": "../../getting-started/"}, {"hint": "Guide", "title": "Build a client dashboard", "url": "../../guides/client-dashboards/"}, {"hint": "Guide", "title": "Share a dashboard with a link", "url": "../../guides/sharing-dashboards-securely/"}, {"hint": "Guide", "title": "Choose a model", "url": "../../guides/choosing-a-model/"}, {"hint": "Extend", "title": "Upload your own code", "url": "../../extend/upload/"}, {"hint": "Reference", "title": "Error codes", "url": "../generated/error-codes/"}, {"hint": "Operate", "title": "Troubleshooting", "url": "../../operations/troubleshooting/"}], "sections": {"guides/administration/": "Operate", "guides/authentication/": "Operate", "guides/conformance/": "Extend", "guides/data-deletion/": "Operate", "guides/first-model-in-the-ui/": "Learn", "guides/guided-tutorial/": "Learn", "guides/plugins/": "Extend", "guides/port-a-model/": "Extend", "guides/start-here/": "Learn", "guides/web-ui/": "Learn", "guides/webhook-receivers/": "Learn", "models/statsmodels/": "Guides", "tutorials/your-first-extensions/": "Extend"}}</script>
     
   
 
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../../tutorials/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Tutorials
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../../concepts/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Concepts
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../../guides/web-ui/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Guides
-
-        </a>
-      </li>
-    
-  
-
-    
-  
-
-      
-        
-  
-  
-  
-    
-  
-  
-    
-    
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../spec-format/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Reference
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../../operations/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Deployment
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../../roadmap/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Roadmap
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../../project/licensing/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Project
-
-        </a>
-      </li>
-    
-  
-
-      
-    </ul>
-  </div>
-</nav>
-    
-  
-</header>
-    
     <div class="md-container" data-md-component="container">
       
-      
-        
       
       <main class="md-main" data-md-component="main">
         <div class="md-main__inner md-grid">
           
+  
+    </div>
+    <div class="mono-pagehead" data-mono-section="reference">
+      <div class="mono-pagehead__inner md-grid">
+        
+          
+
+
+
+
+  <nav class="md-path" aria-label="Breadcrumb" >
+    <ol class="md-path__list">
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="../" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    Reference
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="./" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    Interfaces
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ol>
+  </nav>
+
+        
+        <div class="mono-pagehead__title md-typeset">
+          <h1 id="http-api-v1-v02">HTTP API (v1) <span class="mapi-badge">v0.2</span><a class="headerlink" href="#http-api-v1-v02" title="Permanent link">&para;</a></h1>
+        </div>
+      </div>
+    </div>
+    <div class="md-main__inner md-grid">
+  
+  
             
               
               <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
@@ -445,9 +427,11 @@
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
     <a href="../.." title="modeling-api" class="md-nav__button md-logo" aria-label="modeling-api" data-md-component="logo">
-      
-  <img src="../../assets/logo.svg" alt="logo">
-
+      <svg class="mono-mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+  <rect class="mono-mark__top" x="2" y="4" width="20" height="4" rx="2"/>
+  <rect class="mono-mark__mid" x="5" y="10" width="14" height="4" rx="2"/>
+  <rect class="mono-mark__low" x="9" y="16" width="6" height="4" rx="2"/>
+</svg>
     </a>
     modeling-api
   </label>
@@ -538,6 +522,302 @@
   
   
     <li class="md-nav__item">
+      <a href="../../why/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Why modeling-api?
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../use-cases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use cases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_1_4" id="__nav_1_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_1_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    What's new
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.21/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.21
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.20/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.20
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.19/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.19
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.18/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.18
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.17/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.17
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.16/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.16
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../whats-new-0.15/" class="md-nav__link">
         
   
@@ -615,6 +895,91 @@
 
               
             
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../roadmap/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1_5" id="__nav_1_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_1_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Roadmap
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
               
                 
   
@@ -622,14 +987,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../why/" class="md-nav__link">
+      <a href="../../roadmap/platform-api/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Why modeling-api?
+    The local platform (v0.2)
   
 
     
@@ -650,14 +1015,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-cases/" class="md-nav__link">
+      <a href="../../roadmap/cloud/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Use cases
+    Cloud and multi-tenant (v0.3)
   
 
     
@@ -666,6 +1031,310 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../roadmap/guided-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guided mode and integrations (v0.4)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../roadmap/workflows-governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflows, governance and explorers (v0.5)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../roadmap/expert-plugins/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plugin upload, dashboard chat and MCP (v0.19, v0.20)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_1_6" id="__nav_1_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_1_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Project
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/licensing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Licensing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/docs-theme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The docs theme
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -721,7 +1390,7 @@
   <span class="md-ellipsis">
     
   
-    Getting started
+    Learn
   
 
     
@@ -743,13 +1412,79 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Getting started
+    Learn
   
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
               
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    First steps
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    First steps
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
             
               
                 
@@ -814,6 +1549,90 @@
   
   
     <li class="md-nav__item">
+      <a href="../../guides/first-model-in-the-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your first model in the web app
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/start-here/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start here: tours, checklist and sample
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/web-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Expert web app
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../getting-started/executor/" class="md-nav__link">
         
   
@@ -841,9 +1660,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -882,7 +1702,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -904,14 +1724,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1147,7 +1967,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3_8" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -1169,14 +1989,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3_8" id="__nav_3_8_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_2_3_8" id="__nav_2_3_8_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_8">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_3_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3_8">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1622,9 +2442,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -1642,21 +2463,68 @@
       
         
       
-        
+    
+    
+    
+      
       
         
       
-        
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
       
         
-      
         
-      
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" >
         
-      
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../concepts/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
         
-      
-        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Concepts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
       
         
       
@@ -1687,18 +2555,17 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4_2" >
         
           
-          <div class="md-nav__link md-nav__container">
-            <a href="../../concepts/" class="md-nav__link ">
-              
+          <label class="md-nav__link" for="__nav_2_4_2" id="__nav_2_4_2_label" tabindex="0">
+            
   
   
   <span class="md-ellipsis">
     
   
-    Concepts
+    Data and models
   
 
     
@@ -1706,83 +2573,19 @@
   
   
 
-            </a>
-            
-              
-              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
-                <span class="md-nav__icon md-icon"></span>
-              </label>
-            
-          </div>
+            <span class="md-nav__icon md-icon"></span>
+          </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4_2">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Concepts
+    Data and models
   
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../concepts/architecture/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Architecture overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../concepts/security/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Security model
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -1959,6 +2762,462 @@
   
   
     <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4_3" id="__nav_2_4_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Product
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_4_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Product
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/guided-mode/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guided mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/workflows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflows: the idea
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/integrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/client-dashboards/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Client dashboards
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/about-and-choosing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Governance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4_4" id="__nav_2_4_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Platform
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_4_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Platform
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../concepts/capabilities/" class="md-nav__link">
         
   
@@ -2036,225 +3295,17 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../concepts/guided-mode/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Guided mode
-  
-
-    
-  </span>
-  
-  
-
-      </a>
+          </ul>
+        </nav>
+      
     </li>
   
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../concepts/integrations/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Integrations
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../concepts/workflows/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Workflows
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../concepts/governance/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Governance
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../concepts/about-and-choosing/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    About cards and choosing
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../concepts/run-tracking/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Run tracking and experiments
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../concepts/causal-effects/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Causal effects
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../concepts/image-collections/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Image data and collections
-  
-
-    
-  </span>
-  
-  
-
-      </a>
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -2277,85 +3328,7 @@
     
       
         
-      
-        
-      
-        
-      
-    
-    
-    
-      
-      
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
-        
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Guides
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Guides
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    
-    
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
         
       
         
@@ -2385,17 +3358,18 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_1" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
         
           
-          <label class="md-nav__link" for="__nav_5_1" id="__nav_5_1_label" tabindex="0">
-            
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guides/" class="md-nav__link ">
+              
   
   
   <span class="md-ellipsis">
     
   
-    Using the platform
+    Guides
   
 
     
@@ -2403,47 +3377,27 @@
   
   
 
-            <span class="md-nav__icon md-icon"></span>
-          </label>
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_1_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_1">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Using the platform
+    Guides
   
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
               
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../guides/web-ui/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    The Expert web app
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -2451,43 +3405,41 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../../guides/first-model-in-the-ui/" class="md-nav__link">
+    
+    
+      
         
-  
-  
-  <span class="md-ellipsis">
+      
+        
+      
+        
+      
+        
+      
     
-  
-    Your first model in the web app
-  
-
     
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../guides/cli/" class="md-nav__link">
-        
   
   
   <span class="md-ellipsis">
     
   
-    The command line
+    Data
   
 
     
@@ -2495,123 +3447,19 @@
   
   
 
-      </a>
-    </li>
-  
-
-              
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
             
-              
-                
   
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../guides/python-client/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    The Python client
+    Data
   
 
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../guides/http-api/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    The HTTP API
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../guides/tracking/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Track metrics, params and tags
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../guides/run-comparison/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Compare runs and use experiments
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
             
               
                 
@@ -2704,90 +3552,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../guides/deep-learning/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Deep learning
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../guides/endpoints-and-webhooks/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Endpoints and webhooks
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../guides/integrations-hub/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    The Integrations hub
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../guides/data-explorer/" class="md-nav__link">
         
   
@@ -2809,29 +3573,9 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../guides/model-explorer/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Explore a model
-  
-
-    
-  </span>
-  
-  
-
-      </a>
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -2843,43 +3587,51 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../../guides/governance/" class="md-nav__link">
+    
+    
+      
         
-  
-  
-  <span class="md-ellipsis">
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
     
-  
-    Validate models with governance policies
-  
-
     
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../guides/null-tests/" class="md-nav__link">
-        
   
   
   <span class="md-ellipsis">
     
   
-    Can you trust this model? Null tests explained
+    Models
   
 
     
@@ -2887,11 +3639,19 @@
   
   
 
-      </a>
-    </li>
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Models
   
 
-              
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
             
               
                 
@@ -2921,74 +3681,6 @@
 
               
             
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    
-    
-      
-        
-      
-        
-      
-        
-      
-    
-    
-    
-      
-      
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2" >
-        
-          
-          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Running it for teams
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Running it for teams
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
               
                 
   
@@ -2996,272 +3688,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../guides/authentication/" class="md-nav__link">
+      <a href="../../guides/guided-modelling/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Authentication
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../guides/administration/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Administration
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../guides/data-deletion/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Deleting and exporting data
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    
-    
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-    
-    
-    
-      
-      
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3" >
-        
-          
-          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="0">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Modelling
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_3">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Modelling
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../guides/port-a-model/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Port a model in 15 minutes
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../guides/plugins/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Write a step or model plugin
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../guides/pymc/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Bring a PyMC model
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../guides/sklearn/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Tabular models (scikit-learn, xgboost)
+    Guided modelling: priors, lift tests, scorecard
   
 
     
@@ -3289,35 +3723,7 @@
   <span class="md-ellipsis">
     
   
-    Marketing-mix models
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../guides/guided-modelling/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Guided modelling: priors, lift tests, scorecard
+    Marketing-mix models (MMM)
   
 
     
@@ -3422,6 +3828,368 @@
   
   
     <li class="md-nav__item">
+      <a href="../../guides/deep-learning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep learning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/pymc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bring a PyMC model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/sklearn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tabular models (scikit-learn, xgboost)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trust and compare
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Trust and compare
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/null-tests/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Can you trust this model? Null tests explained
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validate models with governance policies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Track metrics, params and tags
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/run-comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compare runs and use experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/model-explorer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Explore a model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflows
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Workflows
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../guides/workflows/" class="md-nav__link">
         
   
@@ -3470,6 +4238,72 @@
   
 
               
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_6" id="__nav_3_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plots
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Plots
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
             
               
                 
@@ -3527,6 +4361,1069 @@
 
               
             
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_7" id="__nav_3_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboards and clients
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Dashboards and clients
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/client-dashboards/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Build a client dashboard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/sharing-dashboards-securely/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Share a dashboard with a link
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/for-clients/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    For clients: read your dashboard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/ask-about-your-dashboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ask about your dashboard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/connect-a-chat-tool-with-mcp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connect a chat tool with MCP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_8" id="__nav_3_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Automate
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Automate
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/endpoints-and-webhooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Endpoints and webhooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/integrations-hub/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Integrations hub
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The command line
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/python-client/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Python client
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/http-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The HTTP API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../extend/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Extend
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Extend
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/your-first-extensions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your first extensions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    No code
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    No code
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../extend/your-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../extend/prep-presets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prep presets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../extend/chart-templates/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Chart templates
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../extend/workflow-templates/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow templates (no code)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../extend/develop/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    With Python
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_4" id="__nav_4_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    With Python
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/port-a-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Port a model in 15 minutes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/plugins/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Write a step or model plugin
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../extend/develop/models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../extend/develop/steps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Preprocessing steps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../extend/develop/plot-recipes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plot recipes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../extend/develop/workflow-nodes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow nodes (Python)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../extend/develop/workflow-templates/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow templates (Python)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../extend/develop/contract-kits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contract kits
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../extend/develop/run-on-your-stack/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run on your stack
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
               
                 
   
@@ -3542,6 +5439,128 @@
     
   
     Conformance corpus
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_5" id="__nav_4_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upload your code
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Upload your code
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../extend/upload/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upload your own code
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../extend/review-uploads/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Review uploaded code
   
 
     
@@ -3582,45 +5601,7 @@
     
       
         
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
+          
         
       
         
@@ -3649,11 +5630,12 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
-            
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
   
   
   <span class="md-ellipsis">
@@ -3667,15 +5649,84 @@
   
   
 
-            <span class="md-nav__icon md-icon"></span>
-          </label>
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
   
     Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spec
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Spec
   
 
           </label>
@@ -3737,21 +5788,72 @@
 
               
             
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
               
                 
   
   
   
   
-    <li class="md-nav__item">
-      <a href="../sdk/" class="md-nav__link">
+    
+    
+      
         
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="">
+            
   
   
   <span class="md-ellipsis">
     
   
-    Python SDK
+    Catalogs
   
 
     
@@ -3759,11 +5861,19 @@
   
   
 
-      </a>
-    </li>
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Catalogs
   
 
-              
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
             
               
                 
@@ -3856,6 +5966,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../generated/models-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Models catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../models/mmm-framework/" class="md-nav__link">
         
   
@@ -3892,34 +6030,6 @@
     
   
     Causal models and Bayesian structural time series
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../generated/models-catalog/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Models catalog
   
 
     
@@ -4052,14 +6162,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../generated/error-codes/" class="md-nav__link">
+      <a href="../generated/extension-points/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Error codes
+    Extension points
   
 
     
@@ -4072,6 +6182,93 @@
   
 
               
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5_4" id="__nav_5_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interfaces
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Interfaces
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
             
               
                 
@@ -4126,7 +6323,7 @@
       
         
 
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
   
   
   
@@ -4135,7 +6332,7 @@
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
-      Table of contents
+      On this page
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
@@ -4794,6 +6991,106 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#v016" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Client dashboards and share links v0.16
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Client dashboards and share links v0.16">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#v016-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Project routes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#v016-share" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Public share routes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#v016-dtos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The DTOs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v017" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dashboards for any model type v0.17
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Dashboards for any model type v0.17">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#v017-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Project routes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#v017-share" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Public share routes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#v017-dtos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The DTOs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#dto-index" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4848,14 +7145,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../run-protocol/" class="md-nav__link">
+      <a href="../cli/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Run protocol
+    CLI and client guide
   
 
     
@@ -4876,14 +7173,70 @@
   
   
     <li class="md-nav__item">
-      <a href="../gcs-shim/" class="md-nav__link">
+      <a href="../generated/cli-reference/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    GCS shim
+    CLI commands
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sdk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python SDK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../run-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run protocol
   
 
     
@@ -4932,14 +7285,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../cli/" class="md-nav__link">
+      <a href="../gcs-shim/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    CLI and Python client
+    GCS shim
   
 
     
@@ -4960,14 +7313,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../generated/cli-reference/" class="md-nav__link">
+      <a href="../web-app/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    CLI reference
+    Web app and plot sandbox
   
 
     
@@ -4980,6 +7333,105 @@
   
 
               
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../generated/error-codes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Error codes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_5" id="__nav_5_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Settings
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Settings
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
             
               
                 
@@ -5065,29 +7517,9 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../web-app/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Web app and plot sandbox
-  
-
-    
-  </span>
-  
-  
-
-      </a>
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -5138,7 +7570,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_26" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_6" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -5149,7 +7581,7 @@
   <span class="md-ellipsis">
     
   
-    API reference
+    Python API
   
 
     
@@ -5160,18 +7592,18 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_26" id="__nav_6_26_label" tabindex="">
+              <label class="md-nav__link " for="__nav_5_6" id="__nav_5_6_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_26_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_26">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_6">
             <span class="md-nav__icon md-icon"></span>
             
   
-    API reference
+    Python API
   
 
           </label>
@@ -5441,15 +7873,68 @@
       
         
       
-        
+    
+    
+    
+      
       
         
       
-        
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
       
         
-      
         
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../operations/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operate
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Operate
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
       
         
       
@@ -5474,18 +7959,17 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_2" >
         
           
-          <div class="md-nav__link md-nav__container">
-            <a href="../../operations/" class="md-nav__link ">
-              
+          <label class="md-nav__link" for="__nav_6_2" id="__nav_6_2_label" tabindex="0">
+            
   
   
   <span class="md-ellipsis">
     
   
-    Deployment
+    Run
   
 
     
@@ -5493,27 +7977,19 @@
   
   
 
-            </a>
-            
-              
-              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="0">
-                <span class="md-nav__icon md-icon"></span>
-              </label>
-            
-          </div>
+            <span class="md-nav__icon md-icon"></span>
+          </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_2">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Deployment
+    Run
   
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
             
               
                 
@@ -5634,6 +8110,106 @@
   
   
     <li class="md-nav__item">
+      <a href="../../operations/cloud-run/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloud Run Jobs executor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_6_3" id="__nav_6_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Secure
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Secure
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../operations/security-hardening/" class="md-nav__link">
         
   
@@ -5669,7 +8245,7 @@
   <span class="md-ellipsis">
     
   
-    Authentication and isolation
+    Set up sign-in and isolation
   
 
     
@@ -5718,14 +8294,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../operations/cloud-run/" class="md-nav__link">
+      <a href="../../operations/security-suite/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Cloud Run Jobs executor
+    Security suite
   
 
     
@@ -5738,6 +8314,254 @@
   
 
               
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/uploaded-code/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Uploaded code
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_6_4" id="__nav_6_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Teams
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Teams
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sign in and tokens
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/administration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Administration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/data-deletion/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deleting and exporting data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_6_5" id="__nav_6_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observe and fix
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Observe and fix
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
             
               
                 
@@ -5774,14 +8598,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../operations/security-suite/" class="md-nav__link">
+      <a href="../../operations/troubleshooting/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Security suite
+    Troubleshooting
   
 
     
@@ -5794,6 +8618,102 @@
   
 
               
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6_6" id="__nav_6_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Verification records
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Verification records
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
             
               
                 
@@ -5879,462 +8799,9 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../operations/configuration/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Configuration reference
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../operations/troubleshooting/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Troubleshooting
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-      
-        
-          
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-    
-    
-    
-      
-      
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
-        
-          
-          <div class="md-nav__link md-nav__container">
-            <a href="../../roadmap/" class="md-nav__link ">
-              
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Roadmap
-  
-
-    
-  </span>
-  
-  
-
-            </a>
-            
-              
-              <label class="md-nav__link " for="__nav_8" id="__nav_8_label" tabindex="0">
-                <span class="md-nav__icon md-icon"></span>
-              </label>
-            
-          </div>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_8">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Roadmap
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../roadmap/platform-api/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    The local platform (v0.2)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../roadmap/cloud/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Cloud and multi-tenant (v0.3)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../roadmap/guided-ui/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Guided mode and integrations (v0.4)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../roadmap/workflows-governance/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Workflows, governance and explorers (v0.5)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../roadmap/expert-plugins/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Planned: expert plugins and MCP
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-      
-        
-      
-        
-      
-        
-      
-        
-      
-    
-    
-    
-      
-      
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
-        
-          
-          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Project
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Project
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../project/licensing/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Licensing
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../project/contributing/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Contributing
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../project/writing-style/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Writing style
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../project/changelog/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Changelog
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -6360,7 +8827,7 @@
                   <div class="md-sidebar__inner">
                     
 
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
   
   
   
@@ -6369,7 +8836,7 @@
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
-      Table of contents
+      On this page
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
@@ -7028,6 +9495,106 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#v016" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Client dashboards and share links v0.16
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Client dashboards and share links v0.16">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#v016-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Project routes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#v016-share" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Public share routes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#v016-dtos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The DTOs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v017" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dashboards for any model type v0.17
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Dashboards for any model type v0.17">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#v017-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Project routes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#v017-share" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Public share routes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#v017-dtos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The DTOs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#dto-index" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -7046,16 +9613,17 @@
               </div>
             
           
+
           
-            <div class="md-content" data-md-component="content">
-              
-              <article class="md-content__inner md-typeset">
-                
-                  
+  <div class="md-content" data-md-component="content" data-mono-section="reference">
+    
+    <article class="md-content__inner md-typeset" id="mono-content" tabindex="-1">
+      
+        
 
 
 
-<h1 id="http-api-v1-v02">HTTP API (v1) <span class="mapi-badge">v0.2</span><a class="headerlink" href="#http-api-v1-v02" title="Permanent link">&para;</a></h1>
+  
 <p>This page describes the platform API of v0.2 (milestone M1, the local vertical slice). Each
 request body and each response body is a Pydantic model in
 <a href="../api/spec/#rest-dtos"><code>mapi_spec.api</code></a>. The server serves an OpenAPI 3.1 document that it
@@ -9122,7 +11690,7 @@ stored into a package.</p>
 </ul>
 <p>The endpoint table agrees with <code>mapi_spec.api.M35_ENDPOINTS</code>. <code>mapi_spec.api.ENDPOINTS</code> is the
 full v0.5 surface (<code>V04_ENDPOINTS</code> + <code>M35_ENDPOINTS</code>). <code>ROUTE_ACCESS</code> gives the scope and the
-permission of each operation. <a href="../../concepts/workflows/">Workflows</a>,
+permission of each operation. <a href="../../concepts/workflows/">How workflows work</a>,
 <a href="../../concepts/governance/">Governance</a> and
 <a href="../../concepts/about-and-choosing/">About cards and choosing</a> explain the ideas.</p>
 <p>v0.5 also <strong>removes</strong> an importer route of v0.4, its ingest preset and one snippet language
@@ -10342,6 +12910,649 @@ version.</p>
 </span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s2">"X-Mapi-Project: growth"</span><span class="w"> </span>-H<span class="w"> </span><span class="s2">"Content-Type: application/json"</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">'{"sha256": ["'</span><span class="s2">"</span><span class="k">$(</span>sha256sum<span class="w"> </span>photo.jpg<span class="w"> </span><span class="p">|</span><span class="w"> </span>cut<span class="w"> </span>-c1-64<span class="k">)</span><span class="s2">"</span><span class="s1">'"]}'</span>
 </span></code></pre></div>
+<h2 id="v016">Client dashboards and share links <span class="mapi-badge">v0.16</span><a class="headerlink" href="#v016" title="Permanent link">&para;</a></h2>
+<p>v0.16 adds client dashboards: an analyst publishes a dashboard on a model version or an
+endpoint, gives it to client users (the project role <code>client</code>) and makes share links for
+persons without an account. Each dashboard keeps an append-only history of readouts.
+<a href="../../concepts/client-dashboards/">Client dashboards</a> tells how the parts work. The guides
+are <a href="../../guides/client-dashboards/">Build a client dashboard</a> and
+<a href="../../guides/sharing-dashboards-securely/">Share dashboards securely with a share link</a>.</p>
+<p>The contracts are in <code>mapi_spec.dashboards</code> (DTOs) and <code>mapi_spec.dashboard_tools</code> (the
+read-only tool surface). <code>mapi_spec.api.V016_ENDPOINTS</code> lists the routes below.</p>
+<h3 id="v016-endpoints">Project routes<a class="headerlink" href="#v016-endpoints" title="Permanent link">&para;</a></h3>
+<p>All of them need the <code>X-Mapi-Project</code> header (or a project in the token). The access column
+of each route is in the <a href="../generated/permissions/">permissions reference</a>:</p>
+<ul>
+<li><code>dashboard</code> <code>read</code>: lists, <code>get_dashboard</code>, revisions and readouts. A client sees only the
+  published dashboards that a grant gives them. Other dashboards answer <code>404</code>.</li>
+<li><code>dashboard</code> <code>run</code>: the grid, what-ifs, scenarios, the actuals template and uploads (client
+  and higher).</li>
+<li><code>dashboard</code> <code>update</code> (editor): the draft, validate, publish, refresh, readout review and
+  refit requests. <code>publish_dashboard</code> also needs the <code>runner</code> role (<code>403 FORBIDDEN</code>), and the
+  caller becomes the run-as owner. <code>approve_dashboard_refit_request</code> also needs <code>run</code> on
+  <code>workflow</code> and <code>create</code> on <code>run</code>.</li>
+<li><code>dashboard</code> <code>delete</code> (editor): archive. It revokes all share links.</li>
+<li><code>dashboard_grant</code> and <code>dashboard_share</code> (editor): grants and share links. A share link that
+  allows inputs needs the <code>runner</code> role.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Purpose</th>
+<th>Request</th>
+<th>Response</th>
+<th>Success</th>
+<th>Errors</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /v1/dashboards</code></td>
+<td>Dashboards of the project (a client sees only the published ones granted to them)</td>
+<td>—</td>
+<td><code>Page[DashboardSummary]</code></td>
+<td>200</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>POST /v1/dashboards</code></td>
+<td>Create a dashboard draft</td>
+<td><code>DashboardCreate</code></td>
+<td><code>Dashboard</code></td>
+<td>201</td>
+<td><code>SCHEMA_INVALID</code>, <code>CONFLICT</code></td>
+</tr>
+<tr>
+<td><code>GET /v1/dashboards/{dashboard_id}</code></td>
+<td>A dashboard (viewers and up: Dashboard; a client: ClientDashboard)</td>
+<td>—</td>
+<td><code>Dashboard</code></td>
+<td>200</td>
+<td><code>NOT_FOUND</code></td>
+</tr>
+<tr>
+<td><code>PUT /v1/dashboards/{dashboard_id}/draft</code></td>
+<td>Replace the draft spec (If-Match: the draft_etag)</td>
+<td><code>DashboardDraftUpdate</code></td>
+<td><code>Dashboard</code></td>
+<td>200</td>
+<td><code>SCHEMA_INVALID</code>, <code>NOT_FOUND</code>, <code>DASHBOARD_SPEC_STALE</code>, <code>PRECONDITION_FAILED</code>, <code>DASHBOARD_LAYOUT_RETIRED</code></td>
+</tr>
+<tr>
+<td><code>POST /v1/dashboards/{dashboard_id}:validate</code></td>
+<td>Check whether the draft can be published</td>
+<td>—</td>
+<td><code>DashboardValidation</code></td>
+<td>200</td>
+<td><code>NOT_FOUND</code></td>
+</tr>
+<tr>
+<td><code>POST /v1/dashboards/{dashboard_id}:publish</code></td>
+<td>Publish the draft as a new revision (needs runner; queues a baseline readout). Optional <code>If-Match</code>: the <code>draft_etag</code> you checked</td>
+<td>—</td>
+<td><code>Dashboard</code></td>
+<td>200</td>
+<td><code>NOT_FOUND</code>, <code>FORBIDDEN</code>, <code>SCHEMA_INVALID</code>, <code>NOT_READY</code>, <code>CONFLICT</code>, <code>DASHBOARD_SPEC_STALE</code></td>
+</tr>
+<tr>
+<td><code>POST /v1/dashboards/{dashboard_id}:archive</code></td>
+<td>Archive a dashboard (revokes its share links)</td>
+<td>—</td>
+<td><code>Dashboard</code></td>
+<td>200</td>
+<td><code>NOT_FOUND</code></td>
+</tr>
+<tr>
+<td><code>GET /v1/dashboards/{dashboard_id}/revisions</code></td>
+<td>Published revisions (newest first)</td>
+<td>—</td>
+<td><code>Page[DashboardRevision]</code></td>
+<td>200</td>
+<td><code>NOT_FOUND</code></td>
+</tr>
+<tr>
+<td><code>GET /v1/dashboards/{dashboard_id}/grants</code></td>
+<td>Client users who see the dashboard</td>
+<td>—</td>
+<td><code>Page[DashboardGrant]</code></td>
+<td>200</td>
+<td><code>NOT_FOUND</code></td>
+</tr>
+<tr>
+<td><code>PUT /v1/dashboards/{dashboard_id}/grants/{user_id}</code></td>
+<td>Grant the dashboard to a member of the project (idempotent)</td>
+<td>—</td>
+<td><code>DashboardGrant</code></td>
+<td>200</td>
+<td><code>NOT_FOUND</code>, <code>CONFLICT</code></td>
+</tr>
+<tr>
+<td><code>DELETE /v1/dashboards/{dashboard_id}/grants/{user_id}</code></td>
+<td>Take the dashboard away from a user (idempotent)</td>
+<td>—</td>
+<td>—</td>
+<td>204</td>
+<td><code>NOT_FOUND</code></td>
+</tr>
+<tr>
+<td><code>GET /v1/dashboards/{dashboard_id}/shares</code></td>
+<td>Share links (never their tokens)</td>
+<td>—</td>
+<td><code>Page[DashboardShare]</code></td>
+<td>200</td>
+<td><code>NOT_FOUND</code></td>
+</tr>
+<tr>
+<td><code>POST /v1/dashboards/{dashboard_id}/shares</code></td>
+<td>Create a share link (its token is shown once)</td>
+<td><code>DashboardShareCreate</code></td>
+<td><code>DashboardShareCreated</code></td>
+<td>201</td>
+<td><code>SCHEMA_INVALID</code>, <code>NOT_FOUND</code>, <code>FORBIDDEN</code>, <code>DASHBOARD_NOT_PUBLISHED</code></td>
+</tr>
+<tr>
+<td><code>POST /v1/dashboards/{dashboard_id}/shares/{share_id}:revoke</code></td>
+<td>Revoke a share link (idempotent; the next request with it fails)</td>
+<td>—</td>
+<td><code>DashboardShare</code></td>
+<td>200</td>
+<td><code>NOT_FOUND</code></td>
+</tr>
+<tr>
+<td><code>GET /v1/dashboards/{dashboard_id}/grid</code></td>
+<td>The response grid of the pinned version, clipped to the dashboard's channels</td>
+<td>—</td>
+<td><code>DashboardGrid</code></td>
+<td>200</td>
+<td><code>NOT_FOUND</code>, <code>DASHBOARD_INPUT_DISABLED</code></td>
+</tr>
+<tr>
+<td><code>POST /v1/dashboards/{dashboard_id}/whatif:evaluate</code></td>
+<td>Evaluate a spend plan on the grid (no run, nothing saved)</td>
+<td><code>WhatIfRequest</code></td>
+<td><code>WhatIfResult</code></td>
+<td>200</td>
+<td><code>SCHEMA_INVALID</code>, <code>NOT_FOUND</code>, <code>SCENARIO_OUT_OF_RANGE</code>, <code>DASHBOARD_INPUT_DISABLED</code></td>
+</tr>
+<tr>
+<td><code>POST /v1/dashboards/{dashboard_id}/scenarios</code></td>
+<td>Save a scenario as a private readout (exact: a score run; Prefer: wait=N -&gt; 200 with the readout if done, else 202 with its header)</td>
+<td><code>ScenarioSave</code></td>
+<td><code>Readout</code></td>
+<td>200</td>
+<td><code>SCHEMA_INVALID</code>, <code>NOT_FOUND</code>, <code>SCENARIO_OUT_OF_RANGE</code>, <code>DASHBOARD_INPUT_DISABLED</code>, <code>DASHBOARD_LIVE_PAUSED</code>, <code>DASHBOARD_RUN_LIMIT</code>, <code>QUOTA_EXCEEDED</code>, <code>IDEMPOTENCY_CONFLICT</code></td>
+</tr>
+<tr>
+<td><code>GET /v1/dashboards/{dashboard_id}/actuals/template</code></td>
+<td>The table an actuals upload fills in, and what happens to the numbers</td>
+<td>—</td>
+<td><code>ActualsTemplate</code></td>
+<td>200</td>
+<td><code>NOT_FOUND</code>, <code>DASHBOARD_INPUT_DISABLED</code></td>
+</tr>
+<tr>
+<td><code>POST /v1/dashboards/{dashboard_id}/actuals</code></td>
+<td>Send new actuals: a readout compares (or conditions) the model on them; optionally ask the analyst for a refit</td>
+<td><code>ActualsSubmit</code></td>
+<td><code>ReadoutHeader</code></td>
+<td>202</td>
+<td><code>SCHEMA_INVALID</code>, <code>NOT_FOUND</code>, <code>ACTUALS_INVALID</code>, <code>ACTUALS_NOT_SUPPORTED</code>, <code>PAYLOAD_TOO_LARGE</code>, <code>DASHBOARD_INPUT_DISABLED</code>, <code>DASHBOARD_LIVE_PAUSED</code>, <code>DASHBOARD_RUN_LIMIT</code>, <code>QUOTA_EXCEEDED</code>, <code>IDEMPOTENCY_CONFLICT</code></td>
+</tr>
+<tr>
+<td><code>GET /v1/dashboards/{dashboard_id}/readouts</code></td>
+<td>Readouts newest first (published, plus the caller's private ones; analysts: all)</td>
+<td>—</td>
+<td><code>ReadoutList</code></td>
+<td>200</td>
+<td><code>NOT_FOUND</code></td>
+</tr>
+<tr>
+<td><code>GET /v1/dashboards/{dashboard_id}/readouts/{seq}</code></td>
+<td>One readout with its snapshot (poll it while it is being built)</td>
+<td>—</td>
+<td><code>Readout</code></td>
+<td>200</td>
+<td><code>NOT_FOUND</code></td>
+</tr>
+<tr>
+<td><code>POST /v1/dashboards/{dashboard_id}/readouts/{seq}:publish</code></td>
+<td>Publish a readout that waits for review into the history</td>
+<td>—</td>
+<td><code>ReadoutHeader</code></td>
+<td>200</td>
+<td><code>NOT_FOUND</code>, <code>CONFLICT</code></td>
+</tr>
+<tr>
+<td><code>POST /v1/dashboards/{dashboard_id}/readouts/{seq}:hide</code></td>
+<td>Hide a readout from clients (kept for audit)</td>
+<td>—</td>
+<td><code>ReadoutHeader</code></td>
+<td>200</td>
+<td><code>NOT_FOUND</code>, <code>CONFLICT</code></td>
+</tr>
+<tr>
+<td><code>POST /v1/dashboards/{dashboard_id}:refresh</code></td>
+<td>Queue a refresh readout of the published revision</td>
+<td>—</td>
+<td><code>ReadoutHeader</code></td>
+<td>202</td>
+<td><code>NOT_FOUND</code>, <code>DASHBOARD_NOT_PUBLISHED</code>, <code>DASHBOARD_INPUT_DISABLED</code>, <code>DASHBOARD_LIVE_PAUSED</code>, <code>DASHBOARD_RUN_LIMIT</code>, <code>QUOTA_EXCEEDED</code>, <code>IDEMPOTENCY_CONFLICT</code></td>
+</tr>
+<tr>
+<td><code>GET /v1/dashboards/{dashboard_id}/refit-requests</code></td>
+<td>Refit requests (newest first)</td>
+<td>—</td>
+<td><code>Page[DashboardRefitRequest]</code></td>
+<td>200</td>
+<td><code>NOT_FOUND</code></td>
+</tr>
+<tr>
+<td><code>POST /v1/dashboards/{dashboard_id}/refit-requests/{request_id}:approve</code></td>
+<td>Approve a refit request: publish its readout, ingest the numbers as a dataset version and start the refit workflow as you</td>
+<td><code>RefitRequestDecision</code></td>
+<td><code>DashboardRefitRequest</code></td>
+<td>200</td>
+<td><code>NOT_FOUND</code>, <code>FORBIDDEN</code>, <code>CONFLICT</code>, <code>WORKFLOW_NOT_RUNNABLE</code>, <code>QUOTA_EXCEEDED</code>, <code>IDEMPOTENCY_CONFLICT</code></td>
+</tr>
+<tr>
+<td><code>POST /v1/dashboards/{dashboard_id}/refit-requests/{request_id}:reject</code></td>
+<td>Reject a refit request (nothing runs)</td>
+<td><code>RefitRequestDecision</code></td>
+<td><code>DashboardRefitRequest</code></td>
+<td>200</td>
+<td><code>NOT_FOUND</code>, <code>CONFLICT</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>get_dashboard</code> gives a <code>Dashboard</code> to viewers and higher roles, and a <code>ClientDashboard</code> to a
+client user. <code>update_dashboard_draft</code> needs <code>If-Match: &lt;draft_etag&gt;</code> (<code>412
+PRECONDITION_FAILED</code> if a different edit came first). <code>save_dashboard_scenario</code> takes
+<code>Prefer: wait=N</code> (a maximum of 30): <code>200</code> with the <code>Readout</code> if it is ready, else <code>202</code> with
+its <code>ReadoutHeader</code>. Poll <code>GET …/readouts/{seq}</code> until <code>status</code> is <code>ready</code> or <code>failed</code>.
+<code>submit_dashboard_actuals</code>, <code>refresh_dashboard</code> and <code>approve_dashboard_refit_request</code> accept
+<code>Idempotency-Key</code>. <code>list_dashboard_readouts</code> takes <code>kind</code>, <code>visibility</code>, <code>before_seq</code> and
+<code>limit</code> (a maximum of 50) and pages back with <code>next_before_seq</code>.</p>
+<p><code>CLIENT_OPERATIONS</code> is the set of operations that a <code>client</code> can call: <code>list_dashboards</code>,
+<code>get_dashboard</code>, <code>get_dashboard_grid</code>, <code>evaluate_dashboard_whatif</code>,
+<code>save_dashboard_scenario</code>, <code>get_dashboard_actuals_template</code>, <code>submit_dashboard_actuals</code>,
+<code>list_dashboard_readouts</code>, <code>get_dashboard_readout</code>, <code>get_me</code> and the <code>/auth/*</code> session routes.
+All other operations answer <code>404</code> to a client
+(<a href="../../concepts/tenancy-and-auth/#the-client-role">Tenancy and authentication</a>).</p>
+<h3 id="v016-share">Public share routes<a class="headerlink" href="#v016-share" title="Permanent link">&para;</a></h3>
+<p>These routes are public. They take no project, no cookie and no <code>Authorization</code> header: the
+server removes <code>Cookie</code> and <code>Authorization</code>, and allows only the origin of the web app, with
+no credentials. <code>create_share_session</code> exchanges the token (and the passcode) for a session
+<code>mps_…</code>. All other share routes need the session in <code>X-Mapi-Share</code>. Each request looks up the
+link again, so a revoked or expired link answers <code>410 LINK_EXPIRED</code> on the next request.
+Answers set <code>Cache-Control: private, no-store</code> and <code>Referrer-Policy: no-referrer</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Purpose</th>
+<th>Request</th>
+<th>Response</th>
+<th>Success</th>
+<th>Errors</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>POST /v1/share-sessions</code></td>
+<td>Public: exchange a share token (and its passcode) for a short-lived session</td>
+<td><code>ShareSessionCreate</code></td>
+<td><code>ShareSession</code></td>
+<td>200</td>
+<td><code>SCHEMA_INVALID</code>, <code>NOT_FOUND</code>, <code>LINK_EXPIRED</code>, <code>SHARE_PASSCODE_REQUIRED</code>, <code>SHARE_PASSCODE_INVALID</code>, <code>SHARE_LOCKED</code>, <code>RATE_LIMITED</code></td>
+</tr>
+<tr>
+<td><code>POST /v1/share-sessions:refresh</code></td>
+<td>Public: a fresh session while the link is valid</td>
+<td>—</td>
+<td><code>ShareSession</code></td>
+<td>200</td>
+<td><code>UNAUTHENTICATED</code>, <code>LINK_EXPIRED</code>, <code>RATE_LIMITED</code></td>
+</tr>
+<tr>
+<td><code>GET /v1/shared/dashboard</code></td>
+<td>Public: the shared dashboard (published revision)</td>
+<td>—</td>
+<td><code>ClientDashboard</code></td>
+<td>200</td>
+<td><code>UNAUTHENTICATED</code>, <code>LINK_EXPIRED</code>, <code>RATE_LIMITED</code></td>
+</tr>
+<tr>
+<td><code>GET /v1/shared/readouts</code></td>
+<td>Public: published readouts and this link's private ones</td>
+<td>—</td>
+<td><code>ReadoutList</code></td>
+<td>200</td>
+<td><code>UNAUTHENTICATED</code>, <code>LINK_EXPIRED</code>, <code>RATE_LIMITED</code></td>
+</tr>
+<tr>
+<td><code>GET /v1/shared/readouts/{seq}</code></td>
+<td>Public: one readout</td>
+<td>—</td>
+<td><code>Readout</code></td>
+<td>200</td>
+<td><code>NOT_FOUND</code>, <code>UNAUTHENTICATED</code>, <code>LINK_EXPIRED</code>, <code>RATE_LIMITED</code></td>
+</tr>
+<tr>
+<td><code>GET /v1/shared/grid</code></td>
+<td>Public: the response grid (the link must allow what-ifs)</td>
+<td>—</td>
+<td><code>DashboardGrid</code></td>
+<td>200</td>
+<td><code>UNAUTHENTICATED</code>, <code>LINK_EXPIRED</code>, <code>RATE_LIMITED</code>, <code>DASHBOARD_INPUT_DISABLED</code></td>
+</tr>
+<tr>
+<td><code>POST /v1/shared/whatif:evaluate</code></td>
+<td>Public: evaluate a spend plan on the grid (no run)</td>
+<td><code>WhatIfRequest</code></td>
+<td><code>WhatIfResult</code></td>
+<td>200</td>
+<td><code>SCHEMA_INVALID</code>, <code>UNAUTHENTICATED</code>, <code>LINK_EXPIRED</code>, <code>RATE_LIMITED</code>, <code>SCENARIO_OUT_OF_RANGE</code>, <code>DASHBOARD_INPUT_DISABLED</code></td>
+</tr>
+<tr>
+<td><code>POST /v1/shared/scenarios</code></td>
+<td>Public: save a scenario as this link's private readout (Prefer: wait=N)</td>
+<td><code>ScenarioSave</code></td>
+<td><code>Readout</code></td>
+<td>200</td>
+<td><code>SCHEMA_INVALID</code>, <code>UNAUTHENTICATED</code>, <code>LINK_EXPIRED</code>, <code>RATE_LIMITED</code>, <code>SCENARIO_OUT_OF_RANGE</code>, <code>DASHBOARD_INPUT_DISABLED</code>, <code>DASHBOARD_LIVE_PAUSED</code>, <code>DASHBOARD_RUN_LIMIT</code>, <code>QUOTA_EXCEEDED</code>, <code>IDEMPOTENCY_CONFLICT</code></td>
+</tr>
+<tr>
+<td><code>GET /v1/shared/actuals/template</code></td>
+<td>Public: the actuals template (the link must allow uploads)</td>
+<td>—</td>
+<td><code>ActualsTemplate</code></td>
+<td>200</td>
+<td><code>UNAUTHENTICATED</code>, <code>LINK_EXPIRED</code>, <code>RATE_LIMITED</code>, <code>DASHBOARD_INPUT_DISABLED</code></td>
+</tr>
+<tr>
+<td><code>POST /v1/shared/actuals</code></td>
+<td>Public: send new actuals (the readout waits for the analyst's review)</td>
+<td><code>ActualsSubmit</code></td>
+<td><code>ReadoutHeader</code></td>
+<td>202</td>
+<td><code>SCHEMA_INVALID</code>, <code>UNAUTHENTICATED</code>, <code>LINK_EXPIRED</code>, <code>RATE_LIMITED</code>, <code>ACTUALS_INVALID</code>, <code>ACTUALS_NOT_SUPPORTED</code>, <code>PAYLOAD_TOO_LARGE</code>, <code>DASHBOARD_INPUT_DISABLED</code>, <code>DASHBOARD_LIVE_PAUSED</code>, <code>DASHBOARD_RUN_LIMIT</code>, <code>QUOTA_EXCEEDED</code>, <code>IDEMPOTENCY_CONFLICT</code></td>
+</tr>
+</tbody>
+</table>
+<p>Rate limits: 120 requests each minute from one client address, valid or not, counted before
+the token check (<code>MAPI_SHARE_IP_RATE_PER_MINUTE</code>), and 300 each minute for each link
+(<code>MAPI_SHARE_RATE_PER_MINUTE</code>). After 5 wrong passcodes, the link answers <code>429 SHARE_LOCKED</code>
+with <code>Retry-After</code> for 15 minutes. The grid, what-if and scenario routes need a link that
+allows <code>whatif</code>. The actuals routes need <code>actuals</code>. Else the answer is
+<code>409 DASHBOARD_INPUT_DISABLED</code>. A share link sees the published readouts and the private
+readouts that it made itself.</p>
+<h3 id="v016-dtos">The DTOs<a class="headerlink" href="#v016-dtos" title="Permanent link">&para;</a></h3>
+<p>All of these are in <code>mapi_spec.dashboards</code>, except the tool DTOs.</p>
+<ul>
+<li><code>DashboardSpec</code>: <code>layout_version</code> (1), <code>title</code>, <code>client_name</code>, <code>summary</code>, <code>period_label</code>
+  (<code>week</code>, <code>month</code> or <code>period</code>), <code>source</code> (<code>DashboardSource</code>: <code>model_version</code> with <code>model_id</code>
+  and <code>version</code>, or <code>endpoint</code> with <code>alias</code>), <code>kpi</code> (<code>KpiDef</code>: <code>variable</code>, <code>label</code>, <code>unit</code>,
+  <code>currency</code>, <code>decimals</code>, <code>value_per_unit</code>), <code>channels</code> (<code>ChannelDef</code>: <code>name</code>, <code>label</code>,
+  <code>min_mult</code>, <code>max_mult</code>, <code>step</code>; a maximum of 40), <code>tiles</code> (a maximum of 4), <code>tabs</code>, <code>whatif</code>
+  (<code>WhatIfInputs</code>: <code>enabled</code>, <code>exact</code>), <code>actuals</code> (<code>ActualsInputs</code>: <code>enabled</code>, <code>publish</code>
+  (<code>review</code> or <code>auto</code>), <code>refit_workflow_id</code>, <code>allow_refit_requests</code>), <code>refresh</code>
+  (<code>RefreshPolicy</code>: <code>workflow_id</code>, <code>follow_endpoint</code>), <code>limits</code> (<code>DashboardLimits</code>:
+  <code>exact_runs_per_day</code>, default 20), <code>show_technical</code> and <code>note</code>. Plain text only; a maximum
+  of 64 KiB.</li>
+<li><code>DashboardCreate</code> (<code>name</code>, <code>spec</code>), <code>DashboardDraftUpdate</code> (<code>spec</code>) and
+  <code>DashboardValidation</code> (<code>ok</code>, <code>issues</code>).</li>
+<li><code>Dashboard</code>: <code>id</code> (<code>dsh_…</code>), <code>name</code>, <code>status</code> (<code>draft</code>, <code>published</code>, <code>archived</code>),
+  <code>draft_spec</code>, <code>draft_etag</code>, <code>published_revision</code> (a <code>DashboardRevision</code>: <code>id</code> <code>dsr_…</code>,
+  <code>seq</code>, <code>spec</code>, <code>spec_hash</code>, <code>model_version_id</code>, <code>model_ref</code>, <code>endpoint_alias</code>,
+  <code>endpoint_revision</code>), <code>run_as</code>, <code>live_inputs</code> (<code>ok</code> or <code>paused</code>), <code>problem</code> and
+  <code>latest_readout</code>. <code>DashboardSummary</code> is the list item.</li>
+<li><code>ClientDashboard</code>: what a client or a share link sees: <code>title</code>, <code>client_name</code>, <code>summary</code>,
+  <code>note</code>, <code>period_label</code>, <code>kpi</code>, <code>channels</code>, <code>tiles</code>, <code>tabs</code>, <code>inputs</code> (<code>EffectiveInputs</code>:
+  <code>whatif</code>, <code>exact</code>, <code>actuals</code>, <code>actuals_mode</code> (<code>compared</code> or <code>conditioned</code>),
+  <code>refit_requests</code>), <code>live_inputs</code>, <code>show_technical</code>, <code>latest_readout</code> and <code>ends_at</code> (the
+  expiry of a share link).</li>
+<li><code>ReadoutHeader</code>: <code>seq</code>, <code>kind</code> (<code>baseline</code>, <code>refresh</code>, <code>scenario</code>, <code>actuals</code>), <code>trigger</code>,
+  <code>visibility</code> (<code>published</code>, <code>private</code>, <code>pending_review</code>, <code>hidden</code>), <code>status</code> (<code>queued</code>,
+  <code>running</code>, <code>materialising</code>, <code>ready</code>, <code>failed</code>), <code>title</code>, <code>period</code>, <code>model_version_id</code>,
+  <code>model_ref</code>, <code>endpoint_revision</code>, <code>created_at</code>, <code>ready_at</code> and <code>refit_status</code>. <code>Readout</code>
+  adds <code>snapshot</code> and <code>problem</code>. <code>ReadoutList</code> has <code>items</code> and <code>next_before_seq</code>.</li>
+<li><code>ReadoutSnapshot</code> (a maximum of 256 KiB): <code>lead</code>, <code>tiles</code> (<code>KpiValue</code>), <code>channels</code>
+  (<code>ChannelReadout</code>: <code>spend</code>, <code>contribution</code>, <code>share</code>, <code>roi</code>, <code>roi_low</code>, <code>roi_high</code>, <code>mroi</code>,
+  <code>zone</code>), <code>series</code> (<code>Series</code> of <code>SeriesPoint</code>: <code>t</code>, <code>mean</code>, <code>low</code>, <code>high</code>, <code>actual</code>; a
+  maximum of 520 points), <code>accuracy</code> (<code>ActualsAccuracy</code>: <code>mape</code>, <code>bias</code>, <code>band_hit_rate</code>, <code>n</code>),
+  <code>conditioning</code>, <code>scenario</code>, <code>source_run_ids</code>, <code>input_fingerprint</code>, <code>notes_plain</code> and
+  <code>technical</code>.</li>
+<li><code>DashboardGrid</code> (a <code>ResponseGridView</code> clipped to the channels of the dashboard),
+  <code>WhatIfRequest</code> (<code>multipliers</code>: channel to multiplier, 1 is the current plan),
+  <code>WhatIfResult</code> (<code>tiles</code>, <code>channels</code>, <code>delta_kpi</code>, <code>lead</code>) and <code>ScenarioSave</code> (<code>multipliers</code>,
+  <code>exact</code>, <code>label</code>).</li>
+<li><code>ActualsTemplate</code> (<code>mode</code>, <code>input_table</code>, <code>kpi_column</code>, <code>example_csv</code>, <code>max_rows</code> (520)) and
+  <code>ActualsSubmit</code> (<code>inputs</code> as XrJSON, <code>label</code>, <code>request_refit</code>).</li>
+<li><code>DashboardGrant</code> (<code>user_id</code>, <code>email</code>, <code>display_name</code>, <code>granted_by</code>, <code>created_at</code>).</li>
+<li><code>DashboardShareCreate</code> (<code>label</code>, <code>expires_in_days</code> 1 to 365, default 30, <code>passcode</code> 8 to 128
+  characters, <code>allowed_inputs</code>: <code>whatif</code>, <code>actuals</code>), <code>DashboardShare</code> (<code>id</code> <code>dss_…</code>, <code>label</code>,
+  <code>display</code> <code>mpd_…x7k2</code>, <code>status</code>, <code>has_passcode</code>, <code>allowed_inputs</code>, <code>views</code>,
+  <code>last_viewed_at</code>, <code>locked_until</code>, <code>expires_at</code>, <code>revoked_at</code>) and <code>DashboardShareCreated</code>
+  (adds <code>token</code> and <code>url_fragment</code>, one time only).</li>
+<li><code>ShareSessionCreate</code> (<code>token</code>, <code>passcode</code>) and <code>ShareSession</code> (<code>session</code>, <code>expires_at</code>,
+  <code>dashboard</code>).</li>
+<li><code>DashboardRefitRequest</code> (<code>id</code> <code>drr_…</code>, <code>dashboard_id</code>, <code>readout_seq</code>, <code>status</code> (<code>open</code>,
+  <code>approved</code>, <code>rejected</code>, <code>superseded</code>, <code>failed</code>), <code>requested_by_kind</code> (<code>member</code>, <code>client</code>,
+  <code>share</code>), <code>requested_by</code>, <code>decided_by</code>, <code>decided_at</code>, <code>note</code>, <code>workflow_run_id</code>,
+  <code>dataset_version_id</code>, <code>problem</code>) and <code>RefitRequestDecision</code> (<code>note</code>).</li>
+</ul>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>curl<span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$MAPI</span><span class="s2">/v1/dashboards/</span><span class="nv">$DASHBOARD</span><span class="s2">/readouts?kind=actuals&amp;limit=10"</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer </span><span class="nv">$MAPI_TOKEN</span><span class="s2">"</span><span class="w"> </span>-H<span class="w"> </span><span class="s2">"X-Mapi-Project: growth"</span>
+</span></code></pre></div>
+<h2 id="v017">Dashboards for any model type <span class="mapi-badge">v0.17</span><a class="headerlink" href="#v017" title="Permanent link">&para;</a></h2>
+<p>v0.17 adds layout 2 dashboards: a dashboard for any model family (media planner, forecast,
+regression, classifier, causal impact, field map, image, generic), made of panels and built
+from a preset. New dashboards are layout 2 (<code>MAPI_DASHBOARD_LAYOUT1_CREATE</code>, default <code>false</code>,
+refuses a new layout 1 spec with <code>422 DASHBOARD_LAYOUT_RETIRED</code>), and a worker moves every
+layout 1 dashboard to layout 2 once (<code>MAPI_DASHBOARD_AUTO_UPGRADE</code>). Layout 1 revisions,
+stored readouts and share links keep working. <a href="../../whats-new-0.17/">What's new in 0.17</a> and
+<a href="../../concepts/client-dashboards/">Client dashboards</a> tell how the parts work.</p>
+<p>The contracts are in <code>mapi_spec.dashboard_v2</code> (DTOs), <code>mapi_spec.dashboard_presets</code> (the
+presets) and <code>mapi_spec.dashboard_tools</code> (six new read-only tools).
+<code>mapi_spec.api.V017_ENDPOINTS</code> lists the routes below; the v0.16 routes take a layout 2 spec
+and give layout 2 readouts (<code>ReadoutHeader.kind</code> adds <code>prediction</code> and <code>batch</code>).</p>
+<h3 id="v017-endpoints">Project routes<a class="headerlink" href="#v017-endpoints" title="Permanent link">&para;</a></h3>
+<p>They need the <code>X-Mapi-Project</code> header, as the v0.16 routes. Presets are <code>dashboard</code> <code>create</code>
+with <code>model</code> <code>read</code>; sources and upgrade are <code>dashboard</code> <code>update</code> (editor); predictions, keep,
+the batch template and batch scoring are <code>dashboard</code> <code>run</code> (client and higher); the
+predictions download and pictures are <code>dashboard</code> <code>read</code>. Keep and the predictions download
+also need the readout's owner or an editor. <code>CLIENT_OPERATIONS</code>
+adds <code>submit_dashboard_predictions</code>, <code>keep_dashboard_readout</code>, <code>get_dashboard_batch_template</code>,
+<code>submit_dashboard_batch</code>, <code>download_dashboard_predictions</code> and <code>get_dashboard_asset</code>. A client
+or a share link cannot score image files (<code>409 DASHBOARD_INPUT_DISABLED</code>).</p>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Purpose</th>
+<th>Request</th>
+<th>Response</th>
+<th>Success</th>
+<th>Errors</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /v1/dashboards:presets</code></td>
+<td>Presets that fit a model version (or an endpoint), best first, and the compiled layout 2 spec of the first (nothing is saved)</td>
+<td>—</td>
+<td><code>DashboardPresets</code></td>
+<td>200</td>
+<td><code>NOT_FOUND</code>, <code>SCHEMA_INVALID</code></td>
+</tr>
+<tr>
+<td><code>GET /v1/dashboards/{dashboard_id}/sources</code></td>
+<td>What the draft's model version offers to panels and inputs (outputs, metrics, scorecard checks, pictures, inputs)</td>
+<td>—</td>
+<td><code>SourceCatalog</code></td>
+<td>200</td>
+<td><code>NOT_FOUND</code></td>
+</tr>
+<tr>
+<td><code>POST /v1/dashboards/{dashboard_id}:upgrade</code></td>
+<td>Convert a layout 1 draft to layout 2 and save it as the draft (If-Match: the draft_etag; SCHEMA_INVALID with the issues when it cannot be converted); publish it as usual</td>
+<td>—</td>
+<td><code>DashboardUpgrade</code></td>
+<td>200</td>
+<td><code>NOT_FOUND</code>, <code>SCHEMA_INVALID</code>, <code>DASHBOARD_SPEC_STALE</code>, <code>PRECONDITION_FAILED</code>, <code>CONFLICT</code></td>
+</tr>
+<tr>
+<td><code>POST /v1/dashboards/{dashboard_id}/predictions</code></td>
+<td>Score scenario rows (values checked against the published revision): a private prediction readout (Prefer: wait=N -&gt; 200 with the readout if done, else 202 with its header)</td>
+<td><code>ScenarioRowsRequest</code></td>
+<td><code>Readout</code></td>
+<td>202</td>
+<td><code>SCHEMA_INVALID</code>, <code>NOT_FOUND</code>, <code>DASHBOARD_INPUT_DISABLED</code>, <code>DASHBOARD_LIVE_PAUSED</code>, <code>DASHBOARD_RUN_LIMIT</code>, <code>QUOTA_EXCEEDED</code>, <code>IDEMPOTENCY_CONFLICT</code>, <code>DASHBOARD_INPUT_INVALID</code>, <code>PAYLOAD_TOO_LARGE</code></td>
+</tr>
+<tr>
+<td><code>POST /v1/dashboards/{dashboard_id}/readouts/{seq}:keep</code></td>
+<td>Keep a tried case (a private prediction readout): it no longer expires and waits for an editor's review before it can enter the history (its owner or an editor)</td>
+<td>—</td>
+<td><code>ReadoutHeader</code></td>
+<td>200</td>
+<td><code>NOT_FOUND</code>, <code>CONFLICT</code></td>
+</tr>
+<tr>
+<td><code>GET /v1/dashboards/{dashboard_id}/batch/template</code></td>
+<td>The columns of a batch file, an example CSV and the row cap</td>
+<td>—</td>
+<td><code>BatchTemplate</code></td>
+<td>200</td>
+<td><code>NOT_FOUND</code>, <code>DASHBOARD_INPUT_DISABLED</code></td>
+</tr>
+<tr>
+<td><code>POST /v1/dashboards/{dashboard_id}/batch</code></td>
+<td>Score a file of new cases: a private batch readout with a summary and a predictions download (Prefer: wait=N -&gt; 200 with the readout if done, else 202 with its header)</td>
+<td><code>BatchSubmit</code></td>
+<td><code>Readout</code></td>
+<td>202</td>
+<td><code>SCHEMA_INVALID</code>, <code>NOT_FOUND</code>, <code>DASHBOARD_INPUT_DISABLED</code>, <code>DASHBOARD_LIVE_PAUSED</code>, <code>DASHBOARD_RUN_LIMIT</code>, <code>QUOTA_EXCEEDED</code>, <code>IDEMPOTENCY_CONFLICT</code>, <code>DASHBOARD_INPUT_INVALID</code>, <code>PAYLOAD_TOO_LARGE</code>, <code>DASHBOARD_BATCH_TOO_LARGE</code></td>
+</tr>
+<tr>
+<td><code>GET /v1/dashboards/{dashboard_id}/readouts/{seq}/predictions.csv</code></td>
+<td>The predictions of a batch readout as CSV (its owner or an editor)</td>
+<td>—</td>
+<td><code>text/csv</code></td>
+<td>200</td>
+<td><code>NOT_FOUND</code>, <code>DASHBOARD_DOWNLOAD_GONE</code></td>
+</tr>
+<tr>
+<td><code>GET /v1/dashboards/{dashboard_id}/assets/{asset_id}</code></td>
+<td>A picture of the dashboard (PNG): a client reads only those of the published revision, members those of any revision</td>
+<td>—</td>
+<td><code>image/png</code></td>
+<td>200</td>
+<td><code>NOT_FOUND</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>list_dashboard_presets</code> takes <code>model_id</code> and <code>version</code>, or <code>alias</code>. <code>upgrade_dashboard</code> needs
+<code>If-Match: &lt;draft_etag&gt;</code> (<code>412 PRECONDITION_FAILED</code> without it); a draft that cannot be
+converted answers <code>422 SCHEMA_INVALID</code> with the issues. <code>update_dashboard_draft</code> answers <code>422
+DASHBOARD_LAYOUT_RETIRED</code> for a layout 1 spec on a layout 2 draft (unless
+<code>MAPI_DASHBOARD_LAYOUT1_CREATE</code> is on). <code>submit_dashboard_predictions</code> and
+<code>submit_dashboard_batch</code> accept <code>Idempotency-Key</code> and <code>Prefer: wait=N</code> (a maximum of 30); they
+answer <code>202</code> with the readout's header, or <code>200</code> with the <code>Readout</code> when a cached readout is
+ready at once or the run finished within the wait (<code>Preference-Applied</code> says so). Poll <code>GET …/readouts/{seq}</code> until <code>status</code> is <code>ready</code> or <code>failed</code>. A tried case is
+private and expires after <code>MAPI_DASHBOARD_PRIVATE_TTL_DAYS</code>; <code>keep_dashboard_readout</code> moves it
+to <code>pending_review</code>, and an editor's <code>:publish</code> puts it in the history. The predictions CSV
+prefixes a cell that looks like a formula with <code>'</code>.</p>
+<h3 id="v017-share">Public share routes<a class="headerlink" href="#v017-share" title="Permanent link">&para;</a></h3>
+<p>The same rules as the <a href="#v016-share">v0.16 share routes</a>: no project, no cookie, the session
+in <code>X-Mapi-Share</code>. A link must allow <code>scenario_rows</code> for predictions and <code>batch</code> for batch
+scoring (<code>DashboardShareCreate.allowed_inputs</code>). A share link cannot keep a case.</p>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Purpose</th>
+<th>Request</th>
+<th>Response</th>
+<th>Success</th>
+<th>Errors</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>POST /v1/shared/predictions</code></td>
+<td>Public: score scenario rows as this link's private readout (Prefer: wait=N -&gt; 200 with the readout if done, else 202 with its header)</td>
+<td><code>ScenarioRowsRequest</code></td>
+<td><code>Readout</code></td>
+<td>202</td>
+<td><code>SCHEMA_INVALID</code>, <code>UNAUTHENTICATED</code>, <code>LINK_EXPIRED</code>, <code>RATE_LIMITED</code>, <code>DASHBOARD_INPUT_DISABLED</code>, <code>DASHBOARD_LIVE_PAUSED</code>, <code>DASHBOARD_RUN_LIMIT</code>, <code>QUOTA_EXCEEDED</code>, <code>IDEMPOTENCY_CONFLICT</code>, <code>DASHBOARD_INPUT_INVALID</code>, <code>PAYLOAD_TOO_LARGE</code></td>
+</tr>
+<tr>
+<td><code>GET /v1/shared/batch/template</code></td>
+<td>Public: the batch file template (the link must allow batch scoring)</td>
+<td>—</td>
+<td><code>BatchTemplate</code></td>
+<td>200</td>
+<td><code>UNAUTHENTICATED</code>, <code>LINK_EXPIRED</code>, <code>RATE_LIMITED</code>, <code>DASHBOARD_INPUT_DISABLED</code></td>
+</tr>
+<tr>
+<td><code>POST /v1/shared/batch</code></td>
+<td>Public: score a file of new cases as this link's private readout (Prefer: wait=N -&gt; 200 with the readout if done, else 202 with its header)</td>
+<td><code>BatchSubmit</code></td>
+<td><code>Readout</code></td>
+<td>202</td>
+<td><code>SCHEMA_INVALID</code>, <code>UNAUTHENTICATED</code>, <code>LINK_EXPIRED</code>, <code>RATE_LIMITED</code>, <code>DASHBOARD_INPUT_DISABLED</code>, <code>DASHBOARD_LIVE_PAUSED</code>, <code>DASHBOARD_RUN_LIMIT</code>, <code>QUOTA_EXCEEDED</code>, <code>IDEMPOTENCY_CONFLICT</code>, <code>DASHBOARD_INPUT_INVALID</code>, <code>PAYLOAD_TOO_LARGE</code>, <code>DASHBOARD_BATCH_TOO_LARGE</code></td>
+</tr>
+<tr>
+<td><code>GET /v1/shared/readouts/{seq}/predictions.csv</code></td>
+<td>Public: the predictions CSV of this link's own batch readout</td>
+<td>—</td>
+<td><code>text/csv</code></td>
+<td>200</td>
+<td><code>NOT_FOUND</code>, <code>UNAUTHENTICATED</code>, <code>LINK_EXPIRED</code>, <code>RATE_LIMITED</code>, <code>DASHBOARD_DOWNLOAD_GONE</code></td>
+</tr>
+<tr>
+<td><code>GET /v1/shared/assets/{asset_id}</code></td>
+<td>Public: a picture of the shared dashboard (PNG)</td>
+<td>—</td>
+<td><code>image/png</code></td>
+<td>200</td>
+<td><code>NOT_FOUND</code>, <code>UNAUTHENTICATED</code>, <code>LINK_EXPIRED</code>, <code>RATE_LIMITED</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="v017-dtos">The DTOs<a class="headerlink" href="#v017-dtos" title="Permanent link">&para;</a></h3>
+<p>All of these are in <code>mapi_spec.dashboard_v2</code>.</p>
+<ul>
+<li><code>DashboardSpecV2</code>: <code>layout_version</code> (2), <code>preset</code> (<code>mmm_planner</code>, <code>forecast</code>, <code>regression</code>,
+  <code>classifier</code>, <code>causal_impact</code>, <code>field_map</code>, <code>image</code>, <code>generic</code>), <code>title</code>, <code>client_name</code>,
+  <code>summary</code>, <code>note</code>, <code>period_label</code>, <code>source</code>, <code>subject</code> (the result the dashboard is about),
+  <code>panels</code> (KPI, chart, table, note, recipe and media planner panels), <code>mmm</code>, <code>scenario_rows</code>,
+  <code>actuals</code>, <code>batch</code>, <code>refresh</code>, <code>limits</code> and <code>show_technical</code>.</li>
+<li><code>DashboardPresets</code> (<code>suggestions</code>: <code>PresetSuggestion</code> with <code>preset</code>, <code>reasons</code> and
+  <code>blocked_inputs</code>; <code>spec</code>: the compiled spec of the first; <code>issues</code>) and <code>SourceCatalog</code>
+  (<code>outputs</code>, <code>metrics</code>, <code>scorecard</code>, <code>pictures</code>, <code>inputs</code>, <code>score_modes</code>, <code>family</code> and the
+  shape of the model's input).</li>
+<li><code>DashboardUpgrade</code> (<code>dashboard</code>, <code>issues</code>, <code>notes</code>). A dashboard whose upgrade stopped has
+  <code>problem</code> <code>upgrade_needs_review</code> and <code>upgrade_issues</code>.</li>
+<li><code>ScenarioRowsRequest</code> (<code>rows</code>: the values of each case, checked against the published
+  inputs with pointers <code>/rows/&lt;i&gt;/&lt;name&gt;</code>; <code>label</code>).</li>
+<li><code>BatchTemplate</code> (<code>columns</code>: <code>BatchColumn</code> with <code>name</code>, <code>role</code>, <code>type</code>, <code>required</code>, <code>min</code>,
+  <code>max</code>, <code>choices</code>; <code>id_column</code>, <code>example_csv</code>, <code>max_rows</code>) and <code>BatchSubmit</code> (<code>inputs</code> as a
+  one-dim XrJSON table along the id column, <code>label</code>).</li>
+<li><code>Readout</code> and <code>ReadoutHeader</code> (as v0.16) carry layout 2 snapshots: panel blocks,
+  <code>PredictionResult</code> (<code>rows</code>, <code>band</code>, <code>approximate</code>), <code>BatchSummary</code> and the accuracy of an
+  actuals readout by kind: <code>ErrorAccuracy</code> (<code>mae</code>, <code>rmse</code>, <code>mape</code>, <code>wape</code>, <code>smape</code>, <code>bias</code>,
+  <code>r2</code>, <code>band_hit_rate</code>; the percentages in percent), <code>ClassAccuracy</code> (<code>accuracy</code>, <code>brier</code>,
+  <code>log_score</code>, <code>auc</code>, calibration <code>bins</code>, <code>confusion</code>) and <code>EffectAccuracy</code> (<code>total</code>, <code>low</code>,
+  <code>high</code>, <code>relative</code> in percent).</li>
+<li><code>ClientDashboard</code> adds <code>layout_version</code>, <code>preset</code>, <code>subject</code>, <code>panels_meta</code>,
+  <code>scenario_form</code>, <code>batch_form</code>, <code>sections</code> and <code>upgrade_note</code> (the one-time note after an
+  automatic upgrade).</li>
+</ul>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>curl<span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$MAPI</span><span class="s2">/v1/dashboards:presets?model_id=</span><span class="nv">$MODEL</span><span class="s2">&amp;version=3"</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer </span><span class="nv">$MAPI_TOKEN</span><span class="s2">"</span><span class="w"> </span>-H<span class="w"> </span><span class="s2">"X-Mapi-Project: growth"</span>
+</span></code></pre></div>
 <h2 id="dto-index">DTO index<a class="headerlink" href="#dto-index" title="Permanent link">&para;</a></h2>
 <p>All of these models are in <code>mapi_spec.api</code>, unless the table gives a different module. Each
 model has a schema in the OpenAPI document and in <code>export_schemas()</code> as <code>api-&lt;Name&gt;.json</code>.</p>
@@ -10454,6 +13665,10 @@ model has a schema in the OpenAPI document and in <code>export_schemas()</code> 
 <td><code>BlobQuery</code>, <code>BlobMissing</code>, <code>CollectionSource</code>, <code>CollectionOptions</code>, <code>CollectionInfo</code>, <code>PackInfo</code>, <code>ClassCount</code>, <code>CollectionRead</code> (<code>mapi_spec.collection</code>), <code>WeightsOptions</code> (<code>mapi_spec.ingest</code>)</td>
 </tr>
 <tr>
+<td>Client dashboards (v0.16)</td>
+<td><code>DashboardSpec</code>, <code>DashboardSource</code>, <code>KpiDef</code>, <code>ChannelDef</code>, <code>WhatIfInputs</code>, <code>ActualsInputs</code>, <code>RefreshPolicy</code>, <code>DashboardLimits</code>, <code>DashboardCreate</code>, <code>DashboardDraftUpdate</code>, <code>DashboardValidation</code>, <code>Dashboard</code>, <code>DashboardSummary</code>, <code>DashboardRevision</code>, <code>ClientDashboard</code>, <code>EffectiveInputs</code>, <code>ReadoutHeader</code>, <code>Readout</code>, <code>ReadoutList</code>, <code>ReadoutSnapshot</code>, <code>KpiValue</code>, <code>ChannelReadout</code>, <code>Series</code>, <code>SeriesPoint</code>, <code>ActualsAccuracy</code>, <code>DashboardGrid</code>, <code>WhatIfRequest</code>, <code>WhatIfResult</code>, <code>ScenarioSave</code>, <code>ActualsTemplate</code>, <code>ActualsSubmit</code>, <code>DashboardGrant</code>, <code>DashboardShareCreate</code>, <code>DashboardShare</code>, <code>DashboardShareCreated</code>, <code>ShareSessionCreate</code>, <code>ShareSession</code>, <code>DashboardRefitRequest</code>, <code>RefitRequestDecision</code> (<code>mapi_spec.dashboards</code>), <code>ToolDecl</code> and the tool DTOs (<code>mapi_spec.dashboard_tools</code>)</td>
+</tr>
+<tr>
 <td>Explorers and optimisation (v0.5)</td>
 <td><code>DataExploreRequest</code>, <code>ModelExploreRequest</code>, <code>ModelCompareRequest</code> (<code>mapi_spec.explore</code>), <code>Exploration</code>, <code>ExplorerIndex</code> (<code>mapi_spec.views</code>), <code>OptimizeRequest</code>, <code>OptimizeResult</code> (<code>mapi_spec.optimize</code>), <code>Optimization</code></td>
 </tr>
@@ -10471,10 +13686,11 @@ model has a schema in the OpenAPI document and in <code>export_schemas()</code> 
 
 
 
-                
-              </article>
-            </div>
-          
+
+      
+    </article>
+  </div>
+
           
   <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
 
@@ -10496,7 +13712,7 @@ model has a schema in the OpenAPI document and in <code>export_schemas()</code> 
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../generated/error-codes/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Error codes">
+          <a href="../generated/extension-points/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Extension points">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -10506,7 +13722,7 @@ model has a schema in the OpenAPI document and in <code>export_schemas()</code> 
                 Previous
               </span>
               <div class="md-ellipsis">
-                Error codes
+                Extension points
               </div>
             </div>
           </a>
@@ -10560,13 +13776,16 @@ model has a schema in the OpenAPI document and in <code>export_schemas()</code> 
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.indexes", "navigation.top", "navigation.footer", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate", "content.tabs.link", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.indexes", "navigation.top", "navigation.footer", "navigation.path", "search.highlight", "content.code.copy", "content.code.annotate", "content.tabs.link", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
+  
+  
       <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
-        <script src="https://unpkg.com/mermaid@11.17.2/dist/mermaid.min.js"></script>
+        <script src="../../javascripts/mono.js"></script>
       
     
+
   </body>
 </html>

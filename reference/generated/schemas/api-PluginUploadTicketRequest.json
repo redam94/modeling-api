@@ -1,0 +1,33 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-PluginUploadTicketRequest.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Ask for an upload ticket. ``size`` above the deployment's cap is refused by the route\nwith ``PAYLOAD_TOO_LARGE``.",
+  "examples": [
+    {
+      "filename": "t_k3vq7m_acme-0.1.0-py3-none-any.whl",
+      "size": 12960
+    }
+  ],
+  "properties": {
+    "filename": {
+      "maxLength": 255,
+      "pattern": "^[A-Za-z0-9._-]+\\.whl$",
+      "title": "Filename",
+      "type": "string"
+    },
+    "size": {
+      "maximum": 1099511627776,
+      "minimum": 1,
+      "title": "Size",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "filename",
+    "size"
+  ],
+  "title": "PluginUploadTicketRequest",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

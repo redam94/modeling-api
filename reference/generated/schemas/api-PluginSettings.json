@@ -1,0 +1,47 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-PluginSettings.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "The tenant's uploaded-code settings and whether uploads are allowed (and why not).",
+  "examples": [
+    {
+      "private_use": true,
+      "reason": "",
+      "tenant_code": "k3vq7m",
+      "uploads_allowed": true
+    }
+  ],
+  "properties": {
+    "private_use": {
+      "default": true,
+      "title": "Private Use",
+      "type": "boolean"
+    },
+    "reason": {
+      "default": "",
+      "maxLength": 500,
+      "title": "Reason",
+      "type": "string"
+    },
+    "tenant_code": {
+      "anyOf": [
+        {
+          "pattern": "^[a-z2-7]{6}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Tenant Code"
+    },
+    "uploads_allowed": {
+      "default": false,
+      "title": "Uploads Allowed",
+      "type": "boolean"
+    }
+  },
+  "title": "PluginSettings",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

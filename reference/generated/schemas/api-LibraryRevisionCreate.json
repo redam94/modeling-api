@@ -1,0 +1,106 @@
+{
+  "$defs": {
+    "JsonValue": {}
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-LibraryRevisionCreate.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Add a revision to a library item (``If-Match: \"r<latest_revision>\"``).",
+  "examples": [
+    {
+      "document": {
+        "apiVersion": "mapi/v1",
+        "base": "declarative",
+        "declarative": {
+          "groups": [
+            {
+              "dim": "store"
+            }
+          ],
+          "outcome": {
+            "family": "negative_binomial",
+            "var": "sales"
+          },
+          "terms": [
+            {
+              "prior": {
+                "sigma": 0.5
+              },
+              "sign": "negative",
+              "transform": [
+                {
+                  "use": "log1p"
+                }
+              ],
+              "var": "price"
+            },
+            {
+              "prior": {
+                "sigma": 1.0
+              },
+              "sign": "positive",
+              "var": "promo",
+              "varies_by": "store"
+            }
+          ]
+        },
+        "kind": "ModelRecipe",
+        "metadata": {
+          "name": "store-sales",
+          "title": "Store sales with promo lift"
+        },
+        "plots": [
+          "core.ppc"
+        ]
+      },
+      "message": "tighter price prior"
+    }
+  ],
+  "properties": {
+    "document": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Document"
+    },
+    "message": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Message"
+    },
+    "text": {
+      "anyOf": [
+        {
+          "maxLength": 262144,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "The document as YAML or JSON text (instead of document)",
+      "title": "Text"
+    }
+  },
+  "title": "LibraryRevisionCreate",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}
